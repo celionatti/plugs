@@ -48,12 +48,12 @@ class ViewCompiler
      */
     protected function compileComponents(string $content): string
     {
-        // First, compile self-closing components: <Sidebar />
+        // First, compile self-closing components: <Sidebar /> or <Sidebar/>
         $content = preg_replace_callback(
-            '/<([A-Z][a-zA-Z0-9]*)\s*([^>]*)\/>/s',
+            '/<([A-Z][a-zA-Z0-9]*)((?:\s+[^>]*?)?)\/>/s',
             function ($matches) {
                 $componentName = $matches[1];
-                $attributes = $matches[2] ?? '';
+                $attributes = isset($matches[2]) ? trim($matches[2]) : '';
                 return $this->compileComponent($componentName, $attributes, '');
             },
             $content
@@ -61,10 +61,10 @@ class ViewCompiler
 
         // Then, compile opening and closing component tags with slot content
         $content = preg_replace_callback(
-            '/<([A-Z][a-zA-Z0-9]*)\s*([^>]*)>([\s\S]*?)<\/\1>/s',
+            '/<([A-Z][a-zA-Z0-9]*)((?:\s+[^>]*?)?)>(.*?)<\/\1\s*>/s',
             function ($matches) {
                 $componentName = $matches[1];
-                $attributes = $matches[2] ?? '';
+                $attributes = isset($matches[2]) ? trim($matches[2]) : '';
                 $slotContent = $matches[3] ?? '';
                 return $this->compileComponent($componentName, $attributes, $slotContent);
             },
@@ -83,27 +83,17 @@ class ViewCompiler
         $attributesArray = $this->parseAttributes($attributes);
 
         // Build the component data array
-        $dataArray = [];
-        foreach ($attributesArray as $key => $value) {
-            // Handle bound data (variables starting with $)
-            if (strpos($value, '$') === 0) {
-                $dataArray[$key] = substr($value, 1); // Remove the $ sign
-            } else {
-                // Handle string values
-                $dataArray[$key] = $value;
-            }
-        }
+        $dataPhp = $this->buildDataArray($attributesArray);
 
-        // Convert data array to PHP code
-        $dataPhp = $this->buildDataArray($dataArray, $attributesArray);
-
-        // Add slot content to data - properly escape it for PHP
+        // Add slot content to data - store it raw
         $slotContent = trim($slotContent);
         if (!empty($slotContent)) {
-            // Store slot content in a variable to avoid escaping issues
-            $slotVar = "\$__slot_" . md5($slotContent);
-            $escapedSlot = str_replace("'", "\\'", $slotContent);
-            $dataPhp .= ", '__slot' => '{$escapedSlot}'";
+            // Escape the slot content for safe inclusion in PHP string
+            $escapedSlot = addcslashes($slotContent, "'\\");
+            if (!empty($dataPhp)) {
+                $dataPhp .= ', ';
+            }
+            $dataPhp .= "'__slot' => '{$escapedSlot}'";
         }
 
         // Return the compiled component
@@ -126,25 +116,37 @@ class ViewCompiler
         preg_match_all('/(\w+)\s*=\s*(["\'])(.*?)\2/s', $attributes, $matches, PREG_SET_ORDER);
 
         foreach ($matches as $match) {
-            $result[$match[1]] = $match[3];
+            $result[$match[1]] = [
+                'value' => $match[3],
+                'quoted' => true,
+                'is_variable' => false
+            ];
         }
 
         // Match attributes without quotes: attribute=value (including $variables)
-        preg_match_all('/(\w+)\s*=\s*(\$?\w+)(?=\s|$|\/)/s', $attributes, $matches, PREG_SET_ORDER);
+        preg_match_all('/(\w+)\s*=\s*(\$\w+)(?=\s|$|\/)/s', $attributes, $matches, PREG_SET_ORDER);
 
         foreach ($matches as $match) {
             if (!isset($result[$match[1]])) {
-                $result[$match[1]] = $match[2];
+                $result[$match[1]] = [
+                    'value' => $match[2],
+                    'quoted' => false,
+                    'is_variable' => true
+                ];
             }
         }
 
         // Match boolean attributes (just the attribute name)
-        $withoutQuoted = preg_replace('/\w+\s*=\s*(["\'].*?\1|\$?\w+)/s', '', $attributes);
+        $withoutQuoted = preg_replace('/\w+\s*=\s*(["\'].*?\1|\$\w+)/s', '', $attributes);
         preg_match_all('/(\w+)/', $withoutQuoted, $matches);
 
         foreach ($matches[1] as $attr) {
             if (!isset($result[$attr]) && !empty(trim($attr))) {
-                $result[$attr] = 'true';
+                $result[$attr] = [
+                    'value' => 'true',
+                    'quoted' => false,
+                    'is_variable' => false
+                ];
             }
         }
 
@@ -154,19 +156,21 @@ class ViewCompiler
     /**
      * Build PHP array code from attribute data
      */
-    private function buildDataArray(array $data, array $originalAttributes): string
+    private function buildDataArray(array $attributes): string
     {
         $parts = [];
-        foreach ($data as $key => $value) {
-            $originalValue = $originalAttributes[$key] ?? $value;
+        
+        foreach ($attributes as $key => $info) {
+            $value = $info['value'];
+            $isVariable = $info['is_variable'];
 
-            // Check if original value starts with $ (variable reference)
-            if (strpos($originalValue, '$') === 0) {
-                // Variable reference
-                $parts[] = "'{$key}' => \${$value}";
+            if ($isVariable) {
+                // Variable reference - remove $ sign
+                $varName = substr($value, 1);
+                $parts[] = "'{$key}' => \${$varName}";
             } else {
                 // String value - properly escape
-                $escapedValue = str_replace("'", "\\'", $value);
+                $escapedValue = addslashes($value);
                 $parts[] = "'{$key}' => '{$escapedValue}'";
             }
         }

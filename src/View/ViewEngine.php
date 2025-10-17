@@ -21,7 +21,7 @@ class ViewEngine
     private $sharedData = [];
     private $componentPath;
 
-    public function __construct(string $viewPath, string $cachePath, bool $cacheEnabled = true)
+    public function __construct(string $viewPath, string $cachePath, bool $cacheEnabled = false)
     {
         $this->viewPath = rtrim($viewPath, '/');
         $this->cachePath = rtrim($cachePath, '/');
@@ -68,32 +68,6 @@ class ViewEngine
         $filename = strtolower(preg_replace('/(?<!^)[A-Z]/', '_$0', $componentName));
         return "{$this->componentPath}/{$filename}.plug.php";
     }
-
-    // public function render(string $view, array $data = []): string
-    // {
-    //     $data = array_merge($this->sharedData, $data);
-
-    //     // Always pass the view engine instance for @include support
-    //     $data['view'] = $this;
-
-    //     $viewFile = $this->getViewPath($view);
-
-    //     if (!file_exists($viewFile)) {
-    //         throw new \RuntimeException("View [{$view}] not found at {$viewFile}");
-    //     }
-
-    //     if ($this->cacheEnabled) {
-    //         $compiled = $this->getCompiledPath($view);
-
-    //         if (!file_exists($compiled) || filemtime($viewFile) > filemtime($compiled)) {
-    //             $this->compile($viewFile, $compiled);
-    //         }
-
-    //         return $this->renderCompiled($compiled, $data);
-    //     }
-
-    //     return $this->renderDirect($viewFile, $data);
-    // }
 
     public function render(string $view, array $data = [], bool $isComponent = false): string
     {
@@ -221,7 +195,8 @@ class ViewEngine
     {
         // Compile the view content in memory (don't save to disk)
         $content = file_get_contents($viewFile);
-        $compiler = new ViewCompiler();
+        // IMPORTANT: Pass $this to compiler so components work
+        $compiler = new ViewCompiler($this);
         $compiledContent = $compiler->compile($content);
 
         // Create a temporary file for the compiled content
