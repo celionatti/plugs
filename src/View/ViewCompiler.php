@@ -19,6 +19,7 @@ class ViewCompiler
     private $sectionStack = [];
     private $componentStack = [];
     private $componentData = [];
+    private $compilationCache = [];
     private $viewEngine;
 
     public function __construct(?ViewEngine $viewEngine = null)
@@ -28,7 +29,14 @@ class ViewCompiler
 
     public function compile(string $content): string
     {
+        $cacheKey = md5($content);
+
+        if (isset($this->compilationCache[$cacheKey])) {
+            return $this->compilationCache[$cacheKey];
+        }
+
         $content = $this->compileComments($content);
+        $content = $this->compilePhp($content);
         $content = $this->compileComponents($content);
         $content = $this->compileEchos($content);
         $content = $this->compileEscapedEchos($content);
@@ -36,11 +44,20 @@ class ViewCompiler
         $content = $this->compileLoops($content);
         $content = $this->compileIncludes($content);
         $content = $this->compileSections($content);
+        $content = $this->compileStacks($content); // NEW
+        $content = $this->compileOnce($content); // NEW
+        $content = $this->compileErrorDirectives($content); // NEW
         $content = $this->compileCsrf($content);
         $content = $this->compileMethod($content);
-        $content = $this->compilePhp($content);
+
+        $this->compilationCache[$cacheKey] = $content;
 
         return $content;
+    }
+
+    public function clearCache(): void
+    {
+        $this->compilationCache = [];
     }
 
     /**
@@ -88,8 +105,8 @@ class ViewCompiler
         // Add slot content to data - store it raw
         $slotContent = trim($slotContent);
         if (!empty($slotContent)) {
-            // Escape the slot content for safe inclusion in PHP string
-            $escapedSlot = addcslashes($slotContent, "'\\");
+            $compiledSlot = $this->compile($slotContent); // Compile any directives in slot
+            $escapedSlot = addcslashes($compiledSlot, "'");
             if (!empty($dataPhp)) {
                 $dataPhp .= ', ';
             }
@@ -159,7 +176,7 @@ class ViewCompiler
     private function buildDataArray(array $attributes): string
     {
         $parts = [];
-        
+
         foreach ($attributes as $key => $info) {
             $value = $info['value'];
             $isVariable = $info['is_variable'];
@@ -185,7 +202,8 @@ class ViewCompiler
 
     protected function compileEchos(string $content): string
     {
-        return preg_replace('/\{!!\s*(.+?)\s*!!\}/s', '<?php echo $1; ?>', $content);
+        // Consider adding a safe mode or validation
+        return preg_replace('/\{\{\{\s*(.+?)\s*\}\}\}/s', '<?php echo htmlspecialchars($1, ENT_QUOTES, \'UTF-8\', false); ?>', $content);
     }
 
     protected function compileEscapedEchos(string $content): string
@@ -260,13 +278,14 @@ class ViewCompiler
     protected function compileIncludes(string $content): string
     {
         return preg_replace_callback(
-            '/\@include\s*\([\'"](.+?)[\'"]\s*(?:,\s*(\[.+?\]))?\)/s',
+            '/\@include\s*\([\'"](.+?)[\'"]\s*(?:,\s*(\[.+?\]))?\s*\)/s',
             function ($matches) {
                 $view = addslashes($matches[1]);
                 $data = $matches[2] ?? '[]';
 
+                // Fix: Properly handle data merging
                 return "<?php if (isset(\$view)) { " .
-                    "echo \$view->render('{$view}', array_merge(get_defined_vars(), {$data})); " .
+                    "echo \$view->render('{$view}', array_merge(get_defined_vars(), (array){$data})); " .
                     "} ?>";
             },
             $content
@@ -361,6 +380,87 @@ class ViewCompiler
 
         // Inline @php(...) syntax
         $content = preg_replace('/\@php\s*\((.+?)\)/s', '<?php $1; ?>', $content);
+
+        return $content;
+    }
+
+    protected function compileOnce(string $content): string
+    {
+        return preg_replace_callback(
+            '/\@once\b(.*?)\@endonce\b/s',
+            function ($matches) {
+                $id = md5($matches[1]);
+                return "<?php if (!isset(\$__once_{$id})): \$__once_{$id} = true; ?>" .
+                    $matches[1] .
+                    "<?php endif; ?>";
+            },
+            $content
+        );
+    }
+
+    protected function compileErrorDirectives(string $content): string
+    {
+        // @error('field')
+        $content = preg_replace(
+            '/\@error\s*\(\s*[\'"](.+?)[\'"]\s*\)/',
+            '<?php if (isset($errors) && $errors->has(\'$1\')): ?>',
+            $content
+        );
+
+        // @enderror
+        $content = preg_replace('/\@enderror\b/', '<?php endif; ?>', $content);
+
+        return $content;
+    }
+
+    /**
+     * Compile stack directives (@push, @stack)
+     */
+    protected function compileStacks(string $content): string
+    {
+        // @push('stack-name')
+        $content = preg_replace_callback(
+            '/\@push\s*\(\s*[\'"](.+?)[\'"]\s*\)/',
+            function ($matches) {
+                $stackName = addslashes($matches[1]);
+                return "<?php \$__currentStack = '{$stackName}'; ob_start(); ?>";
+            },
+            $content
+        );
+
+        // @endpush
+        $content = preg_replace(
+            '/\@endpush\b/',
+            '<?php if (isset($__currentStack)) { $__stacks[$__currentStack][] = ob_get_clean(); unset($__currentStack); } ?>',
+            $content
+        );
+
+        // @stack('stack-name')
+        $content = preg_replace_callback(
+            '/\@stack\s*\(\s*[\'"](.+?)[\'"]\s*\)/',
+            function ($matches) {
+                $stackName = addslashes($matches[1]);
+                return "<?php echo implode('', \$__stacks['{$stackName}'] ?? []); ?>";
+            },
+            $content
+        );
+
+        // @prepend('stack-name')
+        $content = preg_replace_callback(
+            '/\@prepend\s*\(\s*[\'"](.+?)[\'"]\s*\)/',
+            function ($matches) {
+                $stackName = addslashes($matches[1]);
+                return "<?php \$__currentStack = '{$stackName}'; ob_start(); ?>";
+            },
+            $content
+        );
+
+        // @endprepend
+        $content = preg_replace(
+            '/\@endprepend\b/',
+            '<?php if (isset($__currentStack)) { array_unshift($__stacks[$__currentStack] ?? [], ob_get_clean()); unset($__currentStack); } ?>',
+            $content
+        );
 
         return $content;
     }

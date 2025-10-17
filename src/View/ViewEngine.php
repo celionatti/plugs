@@ -64,8 +64,12 @@ class ViewEngine
      */
     private function getComponentPath(string $componentName): string
     {
-        // Convert CamelCase to snake_case for filename
-        $filename = strtolower(preg_replace('/(?<!^)[A-Z]/', '_$0', $componentName));
+        // Improved conversion that handles various cases
+        $filename = preg_replace_callback('/([a-z])([A-Z])/', function ($matches) {
+            return $matches[1] . '_' . strtolower($matches[2]);
+        }, $componentName);
+        $filename = strtolower($filename);
+
         return "{$this->componentPath}/{$filename}.plug.php";
     }
 
@@ -103,7 +107,17 @@ class ViewEngine
     private function getViewPath(string $view): string
     {
         $view = str_replace('.', '/', $view);
-        return "{$this->viewPath}/{$view}.plug.php";
+        $viewPath = "{$this->viewPath}/{$view}.plug.php";
+
+        // Prevent directory traversal
+        $realViewPath = realpath($viewPath);
+        $realBasePath = realpath($this->viewPath);
+
+        if ($realViewPath === false || strpos($realViewPath, $realBasePath) !== 0) {
+            throw new \RuntimeException("Invalid view path: {$view}");
+        }
+
+        return $viewPath;
     }
 
     private function getCompiledPath(string $view): string
@@ -139,9 +153,9 @@ class ViewEngine
 
         foreach ($files as $file) {
             $filename = pathinfo($file, PATHINFO_FILENAME);
-            // Convert snake_case back to CamelCase
+            // Improved conversion back to CamelCase
             $componentName = str_replace('_', '', ucwords($filename, '_'));
-            $components[] = $componentName;
+            $components[$componentName] = $file; // Include path for reference
         }
 
         return $components;
@@ -151,44 +165,53 @@ class ViewEngine
     {
         extract($data, EXTR_SKIP);
 
-        // Initialize sections array
+        // Initialize template variables
         $__sections = [];
+        $__stacks = [];
         $__extends = null;
+        $__currentSection = null;
 
         ob_start();
         try {
             include $compiled;
             $childContent = ob_get_clean();
 
-            // If template extends a layout, render the parent
+            // Handle template inheritance
             if (isset($__extends) && $__extends) {
-                $parentView = $this->getViewPath($__extends);
-                if (!file_exists($parentView)) {
-                    throw new \RuntimeException("Parent view [{$__extends}] not found");
-                }
-
-                $parentCompiled = $this->getCompiledPath($__extends);
-                if (!file_exists($parentCompiled) || filemtime($parentView) > filemtime($parentCompiled)) {
-                    $this->compile($parentView, $parentCompiled);
-                }
-
-                // Render parent with sections from child
-                // Re-extract data for parent template
-                extract($data, EXTR_SKIP);
-                ob_start();
-                include $parentCompiled;
-                return ob_get_clean();
+                return $this->renderParent($__extends, $data, $__sections);
             }
 
             return $childContent;
         } catch (\Throwable $e) {
             ob_end_clean();
             throw new \RuntimeException(
-                "Error rendering view: " . $e->getMessage() . "\nFile: " . $compiled,
+                "Error rendering compiled view: " . $e->getMessage() .
+                    "\nFile: " . $compiled . "\nLine: " . $e->getLine(),
                 0,
                 $e
             );
         }
+    }
+
+    private function renderParent(string $parentView, array $data, array $sections): string
+    {
+        $parentFile = $this->getViewPath($parentView);
+        if (!file_exists($parentFile)) {
+            throw new \RuntimeException("Parent view [{$parentView}] not found at {$parentFile}");
+        }
+
+        // Merge sections into data for parent
+        $parentData = array_merge($data, ['__sections' => $sections]);
+
+        if ($this->cacheEnabled) {
+            $parentCompiled = $this->getCompiledPath($parentView);
+            if (!file_exists($parentCompiled) || filemtime($parentFile) > filemtime($parentCompiled)) {
+                $this->compile($parentFile, $parentCompiled);
+            }
+            return $this->renderCompiled($parentCompiled, $parentData);
+        }
+
+        return $this->renderDirect($parentFile, $parentData);
     }
 
     private function renderDirect(string $viewFile, array $data): string
