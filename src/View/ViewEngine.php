@@ -19,33 +19,97 @@ class ViewEngine
     private $cachePath;
     private $cacheEnabled;
     private $sharedData = [];
+    private $componentPath;
 
     public function __construct(string $viewPath, string $cachePath, bool $cacheEnabled = true)
     {
         $this->viewPath = rtrim($viewPath, '/');
         $this->cachePath = rtrim($cachePath, '/');
         $this->cacheEnabled = $cacheEnabled;
+        $this->componentPath = $this->viewPath . '/components';
 
         if (!is_dir($this->cachePath)) {
             mkdir($this->cachePath, 0755, true);
         }
+
+        // Create components directory if it doesn't exist
+        if (!is_dir($this->componentPath)) {
+            mkdir($this->componentPath, 0755, true);
+        }
     }
 
-    public function render(string $view, array $data = []): string
+    /**
+     * Render a component
+     */
+    public function renderComponent(string $componentName, array $data = []): string
+    {
+        $componentFile = $this->getComponentPath($componentName);
+
+        if (!file_exists($componentFile)) {
+            throw new \RuntimeException("Component [{$componentName}] not found at {$componentFile}");
+        }
+
+        // Extract slot content if provided
+        $slotContent = $data['__slot'] ?? '';
+        unset($data['__slot']);
+
+        // Merge data and add slot variable
+        $componentData = array_merge($data, ['slot' => $slotContent]);
+
+        return $this->render($componentName, $componentData, true);
+    }
+
+    /**
+     * Get the path to a component file
+     */
+    private function getComponentPath(string $componentName): string
+    {
+        // Convert CamelCase to snake_case for filename
+        $filename = strtolower(preg_replace('/(?<!^)[A-Z]/', '_$0', $componentName));
+        return "{$this->componentPath}/{$filename}.plug.php";
+    }
+
+    // public function render(string $view, array $data = []): string
+    // {
+    //     $data = array_merge($this->sharedData, $data);
+
+    //     // Always pass the view engine instance for @include support
+    //     $data['view'] = $this;
+
+    //     $viewFile = $this->getViewPath($view);
+
+    //     if (!file_exists($viewFile)) {
+    //         throw new \RuntimeException("View [{$view}] not found at {$viewFile}");
+    //     }
+
+    //     if ($this->cacheEnabled) {
+    //         $compiled = $this->getCompiledPath($view);
+
+    //         if (!file_exists($compiled) || filemtime($viewFile) > filemtime($compiled)) {
+    //             $this->compile($viewFile, $compiled);
+    //         }
+
+    //         return $this->renderCompiled($compiled, $data);
+    //     }
+
+    //     return $this->renderDirect($viewFile, $data);
+    // }
+
+    public function render(string $view, array $data = [], bool $isComponent = false): string
     {
         $data = array_merge($this->sharedData, $data);
 
-        // Always pass the view engine instance for @include support
+        // Always pass the view engine instance for @include and component support
         $data['view'] = $this;
 
-        $viewFile = $this->getViewPath($view);
+        $viewFile = $isComponent ? $this->getComponentPath($view) : $this->getViewPath($view);
 
         if (!file_exists($viewFile)) {
             throw new \RuntimeException("View [{$view}] not found at {$viewFile}");
         }
 
         if ($this->cacheEnabled) {
-            $compiled = $this->getCompiledPath($view);
+            $compiled = $this->getCompiledPath($view . ($isComponent ? '_component' : ''));
 
             if (!file_exists($compiled) || filemtime($viewFile) > filemtime($compiled)) {
                 $this->compile($viewFile, $compiled);
@@ -65,7 +129,7 @@ class ViewEngine
     private function getViewPath(string $view): string
     {
         $view = str_replace('.', '/', $view);
-        return "{$this->viewPath}/{$view}.php";
+        return "{$this->viewPath}/{$view}.plug.php";
     }
 
     private function getCompiledPath(string $view): string
@@ -77,10 +141,36 @@ class ViewEngine
     {
         $content = file_get_contents($viewFile);
 
-        $compiler = new ViewCompiler();
+        $compiler = new ViewCompiler($this);
         $content = $compiler->compile($content);
 
         file_put_contents($compiled, $content);
+    }
+
+    /**
+     * Check if a component exists
+     */
+    public function componentExists(string $componentName): bool
+    {
+        return file_exists($this->getComponentPath($componentName));
+    }
+
+    /**
+     * Get all available components
+     */
+    public function getAvailableComponents(): array
+    {
+        $components = [];
+        $files = glob($this->componentPath . '/*.plug.php');
+
+        foreach ($files as $file) {
+            $filename = pathinfo($file, PATHINFO_FILENAME);
+            // Convert snake_case back to CamelCase
+            $componentName = str_replace('_', '', ucwords($filename, '_'));
+            $components[] = $componentName;
+        }
+
+        return $components;
     }
 
     private function renderCompiled(string $compiled, array $data): string
