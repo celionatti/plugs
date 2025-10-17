@@ -1,0 +1,17 @@
+/vendor/
+.env
+.idea/
+.DS_Store
+node_modules/
+*.log
+*.cache
+/public/
+/bootstrap/
+/storage/
+/tests/
+/app/
+/config/
+/resources/
+/routes/
+composer.lock
+
