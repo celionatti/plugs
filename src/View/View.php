@@ -132,7 +132,8 @@ class View
     {
         // Check various debug mode indicators
         if (defined('APP_DEBUG')) {
-            return (bool) $_ENV['APP_DEBUG'];
+            // return (bool) $_ENV['APP_DEBUG'];
+            return (bool) constant('APP_DEBUG');
         }
         
         if (isset($_ENV['APP_DEBUG'])) {

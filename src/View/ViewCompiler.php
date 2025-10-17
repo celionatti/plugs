@@ -19,8 +19,8 @@ class ViewCompiler
     private $sectionStack = [];
     private $componentStack = [];
     private $componentData = [];
-    private $compilationCache = [];
     private $viewEngine;
+    private $compilationCache = [];
 
     public function __construct(?ViewEngine $viewEngine = null)
     {
@@ -35,22 +35,101 @@ class ViewCompiler
             return $this->compilationCache[$cacheKey];
         }
 
+        $content = $this->extractComponentsWithSlots($content);
+        $content = $this->compileNonComponentContent($content);
+
+        $this->compilationCache[$cacheKey] = $content;
+
+        return $content;
+    }
+
+    /**
+     * Extract components and their slots, replacing them with placeholder calls
+     */
+    private function extractComponentsWithSlots(string $content): string
+    {
+        // Process self-closing components first
+        $content = preg_replace_callback(
+            '/<([A-Z][a-zA-Z0-9]*)((?:\s+[^>]*?)?)\/>/s',
+            function ($matches) {
+                $componentName = $matches[1];
+                $attributes = isset($matches[2]) ? trim($matches[2]) : '';
+                return $this->createComponentPlaceholder($componentName, $attributes, '');
+            },
+            $content
+        );
+
+        // Process components with slots
+        $content = preg_replace_callback(
+            '/<([A-Z][a-zA-Z0-9]*)((?:\s+[^>]*?)?)>(.*?)<\/\1\s*>/s',
+            function ($matches) {
+                $componentName = $matches[1];
+                $attributes = isset($matches[2]) ? trim($matches[2]) : '';
+                $slotContent = $matches[3] ?? '';
+                return $this->createComponentPlaceholder($componentName, $attributes, $slotContent);
+            },
+            $content
+        );
+
+        return $content;
+    }
+
+    /**
+     * Create a placeholder for component that includes slot content
+     */
+    private function createComponentPlaceholder(string $componentName, string $attributes, string $slotContent): string
+    {
+        $attributesArray = $this->parseAttributes($attributes);
+        $dataPhp = $this->buildDataArray($attributesArray);
+
+        // If there's slot content, compile it and store with unique ID
+        if (!empty(trim($slotContent))) {
+            $slotId = uniqid('slot_', true);
+
+            // Store the UNCOMPILED slot content - will be compiled when rendered
+            $this->componentData[$slotId] = $slotContent;
+
+            if (!empty($dataPhp)) {
+                $dataPhp .= ', ';
+            }
+            $dataPhp .= "'__slot_id' => '{$slotId}'";
+        }
+
+        return "<?php echo \$view->renderComponent('{$componentName}', [{$dataPhp}]); ?>";
+    }
+
+    /**
+     * Get compiled slot content by ID
+     */
+    public function getCompiledSlot(string $slotId): string
+    {
+        if (isset($this->componentData[$slotId])) {
+            $slotContent = $this->componentData[$slotId];
+            // Compile the slot content (includes directives, variables, etc.)
+            return $this->compileNonComponentContent($slotContent);
+        }
+
+        return '';
+    }
+
+    /**
+     * Compile everything except components
+     */
+    private function compileNonComponentContent(string $content): string
+    {
         $content = $this->compileComments($content);
         $content = $this->compilePhp($content);
-        $content = $this->compileComponents($content);
         $content = $this->compileEchos($content);
         $content = $this->compileEscapedEchos($content);
         $content = $this->compileConditionals($content);
         $content = $this->compileLoops($content);
         $content = $this->compileIncludes($content);
         $content = $this->compileSections($content);
-        $content = $this->compileStacks($content); // NEW
-        $content = $this->compileOnce($content); // NEW
-        $content = $this->compileErrorDirectives($content); // NEW
+        $content = $this->compileStacks($content);
+        $content = $this->compileOnce($content);
+        $content = $this->compileErrorDirectives($content);
         $content = $this->compileCsrf($content);
         $content = $this->compileMethod($content);
-
-        $this->compilationCache[$cacheKey] = $content;
 
         return $content;
     }
@@ -58,63 +137,7 @@ class ViewCompiler
     public function clearCache(): void
     {
         $this->compilationCache = [];
-    }
-
-    /**
-     * Compile component tags like <Sidebar>{{$slot}}</Sidebar>
-     */
-    protected function compileComponents(string $content): string
-    {
-        // First, compile self-closing components: <Sidebar /> or <Sidebar/>
-        $content = preg_replace_callback(
-            '/<([A-Z][a-zA-Z0-9]*)((?:\s+[^>]*?)?)\/>/s',
-            function ($matches) {
-                $componentName = $matches[1];
-                $attributes = isset($matches[2]) ? trim($matches[2]) : '';
-                return $this->compileComponent($componentName, $attributes, '');
-            },
-            $content
-        );
-
-        // Then, compile opening and closing component tags with slot content
-        $content = preg_replace_callback(
-            '/<([A-Z][a-zA-Z0-9]*)((?:\s+[^>]*?)?)>(.*?)<\/\1\s*>/s',
-            function ($matches) {
-                $componentName = $matches[1];
-                $attributes = isset($matches[2]) ? trim($matches[2]) : '';
-                $slotContent = $matches[3] ?? '';
-                return $this->compileComponent($componentName, $attributes, $slotContent);
-            },
-            $content
-        );
-
-        return $content;
-    }
-
-    /**
-     * Compile a single component into PHP code
-     */
-    private function compileComponent(string $componentName, string $attributes, string $slotContent): string
-    {
-        // Parse attributes
-        $attributesArray = $this->parseAttributes($attributes);
-
-        // Build the component data array
-        $dataPhp = $this->buildDataArray($attributesArray);
-
-        // Add slot content to data - store it raw
-        $slotContent = trim($slotContent);
-        if (!empty($slotContent)) {
-            $compiledSlot = $this->compile($slotContent); // Compile any directives in slot
-            $escapedSlot = addcslashes($compiledSlot, "'");
-            if (!empty($dataPhp)) {
-                $dataPhp .= ', ';
-            }
-            $dataPhp .= "'__slot' => '{$escapedSlot}'";
-        }
-
-        // Return the compiled component
-        return "<?php echo \$view->renderComponent('{$componentName}', [{$dataPhp}]); ?>";
+        $this->componentData = [];
     }
 
     /**
@@ -140,8 +163,8 @@ class ViewCompiler
             ];
         }
 
-        // Match attributes without quotes: attribute=value (including $variables)
-        preg_match_all('/(\w+)\s*=\s*(\$\w+)(?=\s|$|\/)/s', $attributes, $matches, PREG_SET_ORDER);
+        // Match attributes without quotes: attribute=$variable or attribute=$variable->property
+        preg_match_all('/(\w+)\s*=\s*(\$[\w\[\]\'\"\-\>]+)(?=\s|$|\/)/s', $attributes, $matches, PREG_SET_ORDER);
 
         foreach ($matches as $match) {
             if (!isset($result[$match[1]])) {
@@ -154,7 +177,7 @@ class ViewCompiler
         }
 
         // Match boolean attributes (just the attribute name)
-        $withoutQuoted = preg_replace('/\w+\s*=\s*(["\'].*?\1|\$\w+)/s', '', $attributes);
+        $withoutQuoted = preg_replace('/\w+\s*=\s*(["\'].*?\1|\$[\w\[\]\'\"\-\>]+)/s', '', $attributes);
         preg_match_all('/(\w+)/', $withoutQuoted, $matches);
 
         foreach ($matches[1] as $attr) {
@@ -182,9 +205,8 @@ class ViewCompiler
             $isVariable = $info['is_variable'];
 
             if ($isVariable) {
-                // Variable reference - remove $ sign
-                $varName = substr($value, 1);
-                $parts[] = "'{$key}' => \${$varName}";
+                // Variable reference - keep as is (with $)
+                $parts[] = "'{$key}' => {$value}";
             } else {
                 // String value - properly escape
                 $escapedValue = addslashes($value);
@@ -202,45 +224,27 @@ class ViewCompiler
 
     protected function compileEchos(string $content): string
     {
-        // Consider adding a safe mode or validation
-        return preg_replace('/\{\{\{\s*(.+?)\s*\}\}\}/s', '<?php echo htmlspecialchars($1, ENT_QUOTES, \'UTF-8\', false); ?>', $content);
+        // Fixed: Triple braces should NOT escape HTML (raw output)
+        return preg_replace('/\{\{\{\s*(.+?)\s*\}\}\}/s', '<?php echo $1; ?>', $content);
     }
 
     protected function compileEscapedEchos(string $content): string
     {
+        // Fixed: Double braces SHOULD escape HTML (safe output)
         return preg_replace('/\{\{\s*(.+?)\s*\}\}/s', '<?php echo htmlspecialchars((string)($1), ENT_QUOTES, \'UTF-8\'); ?>', $content);
     }
 
     protected function compileConditionals(string $content): string
     {
-        // @if
         $content = preg_replace('/\@if\s*\((.+?)\)/s', '<?php if ($1): ?>', $content);
-
-        // @elseif
         $content = preg_replace('/\@elseif\s*\((.+?)\)/s', '<?php elseif ($1): ?>', $content);
-
-        // @else
         $content = preg_replace('/\@else\b/', '<?php else: ?>', $content);
-
-        // @endif
         $content = preg_replace('/\@endif\b/', '<?php endif; ?>', $content);
-
-        // @unless
         $content = preg_replace('/\@unless\s*\((.+?)\)/s', '<?php if (!($1)): ?>', $content);
-
-        // @endunless
         $content = preg_replace('/\@endunless\b/', '<?php endif; ?>', $content);
-
-        // @isset
         $content = preg_replace('/\@isset\s*\((.+?)\)/s', '<?php if (isset($1)): ?>', $content);
-
-        // @endisset
         $content = preg_replace('/\@endisset\b/', '<?php endif; ?>', $content);
-
-        // @empty
         $content = preg_replace('/\@empty\s*\((.+?)\)/s', '<?php if (empty($1)): ?>', $content);
-
-        // @endempty
         $content = preg_replace('/\@endempty\b/', '<?php endif; ?>', $content);
 
         return $content;
@@ -248,29 +252,27 @@ class ViewCompiler
 
     protected function compileLoops(string $content): string
     {
-        // @foreach
         $content = preg_replace('/\@foreach\s*\((.+?)\)/s', '<?php foreach ($1): ?>', $content);
-
-        // @endforeach
         $content = preg_replace('/\@endforeach\b/', '<?php endforeach; ?>', $content);
-
-        // @for
         $content = preg_replace('/\@for\s*\((.+?)\)/s', '<?php for ($1): ?>', $content);
-
-        // @endfor
         $content = preg_replace('/\@endfor\b/', '<?php endfor; ?>', $content);
-
-        // @while
         $content = preg_replace('/\@while\s*\((.+?)\)/s', '<?php while ($1): ?>', $content);
-
-        // @endwhile
         $content = preg_replace('/\@endwhile\b/', '<?php endwhile; ?>', $content);
-
-        // @continue with optional condition
-        $content = preg_replace('/\@continue(?:\s*\((.+?)\))?/s', '<?php if ($1 ?? true) continue; ?>', $content);
-
-        // @break with optional condition
-        $content = preg_replace('/\@break(?:\s*\((.+?)\))?/s', '<?php if ($1 ?? true) break; ?>', $content);
+        
+        // Fixed: Continue and break directives with proper condition handling
+        $content = preg_replace_callback('/\@continue(?:\s*\((.+?)\))?/s', function($matches) {
+            if (isset($matches[1]) && !empty(trim($matches[1]))) {
+                return '<?php if (' . $matches[1] . ') continue; ?>';
+            }
+            return '<?php continue; ?>';
+        }, $content);
+        
+        $content = preg_replace_callback('/\@break(?:\s*\((.+?)\))?/s', function($matches) {
+            if (isset($matches[1]) && !empty(trim($matches[1]))) {
+                return '<?php if (' . $matches[1] . ') break; ?>';
+            }
+            return '<?php break; ?>';
+        }, $content);
 
         return $content;
     }
@@ -283,7 +285,6 @@ class ViewCompiler
                 $view = addslashes($matches[1]);
                 $data = $matches[2] ?? '[]';
 
-                // Fix: Properly handle data merging
                 return "<?php if (isset(\$view)) { " .
                     "echo \$view->render('{$view}', array_merge(get_defined_vars(), (array){$data})); " .
                     "} ?>";
@@ -294,7 +295,6 @@ class ViewCompiler
 
     protected function compileSections(string $content): string
     {
-        // @extends
         $content = preg_replace_callback(
             '/\@extends\s*\([\'"](.+?)[\'"]\)/',
             function ($matches) {
@@ -303,7 +303,6 @@ class ViewCompiler
             $content
         );
 
-        // @section with inline content
         $content = preg_replace_callback(
             '/\@section\s*\([\'"](.+?)[\'"]\s*,\s*[\'"](.+?)[\'"]\)/',
             function ($matches) {
@@ -314,7 +313,6 @@ class ViewCompiler
             $content
         );
 
-        // @section with block content
         $content = preg_replace_callback(
             '/\@section\s*\([\'"](.+?)[\'"]\)/',
             function ($matches) {
@@ -324,21 +322,18 @@ class ViewCompiler
             $content
         );
 
-        // @endsection
         $content = preg_replace(
             '/\@endsection\b/',
             '<?php if (isset($__currentSection)) { $__sections[$__currentSection] = ob_get_clean(); unset($__currentSection); } ?>',
             $content
         );
 
-        // @show
         $content = preg_replace(
             '/\@show\b/',
             '<?php if (isset($__currentSection)) { $__sections[$__currentSection] = ob_get_clean(); echo $__sections[$__currentSection]; unset($__currentSection); } ?>',
             $content
         );
 
-        // @yield with default
         $content = preg_replace_callback(
             '/\@yield\s*\([\'"](.+?)[\'"]\s*(?:,\s*[\'"]?(.*?)[\'"]?)?\)/',
             function ($matches) {
@@ -349,7 +344,6 @@ class ViewCompiler
             $content
         );
 
-        // @parent
         $content = preg_replace('/\@parent\b/', '<?php echo $__parentContent ?? \'\'; ?>', $content);
 
         return $content;
@@ -375,10 +369,7 @@ class ViewCompiler
 
     protected function compilePhp(string $content): string
     {
-        // Block @php ... @endphp syntax (must be processed first)
         $content = preg_replace('/\@php\b(.*?)\@endphp\b/s', '<?php $1 ?>', $content);
-
-        // Inline @php(...) syntax
         $content = preg_replace('/\@php\s*\((.+?)\)/s', '<?php $1; ?>', $content);
 
         return $content;
@@ -400,25 +391,19 @@ class ViewCompiler
 
     protected function compileErrorDirectives(string $content): string
     {
-        // @error('field')
         $content = preg_replace(
             '/\@error\s*\(\s*[\'"](.+?)[\'"]\s*\)/',
             '<?php if (isset($errors) && $errors->has(\'$1\')): ?>',
             $content
         );
 
-        // @enderror
         $content = preg_replace('/\@enderror\b/', '<?php endif; ?>', $content);
 
         return $content;
     }
 
-    /**
-     * Compile stack directives (@push, @stack)
-     */
     protected function compileStacks(string $content): string
     {
-        // @push('stack-name')
         $content = preg_replace_callback(
             '/\@push\s*\(\s*[\'"](.+?)[\'"]\s*\)/',
             function ($matches) {
@@ -428,14 +413,14 @@ class ViewCompiler
             $content
         );
 
-        // @endpush
         $content = preg_replace(
             '/\@endpush\b/',
-            '<?php if (isset($__currentStack)) { $__stacks[$__currentStack][] = ob_get_clean(); unset($__currentStack); } ?>',
+            '<?php if (isset($__currentStack)) { ' .
+            'if (!isset($__stacks[$__currentStack])) { $__stacks[$__currentStack] = []; } ' .
+            '$__stacks[$__currentStack][] = ob_get_clean(); unset($__currentStack); } ?>',
             $content
         );
 
-        // @stack('stack-name')
         $content = preg_replace_callback(
             '/\@stack\s*\(\s*[\'"](.+?)[\'"]\s*\)/',
             function ($matches) {
@@ -445,20 +430,20 @@ class ViewCompiler
             $content
         );
 
-        // @prepend('stack-name')
         $content = preg_replace_callback(
             '/\@prepend\s*\(\s*[\'"](.+?)[\'"]\s*\)/',
             function ($matches) {
                 $stackName = addslashes($matches[1]);
-                return "<?php \$__currentStack = '{$stackName}'; ob_start(); ?>";
+                return "<?php \$__currentStack = '{$stackName}'; \$__isPrepend = true; ob_start(); ?>";
             },
             $content
         );
 
-        // @endprepend
         $content = preg_replace(
             '/\@endprepend\b/',
-            '<?php if (isset($__currentStack)) { array_unshift($__stacks[$__currentStack] ?? [], ob_get_clean()); unset($__currentStack); } ?>',
+            '<?php if (isset($__currentStack)) { ' .
+            'if (!isset($__stacks[$__currentStack])) { $__stacks[$__currentStack] = []; } ' .
+            'array_unshift($__stacks[$__currentStack], ob_get_clean()); unset($__currentStack, $__isPrepend); } ?>',
             $content
         );
 

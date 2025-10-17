@@ -20,6 +20,7 @@ class ViewEngine
     private $cacheEnabled;
     private $sharedData = [];
     private $componentPath;
+    private $viewCompiler;
 
     public function __construct(string $viewPath, string $cachePath, bool $cacheEnabled = false)
     {
@@ -32,10 +33,12 @@ class ViewEngine
             mkdir($this->cachePath, 0755, true);
         }
 
-        // Create components directory if it doesn't exist
         if (!is_dir($this->componentPath)) {
             mkdir($this->componentPath, 0755, true);
         }
+
+        // Initialize compiler
+        $this->viewCompiler = new ViewCompiler($this);
     }
 
     /**
@@ -49,14 +52,74 @@ class ViewEngine
             throw new \RuntimeException("Component [{$componentName}] not found at {$componentFile}");
         }
 
-        // Extract slot content if provided
-        $slotContent = $data['__slot'] ?? '';
-        unset($data['__slot']);
+        // Handle slot content if provided via slot ID
+        $slotId = $data['__slot_id'] ?? null;
+        unset($data['__slot_id']);
+
+        $slot = '';
+        if ($slotId) {
+            // Get the compiled slot content
+            $compiledSlot = $this->viewCompiler->getCompiledSlot($slotId);
+
+            // Execute the compiled slot with current data context
+            if (!empty($compiledSlot)) {
+                $slot = $this->executeCompiledContent($compiledSlot, $data);
+            }
+        }
 
         // Merge data and add slot variable
-        $componentData = array_merge($data, ['slot' => $slotContent]);
+        $componentData = array_merge($data, ['slot' => $slot]);
 
         return $this->render($componentName, $componentData, true);
+    }
+
+    /**
+     * Execute compiled PHP content with provided data
+     */
+    private function executeCompiledContent(string $compiledContent, array $data): string
+    {
+        // Remove any strict_types declarations from compiled content
+        $compiledContent = $this->stripStrictTypesDeclaration($compiledContent);
+
+        // Extract data into local scope
+        extract(array_merge($this->sharedData, $data), EXTR_SKIP);
+
+        // Ensure view engine is available
+        $view = $this;
+
+        // Initialize template variables
+        $__sections = $__sections ?? [];
+        $__stacks = $__stacks ?? [];
+
+        ob_start();
+        try {
+            // Execute the compiled content
+            eval('?>' . $compiledContent);
+            return ob_get_clean();
+        } catch (\Throwable $e) {
+            ob_end_clean();
+            throw new \RuntimeException(
+                "Error executing compiled content: " . $e->getMessage(),
+                0,
+                $e
+            );
+        }
+    }
+
+    /**
+     * Strip strict_types declaration from compiled content
+     * This is necessary because eval() cannot have declare() as the first statement
+     */
+    private function stripStrictTypesDeclaration(string $content): string
+    {
+        // Remove declare(strict_types=1); from the beginning of PHP blocks
+        $content = preg_replace(
+            '/(<\?php\s+)declare\s*\(\s*strict_types\s*=\s*1\s*\)\s*;?\s*/i',
+            '$1',
+            $content
+        );
+
+        return $content;
     }
 
     /**
@@ -64,7 +127,7 @@ class ViewEngine
      */
     private function getComponentPath(string $componentName): string
     {
-        // Improved conversion that handles various cases
+        // Convert CamelCase to snake_case
         $filename = preg_replace_callback('/([a-z])([A-Z])/', function ($matches) {
             return $matches[1] . '_' . strtolower($matches[2]);
         }, $componentName);
@@ -77,7 +140,7 @@ class ViewEngine
     {
         $data = array_merge($this->sharedData, $data);
 
-        // Always pass the view engine instance for @include and component support
+        // Always pass the view engine instance
         $data['view'] = $this;
 
         $viewFile = $isComponent ? $this->getComponentPath($view) : $this->getViewPath($view);
@@ -128,9 +191,10 @@ class ViewEngine
     private function compile(string $viewFile, string $compiled): void
     {
         $content = file_get_contents($viewFile);
+        $content = $this->viewCompiler->compile($content);
 
-        $compiler = new ViewCompiler($this);
-        $content = $compiler->compile($content);
+        // Strip strict_types from compiled content before saving
+        $content = $this->stripStrictTypesDeclaration($content);
 
         file_put_contents($compiled, $content);
     }
@@ -153,9 +217,8 @@ class ViewEngine
 
         foreach ($files as $file) {
             $filename = pathinfo($file, PATHINFO_FILENAME);
-            // Improved conversion back to CamelCase
             $componentName = str_replace('_', '', ucwords($filename, '_'));
-            $components[$componentName] = $file; // Include path for reference
+            $components[$componentName] = $file;
         }
 
         return $components;
@@ -216,65 +279,81 @@ class ViewEngine
 
     private function renderDirect(string $viewFile, array $data): string
     {
-        // Compile the view content in memory (don't save to disk)
+        // Compile the view content
         $content = file_get_contents($viewFile);
-        // IMPORTANT: Pass $this to compiler so components work
-        $compiler = new ViewCompiler($this);
-        $compiledContent = $compiler->compile($content);
+        $compiledContent = $this->viewCompiler->compile($content);
 
-        // Create a temporary file for the compiled content
-        $tempFile = tempnam(sys_get_temp_dir(), 'view_');
-        file_put_contents($tempFile, $compiledContent);
+        // Remove strict_types declaration before eval
+        $compiledContent = $this->stripStrictTypesDeclaration($compiledContent);
 
         extract($data, EXTR_SKIP);
 
-        // Initialize sections array
+        // Initialize template variables
         $__sections = [];
+        $__stacks = [];
         $__extends = null;
+        $__currentSection = null;
 
         ob_start();
         try {
-            include $tempFile;
+            // Execute compiled content
+            eval('?>' . $compiledContent);
             $childContent = ob_get_clean();
 
-            // Clean up temp file
-            @unlink($tempFile);
-
-            // If template extends a layout, render the parent
+            // Handle template inheritance
             if (isset($__extends) && $__extends) {
                 $parentView = $this->getViewPath($__extends);
                 if (!file_exists($parentView)) {
                     throw new \RuntimeException("Parent view [{$__extends}] not found");
                 }
 
-                // Compile parent view
+                // Compile and render parent
                 $parentContent = file_get_contents($parentView);
-                $compiledParent = $compiler->compile($parentContent);
+                $compiledParent = $this->viewCompiler->compile($parentContent);
 
-                $parentTempFile = tempnam(sys_get_temp_dir(), 'view_');
-                file_put_contents($parentTempFile, $compiledParent);
+                // Remove strict_types from parent as well
+                $compiledParent = $this->stripStrictTypesDeclaration($compiledParent);
 
                 // Re-extract data for parent template
                 extract($data, EXTR_SKIP);
+
+                // Re-initialize template variables for parent
+                $__sections = $__sections ?? [];
+                $__stacks = $__stacks ?? [];
+
                 ob_start();
-                include $parentTempFile;
-                $result = ob_get_clean();
-
-                // Clean up parent temp file
-                @unlink($parentTempFile);
-
-                return $result;
+                eval('?>' . $compiledParent);
+                return ob_get_clean();
             }
 
             return $childContent;
         } catch (\Throwable $e) {
             ob_end_clean();
-            // Clean up temp file on error
-            @unlink($tempFile);
-            if (isset($parentTempFile)) {
-                @unlink($parentTempFile);
+            throw new \RuntimeException(
+                "Error rendering view: " . $e->getMessage() .
+                    "\nFile: " . $viewFile .
+                    "\nLine: " . $e->getLine(),
+                0,
+                $e
+            );
+        }
+    }
+
+    /**
+     * Clear compilation cache
+     */
+    public function clearCache(): void
+    {
+        $this->viewCompiler->clearCache();
+
+        // Also clear cached files if needed
+        if ($this->cacheEnabled && is_dir($this->cachePath)) {
+            $files = glob($this->cachePath . '/*.php');
+            foreach ($files as $file) {
+                if (is_file($file)) {
+                    @unlink($file);
+                }
             }
-            throw new \RuntimeException("Error rendering view: " . $e->getMessage(), 0, $e);
         }
     }
 }
