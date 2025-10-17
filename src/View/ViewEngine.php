@@ -91,19 +91,51 @@ class ViewEngine
         $__sections = $__sections ?? [];
         $__stacks = $__stacks ?? [];
 
+        // Suppress undefined variable warnings in production
+        $previousErrorLevel = error_reporting();
+        if (!$this->isDebugMode()) {
+            error_reporting($previousErrorLevel & ~E_WARNING & ~E_NOTICE);
+        }
+
         ob_start();
         try {
             // Execute the compiled content
             eval('?>' . $compiledContent);
-            return ob_get_clean();
+            $result = ob_get_clean();
+            error_reporting($previousErrorLevel);
+            return $result;
         } catch (\Throwable $e) {
             ob_end_clean();
+            error_reporting($previousErrorLevel);
             throw new \RuntimeException(
                 "Error executing compiled content: " . $e->getMessage(),
                 0,
                 $e
             );
         }
+    }
+
+    /**
+     * Check if debug mode is enabled
+     */
+    private function isDebugMode(): bool
+    {
+        // Check constant first
+        if (defined('APP_DEBUG')) {
+            return (bool) constant('APP_DEBUG');
+        }
+
+        // Check environment variables
+        if (isset($_ENV['APP_DEBUG'])) {
+            return filter_var($_ENV['APP_DEBUG'], FILTER_VALIDATE_BOOLEAN);
+        }
+
+        if (getenv('APP_DEBUG') !== false) {
+            return filter_var(getenv('APP_DEBUG'), FILTER_VALIDATE_BOOLEAN);
+        }
+
+        // Default to false (production mode)
+        return false;
     }
 
     /**
@@ -234,10 +266,17 @@ class ViewEngine
         $__extends = null;
         $__currentSection = null;
 
+        // Suppress undefined variable warnings in production
+        $previousErrorLevel = error_reporting();
+        if (!$this->isDebugMode()) {
+            error_reporting($previousErrorLevel & ~E_WARNING & ~E_NOTICE);
+        }
+
         ob_start();
         try {
             include $compiled;
             $childContent = ob_get_clean();
+            error_reporting($previousErrorLevel);
 
             // Handle template inheritance
             if (isset($__extends) && $__extends) {
@@ -247,6 +286,7 @@ class ViewEngine
             return $childContent;
         } catch (\Throwable $e) {
             ob_end_clean();
+            error_reporting($previousErrorLevel);
             throw new \RuntimeException(
                 "Error rendering compiled view: " . $e->getMessage() .
                     "\nFile: " . $compiled . "\nLine: " . $e->getLine(),
@@ -294,11 +334,18 @@ class ViewEngine
         $__extends = null;
         $__currentSection = null;
 
+        // Suppress undefined variable warnings in production
+        $previousErrorLevel = error_reporting();
+        if (!$this->isDebugMode()) {
+            error_reporting($previousErrorLevel & ~E_WARNING & ~E_NOTICE);
+        }
+
         ob_start();
         try {
             // Execute compiled content
             eval('?>' . $compiledContent);
             $childContent = ob_get_clean();
+            error_reporting($previousErrorLevel);
 
             // Handle template inheritance
             if (isset($__extends) && $__extends) {
@@ -323,12 +370,15 @@ class ViewEngine
 
                 ob_start();
                 eval('?>' . $compiledParent);
-                return ob_get_clean();
+                $result = ob_get_clean();
+                error_reporting($previousErrorLevel);
+                return $result;
             }
 
             return $childContent;
         } catch (\Throwable $e) {
             ob_end_clean();
+            error_reporting($previousErrorLevel);
             throw new \RuntimeException(
                 "Error rendering view: " . $e->getMessage() .
                     "\nFile: " . $viewFile .

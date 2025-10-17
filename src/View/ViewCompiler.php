@@ -152,14 +152,42 @@ class ViewCompiler
             return $result;
         }
 
+        // First, handle attributes with {{ }} or {{{ }}} expressions
+        // Replace them temporarily with placeholders
+        $expressionMap = [];
+        $expressionCounter = 0;
+
+        $attributes = preg_replace_callback(
+            '/\{\{\{?\s*(.+?)\s*\}\}\}?/s',
+            function ($matches) use (&$expressionMap, &$expressionCounter) {
+                $placeholder = "___EXPR_{$expressionCounter}___";
+                $expressionMap[$placeholder] = trim($matches[1]);
+                $expressionCounter++;
+                return $placeholder;
+            },
+            $attributes
+        );
+
         // Match attribute="value" or attribute='value'
         preg_match_all('/(\w+)\s*=\s*(["\'])(.*?)\2/s', $attributes, $matches, PREG_SET_ORDER);
 
         foreach ($matches as $match) {
+            $value = $match[3];
+
+            // Check if value contains expression placeholders
+            $hasExpression = false;
+            foreach ($expressionMap as $placeholder => $expression) {
+                if (strpos($value, $placeholder) !== false) {
+                    // Replace placeholder back with the PHP expression
+                    $value = str_replace($placeholder, $expression, $value);
+                    $hasExpression = true;
+                }
+            }
+
             $result[$match[1]] = [
-                'value' => $match[3],
+                'value' => $value,
                 'quoted' => true,
-                'is_variable' => false
+                'is_variable' => $hasExpression
             ];
         }
 
@@ -181,7 +209,7 @@ class ViewCompiler
         preg_match_all('/(\w+)/', $withoutQuoted, $matches);
 
         foreach ($matches[1] as $attr) {
-            if (!isset($result[$attr]) && !empty(trim($attr))) {
+            if (!isset($result[$attr]) && !empty(trim($attr)) && !preg_match('/^___EXPR_\d+___$/', $attr)) {
                 $result[$attr] = [
                     'value' => 'true',
                     'quoted' => false,
@@ -252,22 +280,38 @@ class ViewCompiler
 
     protected function compileLoops(string $content): string
     {
-        $content = preg_replace('/\@foreach\s*\((.+?)\)/s', '<?php foreach ($1): ?>', $content);
-        $content = preg_replace('/\@endforeach\b/', '<?php endforeach; ?>', $content);
+        // Foreach with automatic isset check for safer iteration
+        $content = preg_replace_callback(
+            '/\@foreach\s*\((.+?)\s+as\s+(.+?)\)/s',
+            function ($matches) {
+                $array = trim($matches[1]);
+                $iteration = trim($matches[2]);
+
+                // Extract just the array variable name for isset check
+                preg_match('/^\$[\w\[\]\-\>\'\"]+/', $array, $varMatch);
+                $varName = $varMatch[0] ?? $array;
+
+                return "<?php if(isset({$varName}) && is_iterable({$varName})): foreach ({$array} as {$iteration}): ?>";
+            },
+            $content
+        );
+
+        $content = preg_replace('/\@endforeach\b/', '<?php endforeach; endif; ?>', $content);
+
         $content = preg_replace('/\@for\s*\((.+?)\)/s', '<?php for ($1): ?>', $content);
         $content = preg_replace('/\@endfor\b/', '<?php endfor; ?>', $content);
         $content = preg_replace('/\@while\s*\((.+?)\)/s', '<?php while ($1): ?>', $content);
         $content = preg_replace('/\@endwhile\b/', '<?php endwhile; ?>', $content);
-        
+
         // Fixed: Continue and break directives with proper condition handling
-        $content = preg_replace_callback('/\@continue(?:\s*\((.+?)\))?/s', function($matches) {
+        $content = preg_replace_callback('/\@continue(?:\s*\((.+?)\))?/s', function ($matches) {
             if (isset($matches[1]) && !empty(trim($matches[1]))) {
                 return '<?php if (' . $matches[1] . ') continue; ?>';
             }
             return '<?php continue; ?>';
         }, $content);
-        
-        $content = preg_replace_callback('/\@break(?:\s*\((.+?)\))?/s', function($matches) {
+
+        $content = preg_replace_callback('/\@break(?:\s*\((.+?)\))?/s', function ($matches) {
             if (isset($matches[1]) && !empty(trim($matches[1]))) {
                 return '<?php if (' . $matches[1] . ') break; ?>';
             }
@@ -416,8 +460,8 @@ class ViewCompiler
         $content = preg_replace(
             '/\@endpush\b/',
             '<?php if (isset($__currentStack)) { ' .
-            'if (!isset($__stacks[$__currentStack])) { $__stacks[$__currentStack] = []; } ' .
-            '$__stacks[$__currentStack][] = ob_get_clean(); unset($__currentStack); } ?>',
+                'if (!isset($__stacks[$__currentStack])) { $__stacks[$__currentStack] = []; } ' .
+                '$__stacks[$__currentStack][] = ob_get_clean(); unset($__currentStack); } ?>',
             $content
         );
 
@@ -442,8 +486,8 @@ class ViewCompiler
         $content = preg_replace(
             '/\@endprepend\b/',
             '<?php if (isset($__currentStack)) { ' .
-            'if (!isset($__stacks[$__currentStack])) { $__stacks[$__currentStack] = []; } ' .
-            'array_unshift($__stacks[$__currentStack], ob_get_clean()); unset($__currentStack, $__isPrepend); } ?>',
+                'if (!isset($__stacks[$__currentStack])) { $__stacks[$__currentStack] = []; } ' .
+                'array_unshift($__stacks[$__currentStack], ob_get_clean()); unset($__currentStack, $__isPrepend); } ?>',
             $content
         );
 
