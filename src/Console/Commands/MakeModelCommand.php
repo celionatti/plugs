@@ -97,10 +97,10 @@ class MakeModelCommand extends Command
         $content .= "namespace App\\Models;\n\n";
         
         if ($addSoftDeletes) {
-            $content .= "use Plugs\\Database\\Model;\n";
+            $content .= "use Plugs\\Model;\n";
             $content .= "use Plugs\\Database\\SoftDeletes;\n\n";
         } else {
-            $content .= "use Plugs\\Database\\Model;\n\n";
+            $content .= "use Plugs\\Model;\n\n";
         }
         
         $content .= "/**\n";
