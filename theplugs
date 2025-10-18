@@ -1,0 +1,22 @@
+#!/usr/bin/env php
+<?php
+
+declare(strict_types=1);
+
+/*
+ |----------------------------------------------------------------------
+ | Define Constants
+ |----------------------------------------------------------------------
+ */
+
+use Plugs\Console\ConsoleKernel;
+use Plugs\Console\ConsolePlugs;
+
+define('BASE_PATH', __DIR__ . '/');
+define('VENDOR_PATH', BASE_PATH . 'vendor/');
+
+require VENDOR_PATH . 'autoload.php';
+
+$kernel = new ConsoleKernel();
+$app = new ConsolePlugs($kernel);
+exit($app->run($argv));
