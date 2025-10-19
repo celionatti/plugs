@@ -21,7 +21,10 @@ class ConsolePlugs
     private array $metrics = [];
     private array $checkpoints = [];
 
-    public function __construct(private ConsoleKernel $kernel) {}
+    public function __construct(private ConsoleKernel $kernel) 
+    {
+        $this->loadFunctions();
+    }
 
     public function run(array $argv): int
     {
@@ -216,5 +219,22 @@ class ConsolePlugs
         $bytes /= (1 << (10 * $pow));
         
         return round($bytes, 2) . ' ' . $units[$pow];
+    }
+
+    public function loadFunctions(): void
+    {
+        $functionsDir = __DIR__ . '/functions/';
+
+        if (!is_dir($functionsDir)) {
+            return;
+        }
+
+        $files = glob($functionsDir . '*.php');
+
+        foreach ($files as $file) {
+            if (file_exists($file) && is_file($file)) {
+                require_once $file;
+            }
+        }
     }
 }

@@ -17,17 +17,6 @@ define('VENDOR_PATH', BASE_PATH . 'vendor/');
 
 require VENDOR_PATH . 'autoload.php';
 
-/*
- |----------------------------------------------------------------------
- | Call Router and load routes
- |----------------------------------------------------------------------
- |
- | Here we initialize the router and load the application routes.
- */
-$router = new \Plugs\Router\Router();
-$routesLoader = require BASE_PATH . 'routes/web.php';
-$routesLoader($router);
-
 $kernel = new ConsoleKernel();
 $app = new ConsolePlugs($kernel);
 exit($app->run($argv));
