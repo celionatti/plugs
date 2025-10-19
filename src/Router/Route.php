@@ -21,13 +21,15 @@ class Route
     private $pattern;
     private $name;
     private $where = [];
+    private $router;
 
-    public function __construct(string $method, string $path, $handler, array $middleware = [])
+    public function __construct(string $method, string $path, $handler, array $middleware = [], ?Router $router = null)
     {
         $this->method = $method;
         $this->path = $path;
         $this->handler = $handler;
         $this->middleware = $middleware;
+        $this->router = $router;
         $this->pattern = $this->compilePattern($path);
     }
 
@@ -52,9 +54,10 @@ class Route
     {
         $this->name = $name;
 
-        // Register with router
-        $router = app(Router::class);
-        $router->registerNamedRoute($name, $this);
+        // Register with router if available
+        if ($this->router !== null) {
+            $this->router->registerNamedRoute($name, $this);
+        }
 
         return $this;
     }
@@ -84,14 +87,14 @@ class Route
         $pattern = $path;
 
         // Replace parameters with regex
-        $pattern = preg_replace_callback('/\{([a-zA-Z0-9_]+)\}/', function($matches) {
+        $pattern = preg_replace_callback('/\{([a-zA-Z0-9_]+)\}/', function ($matches) {
             $param = $matches[1];
             $constraint = $this->where[$param] ?? '[^/]+';
             return "(?P<{$param}>{$constraint})";
         }, $pattern);
 
         // Replace optional parameters
-        $pattern = preg_replace_callback('/\{([a-zA-Z0-9_]+)\?\}/', function($matches) {
+        $pattern = preg_replace_callback('/\{([a-zA-Z0-9_]+)\?\}/', function ($matches) {
             $param = $matches[1];
             $constraint = $this->where[$param] ?? '[^/]*';
             return "(?P<{$param}>{$constraint})";
@@ -101,10 +104,28 @@ class Route
     }
 
     // Getters
-    public function getMethod(): string { return $this->method; }
-    public function getPath(): string { return $this->path; }
-    public function getHandler() { return $this->handler; }
-    public function getMiddleware(): array { return $this->middleware; }
-    public function getPattern(): string { return $this->pattern; }
-    public function getName(): ?string { return $this->name; }
+    public function getMethod(): string
+    {
+        return $this->method;
+    }
+    public function getPath(): string
+    {
+        return $this->path;
+    }
+    public function getHandler()
+    {
+        return $this->handler;
+    }
+    public function getMiddleware(): array
+    {
+        return $this->middleware;
+    }
+    public function getPattern(): string
+    {
+        return $this->pattern;
+    }
+    public function getName(): ?string
+    {
+        return $this->name;
+    }
 }

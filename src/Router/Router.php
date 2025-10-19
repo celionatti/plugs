@@ -14,7 +14,6 @@ namespace Plugs\Router;
 
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
-use Psr\Http\Server\RequestHandlerInterface;
 
 class Router
 {
@@ -113,7 +112,7 @@ class Router
             $handler = $handler[0] . '@' . $handler[1];
         }
 
-        $route = new Route($method, $path, $handler, $middleware);
+        $route = new Route($method, $path, $handler, $middleware, $this);
         $this->routes[] = $route;
 
         return $route;
@@ -149,8 +148,8 @@ class Router
         $path = $route->getPath();
 
         foreach ($parameters as $key => $value) {
-            $path = str_replace('{' . $key . '}', $value, $path);
-            $path = str_replace('{' . $key . '?}', $value, $path);
+            $path = str_replace('{' . $key . '}', (string)$value, $path);
+            $path = str_replace('{' . $key . '?}', (string)$value, $path);
         }
 
         // Remove optional parameters that weren't provided
@@ -211,13 +210,14 @@ class Router
         foreach ($middleware as $mw) {
             if (is_string($mw)) {
                 // Resolve middleware from container
-                $mw = app($mw);
+                $container = \Plugs\Container\Container::getInstance();
+                $mw = $container->make($mw);
             }
             $stack->add($mw);
         }
 
         // Set the route handler as fallback
-        $stack->setFallbackHandler(function($request) use ($handler) {
+        $stack->setFallbackHandler(function ($request) use ($handler) {
             return $this->executeHandler($handler, $request);
         });
 
@@ -229,6 +229,8 @@ class Router
      */
     private function executeHandler($handler, ServerRequestInterface $request): ResponseInterface
     {
+        $response = null;
+
         if (is_string($handler) && strpos($handler, '@') !== false) {
             // Controller@method format
             [$controller, $method] = explode('@', $handler);
@@ -245,12 +247,48 @@ class Router
                 throw new \RuntimeException("Method {$method} not found in {$controller}");
             }
 
-            return $instance->$method($request);
+            $response = $instance->$method($request);
         } elseif (is_callable($handler)) {
-            return $handler($request);
+            $response = $handler($request);
+        } else {
+            throw new \RuntimeException('Invalid route handler');
         }
 
-        throw new \RuntimeException('Invalid route handler');
+        // Convert response to PSR-7 ResponseInterface if needed
+        return $this->normalizeResponse($response);
+    }
+
+    /**
+     * Normalize response to PSR-7 ResponseInterface
+     */
+    private function normalizeResponse($response): ResponseInterface
+    {
+        // Already a PSR-7 response
+        if ($response instanceof ResponseInterface) {
+            return $response;
+        }
+
+        // String response - wrap in HTML response
+        if (is_string($response)) {
+            return \Plugs\Http\ResponseFactory::html($response);
+        }
+
+        // Array response - wrap in JSON response
+        if (is_array($response)) {
+            return \Plugs\Http\ResponseFactory::json($response);
+        }
+
+        // Null or other types
+        if ($response === null) {
+            return \Plugs\Http\ResponseFactory::html('', 204);
+        }
+
+        // Try to convert to string
+        if (is_object($response) && method_exists($response, '__toString')) {
+            return \Plugs\Http\ResponseFactory::html((string)$response);
+        }
+
+        throw new \RuntimeException('Route handler must return a ResponseInterface, string, array, or null');
     }
 
     /**
