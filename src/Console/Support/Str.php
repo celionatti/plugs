@@ -25,49 +25,28 @@ class Str
 
     public static function pluralStudly(string $name): string
     {
-        $studly = self::studly($name);
-        return self::pluralize($studly);
+        return self::pluralize(self::studly($name));
     }
 
-    private static function pluralize(string $word): string
+    public static function pluralize(string $word): string
     {
-        // Basic pluralization rules
         $irregular = [
             'child' => 'children',
+            'person' => 'people',
             'man' => 'men',
             'woman' => 'women',
-            'person' => 'people',
+            'tooth' => 'teeth',
+            'foot' => 'feet',
             'mouse' => 'mice',
             'goose' => 'geese',
-            'foot' => 'feet',
-            'tooth' => 'teeth',
-            'ox' => 'oxen'
-        ];
-        
-        $uncountable = [
-            'sheep', 'deer', 'fish', 'series', 'species', 'money', 'information', 'rice'
         ];
 
-        $lowerWord = strtolower($word);
-        
-        // Check for irregular plurals
-        foreach ($irregular as $singular => $plural) {
-            if ($lowerWord === $singular) {
-                return $plural;
-            }
-            if ($lowerWord === $plural) {
-                return $word; // Already plural
-            }
+        $lower = strtolower($word);
+        if (isset($irregular[$lower])) {
+            return $irregular[$lower];
         }
-        
-        // Check for uncountable nouns
-        if (in_array($lowerWord, $uncountable)) {
-            return $word;
-        }
-        
-        // Apply common pluralization rules
+
         $rules = [
-            '/(s)tatus$/i' => '\1\2tatuses',
             '/(quiz)$/i' => '\1zes',
             '/^(ox)$/i' => '\1en',
             '/([m|l])ouse$/i' => '\1ice',
@@ -84,16 +63,24 @@ class Str
             '/(octop|vir)us$/i' => '\1i',
             '/(ax|test)is$/i' => '\1es',
             '/s$/i' => 's',
-            '/$/' => 's'
         ];
-        
-        foreach ($rules as $rule => $replacement) {
-            if (preg_match($rule, $word)) {
-                return preg_replace($rule, $replacement, $word);
+
+        foreach ($rules as $pattern => $replacement) {
+            if (preg_match($pattern, $word)) {
+                return preg_replace($pattern, $replacement, $word);
             }
         }
-        
-        // Default: just add 's'
+
         return $word . 's';
+    }
+
+    public static function camel(string $name): string
+    {
+        return lcfirst(self::studly($name));
+    }
+
+    public static function kebab(string $name): string
+    {
+        return str_replace('_', '-', self::snake($name));
     }
 }

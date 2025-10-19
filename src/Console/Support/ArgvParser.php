@@ -19,50 +19,58 @@ class ArgvParser
 
     public function commandName(): ?string
     {
-        // php bin/framework <name> [args]
         return $this->argv[1] ?? null;
     }
 
     public function input(): Input
     {
-        // Shift script + command
         $tokens = array_slice($this->argv, 2);
-        $args   = [];
-        $opts   = [];
+        $args = [];
+        $opts = [];
 
         foreach ($tokens as $token) {
             if (str_starts_with($token, '--')) {
-                $pair = substr($token, 2);
-                if (str_contains($pair, '=')) {
-                    [$k, $v] = explode('=', $pair, 2);
-                    $opts[$k] = $this->cast($v);
-                } else {
-                    $opts[$pair] = true; // boolean flag
-                }
+                $this->parseLongOption($token, $opts);
             } elseif (str_starts_with($token, '-')) {
-                $flags = substr($token, 1);
-                foreach (str_split($flags) as $flag) {
-                    $opts[$flag] = true;
-                }
+                $this->parseShortOption($token, $opts);
             } else {
                 $args[] = $token;
             }
         }
 
-        // Map numeric args to placeholders {0},{1} and also allow named passthrough later
-        $assoc = [];
+        $indexed = [];
         foreach ($args as $i => $value) {
-            $assoc[(string)$i] = $value;
+            $indexed[(string)$i] = $value;
         }
 
-        return new Input($assoc, $opts);
+        return new Input($indexed, $opts);
     }
 
-    private function cast(string $v): string|int|bool
+    private function parseLongOption(string $token, array &$opts): void
     {
-        if ($v === 'true') return true;
-        if ($v === 'false') return false;
-        if (is_numeric($v)) return (int)$v;
-        return $v;
+        $pair = substr($token, 2);
+        if (str_contains($pair, '=')) {
+            [$key, $value] = explode('=', $pair, 2);
+            $opts[$key] = $this->castValue($value);
+        } else {
+            $opts[$pair] = true;
+        }
+    }
+
+    private function parseShortOption(string $token, array &$opts): void
+    {
+        $flags = substr($token, 1);
+        foreach (str_split($flags) as $flag) {
+            $opts[$flag] = true;
+        }
+    }
+
+    private function castValue(string $value): string|int|bool
+    {
+        return match ($value) {
+            'true' => true,
+            'false' => false,
+            default => is_numeric($value) ? (int)$value : $value,
+        };
     }
 }

@@ -19,7 +19,8 @@ use Plugs\Console\Support\ArgvParser;
 class ConsolePlugs
 {
     private array $metrics = [];
-    
+    private array $checkpoints = [];
+
     public function __construct(private ConsoleKernel $kernel) {}
 
     public function run(array $argv): int
@@ -32,81 +33,108 @@ class ConsolePlugs
         $input  = $parser->input();
         $output = new Output();
 
+        if ($this->shouldShowVersion($input)) {
+            $this->displayVersion($output);
+            return 0;
+        }
+
+        if ($this->shouldShowHelp($input) && $name !== 'help') {
+            $name = 'help';
+        }
+
         try {
-            if ($name !== 'help') {
-                $this->displayCommandHeader($output, $name);
-            }
-
-            $this->metrics['resolve_start'] = microtime(true);
             $command = $this->kernel->resolve($name);
-            $this->metrics['resolve_time'] = microtime(true) - $this->metrics['resolve_start'];
-
+            
             if ($command === null) {
                 $this->displayCommandNotFound($output, $name);
                 return 1;
             }
 
+            if (!$this->isQuiet($input)) {
+                $this->displayCommandHeader($output, $name);
+            }
+
             $command->setIO($input, $output);
-
-            $this->metrics['execution_start'] = microtime(true);
             $exitCode = (int) $command->handle();
-            $this->metrics['execution_time'] = microtime(true) - $this->metrics['execution_start'];
 
-            if ($name !== 'help') {
+            if ($exitCode === 0 && !in_array($name, ['help', 'demo']) && !$this->isQuiet($input)) {
                 $this->displaySuccessMetrics($output);
             }
 
             return $exitCode;
-
+            
         } catch (Throwable $e) {
             $this->displayError($output, $e, $input);
             return 1;
         }
     }
 
-    private function displayCommandHeader(Output $output, string $name): void
+    private function shouldShowVersion($input): bool
+    {
+        return $input->options['version'] ?? false;
+    }
+
+    private function shouldShowHelp($input): bool
+    {
+        return $input->options['help'] ?? $input->options['h'] ?? false;
+    }
+
+    private function isQuiet($input): bool
+    {
+        return $input->options['quiet'] ?? $input->options['q'] ?? false;
+    }
+
+    private function displayVersion(Output $output): void
     {
         $output->line();
-        $output->gradient("▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓");
+        $output->gradient("╔══════════════════════════════════════════╗");
         $output->line();
-        $output->info("⚡ Command: " . strtoupper($name));
-        $output->info("⏰ Started: " . date('Y-m-d H:i:s'));
+        $output->line("   ThePlugs Console Framework v1.0.0");
+        $output->line("   PHP " . PHP_VERSION);
         $output->line();
-        $output->gradient("▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓");
+        $output->gradient("╚══════════════════════════════════════════╝");
         $output->line();
+    }
+
+    private function displayCommandHeader(Output $output, string $name): void
+    {
+        $output->commandHeader($name);
     }
 
     private function displayCommandNotFound(Output $output, string $name): void
     {
         $output->line();
-        $output->box(
-            "Command '{$name}' was not found.\n\n" .
-            "Did you mean one of these?\n" .
-            $this->getSuggestions($name),
-            "❌ Command Not Found",
-            "error"
-        );
+        $output->error("Command \"{$name}\" is not defined.");
         $output->line();
-        $output->info("💡 Tip: Run 'help' to see all available commands");
+        
+        $similar = $this->getSimilarCommands($name);
+        if (!empty($similar)) {
+            $output->box(
+                "Did you mean one of these?\n\n" . 
+                implode("\n", array_map(fn($cmd) => "  • {$cmd}", $similar)),
+                "💡 Suggestions",
+                "warning"
+            );
+        }
+        
+        $output->note("Run 'php theplugs help' to see all available commands");
         $output->line();
     }
 
-    private function getSuggestions(string $name): string
+    private function getSimilarCommands(string $name): array
     {
         $commands = array_keys($this->kernel->commands());
-        $suggestions = [];
+        $similar = [];
         
         foreach ($commands as $cmd) {
             $similarity = 0;
             similar_text($name, $cmd, $similarity);
-            if ($similarity > 50) {
-                $suggestions[] = "  • {$cmd}";
+            if ($similarity > 60) {
+                $similar[] = $cmd;
             }
         }
-
-        return !empty($suggestions) 
-            ? implode("\n", array_slice($suggestions, 0, 5))
-            : "  No similar commands found";
+        
+        return array_slice($similar, 0, 5);
     }
 
     private function displaySuccessMetrics(Output $output): void
@@ -115,100 +143,57 @@ class ConsolePlugs
         $this->metrics['memory_end'] = memory_get_usage(true);
         
         $totalTime = $this->metrics['end'] - $this->metrics['start'];
-        $executionTime = $this->metrics['execution_time'];
-        $resolveTime = $this->metrics['resolve_time'];
         $memoryUsed = $this->metrics['memory_end'] - $this->metrics['memory_start'];
-
+        $memoryPeak = memory_get_peak_usage(true);
+        
         $output->line();
-        $output->gradient("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+        $output->fullWidthLine('─', "\033[90m");
+        
+        $timeFormatted = $this->formatTime($totalTime);
+        $memoryFormatted = $this->formatMemory($memoryUsed);
+        $peakFormatted = $this->formatMemory($memoryPeak);
+        
+        $output->line("  \033[92m✓\033[0m Command completed successfully");
+        $output->line("  \033[36m⏱\033[0m  Execution time: \033[1m{$timeFormatted}\033[0m");
+        $output->line("  \033[35m📊\033[0m Memory used: \033[1m{$memoryFormatted}\033[0m");
+        $output->line("  \033[33m📈\033[0m Peak memory: \033[1m{$peakFormatted}\033[0m");
+        
+        $output->fullWidthLine('─', "\033[90m");
         $output->line();
-        
-        $output->box(
-            $this->buildMetricsContent($totalTime, $executionTime, $resolveTime, $memoryUsed),
-            "✨ Performance Metrics",
-            "success"
-        );
-        
-        $output->gradient("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
-        $output->line();
-    }
-
-    private function buildMetricsContent(
-        float $totalTime, 
-        float $executionTime, 
-        float $resolveTime, 
-        int $memoryUsed
-    ): string {
-        $content = [];
-        
-        $content[] = "⏱️  Total Time:      " . $this->formatTime($totalTime);
-        $content[] = "⚡ Execution Time:  " . $this->formatTime($executionTime);
-        $content[] = "🔍 Resolution Time: " . $this->formatTime($resolveTime);
-        
-        $overhead = $totalTime - $executionTime;
-        $content[] = "📊 Framework Time:  " . $this->formatTime($overhead);
-        
-        $content[] = "💾 Memory Used:     " . $this->formatBytes($memoryUsed);
-        
-        $peakMemory = memory_get_peak_usage(true);
-        $content[] = "📈 Peak Memory:     " . $this->formatBytes($peakMemory);
-        
-        return implode("\n", $content);
     }
 
     private function displayError(Output $output, Throwable $e, $input): void
     {
         $output->line();
-        $output->gradient("▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓");
-        $output->line();
         
-        $output->critical("COMMAND EXECUTION FAILED");
+        $errorContent = "Message: {$e->getMessage()}\n\n";
+        $errorContent .= "File: {$e->getFile()}\n";
+        $errorContent .= "Line: {$e->getLine()}";
         
-        $output->line();
-        $output->box(
-            "Type:    " . get_class($e) . "\n" .
-            "Message: " . $e->getMessage() . "\n" .
-            "File:    " . $e->getFile() . "\n" .
-            "Line:    " . $e->getLine(),
-            "💥 Error Details",
-            "error"
-        );
-
-        if ($input->options['debug'] ?? false) {
+        $output->box($errorContent, "❌ Command Failed", "error");
+        
+        if ($input->options['debug'] ?? $input->options['verbose'] ?? false) {
             $output->line();
-            $output->subHeader("Stack Trace");
-            $output->box($this->formatStackTrace($e), '', 'error');
+            $output->section('Stack Trace');
+            $output->line();
+            
+            foreach ($e->getTrace() as $index => $trace) {
+                $file = $trace['file'] ?? 'unknown';
+                $line = $trace['line'] ?? 0;
+                $function = $trace['function'] ?? 'unknown';
+                $class = $trace['class'] ?? '';
+                $type = $trace['type'] ?? '';
+                
+                $output->line("  \033[2m#{$index}\033[0m {$class}{$type}{$function}()");
+                $output->line("      \033[2m{$file}:{$line}\033[0m");
+            }
             
             $output->line();
-            $output->subHeader("System Information");
-            $output->info("PHP Version: " . PHP_VERSION);
-            $output->info("OS: " . PHP_OS);
-            $output->info("Memory: " . $this->formatBytes(memory_get_usage(true)));
         } else {
-            $output->line();
-            $output->note("Run with --debug flag for detailed stack trace");
+            $output->note("Run with --debug or --verbose for detailed stack trace");
         }
-
+        
         $output->line();
-        $output->gradient("▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓");
-        $output->line();
-    }
-
-    private function formatStackTrace(Throwable $e): string
-    {
-        $trace = $e->getTraceAsString();
-        $lines = explode("\n", $trace);
-        $formatted = [];
-        
-        foreach (array_slice($lines, 0, 10) as $i => $line) {
-            $formatted[] = sprintf("%2d) %s", $i + 1, trim($line));
-        }
-        
-        if (count($lines) > 10) {
-            $formatted[] = "... (" . (count($lines) - 10) . " more frames)";
-        }
-        
-        return implode("\n", $formatted);
     }
 
     private function formatTime(float $seconds): string
@@ -222,10 +207,14 @@ class ConsolePlugs
         }
     }
 
-    private function formatBytes(int $bytes): string
+    private function formatMemory(int $bytes): string
     {
         $units = ['B', 'KB', 'MB', 'GB'];
-        $power = $bytes > 0 ? floor(log($bytes, 1024)) : 0;
-        return number_format($bytes / pow(1024, $power), 2) . ' ' . $units[$power];
+        $bytes = max($bytes, 0);
+        $pow = floor(($bytes ? log($bytes) : 0) / log(1024));
+        $pow = min($pow, count($units) - 1);
+        $bytes /= (1 << (10 * $pow));
+        
+        return round($bytes, 2) . ' ' . $units[$pow];
     }
 }

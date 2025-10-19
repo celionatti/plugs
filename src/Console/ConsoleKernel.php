@@ -7,8 +7,14 @@ namespace Plugs\Console;
 use Plugs\Console\Command;
 use Plugs\Console\Commands\DemoCommand;
 use Plugs\Console\Commands\HelpCommand;
+use Plugs\Console\Commands\ServeCommand;
+use Plugs\Console\Commands\InspireCommand;
 use Plugs\Console\Commands\MakeModelCommand;
+use Plugs\Console\Commands\CacheClearCommand;
+use Plugs\Console\Commands\MakeCommandCommand;
+use Plugs\Console\Commands\MakeMigrationCommand;
 use Plugs\Console\Commands\MakeControllerCommand;
+use Plugs\Console\Commands\MakeMiddlewareCommand;
 
 /*
 |--------------------------------------------------------------------------
@@ -19,37 +25,51 @@ use Plugs\Console\Commands\MakeControllerCommand;
 
 class ConsoleKernel
 {
-    /** @var array<string, string> */
     protected array $commands = [
-        'help'            => HelpCommand::class,
-        'demo'            => DemoCommand::class,
-        // 'make:framework'  => MakeFrameworkCommand::class,
-        'make:controller' => MakeControllerCommand::class,
-        'make:model'      => MakeModelCommand::class,
-        // 'make:migration'  => MakeMigrationCommand::class,
-        // 'make:command'    => MakeCommandCommand::class,
-        // 'key:generate'    => KeyGenerateCommand::class,
-        // 'cache:clear'     => CacheClearCommand::class,
-        // 'config:cache'    => ConfigCacheCommand::class,
-        // 'route:list'      => RouteListCommand::class,
-        // 'db:seed'         => DbSeedCommand::class,
+        'help'              => HelpCommand::class,
+        'demo'              => DemoCommand::class,
+        'inspire'           => InspireCommand::class,
+        
+        'make:controller'   => MakeControllerCommand::class,
+        'make:model'        => MakeModelCommand::class,
+        'make:command'      => MakeCommandCommand::class,
+        'make:middleware'   => MakeMiddlewareCommand::class,
+        'make:migration'    => MakeMigrationCommand::class,
+        
+        'serve'             => ServeCommand::class,
+        'cache:clear'       => CacheClearCommand::class,
     ];
 
-    /** @var array<string, string> */
     protected array $aliases = [
-        'g:c' => 'make:controller',
-        'g:m' => 'make:model',
-        'g:cmd' => 'make:command',
+        'g:c'      => 'make:controller',
+        'g:m'      => 'make:model',
+        'g:cmd'    => 'make:command',
+        'g:mid'    => 'make:middleware',
+        'g:mig'    => 'make:migration',
+        's'        => 'serve',
+        'cc'       => 'cache:clear',
+        'i'        => 'inspire',
     ];
 
-    public function commands(): array 
-    { 
-        return $this->commands; 
+    protected array $commandGroups = [
+        'General' => ['help', 'demo', 'inspire'],
+        'Make' => ['make:controller', 'make:model', 'make:command', 'make:middleware', 'make:migration'],
+        'Utility' => ['serve', 'cache:clear'],
+    ];
+
+    public function commands(): array
+    {
+        return $this->commands;
     }
 
-    public function aliases(): array 
-    { 
-        return $this->aliases; 
+    public function aliases(): array
+    {
+        return $this->aliases;
+    }
+
+    public function commandGroups(): array
+    {
+        return $this->commandGroups;
     }
 
     public function register(string $name, string $class): void
@@ -59,16 +79,23 @@ class ConsoleKernel
         }
 
         if (!is_subclass_of($class, Command::class)) {
-            throw new \InvalidArgumentException("Command class '{$class}' must extend " . Command::class);
+            throw new \InvalidArgumentException("Command class must extend " . Command::class);
         }
 
         $this->commands[$name] = $class;
     }
 
+    public function registerBatch(array $commands): void
+    {
+        foreach ($commands as $name => $class) {
+            $this->register($name, $class);
+        }
+    }
+
     public function alias(string $alias, string $commandName): void
     {
         if (!isset($this->commands[$commandName])) {
-            throw new \InvalidArgumentException("Cannot create alias for non-existent command '{$commandName}'");
+            throw new \InvalidArgumentException("Cannot alias non-existent command '{$commandName}'");
         }
 
         $this->aliases[$alias] = $commandName;
@@ -76,19 +103,11 @@ class ConsoleKernel
 
     public function resolve(string $name): ?Command
     {
-        // Check if it's an alias first
         $lookup = $this->aliases[$name] ?? $name;
-        
-        // Get the command class
         $class = $this->commands[$lookup] ?? null;
         
-        if (!$class) {
+        if (!$class || !class_exists($class)) {
             return null;
-        }
-
-        // Verify class exists before instantiation
-        if (!class_exists($class)) {
-            throw new \RuntimeException("Command class '{$class}' for '{$lookup}' does not exist.");
         }
 
         return new $class($lookup);
@@ -103,5 +122,39 @@ class ConsoleKernel
     public function getCommandList(): array
     {
         return array_keys($this->commands);
+    }
+
+    public function getGroupedCommands(): array
+    {
+        $grouped = [];
+        
+        foreach ($this->commandGroups as $group => $commandNames) {
+            $grouped[$group] = [];
+            foreach ($commandNames as $name) {
+                if (isset($this->commands[$name])) {
+                    $grouped[$group][$name] = $this->commands[$name];
+                }
+            }
+        }
+
+        $allGrouped = array_merge(...array_values($this->commandGroups));
+        foreach ($this->commands as $name => $class) {
+            if (!in_array($name, $allGrouped)) {
+                $grouped['Other'][$name] = $class;
+            }
+        }
+
+        return $grouped;
+    }
+
+    public function findByPattern(string $pattern): array
+    {
+        $matches = [];
+        foreach (array_keys($this->commands) as $name) {
+            if (fnmatch($pattern, $name)) {
+                $matches[] = $name;
+            }
+        }
+        return $matches;
     }
 }
