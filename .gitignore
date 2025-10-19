@@ -14,4 +14,4 @@ node_modules/
 /resources/
 /routes/
 composer.lock
-
+/theplugs
