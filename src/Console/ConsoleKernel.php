@@ -10,7 +10,11 @@ use Plugs\Console\Commands\HelpCommand;
 use Plugs\Console\Commands\ServeCommand;
 use Plugs\Console\Commands\InspireCommand;
 use Plugs\Console\Commands\MakeModelCommand;
+use Plugs\Console\Commands\RouteListCommand;
+use Plugs\Console\Commands\RouteTestCommand;
 use Plugs\Console\Commands\CacheClearCommand;
+use Plugs\Console\Commands\RouteCacheCommand;
+use Plugs\Console\Commands\RouteClearCommand;
 use Plugs\Console\Commands\MakeCommandCommand;
 use Plugs\Console\Commands\MakeMigrationCommand;
 use Plugs\Console\Commands\MakeControllerCommand;
@@ -29,13 +33,18 @@ class ConsoleKernel
         'help'              => HelpCommand::class,
         'demo'              => DemoCommand::class,
         'inspire'           => InspireCommand::class,
-        
+
         'make:controller'   => MakeControllerCommand::class,
         'make:model'        => MakeModelCommand::class,
         'make:command'      => MakeCommandCommand::class,
         'make:middleware'   => MakeMiddlewareCommand::class,
         'make:migration'    => MakeMigrationCommand::class,
-        
+
+        'route:list'   => RouteListCommand::class,
+        'route:cache'  => RouteCacheCommand::class,
+        'route:clear'  => RouteClearCommand::class,
+        'route:test'   => RouteTestCommand::class,
+
         'serve'             => ServeCommand::class,
         'cache:clear'       => CacheClearCommand::class,
     ];
@@ -46,6 +55,8 @@ class ConsoleKernel
         'g:cmd'    => 'make:command',
         'g:mid'    => 'make:middleware',
         'g:mig'    => 'make:migration',
+        'routes'       => 'route:list',
+        'route:show'   => 'route:list',
         's'        => 'serve',
         'cc'       => 'cache:clear',
         'i'        => 'inspire',
@@ -105,7 +116,7 @@ class ConsoleKernel
     {
         $lookup = $this->aliases[$name] ?? $name;
         $class = $this->commands[$lookup] ?? null;
-        
+
         if (!$class || !class_exists($class)) {
             return null;
         }
@@ -127,7 +138,7 @@ class ConsoleKernel
     public function getGroupedCommands(): array
     {
         $grouped = [];
-        
+
         foreach ($this->commandGroups as $group => $commandNames) {
             $grouped[$group] = [];
             foreach ($commandNames as $name) {

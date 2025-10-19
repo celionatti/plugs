@@ -16,84 +16,104 @@ use Plugs\Console\Support\Filesystem;
 
 class MakeControllerCommand extends Command
 {
-    protected string $description = 'Create a new controller class with customizable options';
+    protected string $description = 'Create a new controller class with advanced features';
+
+    private string $templatePath;
+
+    public function __construct(string $name)
+    {
+        parent::__construct($name);
+        $this->templatePath = getcwd() . '/stubs';
+    }
+
+    protected function defineArguments(): array
+    {
+        return [
+            'name' => 'The name of the controller class'
+        ];
+    }
+
+    protected function defineOptions(): array
+    {
+        return [
+            '--model=MODEL' => 'Generate a resource controller for the given model',
+            '--resource, -r' => 'Generate a resource controller with CRUD methods',
+            '--api' => 'Generate an API controller (no create/edit methods)',
+            '--invokable, -i' => 'Generate a single action controller',
+            '--parent=PARENT' => 'Generate a nested resource controller',
+            '--singleton' => 'Generate a singleton resource controller',
+            '--requests' => 'Generate FormRequest classes for store and update',
+            '--test' => 'Generate a test class for the controller',
+            '--pest' => 'Generate a Pest test',
+            '--force' => 'Overwrite existing files',
+            '--type=TYPE' => 'Specify controller type (plain, resource, api, invokable)',
+            '--namespace=NAMESPACE' => 'Custom namespace for the controller',
+            '--methods=METHODS' => 'Comma-separated list of methods to include',
+            '--no-comments' => 'Do not add PHPDoc comments',
+            '--strict' => 'Add strict type declarations',
+        ];
+    }
 
     public function handle(): int
     {
         $this->checkpoint('start');
         
+        $this->title('Controller Generator');
+        
+        // Get controller name
         $name = $this->argument('0');
         
         if (!$name) {
-            $name = $this->ask('What should we name the controller?', 'UserController');
+            $name = $this->ask('Controller name', 'UserController');
         }
         
+        // Ensure it ends with Controller
         if (!str_ends_with($name, 'Controller')) {
             $name .= 'Controller';
         }
         
-        $this->info("Creating controller: {$name}");
-        $this->line();
+        $name = Str::studly($name);
         
-        $type = $this->choice(
-            'What type of controller?',
-            [
-                'Basic Controller',
-                'Resource Controller',
-                'API Controller',
-                'Invokable Controller'
-            ],
-            'Basic Controller'
-        );
+        $this->checkpoint('name_collected');
         
-        $addMethods = [];
-        
-        if ($type !== 'Invokable Controller') {
-            $addMethods = $this->multiChoice(
-                'Which methods would you like to include?',
-                ['index', 'create', 'store', 'show', 'edit', 'update', 'destroy'],
-                $type === 'Resource Controller' ? ['index', 'create', 'store', 'show', 'edit', 'update', 'destroy'] : []
-            );
-        }
-        
-        $addComments = $this->confirm('Add PHPDoc comments?', true);
-        $addTypeHints = $this->confirm('Add strict type declarations?', true);
+        // Gather options
+        $options = $this->gatherOptions($name);
         
         $this->checkpoint('options_collected');
         
-        $this->line();
-        $this->section('Generating Controller');
+        // Display summary
+        $this->displaySummary($name, $options);
         
-        $content = $this->task('Building controller structure', function() use ($name, $type, $addMethods, $addComments, $addTypeHints) {
-            return $this->generateController($name, $type, $addMethods, $addComments, $addTypeHints);
-        });
-        
-        $this->checkpoint('generation_complete');
-        
-        $path = $this->getControllerPath($name);
-        $directory = dirname($path);
-        
-        if (Filesystem::exists($path)) {
-            $this->warning("Controller already exists: {$path}");
-            
-            if (!$this->confirm('Do you want to overwrite it?', false)) {
-                $this->info('Operation cancelled.');
-                return 0;
-            }
+        if (!$this->confirm('Proceed with generation?', true)) {
+            $this->warning('Controller generation cancelled.');
+            return 0;
         }
         
-        $this->task('Creating directory structure', function() use ($directory) {
-            Filesystem::ensureDir($directory);
-        });
+        $this->newLine();
+        $this->section('Generating Files');
         
-        $this->task('Writing controller file', function() use ($path, $content) {
-            Filesystem::put($path, $content);
-        });
+        // Generate controller
+        $controllerPath = $this->generateController($name, $options);
         
-        $this->checkpoint('file_written');
+        $this->checkpoint('controller_generated');
         
-        $this->line();
-        $this->displaySuccessSummary($name, $path, $type, $addMethods);
+        $filesCreated = [$controllerPath];
+        
+        // Generate related files
+        if ($options['requests']) {
+            $requestPaths = $this->generateRequests($name, $options);
+            $filesCreated = array_merge($filesCreated, $requestPaths);
+        }
+        
+        if ($options['test']) {
+            $testPath = $this->generateTest($name, $options);
+            $filesCreated[] = $testPath;
+        }
+        
+        $this->checkpoint('all_generated');
+        
+        // Display results
+        $this->displayResults($name, $filesCreated, $options);
         
         if ($this->isVerbose()) {
             $this->displayTimings();
@@ -102,140 +122,610 @@ class MakeControllerCommand extends Command
         return 0;
     }
 
-    private function generateController(
-        string $name, 
-        string $type, 
-        array $methods, 
-        bool $addComments, 
-        bool $addTypeHints
-    ): string {
-        $className = Str::studly($name);
-        $namespace = 'App\\Controllers';
+    private function gatherOptions(string $name): array
+    {
+        $options = [
+            'type' => $this->determineType(),
+            'model' => $this->option('model'),
+            'parent' => $this->option('parent'),
+            'namespace' => $this->option('namespace'),
+            'methods' => $this->option('methods'),
+            'singleton' => $this->hasOption('singleton'),
+            'requests' => $this->hasOption('requests'),
+            'test' => $this->hasOption('test'),
+            'pest' => $this->hasOption('pest'),
+            'force' => $this->isForce(),
+            'comments' => !$this->hasOption('no-comments'),
+            'strict' => $this->hasOption('strict'),
+        ];
         
-        $content = '';
-        
-        if ($addTypeHints) {
-            $content .= "<?php\n\ndeclare(strict_types=1);\n\n";
-        } else {
-            $content .= "<?php\n\n";
+        // Interactive mode if no significant options provided
+        if (!$this->hasAnyOption()) {
+            $this->section('Configuration');
+            
+            $typeChoice = $this->choice(
+                'Controller type?',
+                ['Plain', 'Resource', 'API', 'Invokable', 'Singleton'],
+                'Resource'
+            );
+            
+            $options['type'] = strtolower($typeChoice);
+            
+            if (in_array($options['type'], ['resource', 'api', 'singleton'])) {
+                if ($this->confirm('Associate with a model?', true)) {
+                    $modelName = $this->ask('Model name', str_replace('Controller', '', $name));
+                    $options['model'] = Str::studly($modelName);
+                }
+                
+                if ($this->confirm('Is this a nested resource?', false)) {
+                    $parentName = $this->ask('Parent resource name');
+                    $options['parent'] = Str::studly($parentName);
+                }
+            }
+            
+            if (in_array($options['type'], ['resource', 'api'])) {
+                $options['requests'] = $this->confirm('Generate Form Request classes?', false);
+            }
+            
+            $options['test'] = $this->confirm('Generate test class?', false);
+            
+            if ($options['test']) {
+                $options['pest'] = $this->confirm('Use Pest instead of PHPUnit?', false);
+            }
+            
+            $options['comments'] = $this->confirm('Add PHPDoc comments?', true);
         }
         
-        $content .= "namespace {$namespace};\n\n";
+        // Parse custom methods if provided
+        if ($options['methods']) {
+            $options['custom_methods'] = array_map('trim', explode(',', $options['methods']));
+        }
+        
+        return $options;
+    }
 
-        $content .= "use Plugs\\Base\\Controller\\Controller;\n";
-        $content .= "use Psr\\Http\\Message\\ResponseInterface;\n\n";
-        
-        if ($addComments) {
-            $content .= "/**\n";
-            $content .= " * {$className}\n";
-            $content .= " * \n";
-            $content .= " * Generated by ThePlugs Console\n";
-            $content .= " * @created " . date('Y-m-d H:i:s') . "\n";
-            $content .= " */\n";
+    private function determineType(): string
+    {
+        if ($this->hasOption('invokable') || $this->hasOption('i')) {
+            return 'invokable';
         }
         
-        $content .= "class {$className} extends Controller\n{\n";
+        if ($this->hasOption('api')) {
+            return 'api';
+        }
         
-        if ($type === 'Invokable Controller') {
-            $content .= $this->generateInvokeMethod($addComments, $addTypeHints);
-        } else {
-            foreach ($methods as $method) {
-                $content .= $this->generateMethod($method, $addComments, $addTypeHints);
+        if ($this->hasOption('resource') || $this->hasOption('r')) {
+            return 'resource';
+        }
+        
+        if ($this->hasOption('singleton')) {
+            return 'singleton';
+        }
+        
+        if ($this->option('type')) {
+            return strtolower($this->option('type'));
+        }
+        
+        return 'plain';
+    }
+
+    private function generateController(string $name, array $options): string
+    {
+        $this->task('Generating controller class', function() use ($name, $options) {
+            usleep(300000);
+        });
+        
+        $path = $this->getControllerPath($name, $options);
+        
+        if (Filesystem::exists($path) && !$options['force']) {
+            if (!$this->confirm("Controller {$name} already exists. Overwrite?", false)) {
+                $this->warning('Controller generation skipped.');
+                exit(0);
             }
         }
         
-        $content .= "}\n";
+        // Load template
+        $template = $this->loadTemplate($options);
         
-        return $content;
+        // Populate template
+        $content = $this->populateTemplate($template, $name, $options);
+        
+        Filesystem::put($path, $content);
+        
+        $this->success("Controller created: {$path}");
+        
+        return $path;
     }
 
-    private function generateMethod(string $methodName, bool $addComments, bool $addTypeHints): string
+    private function generateRequests(string $controllerName, array $options): array
     {
-        $method = "\n";
+        $this->task('Generating Form Request classes', function() {
+            usleep(200000);
+        });
         
-        if ($addComments) {
-            $method .= "    /**\n";
-            $method .= "     * " . ucfirst($methodName) . " method\n";
-            $method .= "     */\n";
-        }
+        $baseName = str_replace('Controller', '', $controllerName);
+        $paths = [];
         
-        $returnType = $addTypeHints ? ': mixed' : '';
+        // Store Request
+        $storeRequestName = "Store{$baseName}Request";
+        $storeRequestPath = $this->getRequestPath($storeRequestName);
+        $storeContent = $this->generateRequestClass($storeRequestName, $options);
+        Filesystem::put($storeRequestPath, $storeContent);
+        $paths[] = $storeRequestPath;
+        $this->success("Request created: {$storeRequestName}");
         
-        $params = match($methodName) {
-            'show', 'edit', 'update', 'destroy' => $addTypeHints ? 'int $id' : '$id',
-            default => ''
+        // Update Request
+        $updateRequestName = "Update{$baseName}Request";
+        $updateRequestPath = $this->getRequestPath($updateRequestName);
+        $updateContent = $this->generateRequestClass($updateRequestName, $options);
+        Filesystem::put($updateRequestPath, $updateContent);
+        $paths[] = $updateRequestPath;
+        $this->success("Request created: {$updateRequestName}");
+        
+        return $paths;
+    }
+
+    private function generateTest(string $controllerName, array $options): string
+    {
+        $testType = $options['pest'] ? 'Pest' : 'PHPUnit';
+        
+        $this->task("Generating {$testType} test", function() {
+            usleep(200000);
+        });
+        
+        $testName = str_replace('Controller', '', $controllerName) . 'ControllerTest';
+        $path = $this->getTestPath($testName);
+        
+        $template = $options['pest'] ? $this->getPestTestTemplate() : $this->getPhpUnitTestTemplate();
+        
+        $replacements = [
+            '{{class}}' => $testName,
+            '{{controller}}' => $controllerName,
+            '{{controllerNamespace}}' => $this->buildNamespace($options) . '\\' . $controllerName,
+        ];
+        
+        $content = str_replace(array_keys($replacements), array_values($replacements), $template);
+        
+        Filesystem::put($path, $content);
+        
+        $this->success("Test created: {$testName}");
+        
+        return $path;
+    }
+
+    private function loadTemplate(array $options): string
+    {
+        $templateName = match($options['type']) {
+            'invokable' => 'controller.invokable.stub',
+            'api' => 'controller.api.stub',
+            'resource' => 'controller.resource.stub',
+            'singleton' => 'controller.singleton.stub',
+            default => 'controller.plain.stub',
         };
         
-        $method .= "    public function {$methodName}({$params}){$returnType}\n";
-        $method .= "    {\n";
-        $method .= "        // TODO: Implement {$methodName} method\n";
-        $method .= "    }\n";
+        $templatePath = $this->templatePath . '/' . $templateName;
         
-        return $method;
-    }
-
-    private function generateInvokeMethod(bool $addComments, bool $addTypeHints): string
-    {
-        $method = "\n";
-        
-        if ($addComments) {
-            $method .= "    /**\n";
-            $method .= "     * Handle the incoming request\n";
-            $method .= "     */\n";
+        if (Filesystem::exists($templatePath)) {
+            return Filesystem::get($templatePath);
         }
         
-        $returnType = $addTypeHints ? ': mixed' : '';
+        return $this->getDefaultTemplate($options['type']);
+    }
+
+    private function populateTemplate(string $template, string $name, array $options): string
+    {
+        $namespace = $this->buildNamespace($options);
+        $imports = $this->buildImports($options);
+        $methods = $this->buildMethods($options);
+        $comments = $options['comments'] ? $this->buildClassComment($name, $options) : '';
+        $strict = $options['strict'] ? "declare(strict_types=1);\n\n" : '';
         
-        $method .= "    public function __invoke(){$returnType}\n";
-        $method .= "    {\n";
-        $method .= "        // TODO: Implement invokable controller logic\n";
-        $method .= "    }\n";
+        $replacements = [
+            '{{strict}}' => $strict,
+            '{{namespace}}' => $namespace,
+            '{{imports}}' => $imports,
+            '{{classComment}}' => $comments,
+            '{{class}}' => $name,
+            '{{methods}}' => $methods,
+            '{{model}}' => $options['model'] ?? 'Model',
+            '{{modelVariable}}' => $options['model'] ? Str::camel($options['model']) : 'model',
+            '{{modelNamespace}}' => $options['model'] ? 'App\\Models\\' . $options['model'] : '',
+            '{{parent}}' => $options['parent'] ?? 'Parent',
+            '{{parentVariable}}' => $options['parent'] ? Str::camel($options['parent']) : 'parent',
+        ];
+        
+        return str_replace(array_keys($replacements), array_values($replacements), $template);
+    }
+
+    private function buildNamespace(array $options): string
+    {
+        if ($options['namespace']) {
+            return $options['namespace'];
+        }
+        
+        $base = 'App\\Controllers';
+        
+        if ($options['type'] === 'api') {
+            return $base . '\\Api';
+        }
+        
+        return $base;
+    }
+
+    private function buildImports(array $options): string
+    {
+        $imports = ["use Plugs\\Base\\Controller\\Controller;"];
+        
+        if ($options['model']) {
+            $imports[] = "use App\\Models\\{$options['model']};";
+        }
+        
+        if ($options['parent']) {
+            $imports[] = "use App\\Models\\{$options['parent']};";
+        }
+        
+        if ($options['requests']) {
+            $baseName = str_replace('Controller', '', $options['model'] ?? 'Resource');
+            $imports[] = "use App\\Http\\Requests\\Store{$baseName}Request;";
+            $imports[] = "use App\\Http\\Requests\\Update{$baseName}Request;";
+        }
+        
+        return implode("\n", $imports);
+    }
+
+    private function buildMethods(array $options): string
+    {
+        if (isset($options['custom_methods'])) {
+            return $this->buildCustomMethods($options['custom_methods'], $options);
+        }
+        
+        return match($options['type']) {
+            'invokable' => $this->buildInvokableMethod($options),
+            'api' => $this->buildApiMethods($options),
+            'resource' => $this->buildResourceMethods($options),
+            'singleton' => $this->buildSingletonMethods($options),
+            default => $this->buildPlainMethods($options),
+        };
+    }
+
+    private function buildResourceMethods(array $options): string
+    {
+        $methods = [
+            $this->buildMethod('index', [], 'Display a listing of the resource', $options),
+            $this->buildMethod('create', [], 'Show the form for creating a new resource', $options),
+            $this->buildMethod('store', ['Request $request'], 'Store a newly created resource', $options),
+            $this->buildMethod('show', ['int $id'], 'Display the specified resource', $options),
+            $this->buildMethod('edit', ['int $id'], 'Show the form for editing the resource', $options),
+            $this->buildMethod('update', ['Request $request', 'int $id'], 'Update the specified resource', $options),
+            $this->buildMethod('destroy', ['int $id'], 'Remove the specified resource', $options),
+        ];
+        
+        return implode("\n\n", $methods);
+    }
+
+    private function buildApiMethods(array $options): string
+    {
+        $methods = [
+            $this->buildMethod('index', [], 'Display a listing of the resource', $options),
+            $this->buildMethod('store', ['Request $request'], 'Store a newly created resource', $options),
+            $this->buildMethod('show', ['int $id'], 'Display the specified resource', $options),
+            $this->buildMethod('update', ['Request $request', 'int $id'], 'Update the specified resource', $options),
+            $this->buildMethod('destroy', ['int $id'], 'Remove the specified resource', $options),
+        ];
+        
+        return implode("\n\n", $methods);
+    }
+
+    private function buildSingletonMethods(array $options): string
+    {
+        $methods = [
+            $this->buildMethod('show', [], 'Display the resource', $options),
+            $this->buildMethod('edit', [], 'Show the form for editing the resource', $options),
+            $this->buildMethod('update', ['Request $request'], 'Update the resource', $options),
+        ];
+        
+        return implode("\n\n", $methods);
+    }
+
+    private function buildInvokableMethod(array $options): string
+    {
+        return $this->buildMethod('__invoke', ['Request $request'], 'Handle the incoming request', $options);
+    }
+
+    private function buildPlainMethods(array $options): string
+    {
+        return $this->buildMethod('index', [], 'Handle the request', $options);
+    }
+
+    private function buildCustomMethods(array $methods, array $options): string
+    {
+        $built = [];
+        
+        foreach ($methods as $method) {
+            $built[] = $this->buildMethod($method, [], "Handle {$method} request", $options);
+        }
+        
+        return implode("\n\n", $built);
+    }
+
+    private function buildMethod(string $name, array $params, string $description, array $options): string
+    {
+        $indent = '    ';
+        $method = '';
+        
+        if ($options['comments']) {
+            $method .= "{$indent}/**\n";
+            $method .= "{$indent} * {$description}\n";
+            $method .= "{$indent} */\n";
+        }
+        
+        $paramString = implode(', ', $params);
+        $returnType = $options['strict'] ? ': mixed' : '';
+        
+        $method .= "{$indent}public function {$name}({$paramString}){$returnType}\n";
+        $method .= "{$indent}{\n";
+        $method .= "{$indent}    // TODO: Implement {$name} method\n";
+        $method .= "{$indent}}";
         
         return $method;
     }
 
-    private function getControllerPath(string $name): string
+    private function buildClassComment(string $name, array $options): string
     {
-        $basePath = getcwd() . '/app/Controllers';
-        return $basePath . '/' . $name . '.php';
+        $comment = "/**\n";
+        $comment .= " * {$name}\n";
+        $comment .= " *\n";
+        
+        if ($options['model']) {
+            $comment .= " * Controller for managing {$options['model']} resources\n";
+        }
+        
+        $comment .= " * Generated by ThePlugs Console\n";
+        $comment .= " * @created " . date('Y-m-d H:i:s') . "\n";
+        $comment .= " */\n";
+        
+        return $comment;
     }
 
-    private function displaySuccessSummary(string $name, string $path, string $type, array $methods): void
+    private function generateRequestClass(string $name, array $options): string
     {
+        $template = $this->loadRequestTemplate();
+        
+        $replacements = [
+            '{{class}}' => $name,
+            '{{rules}}' => $this->buildValidationRules($options),
+        ];
+        
+        return str_replace(array_keys($replacements), array_values($replacements), $template);
+    }
+
+    private function buildValidationRules(array $options): string
+    {
+        // Basic validation rules - can be customized
+        return "[\n            // Add validation rules here\n        ]";
+    }
+
+    private function displaySummary(string $name, array $options): void
+    {
+        $this->newLine();
+        $this->section('Generation Summary');
+        
+        $this->keyValue('Controller Name', $name);
+        $this->keyValue('Type', ucfirst($options['type']));
+        $this->keyValue('Namespace', $this->buildNamespace($options));
+        
+        if ($options['model']) {
+            $this->keyValue('Associated Model', $options['model']);
+        }
+        
+        if ($options['parent']) {
+            $this->keyValue('Parent Resource', $options['parent']);
+        }
+        
+        $this->newLine();
+        $this->info('Files to generate:');
+        
+        $files = ['Controller'];
+        if ($options['requests']) $files[] = 'Form Requests (2)';
+        if ($options['test']) $files[] = ($options['pest'] ? 'Pest' : 'PHPUnit') . ' Test';
+        
+        $this->bulletList($files);
+        
+        $this->newLine();
+    }
+
+    private function displayResults(string $name, array $filesCreated, array $options): void
+    {
+        $this->newLine(2);
+        
         $this->box(
-            "Controller created successfully!\n\n" .
-            "Name: {$name}\n" .
-            "Type: {$type}\n" .
-            "Path: {$path}\n" .
-            "Methods: " . (empty($methods) ? 'Invokable' : count($methods)),
+            "Controller '{$name}' generated successfully!\n\n" .
+            "Type: " . ucfirst($options['type']) . "\n" .
+            "Files created: " . count($filesCreated) . "\n" .
+            "Execution time: {$this->formatTime($this->elapsed())}",
             "✅ Success",
             "success"
         );
         
-        if (!empty($methods)) {
-            $this->line();
-            $this->section('Generated Methods');
-            
-            foreach ($methods as $method) {
-                $this->success("  • {$method}()");
-            }
+        $this->newLine();
+        $this->section('Generated Files');
+        
+        foreach ($filesCreated as $file) {
+            $relativePath = str_replace(getcwd() . '/', '', $file);
+            $this->success("  ✓ {$relativePath}");
         }
         
-        $this->line();
+        $this->newLine();
         $this->section('Next Steps');
         
         $steps = [
-            "1. Open the file: {$path}",
-            "2. Implement your controller logic",
-            "3. Register your routes",
-            "4. Test your endpoints"
+            "Implement methods in: {$name}",
+            "Register routes for the controller",
         ];
         
-        foreach ($steps as $step) {
-            $this->info("  {$step}");
+        if ($options['model']) {
+            $steps[] = "Ensure {$options['model']} model exists";
         }
         
-        $this->line();
-        $this->note("Don't forget to add your controller to the routing configuration!");
+        if ($options['test']) {
+            $steps[] = "Write tests for the controller methods";
+        }
+        
+        $this->numberedList($steps);
+        $this->newLine();
+    }
+
+    private function hasAnyOption(): bool
+    {
+        $checkOptions = ['resource', 'r', 'api', 'invokable', 'i', 'model', 'type', 'singleton'];
+        
+        foreach ($checkOptions as $option) {
+            if ($this->hasOption($option) || $this->option($option)) {
+                return true;
+            }
+        }
+        
+        return false;
+    }
+
+    private function getControllerPath(string $name, array $options): string
+    {
+        $namespace = $this->buildNamespace($options);
+        $path = str_replace('App\\Controllers', 'app/Controllers', $namespace);
+        $path = str_replace('\\', '/', $path);
+        
+        return getcwd() . '/' . $path . '/' . $name . '.php';
+    }
+
+    private function getRequestPath(string $name): string
+    {
+        return getcwd() . '/app/Http/Requests/' . $name . '.php';
+    }
+
+    private function getTestPath(string $name): string
+    {
+        return getcwd() . '/tests/Feature/' . $name . '.php';
+    }
+
+    private function getDefaultTemplate(string $type): string
+    {
+        return match($type) {
+            'invokable' => $this->getInvokableTemplate(),
+            'api' => $this->getApiTemplate(),
+            'resource' => $this->getResourceTemplate(),
+            'singleton' => $this->getSingletonTemplate(),
+            default => $this->getPlainTemplate(),
+        };
+    }
+
+    private function getPlainTemplate(): string
+    {
+        return <<<'STUB'
+        <?php
+
+        {{strict}}namespace {{namespace}};
+
+        {{imports}}
+
+        {{classComment}}class {{class}} extends Controller
+        {
+        {{methods}}
+        }
+
+        STUB;
+    }
+
+    private function getResourceTemplate(): string
+    {
+        return $this->getPlainTemplate();
+    }
+
+    private function getApiTemplate(): string
+    {
+        return $this->getPlainTemplate();
+    }
+
+    private function getInvokableTemplate(): string
+    {
+        return $this->getPlainTemplate();
+    }
+
+    private function getSingletonTemplate(): string
+    {
+        return $this->getPlainTemplate();
+    }
+
+    private function loadRequestTemplate(): string
+    {
+        $templatePath = $this->templatePath . '/request.stub';
+        
+        if (Filesystem::exists($templatePath)) {
+            return Filesystem::get($templatePath);
+        }
+        
+        return <<<'STUB'
+        <?php
+
+        declare(strict_types=1);
+
+        namespace App\Http\Requests;
+
+        use Plugs\Http\Request;
+
+        class {{class}} extends Request
+        {
+            public function authorize(): bool
+            {
+                return true;
+            }
+            
+            public function rules(): array
+            {
+                return {{rules}};
+            }
+        }
+
+        STUB;
+    }
+
+    private function getPhpUnitTestTemplate(): string
+    {
+        return <<<'STUB'
+        <?php
+
+        declare(strict_types=1);
+
+        namespace Tests\Feature;
+
+        use Tests\TestCase;
+        use {{controllerNamespace}};
+
+        class {{class}} extends TestCase
+        {
+            public function test_controller_exists(): void
+            {
+                $this->assertTrue(class_exists({{controller}}::class));
+            }
+            
+            // Add more tests here
+        }
+
+        STUB;
+    }
+
+    private function getPestTestTemplate(): string
+    {
+        return <<<'STUB'
+        <?php
+
+        use {{controllerNamespace}};
+
+        test('controller exists', function () {
+            expect(class_exists({{controller}}::class))->toBeTrue();
+        });
+
+        // Add more tests here
+
+        STUB;
     }
 }
