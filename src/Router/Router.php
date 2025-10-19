@@ -209,9 +209,8 @@ class Router
 
         foreach ($middleware as $mw) {
             if (is_string($mw)) {
-                // Resolve middleware from container
-                $container = \Plugs\Container\Container::getInstance();
-                $mw = $container->make($mw);
+                // Resolve middleware alias or class name
+                $mw = $this->resolveMiddleware($mw);
             }
             $stack->add($mw);
         }
@@ -222,6 +221,28 @@ class Router
         });
 
         return $stack->handle($request);
+    }
+
+    /**
+     * Resolve middleware from alias or class name
+     */
+    private function resolveMiddleware(string $middleware)
+    {
+        // Load middleware aliases
+        static $aliases = null;
+        if ($aliases === null) {
+            $config = config('middleware');
+            $aliases = is_array($config) ? ($config['aliases'] ?? []) : [];
+        }
+
+        // Check if it's an alias
+        if (isset($aliases[$middleware])) {
+            $middleware = $aliases[$middleware];
+        }
+
+        // Resolve from container
+        $container = \Plugs\Container\Container::getInstance();
+        return $container->make($middleware);
     }
 
     /**
