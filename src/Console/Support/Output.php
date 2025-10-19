@@ -112,31 +112,42 @@ class Output
 
     public function commandHeader(string $command): void
     {
-        // Display the logo
-        $this->thePlugsLogo();
+        // Display centered logo
+        $this->thePlugsCompactCentered();
 
-        $this->line();
-        $this->fullWidthLine('- ', self::BRIGHT_BLUE);
-        $this->line();
-        $this->line(self::BRIGHT_BLUE . "  Command: " . self::BRIGHT_WHITE . $command . self::RESET);
-        $this->line(self::BRIGHT_BLUE . "  Started: " . self::DIM . date('Y-m-d H:i:s') . self::RESET);
-        $this->line();
-        $this->fullWidthLine('- ', self::BRIGHT_BLUE);
+        // Create full-width header box
+        $maxWidth = $this->consoleWidth - 4;
+
+        $commandText = "Command: " . $command;
+        $timeText = "Started: " . date('Y-m-d H:i:s');
+
+        // Center the text within the full width
+        $cmdPadding = (int)(($maxWidth - mb_strwidth($commandText)) / 2);
+        $timePadding = (int)(($maxWidth - mb_strwidth($timeText)) / 2);
+
+        $this->line(self::BRIGHT_BLUE . "╭" . str_repeat("─", $maxWidth) . "╮" . self::RESET);
+
+        $cmdRightPadding = $maxWidth - mb_strwidth($commandText) - $cmdPadding;
+        $this->line(
+            self::BRIGHT_BLUE . "│" . self::RESET .
+                str_repeat(" ", $cmdPadding) .
+                self::BRIGHT_WHITE . self::BOLD . $commandText . self::RESET .
+                str_repeat(" ", $cmdRightPadding) .
+                self::BRIGHT_BLUE . "│" . self::RESET
+        );
+
+        $timeRightPadding = $maxWidth - mb_strwidth($timeText) - $timePadding;
+        $this->line(
+            self::BRIGHT_BLUE . "│" . self::RESET .
+                str_repeat(" ", $timePadding) .
+                self::DIM . $timeText . self::RESET .
+                str_repeat(" ", $timeRightPadding) .
+                self::BRIGHT_BLUE . "│" . self::RESET
+        );
+
+        $this->line(self::BRIGHT_BLUE . "╰" . str_repeat("─", $maxWidth) . "╯" . self::RESET);
         $this->line();
     }
-
-    // public function commandHeader(string $command): void
-    // {
-    //     // Display the logo
-    //     $this->thePlugsLogo();
-
-    //     // Display command info
-    //     // $this->line(self::BRIGHT_BLUE . "  Command: " . self::BRIGHT_WHITE . self::BOLD . $command . self::RESET);
-    //     // $this->line(self::BRIGHT_BLUE . "  Started: " . self::DIM . date('Y-m-d H:i:s') . self::RESET);
-    //     // $this->line();
-    //     $this->fullWidthLine('─', self::BRIGHT_BLACK);
-    //     $this->line();
-    // }
 
     public function migrationResult(string $migration, string $status, float $time): void
     {
@@ -217,14 +228,107 @@ class Output
         $this->line(self::DIM . str_repeat("─", mb_strwidth($title) + 2) . self::RESET);
     }
 
+    public function loading(string $message, callable $callback): mixed
+    {
+        $frames = ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏'];
+        $result = null;
+        $completed = false;
+        $i = 0;
+
+        $maxWidth = $this->consoleWidth - 4;
+
+        // Draw top border
+        $this->line(self::BRIGHT_BLUE . "╭" . str_repeat("─", $maxWidth) . "╮" . self::RESET);
+
+        $startTime = microtime(true);
+
+        while (!$completed) {
+            $elapsed = microtime(true) - $startTime;
+            $spinnerText = $frames[$i++ % count($frames)] . " " . $message;
+
+            // Add elapsed time
+            if ($elapsed > 0.1) {
+                $timeText = sprintf("(%.1fs)", $elapsed);
+                $fullText = $spinnerText . " " . $timeText;
+            } else {
+                $fullText = $spinnerText;
+            }
+
+            $textLen = mb_strwidth($fullText);
+            $padding = $maxWidth - $textLen;
+
+            echo "\r" . self::BRIGHT_BLUE . "│" . self::RESET .
+                " " . self::BRIGHT_CYAN . $fullText . self::RESET .
+                str_repeat(" ", max(0, $padding)) . " " .
+                self::BRIGHT_BLUE . "│" . self::RESET;
+
+            // Try to execute callback
+            if (!$completed) {
+                try {
+                    $result = $callback();
+                    $completed = true;
+                } catch (\Throwable $e) {
+                    $completed = true;
+
+                    // Error line
+                    $errorText = "✗ " . $message . " - Failed!";
+                    $textLen = mb_strwidth($errorText);
+                    $padding = $maxWidth - $textLen;
+
+                    echo "\r" . self::BRIGHT_BLUE . "│" . self::RESET .
+                        " " . self::BRIGHT_RED . $errorText . self::RESET .
+                        str_repeat(" ", max(0, $padding)) . " " .
+                        self::BRIGHT_BLUE . "│" . self::RESET . "\n";
+
+                    $this->line(self::BRIGHT_BLUE . "╰" . str_repeat("─", $maxWidth) . "╯" . self::RESET);
+                    throw $e;
+                }
+            }
+
+            usleep(100000);
+
+            // Timeout after 30 seconds
+            if (microtime(true) - $startTime > 30) {
+                break;
+            }
+        }
+
+        // Success line with elapsed time
+        $totalTime = microtime(true) - $startTime;
+        $successText = "✔ " . $message . sprintf(" (%.2fs)", $totalTime);
+        $textLen = mb_strwidth($successText);
+        $padding = $maxWidth - $textLen;
+
+        echo "\r" . self::BRIGHT_BLUE . "│" . self::RESET .
+            " " . self::BRIGHT_GREEN . $successText . self::RESET .
+            str_repeat(" ", max(0, $padding)) . " " .
+            self::BRIGHT_BLUE . "│" . self::RESET . "\n";
+
+        // Draw bottom border
+        $this->line(self::BRIGHT_BLUE . "╰" . str_repeat("─", $maxWidth) . "╯" . self::RESET);
+
+        return $result;
+    }
+
     public function spinner(string $message, int|callable $secondsOrCallback = 2): void
     {
         $frames = ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏'];
         $i = 0;
 
+        // Create a full-width box for the spinner
+        $maxWidth = $this->consoleWidth - 4;
+
         if (is_callable($secondsOrCallback)) {
             while (!$secondsOrCallback()) {
-                echo "\r" . self::BRIGHT_CYAN . $frames[$i++ % count($frames)] . self::RESET . " $message";
+                $spinnerText = $frames[$i++ % count($frames)] . " " . $message;
+                $textLen = mb_strwidth($spinnerText);
+                $padding = $maxWidth - $textLen;
+
+                echo "\r" . self::BRIGHT_BLUE . "│" . self::RESET .
+                    " " . self::BRIGHT_CYAN . $spinnerText . self::RESET .
+                    str_repeat(" ", max(0, $padding)) . " " .
+                    self::BRIGHT_BLUE . "│" . self::RESET;
+
                 usleep(120000);
 
                 if ($i > 500) {
@@ -235,52 +339,206 @@ class Output
         } else {
             $end = time() + $secondsOrCallback;
             while (time() < $end) {
-                echo "\r" . self::BRIGHT_CYAN . $frames[$i++ % count($frames)] . self::RESET . " $message";
+                $spinnerText = $frames[$i++ % count($frames)] . " " . $message;
+                $textLen = mb_strwidth($spinnerText);
+                $padding = $maxWidth - $textLen;
+
+                echo "\r" . self::BRIGHT_BLUE . "│" . self::RESET .
+                    " " . self::BRIGHT_CYAN . $spinnerText . self::RESET .
+                    str_repeat(" ", max(0, $padding)) . " " .
+                    self::BRIGHT_BLUE . "│" . self::RESET;
+
                 usleep(120000);
             }
         }
 
-        echo "\r" . self::BRIGHT_GREEN . "✔" . self::RESET . " $message" . str_repeat(" ", 10) . "\n";
+        // Success line with full width
+        $successText = "✔ " . $message;
+        $textLen = mb_strwidth($successText);
+        $padding = $maxWidth - $textLen;
+
+        echo "\r" . self::BRIGHT_BLUE . "│" . self::RESET .
+            " " . self::BRIGHT_GREEN . $successText . self::RESET .
+            str_repeat(" ", max(0, $padding)) . " " .
+            self::BRIGHT_BLUE . "│" . self::RESET . "\n";
     }
 
     public function progressBar(int $max, callable $step, string $label = 'Progress'): void
     {
-        echo self::BOLD . $label . ":" . self::RESET . "\n";
+        $maxWidth = $this->consoleWidth - 4;
+
+        // Draw top border
+        $this->line(self::BRIGHT_BLUE . "╭" . str_repeat("─", $maxWidth) . "╮" . self::RESET);
+
+        // Draw label line
+        $labelLen = mb_strwidth($label);
+        $labelPadding = $maxWidth - $labelLen;
+        $this->line(
+            self::BRIGHT_BLUE . "│" . self::RESET .
+                " " . self::BOLD . $label . self::RESET .
+                str_repeat(" ", $labelPadding) . " " .
+                self::BRIGHT_BLUE . "│" . self::RESET
+        );
+
+        // Draw separator
+        $this->line(self::BRIGHT_BLUE . "├" . str_repeat("─", $maxWidth) . "┤" . self::RESET);
 
         for ($i = 1; $i <= $max; $i++) {
             $step($i);
             $percent = (int)(($i / $max) * 100);
-            $filled = (int)($percent / 2.5);
-            $empty = 40 - $filled;
+
+            // Calculate bar width (leave space for percentage and counter)
+            $barWidth = $maxWidth - 20; // Reserve space for " 100% (999/999) "
+            $filled = (int)(($percent / 100) * $barWidth);
+            $empty = $barWidth - $filled;
 
             $bar = str_repeat("█", $filled) . str_repeat("░", $empty);
             $color = $percent < 33 ? self::BRIGHT_RED : ($percent < 66 ? self::BRIGHT_YELLOW : self::BRIGHT_GREEN);
 
-            echo "\r" . $color . "▐" . $bar . "▌" . self::RESET . " " . self::BOLD . $percent . "%" . self::RESET . " ($i/$max)";
+            $progressText = $color . "▐" . $bar . "▌" . self::RESET .
+                " " . self::BOLD . str_pad($percent . "%", 4, " ", STR_PAD_LEFT) . self::RESET .
+                " " . self::DIM . "($i/$max)" . self::RESET;
+
+            $textLen = mb_strwidth(strip_tags($progressText));
+            $padding = $maxWidth - $textLen - 20; // Adjust for ANSI codes
+
+            echo "\r" . self::BRIGHT_BLUE . "│" . self::RESET .
+                " " . $progressText .
+                str_repeat(" ", max(0, $padding + 18)) . " " .
+                self::BRIGHT_BLUE . "│" . self::RESET;
+
             usleep(50000);
         }
-        echo "\n" . self::BRIGHT_GREEN . "✅ Completed!" . self::RESET . "\n\n";
+
+        echo "\n";
+
+        // Draw completion message
+        $completedText = "✅ Completed!";
+        $textLen = mb_strwidth($completedText);
+        $padding = $maxWidth - $textLen;
+
+        $this->line(
+            self::BRIGHT_BLUE . "│" . self::RESET .
+                " " . self::BRIGHT_GREEN . $completedText . self::RESET .
+                str_repeat(" ", $padding) . " " .
+                self::BRIGHT_BLUE . "│" . self::RESET
+        );
+
+        // Draw bottom border
+        $this->line(self::BRIGHT_BLUE . "╰" . str_repeat("─", $maxWidth) . "╯" . self::RESET);
+        $this->line();
     }
 
     public function progress(int $current, int $total, string $message = ''): void
     {
+        $maxWidth = $this->consoleWidth - 4;
         $percentage = ($current / $total) * 100;
-        $barWidth = 50;
+
+        // Calculate bar width
+        $barWidth = $maxWidth - 30; // Reserve space for percentage, counter, and message
         $filled = (int) ($barWidth * ($current / $total));
         $bar = str_repeat('█', $filled) . str_repeat('░', $barWidth - $filled);
 
-        $output = sprintf(
-            "\r  %s %3d%% [%s] %s",
-            self::BRIGHT_CYAN . 'Progress:' . self::RESET,
-            $percentage,
-            $bar,
-            $message
-        );
+        $progressText = self::BRIGHT_CYAN . 'Progress:' . self::RESET .
+            " " . sprintf("%3d%%", $percentage) .
+            " [" . $bar . "]";
 
-        echo $output;
+        if ($message) {
+            $progressText .= " " . self::DIM . $message . self::RESET;
+        }
+
+        $textLen = mb_strwidth($this->stripAnsiCodes($progressText));
+        $padding = $maxWidth - $textLen;
+
+        echo "\r" . self::BRIGHT_BLUE . "│" . self::RESET .
+            " " . $progressText .
+            str_repeat(" ", max(0, $padding)) . " " .
+            self::BRIGHT_BLUE . "│" . self::RESET;
+
         if ($current === $total) {
             echo PHP_EOL;
         }
+    }
+
+    public function taskWithBox(string $message, callable $callback): mixed
+    {
+        $maxWidth = $this->consoleWidth - 4;
+
+        // Draw top border
+        $this->line(self::BRIGHT_BLUE . "╭" . str_repeat("─", $maxWidth) . "╮" . self::RESET);
+
+        $frames = ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏'];
+        $result = null;
+        $error = null;
+        $completed = false;
+        $i = 0;
+
+        $startTime = microtime(true);
+
+        while (!$completed) {
+            $elapsed = microtime(true) - $startTime;
+            $spinnerText = $frames[$i++ % count($frames)] . " " . $message;
+
+            if ($elapsed > 0.1) {
+                $timeText = sprintf("(%.1fs)", $elapsed);
+                $fullText = $spinnerText . " " . $timeText;
+            } else {
+                $fullText = $spinnerText;
+            }
+
+            $textLen = mb_strwidth($fullText);
+            $padding = $maxWidth - $textLen;
+
+            echo "\r" . self::BRIGHT_BLUE . "│" . self::RESET .
+                " " . self::BRIGHT_CYAN . $fullText . self::RESET .
+                str_repeat(" ", max(0, $padding)) . " " .
+                self::BRIGHT_BLUE . "│" . self::RESET;
+
+            if (!$completed) {
+                try {
+                    $result = $callback();
+                    $completed = true;
+                } catch (\Throwable $e) {
+                    $error = $e;
+                    $completed = true;
+                }
+            }
+
+            usleep(120000);
+
+            if ($i > 500) {
+                break;
+            }
+        }
+
+        if ($error) {
+            $errorText = "✗ " . $message . " - Failed!";
+            $textLen = mb_strwidth($errorText);
+            $padding = $maxWidth - $textLen;
+
+            echo "\r" . self::BRIGHT_BLUE . "│" . self::RESET .
+                " " . self::BRIGHT_RED . $errorText . self::RESET .
+                str_repeat(" ", max(0, $padding)) . " " .
+                self::BRIGHT_BLUE . "│" . self::RESET . "\n";
+
+            $this->line(self::BRIGHT_BLUE . "╰" . str_repeat("─", $maxWidth) . "╯" . self::RESET);
+            throw $error;
+        }
+
+        $totalTime = microtime(true) - $startTime;
+        $successText = "✔ " . $message . sprintf(" (%.2fs)", $totalTime);
+        $textLen = mb_strwidth($successText);
+        $padding = $maxWidth - $textLen;
+
+        echo "\r" . self::BRIGHT_BLUE . "│" . self::RESET .
+            " " . self::BRIGHT_GREEN . $successText . self::RESET .
+            str_repeat(" ", max(0, $padding)) . " " .
+            self::BRIGHT_BLUE . "│" . self::RESET . "\n";
+
+        // Draw bottom border
+        $this->line(self::BRIGHT_BLUE . "╰" . str_repeat("─", $maxWidth) . "╯" . self::RESET);
+
+        return $result;
     }
 
     public function table(array $headers, array $rows): void
@@ -291,7 +549,17 @@ class Output
         }
 
         $cols = count($headers);
-        $widths = array_map(static fn($h) => mb_strwidth((string)$h), $headers);
+
+        // Calculate available width (full console width minus borders)
+        $availableWidth = $this->consoleWidth - ($cols * 3) - 1; // 3 chars per column (borders + padding), +1 for final border
+
+        // Distribute width evenly or based on content
+        $widths = [];
+
+        // First pass: calculate minimum widths
+        foreach ($headers as $i => $header) {
+            $widths[$i] = mb_strwidth((string)$header);
+        }
 
         foreach ($rows as $row) {
             for ($i = 0; $i < $cols; $i++) {
@@ -299,36 +567,87 @@ class Output
             }
         }
 
+        $totalMinWidth = array_sum($widths);
+
+        // If we have extra space, distribute it proportionally
+        if ($totalMinWidth < $availableWidth) {
+            $extraSpace = $availableWidth - $totalMinWidth;
+            $perColumn = (int)($extraSpace / $cols);
+
+            for ($i = 0; $i < $cols; $i++) {
+                $widths[$i] += $perColumn;
+            }
+
+            // Add any remaining space to the last column
+            $remaining = $availableWidth - array_sum($widths);
+            $widths[$cols - 1] += $remaining;
+        }
+
         $pad = fn($s, $w) => str_pad((string)$s, $w + (strlen($s) - mb_strwidth($s)));
 
-        echo self::BRIGHT_CYAN . "╭" . implode("┬", array_map(fn($w) => str_repeat("─", $w + 2), $widths)) . "╮" . self::RESET . "\n";
+        // Top border
+        echo self::BRIGHT_CYAN . "╭";
+        for ($i = 0; $i < $cols; $i++) {
+            echo str_repeat("─", $widths[$i] + 2);
+            if ($i < $cols - 1) {
+                echo "┬";
+            }
+        }
+        echo "╮" . self::RESET . "\n";
 
+        // Headers
         echo self::BRIGHT_CYAN . "│" . self::RESET;
         foreach ($headers as $i => $header) {
             echo " " . self::BOLD . self::BRIGHT_WHITE . $pad($header, $widths[$i]) . self::RESET . " " . self::BRIGHT_CYAN . "│" . self::RESET;
         }
         echo "\n";
 
-        echo self::BRIGHT_CYAN . "├" . implode("┼", array_map(fn($w) => str_repeat("─", $w + 2), $widths)) . "┤" . self::RESET . "\n";
+        // Middle border
+        echo self::BRIGHT_CYAN . "├";
+        for ($i = 0; $i < $cols; $i++) {
+            echo str_repeat("─", $widths[$i] + 2);
+            if ($i < $cols - 1) {
+                echo "┼";
+            }
+        }
+        echo "┤" . self::RESET . "\n";
 
+        // Rows
         foreach ($rows as $rowIndex => $row) {
             $rowColor = $rowIndex % 2 === 0 ? self::RESET : self::DIM;
             echo self::BRIGHT_CYAN . "│" . self::RESET;
 
             for ($i = 0; $i < $cols; $i++) {
                 $cellValue = $row[$i] ?? '';
+
+                // Truncate if too long
+                $cleanCell = $this->stripAnsiCodes($cellValue);
+                if (mb_strwidth($cleanCell) > $widths[$i]) {
+                    $cellValue = mb_substr($cleanCell, 0, $widths[$i] - 3) . '...';
+                }
+
                 echo " " . $rowColor . $pad($cellValue, $widths[$i]) . self::RESET . " " . self::BRIGHT_CYAN . "│" . self::RESET;
             }
             echo "\n";
         }
 
-        echo self::BRIGHT_CYAN . "╰" . implode("┴", array_map(fn($w) => str_repeat("─", $w + 2), $widths)) . "╯" . self::RESET . "\n\n";
+        // Bottom border
+        echo self::BRIGHT_CYAN . "╰";
+        for ($i = 0; $i < $cols; $i++) {
+            echo str_repeat("─", $widths[$i] + 2);
+            if ($i < $cols - 1) {
+                echo "┴";
+            }
+        }
+        echo "╯" . self::RESET . "\n\n";
     }
 
     public function box(string $content, string $title = '', string $type = 'info'): void
     {
         $lines = explode("\n", $content);
-        $maxWidth = $this->consoleWidth - 6;
+
+        // Use full console width minus borders (2 characters for borders + 2 for padding)
+        $maxWidth = $this->consoleWidth - 4;
 
         $colors = [
             'info' => self::BRIGHT_BLUE,
@@ -338,20 +657,42 @@ class Output
         ];
 
         $color = $colors[$type] ?? self::BRIGHT_BLUE;
-        $border = $color . "╭" . str_repeat("─", $maxWidth) . "╮" . self::RESET;
 
-        $this->line($border);
+        $this->line();
+        $this->line($color . "╭" . str_repeat("─", $maxWidth) . "╮" . self::RESET);
 
         if ($title) {
-            $titleLine = $color . "│" . self::RESET . " " . self::BOLD . $title . self::RESET . str_repeat(" ", $maxWidth - mb_strwidth($title) - 1) . $color . "│" . self::RESET;
+            // Center the title
+            $titleLen = mb_strwidth($title);
+            $titlePadding = (int)(($maxWidth - $titleLen - 2) / 2);
+            $titlePaddingRight = $maxWidth - $titleLen - $titlePadding - 2;
+
+            $titleLine = $color . "│" . self::RESET .
+                str_repeat(" ", $titlePadding) .
+                self::BOLD . $title . self::RESET .
+                str_repeat(" ", $titlePaddingRight) .
+                $color . "│" . self::RESET;
             $this->line($titleLine);
             $this->line($color . "├" . str_repeat("─", $maxWidth) . "┤" . self::RESET);
         }
 
+        // Process each line to fit full width
         foreach ($lines as $line) {
             $cleanLine = $this->stripAnsiCodes($line);
-            $padding = $maxWidth - mb_strwidth($cleanLine) - 1;
-            $this->line($color . "│" . self::RESET . " " . $line . str_repeat(" ", max(0, $padding)) . $color . "│" . self::RESET);
+            $lineLen = mb_strwidth($cleanLine);
+
+            // If line is too long, wrap it
+            if ($lineLen > $maxWidth - 2) {
+                $wrappedLines = $this->wrapText($line, $maxWidth - 2);
+                foreach ($wrappedLines as $wrappedLine) {
+                    $cleanWrapped = $this->stripAnsiCodes($wrappedLine);
+                    $padding = $maxWidth - mb_strwidth($cleanWrapped) - 2;
+                    $this->line($color . "│" . self::RESET . " " . $wrappedLine . str_repeat(" ", max(0, $padding)) . " " . $color . "│" . self::RESET);
+                }
+            } else {
+                $padding = $maxWidth - $lineLen - 2;
+                $this->line($color . "│" . self::RESET . " " . $line . str_repeat(" ", max(0, $padding)) . " " . $color . "│" . self::RESET);
+            }
         }
 
         $this->line($color . "╰" . str_repeat("─", $maxWidth) . "╯" . self::RESET);
@@ -361,20 +702,40 @@ class Output
     public function panel(string $content, string $title = ''): void
     {
         $lines = explode("\n", $content);
-        $maxWidth = max(array_map('mb_strwidth', $lines));
-        $maxWidth = max($maxWidth, mb_strwidth($title)) + 4;
+
+        // Use full console width minus borders
+        $maxWidth = $this->consoleWidth - 4;
 
         $this->line();
+
         if ($title) {
-            $titlePadding = str_repeat("─", (int)(($maxWidth - mb_strwidth($title) - 2) / 2));
-            $this->line(self::BRIGHT_BLUE . "┌{$titlePadding} {$title} {$titlePadding}┐" . self::RESET);
+            // Center the title in the top border
+            $titleLen = mb_strwidth($title);
+            $leftDashes = (int)(($maxWidth - $titleLen - 2) / 2);
+            $rightDashes = $maxWidth - $titleLen - $leftDashes - 2;
+
+            $this->line(self::BRIGHT_BLUE . "┌" . str_repeat("─", $leftDashes) . " " . $title . " " . str_repeat("─", $rightDashes) . "┐" . self::RESET);
         } else {
             $this->line(self::BRIGHT_BLUE . "┌" . str_repeat("─", $maxWidth) . "┐" . self::RESET);
         }
 
+        // Process each line
         foreach ($lines as $line) {
-            $padding = $maxWidth - mb_strwidth($line);
-            $this->line(self::BRIGHT_BLUE . "│" . self::RESET . " {$line}" . str_repeat(" ", $padding - 1) . self::BRIGHT_BLUE . "│" . self::RESET);
+            $cleanLine = $this->stripAnsiCodes($line);
+            $lineLen = mb_strwidth($cleanLine);
+
+            // If line is too long, wrap it
+            if ($lineLen > $maxWidth - 2) {
+                $wrappedLines = $this->wrapText($line, $maxWidth - 2);
+                foreach ($wrappedLines as $wrappedLine) {
+                    $cleanWrapped = $this->stripAnsiCodes($wrappedLine);
+                    $padding = $maxWidth - mb_strwidth($cleanWrapped) - 2;
+                    $this->line(self::BRIGHT_BLUE . "│" . self::RESET . " " . $wrappedLine . str_repeat(" ", max(0, $padding)) . " " . self::BRIGHT_BLUE . "│" . self::RESET);
+                }
+            } else {
+                $padding = $maxWidth - $lineLen - 2;
+                $this->line(self::BRIGHT_BLUE . "│" . self::RESET . " " . $line . str_repeat(" ", max(0, $padding)) . " " . self::BRIGHT_BLUE . "│" . self::RESET);
+            }
         }
 
         $this->line(self::BRIGHT_BLUE . "└" . str_repeat("─", $maxWidth) . "┘" . self::RESET);
@@ -383,21 +744,46 @@ class Output
 
     public function title(string $text): void
     {
+        $maxWidth = $this->consoleWidth - 4;
+        $textLen = mb_strwidth($text);
+
         $this->line();
-        $this->gradient("╔" . str_repeat("═", mb_strwidth($text) + 4) . "╗");
-        $this->line(self::BRIGHT_WHITE . self::BOLD . "║  {$text}  ║" . self::RESET);
-        $this->gradient("╚" . str_repeat("═", mb_strwidth($text) + 4) . "╝");
+        $this->line(self::BRIGHT_CYAN . "╔" . str_repeat("═", $maxWidth) . "╗" . self::RESET);
+
+        // Center the text
+        $leftPadding = (int)(($maxWidth - $textLen - 2) / 2);
+        $rightPadding = $maxWidth - $textLen - $leftPadding - 2;
+
+        $this->line(
+            self::BRIGHT_CYAN . "║" . self::RESET .
+                str_repeat(" ", $leftPadding) .
+                self::BRIGHT_WHITE . self::BOLD . $text . self::RESET .
+                str_repeat(" ", $rightPadding) .
+                self::BRIGHT_CYAN . "║" . self::RESET
+        );
+
+        $this->line(self::BRIGHT_CYAN . "╚" . str_repeat("═", $maxWidth) . "╝" . self::RESET);
         $this->line();
     }
 
     public function banner(string $text): void
     {
-        echo "\n";
-        $bannerChars = str_repeat("█", mb_strwidth($text) + 10);
-        $this->gradient($bannerChars);
-        echo self::BOLD . self::BRIGHT_WHITE . str_repeat(" ", 5) . $text . str_repeat(" ", 5) . self::RESET . "\n";
-        $this->gradient($bannerChars);
-        echo "\n";
+        $maxWidth = $this->consoleWidth;
+        $textLen = mb_strwidth($text);
+
+        // Calculate padding for centered text
+        $totalPadding = $maxWidth - $textLen;
+        $leftPadding = (int)($totalPadding / 2);
+        $rightPadding = $totalPadding - $leftPadding;
+
+        $this->line();
+        $this->gradient(str_repeat("█", $maxWidth));
+
+        $centeredText = str_repeat(" ", $leftPadding) . $text . str_repeat(" ", $rightPadding);
+        echo self::BOLD . self::BRIGHT_WHITE . $centeredText . self::RESET . "\n";
+
+        $this->gradient(str_repeat("█", $maxWidth));
+        $this->line();
     }
 
     public function gradient(string $text): void
@@ -424,13 +810,43 @@ class Output
         echo self::RESET . "\n";
     }
 
-    public function countdown(string $seconds, string $message = 'Starting in'): void
+    public function countdown(int $seconds, string $message = 'Starting in'): void
     {
+        $maxWidth = $this->consoleWidth - 4;
+
+        // Draw top border
+        $this->line(self::BRIGHT_BLUE . "╭" . str_repeat("─", $maxWidth) . "╮" . self::RESET);
+
         for ($i = $seconds; $i > 0; $i--) {
-            echo "\r" . self::BRIGHT_YELLOW . $message . " " . self::BOLD . $i . self::RESET . "s...";
+            $countdownText = $message . " " . self::BOLD . $i . self::RESET . "s...";
+            $textLen = mb_strwidth($this->stripAnsiCodes($countdownText));
+            $padding = (int)(($maxWidth - $textLen) / 2);
+            $rightPadding = $maxWidth - $textLen - $padding;
+
+            echo "\r" . self::BRIGHT_BLUE . "│" . self::RESET .
+                str_repeat(" ", $padding) .
+                self::BRIGHT_YELLOW . $countdownText . self::RESET .
+                str_repeat(" ", $rightPadding) .
+                self::BRIGHT_BLUE . "│" . self::RESET;
+
             sleep(1);
         }
-        echo "\r" . self::BRIGHT_GREEN . "🚀 Let's go!" . self::RESET . str_repeat(" ", 20) . "\n";
+
+        // Success message
+        $successText = "🚀 Let's go!";
+        $textLen = mb_strwidth($successText);
+        $padding = (int)(($maxWidth - $textLen) / 2);
+        $rightPadding = $maxWidth - $textLen - $padding;
+
+        echo "\r" . self::BRIGHT_BLUE . "│" . self::RESET .
+            str_repeat(" ", $padding) .
+            self::BRIGHT_GREEN . $successText . self::RESET .
+            str_repeat(" ", $rightPadding) .
+            self::BRIGHT_BLUE . "│" . self::RESET . "\n";
+
+        // Draw bottom border
+        $this->line(self::BRIGHT_BLUE . "╰" . str_repeat("─", $maxWidth) . "╯" . self::RESET);
+        $this->line();
     }
 
     public function alert(string $message, string $type = 'info'): void
@@ -459,10 +875,20 @@ class Output
 
     public function step(int $current, int $total, string $message): void
     {
+        $maxWidth = $this->consoleWidth - 4;
         $percentage = ($current / $total) * 100;
         $color = $percentage < 33 ? self::BRIGHT_RED : ($percentage < 66 ? self::BRIGHT_YELLOW : self::BRIGHT_GREEN);
 
-        $this->line("  {$color}[{$current}/{$total}]" . self::RESET . " {$message}");
+        $stepText = $color . "[{$current}/{$total}]" . self::RESET . " {$message}";
+        $textLen = mb_strwidth($this->stripAnsiCodes($stepText));
+        $padding = $maxWidth - $textLen;
+
+        $this->line(
+            self::BRIGHT_BLUE . "│" . self::RESET .
+                " " . $stepText .
+                str_repeat(" ", max(0, $padding)) . " " .
+                self::BRIGHT_BLUE . "│" . self::RESET
+        );
     }
 
     public function bulletList(array $items, string $bullet = '•'): void
@@ -528,38 +954,6 @@ class Output
         } else {
             system('clear');
         }
-    }
-
-    public function loading(string $message, callable $callback): mixed
-    {
-        $frames = ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏'];
-        $result = null;
-        $completed = false;
-        $i = 0;
-
-        $startTime = microtime(true);
-
-        while (!$completed) {
-            echo "\r" . self::BRIGHT_CYAN . $frames[$i++ % count($frames)] . self::RESET . " {$message}";
-
-            try {
-                $result = $callback();
-                $completed = true;
-            } catch (\Throwable $e) {
-                $completed = true;
-                throw $e;
-            }
-
-            usleep(100000);
-
-            if (microtime(true) - $startTime > 30) {
-                break;
-            }
-        }
-
-        echo "\r" . self::BRIGHT_GREEN . "✔" . self::RESET . " {$message}" . str_repeat(" ", 10) . "\n";
-
-        return $result;
     }
 
     public function commandTable(array $commands): void
@@ -840,113 +1234,230 @@ class Output
         $this->box($message, $title, 'error');
     }
 
-    public function thePlugsLogo(): void
+    private function wrapText(string $text, int $maxWidth): array
+    {
+        $words = explode(' ', $text);
+        $lines = [];
+        $currentLine = '';
+
+        foreach ($words as $word) {
+            $wordLen = mb_strwidth($word);
+            $currentLen = mb_strwidth($this->stripAnsiCodes($currentLine));
+
+            if ($currentLen + $wordLen + 1 <= $maxWidth) {
+                $currentLine .= ($currentLine ? ' ' : '') . $word;
+            } else {
+                if ($currentLine) {
+                    $lines[] = $currentLine;
+                }
+                $currentLine = $word;
+            }
+        }
+
+        if ($currentLine) {
+            $lines[] = $currentLine;
+        }
+
+        return $lines;
+    }
+
+    public function thePlugsSimpleLogo(): void
     {
         $logo = [
-            "  ████████╗██╗  ██╗███████╗    ██████╗ ██╗     ██╗   ██╗ ██████╗ ███████╗",
-            "  ╚══██╔══╝██║  ██║██╔════╝    ██╔══██╗██║     ██║   ██║██╔════╝ ██╔════╝",
-            "     ██║   ███████║█████╗      ██████╔╝██║     ██║   ██║██║  ███╗███████╗",
-            "     ██║   ██╔══██║██╔══╝      ██╔═══╝ ██║     ██║   ██║██║   ██║╚════██║",
-            "     ██║   ██║  ██║███████╗    ██║     ███████╗╚██████╔╝╚██████╔╝███████║",
-            "     ╚═╝   ╚═╝  ╚═╝╚══════╝    ╚═╝     ╚══════╝ ╚═════╝  ╚═════╝ ╚══════╝"
+            "  _____ _  _ ___   ___ _   _   _  ___ ___ ",
+            " |_   _| || | __| | _ \\ | | | | |/ __/ __|",
+            "   | | | __ | _|  |  _/ |_| |_| | (_ \\__ \\",
+            "   |_| |_||_|___| |_| |_(_)\\___/ \\___|___/",
+            "  1 0 1 0 0 1   1 1 0 0 1 0   1 0 1 1 0 1 "
         ];
 
-        $this->line();
+        $maxWidth = 0;
         foreach ($logo as $line) {
-            $this->gradient($line);
+            $maxWidth = max($maxWidth, mb_strwidth($line));
         }
-        $this->line(self::DIM . str_repeat("─", 75) . self::RESET);
+
+        $padding = (int)(($this->consoleWidth - $maxWidth) / 2);
+
+        $this->line();
+        foreach ($logo as $index => $line) {
+            $spaces = str_repeat(" ", $padding);
+
+            if ($index === count($logo) - 1) {
+                // Color the binary line
+                $colored = preg_replace_callback('/[01]/', function ($m) {
+                    return ($m[0] === '1' ? self::BRIGHT_CYAN : self::BRIGHT_BLUE) . $m[0] . self::RESET;
+                }, $line);
+                $this->line($spaces . $colored);
+            } else {
+                $this->line($spaces . self::BRIGHT_CYAN . $line . self::RESET);
+            }
+        }
         $this->line();
     }
 
-    public function thePlugsBinaryLogo(): void
+    public function thePlugsMinimalLogo(): void
     {
         $logo = [
-            "  ████████╗ ██╗  ██╗ ███████╗    ██████╗  ██╗     ██╗   ██╗  ██████╗  ███████╗",
-            "  ║1█0█1█0█║ ║█0║ ║1█║ ║0█1█0█║    ║█0█1█║  ║1█║    ║0█║  ║1█║ ║0█1█0█║  ║1█0█1█║",
-            "  ║0╚══10╔═║ ║1█║ ║0█║ ║1█0═══║    ║0█╔══║  ║0█║    ║1█║  ║0█║ ║1█0═══║  ║0█1═══║",
-            "  ║1   10║  ║0███1█║ ║1█0█1█║    ║1█01█║  ║1█║    ║0█║  ║1█║ ║0█║ ║1█0║ ║1█0█1█║",
-            "  ║0   10║  ║1█0══1█║ ║0█1══║    ║0█═══║  ║0█║    ║1█║  ║0█║ ║1█║ ║0█║ ║1╚═══0█║",
-            "  ║1   10║  ║0█║ ║1█║ ║1█0█1█║    ║1█║    ║1█0█1█║ ║0██1█0█║ ║1██0█1█║ ║0█1█0█1█║",
-            "  ║0   ╚═║  ║1╚═║ ║0╚═║ ║1╚═══║    ║0╚═║    ║0╚═══║  ║1╚═══╚═║  ║0╚═══╚═║ ║1╚═══0═║"
+            " _____ _  _ ___   ___ _   _   _  ___ ___ ",
+            "|_   _| || | __| | _ \\ | | | | |/ __/ __|",
+            "  | | | __ | _|  |  _/ |_| |_| | (_ \\__ \\",
+            "  |_| |_||_|___| |_| |_(_)\\___/ \\___|___/",
         ];
+
+        $binaryLine = "  1 0 1 0 0 1   1 1 0 0 1 0   1 0 1 1 0 1 ";
+
+        $maxWidth = 0;
+        foreach ($logo as $line) {
+            $maxWidth = max($maxWidth, mb_strwidth($line));
+        }
+
+        $padding = (int)(($this->consoleWidth - $maxWidth) / 2);
 
         $this->line();
         foreach ($logo as $line) {
-            // Colorize 1s and 0s differently
-            $coloredLine = str_replace('1', self::BRIGHT_CYAN . '1' . self::RESET, $line);
-            $coloredLine = str_replace('0', self::BRIGHT_BLUE . '0' . self::RESET, $coloredLine);
-            $this->line($coloredLine);
+            $spaces = str_repeat(" ", $padding);
+            $this->line($spaces . self::BRIGHT_CYAN . $line . self::RESET);
         }
-        $this->line(self::DIM . "  " . str_repeat("─", 75) . self::RESET);
+
+        // Add binary line with colors
+        $spaces = str_repeat(" ", $padding);
+        $colored = preg_replace_callback('/[01]/', function ($m) {
+            return ($m[0] === '1' ? self::BRIGHT_GREEN : self::BRIGHT_BLUE) . $m[0] . self::RESET;
+        }, $binaryLine);
+        $this->line($spaces . $colored);
         $this->line();
     }
 
-    public function thePlugsSimpleBinaryLogo(): void
+    public function thePlugsDashLogo(): void
     {
         $logo = [
-            "  ███████╗██╗  ██╗███████╗   ██████╗ ██╗     ██╗   ██╗ ██████╗ ███████╗",
-            "  ██║0001║██║01██║██║0010║   ██║010║██║1100║██║010██║██║1001║██║1010║",
-            "  ██║1110║██████║█████║     ██████║██║0011║██║101██║██║ ███║███████║",
-            "  ██║0100║██╔══██║██╔══║     ██╔═══║██║1001║██║010██║██║  ██║╚═══0██║",
-            "  ███████║██║  ██║███████║   ██║1101║███████║╚██████║╚██████║███████║",
-            "  ╚══════╝╚═╝  ╚═╝╚══════╝   ╚═╝0110╝╚══════╝ ╚═════╝ ╚═════╝╚══════╝"
+            " ----- -  - ---   --- -   -   - --- --- ",
+            "|  -  | || | -| | - \\ | | | | |/ -/ -|",
+            "  | | | -- | -  |  -/ |-| |-| | (- \\-- ",
+            "  |-| |-||-|---| |-| |-(-)\\---/ \\_--|---|",
+            " 1-0-1-0-0-1  1-1-0-0-1-0  1-0-1-1-0-1 "
         ];
 
-        $this->line();
+        $maxWidth = 0;
         foreach ($logo as $line) {
-            // Color the binary digits
-            $colored = preg_replace_callback('/[01]/', function ($matches) {
-                return ($matches[0] === '1' ? self::BRIGHT_GREEN : self::BRIGHT_BLUE) . $matches[0] . self::RESET;
-            }, $line);
-            $this->line($colored);
+            $maxWidth = max($maxWidth, mb_strwidth($line));
         }
-        $this->line(self::DIM . "  " . str_repeat("─", 72) . self::RESET);
+
+        $padding = (int)(($this->consoleWidth - $maxWidth) / 2);
+
+        $this->line();
+        foreach ($logo as $index => $line) {
+            $spaces = str_repeat(" ", $padding);
+
+            if ($index === count($logo) - 1) {
+                // Color the binary line
+                $colored = preg_replace_callback('/[01]/', function ($m) {
+                    return ($m[0] === '1' ? self::BRIGHT_CYAN : self::BRIGHT_BLUE) . $m[0] . self::RESET;
+                }, $line);
+                $this->line($spaces . $colored);
+            } else {
+                $this->line($spaces . self::BRIGHT_CYAN . $line . self::RESET);
+            }
+        }
         $this->line();
     }
 
-    public function thePlugsMatrixLogo(): void
+    public function thePlugsCleanLogo(): void
     {
-        // Matrix-style with falling 1s and 0s
         $logo = [
-            "  ████████╗██╗  ██╗███████╗    ██████╗ ██╗     ██╗   ██╗ ██████╗ ███████╗",
-            "  1██0█1█0█║0█1║ ║1█0║1█0█1█║    1█0█1█0║1█0║    0█1║  ║0█1║0█1█0█║ 1█0█1█0║",
-            "  0║1  10║ ║0█1█0█║ ║1█0█1║     ║1█01█║ ║0█1║   ║1█0║ ║1█0║1█║ ║0█║ ║1█0█1║",
-            "  1║0  10║ ║1█0══1█║ ║0█1══║     ║0█═══║ ║1█0║   ║0█1║ ║0█1║0█║ ║1█║ 0╚═══1█║",
-            "  0║1  10║ ║0█1║ ║1█0║1█0█1█║    ║1█0║   1█0█1█║ 0██1█0█║ 1██0█1█║ 0█1█0█1█║",
-            "  1║0  ╚═║ ║1╚═║ 0╚═║ 1╚═══║    0╚═║    1╚═══║  0╚═══╚═║ 1╚═══╚═║ 0╚═══1═║"
+            "_____ _  _ ___   ___ _   _   _  ___ ___ ",
+            " | | | || | __| | _ | | | | | |/ __/ __|",
+            " | | | __ | _|  |  _| |_| |_| | (_ __ |",
+            " |_| |_||_|___| |_| |_(_)___/ ___|___/",
         ];
+
+        $binaryLine = " 1-0-1-0-0-1  1-1-0-0-1-0  1-0-1-1-0-1";
+
+        $maxWidth = 0;
+        foreach ($logo as $line) {
+            $maxWidth = max($maxWidth, mb_strwidth($line));
+        }
+        $maxWidth = max($maxWidth, mb_strwidth($binaryLine));
+
+        $padding = (int)(($this->consoleWidth - $maxWidth) / 2);
 
         $this->line();
         foreach ($logo as $line) {
-            $colored = preg_replace_callback('/[01]/', function ($matches) {
-                $colors = [self::BRIGHT_GREEN, self::GREEN, self::BRIGHT_CYAN, self::CYAN];
-                return $colors[array_rand($colors)] . $matches[0] . self::RESET;
-            }, $line);
-            $this->line($colored);
+            $spaces = str_repeat(" ", $padding);
+            $this->line($spaces . self::BRIGHT_CYAN . $line . self::RESET);
         }
-        $this->line(self::BRIGHT_GREEN . "  " . str_repeat("─", 75) . self::RESET);
+
+        // Add centered binary line with colors
+        $binaryPadding = (int)(($this->consoleWidth - mb_strwidth($binaryLine)) / 2);
+        $spaces = str_repeat(" ", $binaryPadding);
+        $colored = preg_replace_callback('/[01]/', function ($m) {
+            return ($m[0] === '1' ? self::BRIGHT_GREEN : self::BRIGHT_BLUE) . $m[0] . self::RESET;
+        }, $binaryLine);
+        $this->line($spaces . $colored);
         $this->line();
     }
 
-    public function thePlugsCompactBinary(): void
+    public function thePlugsTinyLogo(): void
     {
         $logo = [
-            " ████████╗██╗  ██╗███████╗   ██████╗ ██╗     ██╗   ██╗ ██████╗ ███████╗",
-            " 1█0█1██0║0█║01██║1█0█1█0║   0█1█0█║1█║0110║0█║101██║1█0█1█║0█1█0█1║",
-            "   ██║1  0███1█0║1█0█1║     1█01█║ 0█║1001║0█║101██║1█║ 0█║1█0█1█║",
-            "   ██║0  1█0══1█║0█1══║     0█═══║ 1█║0110║0█║101██║1█║ 0█║1╚═══0█║",
-            "   ██║1  0█║ 1█║1█0█1█║    1█║0  1█0█1█║0██1█0█║1██0█1█║0█1█0█1█║",
-            "   ╚═╝0  1╚═║0╚═║1╚═══║    0╚═║  1╚═══║ 0╚═══╚═║1╚═══╚═║0╚═══1═║"
+            "THE PLUGS",
+            "1-0-1-0 1-1-0-1"
         ];
 
-        $this->line();
-        foreach ($logo as $line) {
-            $colored = str_replace('1', self::BRIGHT_CYAN . '1' . self::RESET, $line);
-            $colored = str_replace('0', self::BRIGHT_BLUE . '0' . self::RESET, $colored);
-            $this->line($colored);
+        foreach ($logo as $index => $line) {
+            $padding = (int)(($this->consoleWidth - mb_strwidth($line)) / 2);
+            $spaces = str_repeat(" ", $padding);
+
+            if ($index === 0) {
+                // Title line with letter spacing
+                $spaced = implode(' ', str_split($line));
+                $padding = (int)(($this->consoleWidth - mb_strwidth($spaced)) / 2);
+                $spaces = str_repeat(" ", $padding);
+                $this->line($spaces . self::BRIGHT_CYAN . self::BOLD . $spaced . self::RESET);
+            } else {
+                // Binary line
+                $colored = preg_replace_callback('/[01]/', function ($m) {
+                    return ($m[0] === '1' ? self::BRIGHT_GREEN : self::BRIGHT_BLUE) . $m[0] . self::RESET;
+                }, $line);
+                $this->line($spaces . $colored);
+            }
         }
-        $this->line(self::DIM . " " . str_repeat("─", 72) . self::RESET);
+        $this->line();
+    }
+
+    public function thePlugsCompactCentered(): void
+    {
+        $logo = [
+            " _____ _  _ ___   ___ _   _   _  ___ ___ ",
+            "|_   _| || | __| | _ \\ | | | | |/ __/ __|",
+            "  | | | __ | _|  |  _/ |_| |_| | (_ \\__ \\",
+            "  |_| |_||_|___| |_| |_(_)\\___/ \\___|___/",
+        ];
+
+        $binary = "1-0-1-0-0-1  1-1-0-0-1-0  1-0-1-1-0-1";
+
+        $maxWidth = 0;
+        foreach ($logo as $line) {
+            $maxWidth = max($maxWidth, mb_strwidth($line));
+        }
+
+        $padding = (int)(($this->consoleWidth - $maxWidth) / 2);
+        $binaryPadding = (int)(($this->consoleWidth - mb_strwidth($binary)) / 2);
+
+        $this->line();
+
+        foreach ($logo as $line) {
+            $spaces = str_repeat(" ", $padding);
+            $this->line($spaces . self::BRIGHT_CYAN . $line . self::RESET);
+        }
+
+        // Binary line centered separately
+        $spaces = str_repeat(" ", $binaryPadding);
+        $colored = preg_replace_callback('/[01]/', function ($m) {
+            return ($m[0] === '1' ? self::BRIGHT_GREEN : self::BRIGHT_BLUE) . $m[0] . self::RESET;
+        }, $binary);
+        $this->line($spaces . self::DIM . $colored . self::RESET);
+
         $this->line();
     }
 }
