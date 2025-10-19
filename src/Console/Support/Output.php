@@ -67,8 +67,34 @@ class Output
 
     private function getConsoleWidth(): int
     {
-        $width = (int) (`tput cols 2>/dev/null` ?? 80);
-        return max(80, min($width, 200));
+        // Try different methods to get console width
+
+        // Method 1: Environment variable (works on most systems)
+        if (getenv('COLUMNS')) {
+            return (int) getenv('COLUMNS');
+        }
+
+        // Method 2: Try tput (Unix/Linux/Mac)
+        if (strtoupper(substr(PHP_OS, 0, 3)) !== 'WIN') {
+            $width = @exec('tput cols 2>/dev/null');
+            if ($width && is_numeric($width)) {
+                return max(80, min((int)$width, 200));
+            }
+        }
+
+        // Method 3: Try mode con (Windows)
+        if (strtoupper(substr(PHP_OS, 0, 3)) === 'WIN') {
+            $output = [];
+            @exec('mode con', $output);
+            foreach ($output as $line) {
+                if (preg_match('/Columns:\s*(\d+)/i', $line, $matches)) {
+                    return max(80, min((int)$matches[1], 200));
+                }
+            }
+        }
+
+        // Method 4: Default fallback
+        return 120; // Safe default width
     }
 
     public function fullWidthLine(string $char = '─', string $color = self::BRIGHT_BLACK): void
@@ -86,15 +112,31 @@ class Output
 
     public function commandHeader(string $command): void
     {
+        // Display the logo
+        $this->thePlugsLogo();
+
         $this->line();
-        $this->fullWidthLine('▓', self::BRIGHT_BLUE);
+        $this->fullWidthLine('- ', self::BRIGHT_BLUE);
         $this->line();
         $this->line(self::BRIGHT_BLUE . "  Command: " . self::BRIGHT_WHITE . $command . self::RESET);
         $this->line(self::BRIGHT_BLUE . "  Started: " . self::DIM . date('Y-m-d H:i:s') . self::RESET);
         $this->line();
-        $this->fullWidthLine('▓', self::BRIGHT_BLUE);
+        $this->fullWidthLine('- ', self::BRIGHT_BLUE);
         $this->line();
     }
+
+    // public function commandHeader(string $command): void
+    // {
+    //     // Display the logo
+    //     $this->thePlugsLogo();
+
+    //     // Display command info
+    //     // $this->line(self::BRIGHT_BLUE . "  Command: " . self::BRIGHT_WHITE . self::BOLD . $command . self::RESET);
+    //     // $this->line(self::BRIGHT_BLUE . "  Started: " . self::DIM . date('Y-m-d H:i:s') . self::RESET);
+    //     // $this->line();
+    //     $this->fullWidthLine('─', self::BRIGHT_BLACK);
+    //     $this->line();
+    // }
 
     public function migrationResult(string $migration, string $status, float $time): void
     {
@@ -287,7 +329,7 @@ class Output
     {
         $lines = explode("\n", $content);
         $maxWidth = $this->consoleWidth - 6;
-        
+
         $colors = [
             'info' => self::BRIGHT_BLUE,
             'success' => self::BRIGHT_GREEN,
@@ -297,21 +339,21 @@ class Output
 
         $color = $colors[$type] ?? self::BRIGHT_BLUE;
         $border = $color . "╭" . str_repeat("─", $maxWidth) . "╮" . self::RESET;
-        
+
         $this->line($border);
-        
+
         if ($title) {
             $titleLine = $color . "│" . self::RESET . " " . self::BOLD . $title . self::RESET . str_repeat(" ", $maxWidth - mb_strwidth($title) - 1) . $color . "│" . self::RESET;
             $this->line($titleLine);
             $this->line($color . "├" . str_repeat("─", $maxWidth) . "┤" . self::RESET);
         }
-        
+
         foreach ($lines as $line) {
             $cleanLine = $this->stripAnsiCodes($line);
             $padding = $maxWidth - mb_strwidth($cleanLine) - 1;
             $this->line($color . "│" . self::RESET . " " . $line . str_repeat(" ", max(0, $padding)) . $color . "│" . self::RESET);
         }
-        
+
         $this->line($color . "╰" . str_repeat("─", $maxWidth) . "╯" . self::RESET);
         $this->line();
     }
@@ -321,7 +363,7 @@ class Output
         $lines = explode("\n", $content);
         $maxWidth = max(array_map('mb_strwidth', $lines));
         $maxWidth = max($maxWidth, mb_strwidth($title)) + 4;
-        
+
         $this->line();
         if ($title) {
             $titlePadding = str_repeat("─", (int)(($maxWidth - mb_strwidth($title) - 2) / 2));
@@ -329,12 +371,12 @@ class Output
         } else {
             $this->line(self::BRIGHT_BLUE . "┌" . str_repeat("─", $maxWidth) . "┐" . self::RESET);
         }
-        
+
         foreach ($lines as $line) {
             $padding = $maxWidth - mb_strwidth($line);
             $this->line(self::BRIGHT_BLUE . "│" . self::RESET . " {$line}" . str_repeat(" ", $padding - 1) . self::BRIGHT_BLUE . "│" . self::RESET);
         }
-        
+
         $this->line(self::BRIGHT_BLUE . "└" . str_repeat("─", $maxWidth) . "┘" . self::RESET);
         $this->line();
     }
@@ -400,7 +442,7 @@ class Output
             'error' => '❌',
             'question' => '❓',
         ];
-        
+
         $icon = $icons[$type] ?? $icons['info'];
         $this->box($message, "{$icon} Alert", $type);
     }
@@ -418,9 +460,8 @@ class Output
     public function step(int $current, int $total, string $message): void
     {
         $percentage = ($current / $total) * 100;
-        $color = $percentage < 33 ? self::BRIGHT_RED : 
-                 ($percentage < 66 ? self::BRIGHT_YELLOW : self::BRIGHT_GREEN);
-        
+        $color = $percentage < 33 ? self::BRIGHT_RED : ($percentage < 66 ? self::BRIGHT_YELLOW : self::BRIGHT_GREEN);
+
         $this->line("  {$color}[{$current}/{$total}]" . self::RESET . " {$message}");
     }
 
@@ -444,7 +485,7 @@ class Output
         foreach ($items as $key => $value) {
             $indent = str_repeat("  ", $level);
             $branch = $level > 0 ? "├─ " : "";
-            
+
             if (is_array($value)) {
                 $this->line($indent . self::BRIGHT_CYAN . $branch . $key . self::RESET);
                 $this->tree($value, $level + 1);
@@ -495,12 +536,12 @@ class Output
         $result = null;
         $completed = false;
         $i = 0;
-        
+
         $startTime = microtime(true);
-        
+
         while (!$completed) {
             echo "\r" . self::BRIGHT_CYAN . $frames[$i++ % count($frames)] . self::RESET . " {$message}";
-            
+
             try {
                 $result = $callback();
                 $completed = true;
@@ -508,16 +549,16 @@ class Output
                 $completed = true;
                 throw $e;
             }
-            
+
             usleep(100000);
-            
+
             if (microtime(true) - $startTime > 30) {
                 break;
             }
         }
-        
+
         echo "\r" . self::BRIGHT_GREEN . "✔" . self::RESET . " {$message}" . str_repeat(" ", 10) . "\n";
-        
+
         return $result;
     }
 
@@ -770,7 +811,7 @@ class Output
         $pow = floor(($bytes ? log($bytes) : 0) / log(1024));
         $pow = min($pow, count($units) - 1);
         $bytes /= (1 << (10 * $pow));
-        
+
         return round($bytes, 2) . ' ' . $units[$pow];
     }
 
@@ -783,13 +824,13 @@ class Output
     {
         $this->line();
         $this->fullWidthLine('─', self::BRIGHT_BLACK);
-        
+
         $timeFormatted = $this->formatTime($time);
         $memoryFormatted = $this->formatBytes($memory);
-        
+
         $this->line("  " . self::BRIGHT_GREEN . "✓" . self::RESET . " Completed in " . self::BOLD . $timeFormatted . self::RESET);
         $this->line("  " . self::BRIGHT_BLUE . "📊" . self::RESET . " Memory: " . self::BOLD . $memoryFormatted . self::RESET);
-        
+
         $this->fullWidthLine('─', self::BRIGHT_BLACK);
         $this->line();
     }
@@ -797,5 +838,115 @@ class Output
     public function errorBox(string $message, string $title = 'Error'): void
     {
         $this->box($message, $title, 'error');
+    }
+
+    public function thePlugsLogo(): void
+    {
+        $logo = [
+            "  ████████╗██╗  ██╗███████╗    ██████╗ ██╗     ██╗   ██╗ ██████╗ ███████╗",
+            "  ╚══██╔══╝██║  ██║██╔════╝    ██╔══██╗██║     ██║   ██║██╔════╝ ██╔════╝",
+            "     ██║   ███████║█████╗      ██████╔╝██║     ██║   ██║██║  ███╗███████╗",
+            "     ██║   ██╔══██║██╔══╝      ██╔═══╝ ██║     ██║   ██║██║   ██║╚════██║",
+            "     ██║   ██║  ██║███████╗    ██║     ███████╗╚██████╔╝╚██████╔╝███████║",
+            "     ╚═╝   ╚═╝  ╚═╝╚══════╝    ╚═╝     ╚══════╝ ╚═════╝  ╚═════╝ ╚══════╝"
+        ];
+
+        $this->line();
+        foreach ($logo as $line) {
+            $this->gradient($line);
+        }
+        $this->line(self::DIM . str_repeat("─", 75) . self::RESET);
+        $this->line();
+    }
+
+    public function thePlugsBinaryLogo(): void
+    {
+        $logo = [
+            "  ████████╗ ██╗  ██╗ ███████╗    ██████╗  ██╗     ██╗   ██╗  ██████╗  ███████╗",
+            "  ║1█0█1█0█║ ║█0║ ║1█║ ║0█1█0█║    ║█0█1█║  ║1█║    ║0█║  ║1█║ ║0█1█0█║  ║1█0█1█║",
+            "  ║0╚══10╔═║ ║1█║ ║0█║ ║1█0═══║    ║0█╔══║  ║0█║    ║1█║  ║0█║ ║1█0═══║  ║0█1═══║",
+            "  ║1   10║  ║0███1█║ ║1█0█1█║    ║1█01█║  ║1█║    ║0█║  ║1█║ ║0█║ ║1█0║ ║1█0█1█║",
+            "  ║0   10║  ║1█0══1█║ ║0█1══║    ║0█═══║  ║0█║    ║1█║  ║0█║ ║1█║ ║0█║ ║1╚═══0█║",
+            "  ║1   10║  ║0█║ ║1█║ ║1█0█1█║    ║1█║    ║1█0█1█║ ║0██1█0█║ ║1██0█1█║ ║0█1█0█1█║",
+            "  ║0   ╚═║  ║1╚═║ ║0╚═║ ║1╚═══║    ║0╚═║    ║0╚═══║  ║1╚═══╚═║  ║0╚═══╚═║ ║1╚═══0═║"
+        ];
+
+        $this->line();
+        foreach ($logo as $line) {
+            // Colorize 1s and 0s differently
+            $coloredLine = str_replace('1', self::BRIGHT_CYAN . '1' . self::RESET, $line);
+            $coloredLine = str_replace('0', self::BRIGHT_BLUE . '0' . self::RESET, $coloredLine);
+            $this->line($coloredLine);
+        }
+        $this->line(self::DIM . "  " . str_repeat("─", 75) . self::RESET);
+        $this->line();
+    }
+
+    public function thePlugsSimpleBinaryLogo(): void
+    {
+        $logo = [
+            "  ███████╗██╗  ██╗███████╗   ██████╗ ██╗     ██╗   ██╗ ██████╗ ███████╗",
+            "  ██║0001║██║01██║██║0010║   ██║010║██║1100║██║010██║██║1001║██║1010║",
+            "  ██║1110║██████║█████║     ██████║██║0011║██║101██║██║ ███║███████║",
+            "  ██║0100║██╔══██║██╔══║     ██╔═══║██║1001║██║010██║██║  ██║╚═══0██║",
+            "  ███████║██║  ██║███████║   ██║1101║███████║╚██████║╚██████║███████║",
+            "  ╚══════╝╚═╝  ╚═╝╚══════╝   ╚═╝0110╝╚══════╝ ╚═════╝ ╚═════╝╚══════╝"
+        ];
+
+        $this->line();
+        foreach ($logo as $line) {
+            // Color the binary digits
+            $colored = preg_replace_callback('/[01]/', function ($matches) {
+                return ($matches[0] === '1' ? self::BRIGHT_GREEN : self::BRIGHT_BLUE) . $matches[0] . self::RESET;
+            }, $line);
+            $this->line($colored);
+        }
+        $this->line(self::DIM . "  " . str_repeat("─", 72) . self::RESET);
+        $this->line();
+    }
+
+    public function thePlugsMatrixLogo(): void
+    {
+        // Matrix-style with falling 1s and 0s
+        $logo = [
+            "  ████████╗██╗  ██╗███████╗    ██████╗ ██╗     ██╗   ██╗ ██████╗ ███████╗",
+            "  1██0█1█0█║0█1║ ║1█0║1█0█1█║    1█0█1█0║1█0║    0█1║  ║0█1║0█1█0█║ 1█0█1█0║",
+            "  0║1  10║ ║0█1█0█║ ║1█0█1║     ║1█01█║ ║0█1║   ║1█0║ ║1█0║1█║ ║0█║ ║1█0█1║",
+            "  1║0  10║ ║1█0══1█║ ║0█1══║     ║0█═══║ ║1█0║   ║0█1║ ║0█1║0█║ ║1█║ 0╚═══1█║",
+            "  0║1  10║ ║0█1║ ║1█0║1█0█1█║    ║1█0║   1█0█1█║ 0██1█0█║ 1██0█1█║ 0█1█0█1█║",
+            "  1║0  ╚═║ ║1╚═║ 0╚═║ 1╚═══║    0╚═║    1╚═══║  0╚═══╚═║ 1╚═══╚═║ 0╚═══1═║"
+        ];
+
+        $this->line();
+        foreach ($logo as $line) {
+            $colored = preg_replace_callback('/[01]/', function ($matches) {
+                $colors = [self::BRIGHT_GREEN, self::GREEN, self::BRIGHT_CYAN, self::CYAN];
+                return $colors[array_rand($colors)] . $matches[0] . self::RESET;
+            }, $line);
+            $this->line($colored);
+        }
+        $this->line(self::BRIGHT_GREEN . "  " . str_repeat("─", 75) . self::RESET);
+        $this->line();
+    }
+
+    public function thePlugsCompactBinary(): void
+    {
+        $logo = [
+            " ████████╗██╗  ██╗███████╗   ██████╗ ██╗     ██╗   ██╗ ██████╗ ███████╗",
+            " 1█0█1██0║0█║01██║1█0█1█0║   0█1█0█║1█║0110║0█║101██║1█0█1█║0█1█0█1║",
+            "   ██║1  0███1█0║1█0█1║     1█01█║ 0█║1001║0█║101██║1█║ 0█║1█0█1█║",
+            "   ██║0  1█0══1█║0█1══║     0█═══║ 1█║0110║0█║101██║1█║ 0█║1╚═══0█║",
+            "   ██║1  0█║ 1█║1█0█1█║    1█║0  1█0█1█║0██1█0█║1██0█1█║0█1█0█1█║",
+            "   ╚═╝0  1╚═║0╚═║1╚═══║    0╚═║  1╚═══║ 0╚═══╚═║1╚═══╚═║0╚═══1═║"
+        ];
+
+        $this->line();
+        foreach ($logo as $line) {
+            $colored = str_replace('1', self::BRIGHT_CYAN . '1' . self::RESET, $line);
+            $colored = str_replace('0', self::BRIGHT_BLUE . '0' . self::RESET, $colored);
+            $this->line($colored);
+        }
+        $this->line(self::DIM . " " . str_repeat("─", 72) . self::RESET);
+        $this->line();
     }
 }
