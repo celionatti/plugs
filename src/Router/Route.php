@@ -12,6 +12,9 @@ namespace Plugs\Router;
 | Route class for defining individual routes.
 */
 
+use Plugs\Http\HTTP;
+
+
 class Route
 {
     private $method;
@@ -127,5 +130,79 @@ class Route
     public function getName(): ?string
     {
         return $this->name;
+    }
+
+    /**
+     * Make this route a proxy to an external API endpoint
+     * @var array options: base_uri, token, headers, timeout
+     */
+    public function proxy(string $targetUrl, array $options = []): self
+    {
+        $originalHandler = $this->handler;
+        
+        $this->handler = function($request) use ($targetUrl, $options) {
+            $http = HTTP::make();
+            
+            // Apply options
+            if (isset($options['base_uri'])) {
+                $http->baseUri($options['base_uri']);
+            }
+            if (isset($options['token'])) {
+                $http->bearerToken($options['token']);
+            }
+            if (isset($options['headers'])) {
+                $http->headers($options['headers']);
+            }
+            if (isset($options['timeout'])) {
+                $http->timeout($options['timeout']);
+            }
+
+            // Forward the request
+            $method = strtolower($request->getMethod());
+            $response = $http->$method($targetUrl, $request->getQueryParams());
+
+            return \Plugs\Http\ResponseFactory::json(
+                $response->json(),
+                $response->status()
+            );
+        };
+        
+        return $this;
+    }
+
+    /**
+     * Fetch data from URL before handling route
+     */
+    /**
+     * Fetch data from URL before handling route
+     */
+    public function fetch(string $url, string $attribute = 'fetched_data'): self
+    {
+        $originalHandler = $this->handler;
+        
+        $this->handler = function($request) use ($originalHandler, $url, $attribute) {
+            // Fetch data
+            $response = HTTP::make()->get($url);
+            
+            // Add to request attributes
+            $request = $request->withAttribute($attribute, $response->json());
+            
+            // Continue with original handler
+            if (is_callable($originalHandler)) {
+                return $originalHandler($request);
+            }
+            
+            // Handle Controller@method format
+            if (is_string($originalHandler) && strpos($originalHandler, '@') !== false) {
+                [$controller, $method] = explode('@', $originalHandler);
+                $container = \Plugs\Container\Container::getInstance();
+                $instance = $container->make($controller);
+                return $instance->$method($request);
+            }
+            
+            throw new \RuntimeException('Invalid route handler');
+        };
+        
+        return $this;
     }
 }
