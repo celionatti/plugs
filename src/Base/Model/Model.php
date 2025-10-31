@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Plugs;
+namespace Plugs\Base\Model;
 
 /*
 |--------------------------------------------------------------------------
