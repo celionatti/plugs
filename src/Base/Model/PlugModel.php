@@ -198,13 +198,13 @@ abstract class PlugModel
     {
         if (array_key_exists($key, $this->attributes)) {
             $value = $this->attributes[$key];
-            
+
             // Check for accessor
             $method = 'get' . str_replace('_', '', ucwords($key, '_')) . 'Attribute';
             if (method_exists($this, $method)) {
                 return $this->$method($value);
             }
-            
+
             return $this->castAttribute($key, $value);
         }
 
@@ -542,7 +542,7 @@ abstract class PlugModel
     {
         $originalSelect = $this->query['select'];
         $this->query['select'] = ['COUNT(*) as count'];
-        
+
         $sql = $this->buildSelectQuery();
         $bindings = $this->getBindings();
 
@@ -551,7 +551,7 @@ abstract class PlugModel
         $result = $stmt->fetch(PDO::FETCH_ASSOC);
 
         $this->query['select'] = $originalSelect;
-        
+
         return (int) $result['count'];
     }
 
@@ -578,7 +578,7 @@ abstract class PlugModel
     {
         $total = $this->count();
         $totalPages = ceil($total / $perPage);
-        
+
         $this->limit($perPage)->offset(($page - 1) * $perPage);
         $items = $this->get();
 
@@ -604,7 +604,7 @@ abstract class PlugModel
     public function get(): Collection
     {
         $this->fireModelEvent('retrieving');
-        
+
         $sql = $this->buildSelectQuery();
         $bindings = $this->getBindings();
 
@@ -612,7 +612,7 @@ abstract class PlugModel
         $stmt->execute($bindings);
         $results = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-        $models = array_map(function($result) {
+        $models = array_map(function ($result) {
             return $this->newFromBuilder($result);
         }, $results);
 
@@ -642,7 +642,7 @@ abstract class PlugModel
 
         // ORDER BY
         if (!empty($this->query['orderBy'])) {
-            $orderByClauses = array_map(function($order) {
+            $orderByClauses = array_map(function ($order) {
                 return "{$order['column']} {$order['direction']}";
             }, $this->query['orderBy']);
             $sql .= " ORDER BY " . implode(', ', $orderByClauses);
@@ -669,7 +669,7 @@ abstract class PlugModel
         $clauses = [];
         foreach ($this->query['where'] as $index => $where) {
             $clause = '';
-            
+
             switch ($where['type']) {
                 case 'basic':
                     $clause = "{$where['column']} {$where['operator']} ?";
@@ -689,7 +689,7 @@ abstract class PlugModel
                     $clause = "{$where['column']} IS NOT NULL";
                     break;
             }
-            
+
             if ($index > 0) {
                 $clause = "{$where['boolean']} {$clause}";
             }
@@ -767,18 +767,18 @@ abstract class PlugModel
         $placeholders = implode(', ', array_fill(0, count($attributes), '?'));
 
         $sql = "INSERT INTO {$this->table} ({$columns}) VALUES ({$placeholders})";
-        
+
         try {
             $stmt = static::getConnection()->prepare($sql);
             $stmt->execute(array_values($attributes));
-            
+
             $lastId = static::getConnection()->lastInsertId();
             $this->setAttribute($this->primaryKey, $lastId);
             $this->exists = true;
             $this->original = $this->attributes;
-            
+
             $this->fireModelEvent('created');
-            
+
             return true;
         } catch (PDOException $e) {
             throw new \Exception("Insert failed: " . $e->getMessage());
@@ -811,16 +811,16 @@ abstract class PlugModel
         }
         $bindings[] = $this->getAttribute($this->primaryKey);
 
-        $sql = "UPDATE {$this->table} SET " . implode(', ', $setClauses) . 
-               " WHERE {$this->primaryKey} = ?";
+        $sql = "UPDATE {$this->table} SET " . implode(', ', $setClauses) .
+            " WHERE {$this->primaryKey} = ?";
 
         try {
             $stmt = static::getConnection()->prepare($sql);
             $stmt->execute($bindings);
             $this->original = $this->attributes;
-            
+
             $this->fireModelEvent('updated');
-            
+
             return true;
         } catch (PDOException $e) {
             throw new \Exception("Update failed: " . $e->getMessage());
@@ -847,21 +847,21 @@ abstract class PlugModel
     public function isDirty($attributes = null): bool
     {
         $dirty = $this->getDirty();
-        
+
         if (is_null($attributes)) {
             return count($dirty) > 0;
         }
-        
+
         if (!is_array($attributes)) {
             $attributes = func_get_args();
         }
-        
+
         foreach ($attributes as $attribute) {
             if (array_key_exists($attribute, $dirty)) {
                 return true;
             }
         }
-        
+
         return false;
     }
 
@@ -906,18 +906,18 @@ abstract class PlugModel
     public static function updateOrCreate(array $attributes, array $values = [])
     {
         $instance = static::query();
-        
+
         foreach ($attributes as $key => $value) {
             $instance->where($key, $value);
         }
-        
+
         $model = $instance->first();
-        
+
         if ($model) {
             $model->update($values);
             return $model;
         }
-        
+
         return static::create(array_merge($attributes, $values));
     }
 
@@ -927,17 +927,17 @@ abstract class PlugModel
     public static function firstOrCreate(array $attributes, array $values = [])
     {
         $instance = static::query();
-        
+
         foreach ($attributes as $key => $value) {
             $instance->where($key, $value);
         }
-        
+
         $model = $instance->first();
-        
+
         if ($model) {
             return $model;
         }
-        
+
         return static::create(array_merge($attributes, $values));
     }
 
@@ -947,17 +947,17 @@ abstract class PlugModel
     public static function firstOrNew(array $attributes, array $values = [])
     {
         $instance = static::query();
-        
+
         foreach ($attributes as $key => $value) {
             $instance->where($key, $value);
         }
-        
+
         $model = $instance->first();
-        
+
         if ($model) {
             return $model;
         }
-        
+
         return new static(array_merge($attributes, $values));
     }
 
@@ -979,14 +979,14 @@ abstract class PlugModel
         }
 
         $sql = "DELETE FROM {$this->table} WHERE {$this->primaryKey} = ?";
-        
+
         try {
             $stmt = static::getConnection()->prepare($sql);
             $stmt->execute([$this->getAttribute($this->primaryKey)]);
             $this->exists = false;
-            
+
             $this->fireModelEvent('deleted');
-            
+
             return true;
         } catch (PDOException $e) {
             throw new \Exception("Delete failed: " . $e->getMessage());
@@ -1032,11 +1032,11 @@ abstract class PlugModel
     {
         $wasSoftDelete = $this->softDelete;
         $this->softDelete = false;
-        
+
         $result = $this->delete();
-        
+
         $this->softDelete = $wasSoftDelete;
-        
+
         return $result;
     }
 
@@ -1075,7 +1075,7 @@ abstract class PlugModel
         }
 
         $fresh = static::find($this->getAttribute($this->primaryKey));
-        
+
         if ($fresh) {
             $this->attributes = $fresh->attributes;
             $this->original = $fresh->original;
@@ -1091,7 +1091,7 @@ abstract class PlugModel
     public function toArray(): array
     {
         $attributes = $this->attributes;
-        
+
         // Remove hidden attributes
         foreach ($this->hidden as $hidden) {
             unset($attributes[$hidden]);
@@ -1102,7 +1102,7 @@ abstract class PlugModel
             if ($value instanceof Collection) {
                 $attributes[$key] = $value->toArray();
             } elseif (is_array($value)) {
-                $attributes[$key] = array_map(function($item) {
+                $attributes[$key] = array_map(function ($item) {
                     return $item instanceof PlugModel ? $item->toArray() : $item;
                 }, $value);
             } elseif ($value instanceof PlugModel) {
@@ -1168,7 +1168,7 @@ abstract class PlugModel
     {
         $originalSelect = $this->query['select'];
         $this->query['select'] = ["MAX({$column}) as max"];
-        
+
         $sql = $this->buildSelectQuery();
         $bindings = $this->getBindings();
 
@@ -1177,7 +1177,7 @@ abstract class PlugModel
         $result = $stmt->fetch(PDO::FETCH_ASSOC);
 
         $this->query['select'] = $originalSelect;
-        
+
         return $result['max'];
     }
 
@@ -1188,7 +1188,7 @@ abstract class PlugModel
     {
         $originalSelect = $this->query['select'];
         $this->query['select'] = ["MIN({$column}) as min"];
-        
+
         $sql = $this->buildSelectQuery();
         $bindings = $this->getBindings();
 
@@ -1197,7 +1197,7 @@ abstract class PlugModel
         $result = $stmt->fetch(PDO::FETCH_ASSOC);
 
         $this->query['select'] = $originalSelect;
-        
+
         return $result['min'];
     }
 
@@ -1208,7 +1208,7 @@ abstract class PlugModel
     {
         $originalSelect = $this->query['select'];
         $this->query['select'] = ["SUM({$column}) as sum"];
-        
+
         $sql = $this->buildSelectQuery();
         $bindings = $this->getBindings();
 
@@ -1217,7 +1217,7 @@ abstract class PlugModel
         $result = $stmt->fetch(PDO::FETCH_ASSOC);
 
         $this->query['select'] = $originalSelect;
-        
+
         return $result['sum'] ?? 0;
     }
 
@@ -1228,7 +1228,7 @@ abstract class PlugModel
     {
         $originalSelect = $this->query['select'];
         $this->query['select'] = ["AVG({$column}) as avg"];
-        
+
         $sql = $this->buildSelectQuery();
         $bindings = $this->getBindings();
 
@@ -1237,7 +1237,7 @@ abstract class PlugModel
         $result = $stmt->fetch(PDO::FETCH_ASSOC);
 
         $this->query['select'] = $originalSelect;
-        
+
         return $result['avg'] ?? 0;
     }
 
@@ -1259,11 +1259,56 @@ abstract class PlugModel
     }
 
     /**
-     * Apply local scope (static)
+     * Apply local scope (static) - Handle static calls to instance methods
      */
     public static function __callStatic($method, $parameters)
     {
-        return (new static())->$method(...$parameters);
+        $instance = new static();
+
+        // List of methods that should be callable statically
+        $staticMethods = [
+            'where',
+            'orWhere',
+            'whereIn',
+            'whereNotIn',
+            'whereNull',
+            'whereNotNull',
+            'orderBy',
+            'orderByDesc',
+            'latest',
+            'oldest',
+            'limit',
+            'take',
+            'offset',
+            'skip',
+            'first',
+            'firstOrFail',
+            'get',
+            'count',
+            'exists',
+            'doesntExist',
+            'paginate',
+            'max',
+            'min',
+            'sum',
+            'avg',
+            'withTrashed',
+            'onlyTrashed',
+            'with'
+        ];
+
+        if (in_array($method, $staticMethods)) {
+            return $instance->$method(...$parameters);
+        }
+
+        // Check for scope method
+        $scopeMethod = 'scope' . ucfirst($method);
+        if (method_exists($instance, $scopeMethod)) {
+            array_unshift($parameters, $instance);
+            return call_user_func_array([$instance, $scopeMethod], $parameters);
+        }
+
+        throw new \BadMethodCallException("Static method {$method} does not exist.");
     }
 
     // ==================== RELATIONSHIPS ====================
@@ -1313,7 +1358,7 @@ abstract class PlugModel
         $relatedPivotKey = $relatedPivotKey ?? strtolower(class_basename($related)) . '_id';
         $parentKey = $parentKey ?? $this->primaryKey;
         $relatedKey = $relatedKey ?? 'id';
-        
+
         if (!$pivotTable) {
             $tables = [
                 strtolower(class_basename(static::class)),
@@ -1332,7 +1377,7 @@ abstract class PlugModel
         $results = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
         $instance = new $related();
-        $models = array_map(function($result) use ($instance) {
+        $models = array_map(function ($result) use ($instance) {
             return $instance->newFromBuilder($result);
         }, $results);
 
@@ -1378,7 +1423,7 @@ abstract class PlugModel
     protected function fireModelEvent($event)
     {
         $method = $event;
-        
+
         if (method_exists($this, $method)) {
             return $this->$method();
         }
@@ -1487,7 +1532,8 @@ abstract class PlugModel
  * Helper function to get class basename
  */
 if (!function_exists('class_basename')) {
-    function class_basename($class) {
+    function class_basename($class)
+    {
         $class = is_object($class) ? get_class($class) : $class;
         return basename(str_replace('\\', '/', $class));
     }
