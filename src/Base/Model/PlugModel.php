@@ -6,6 +6,7 @@ namespace Plugs\Base\Model;
 
 use PDO;
 use PDOException;
+use Plugs\Database\Collection;
 
 abstract class PlugModel
 {
@@ -317,7 +318,7 @@ abstract class PlugModel
     /**
      * Find multiple records by primary keys
      */
-    public static function findMany(array $ids)
+    public static function findMany(array $ids): Collection
     {
         return static::query()->whereIn((new static())->primaryKey, $ids)->get();
     }
@@ -337,7 +338,7 @@ abstract class PlugModel
     /**
      * Get all records
      */
-    public static function all()
+    public static function all(): Collection
     {
         return static::query()->get();
     }
@@ -519,7 +520,7 @@ abstract class PlugModel
     {
         $this->limit(1);
         $results = $this->get();
-        return !empty($results) ? $results[0] : null;
+        return $results->first();
     }
 
     /**
@@ -537,7 +538,7 @@ abstract class PlugModel
     /**
      * Get count of records
      */
-    public function count()
+    public function count(): int
     {
         $originalSelect = $this->query['select'];
         $this->query['select'] = ['COUNT(*) as count'];
@@ -557,15 +558,23 @@ abstract class PlugModel
     /**
      * Check if records exist
      */
-    public function exists()
+    public function exists(): bool
     {
         return $this->count() > 0;
     }
 
     /**
+     * Check if no records exist
+     */
+    public function doesntExist(): bool
+    {
+        return !$this->exists();
+    }
+
+    /**
      * Paginate results
      */
-    public function paginate($perPage = 15, $page = 1)
+    public function paginate($perPage = 15, $page = 1): array
     {
         $total = $this->count();
         $totalPages = ceil($total / $perPage);
@@ -580,14 +589,19 @@ abstract class PlugModel
             'total' => $total,
             'total_pages' => $totalPages,
             'from' => (($page - 1) * $perPage) + 1,
-            'to' => min($page * $perPage, $total)
+            'to' => min($page * $perPage, $total),
+            'first_page_url' => "?page=1",
+            'last_page_url' => "?page={$totalPages}",
+            'next_page_url' => $page < $totalPages ? "?page=" . ($page + 1) : null,
+            'prev_page_url' => $page > 1 ? "?page=" . ($page - 1) : null,
+            'path' => '?page='
         ];
     }
 
     /**
-     * Execute query and get results
+     * Execute query and get results as Collection
      */
-    public function get()
+    public function get(): Collection
     {
         $this->fireModelEvent('retrieving');
         
@@ -604,7 +618,7 @@ abstract class PlugModel
 
         $this->fireModelEvent('retrieved');
 
-        return $models;
+        return new Collection($models);
     }
 
     /**
@@ -715,7 +729,7 @@ abstract class PlugModel
     /**
      * Save model to database
      */
-    public function save()
+    public function save(): bool
     {
         if ($this->fireModelEvent('saving') === false) {
             return false;
@@ -737,7 +751,7 @@ abstract class PlugModel
     /**
      * Perform INSERT query
      */
-    protected function performInsert()
+    protected function performInsert(): bool
     {
         if ($this->fireModelEvent('creating') === false) {
             return false;
@@ -774,7 +788,7 @@ abstract class PlugModel
     /**
      * Perform UPDATE query
      */
-    protected function performUpdate()
+    protected function performUpdate(): bool
     {
         if ($this->fireModelEvent('updating') === false) {
             return false;
@@ -830,7 +844,7 @@ abstract class PlugModel
     /**
      * Check if model is dirty
      */
-    public function isDirty($attributes = null)
+    public function isDirty($attributes = null): bool
     {
         $dirty = $this->getDirty();
         
@@ -852,6 +866,22 @@ abstract class PlugModel
     }
 
     /**
+     * Check if model is clean
+     */
+    public function isClean($attributes = null): bool
+    {
+        return !$this->isDirty($attributes);
+    }
+
+    /**
+     * Get changed attributes
+     */
+    public function getChanges(): array
+    {
+        return $this->getDirty();
+    }
+
+    /**
      * Create new record
      */
     public static function create(array $attributes)
@@ -864,7 +894,7 @@ abstract class PlugModel
     /**
      * Update record
      */
-    public function update(array $attributes)
+    public function update(array $attributes): bool
     {
         $this->fill($attributes);
         return $this->save();
@@ -912,9 +942,29 @@ abstract class PlugModel
     }
 
     /**
+     * First or new (doesn't save)
+     */
+    public static function firstOrNew(array $attributes, array $values = [])
+    {
+        $instance = static::query();
+        
+        foreach ($attributes as $key => $value) {
+            $instance->where($key, $value);
+        }
+        
+        $model = $instance->first();
+        
+        if ($model) {
+            return $model;
+        }
+        
+        return new static(array_merge($attributes, $values));
+    }
+
+    /**
      * Delete record
      */
-    public function delete()
+    public function delete(): bool
     {
         if (!$this->exists) {
             return false;
@@ -946,7 +996,7 @@ abstract class PlugModel
     /**
      * Perform soft delete
      */
-    protected function performSoftDelete()
+    protected function performSoftDelete(): bool
     {
         $this->setAttribute($this->deletedAtColumn, date('Y-m-d H:i:s'));
         return $this->save();
@@ -955,7 +1005,7 @@ abstract class PlugModel
     /**
      * Restore soft deleted record
      */
-    public function restore()
+    public function restore(): bool
     {
         if (!$this->softDelete) {
             return false;
@@ -978,7 +1028,7 @@ abstract class PlugModel
     /**
      * Force delete (permanent delete even with soft delete)
      */
-    public function forceDelete()
+    public function forceDelete(): bool
     {
         $wasSoftDelete = $this->softDelete;
         $this->softDelete = false;
@@ -1010,7 +1060,7 @@ abstract class PlugModel
     /**
      * Check if model is soft deleted
      */
-    public function trashed()
+    public function trashed(): bool
     {
         return $this->softDelete && !is_null($this->getAttribute($this->deletedAtColumn));
     }
@@ -1038,7 +1088,7 @@ abstract class PlugModel
     /**
      * Convert model to array
      */
-    public function toArray()
+    public function toArray(): array
     {
         $attributes = $this->attributes;
         
@@ -1049,7 +1099,9 @@ abstract class PlugModel
 
         // Include relations
         foreach ($this->relations as $key => $value) {
-            if (is_array($value)) {
+            if ($value instanceof Collection) {
+                $attributes[$key] = $value->toArray();
+            } elseif (is_array($value)) {
                 $attributes[$key] = array_map(function($item) {
                     return $item instanceof PlugModel ? $item->toArray() : $item;
                 }, $value);
@@ -1066,9 +1118,127 @@ abstract class PlugModel
     /**
      * Convert model to JSON
      */
-    public function toJson($options = 0)
+    public function toJson($options = 0): string
     {
         return json_encode($this->toArray(), $options);
+    }
+
+    /**
+     * Get only specified attributes
+     */
+    public function only(array $keys): array
+    {
+        return array_intersect_key($this->toArray(), array_flip($keys));
+    }
+
+    /**
+     * Get all except specified attributes
+     */
+    public function except(array $keys): array
+    {
+        return array_diff_key($this->toArray(), array_flip($keys));
+    }
+
+    /**
+     * Make attributes visible
+     */
+    public function makeVisible($attributes)
+    {
+        $attributes = is_array($attributes) ? $attributes : func_get_args();
+        $this->hidden = array_diff($this->hidden, $attributes);
+        return $this;
+    }
+
+    /**
+     * Make attributes hidden
+     */
+    public function makeHidden($attributes)
+    {
+        $attributes = is_array($attributes) ? $attributes : func_get_args();
+        $this->hidden = array_unique(array_merge($this->hidden, $attributes));
+        return $this;
+    }
+
+    // ==================== AGGREGATE METHODS ====================
+
+    /**
+     * Get the maximum value
+     */
+    public function max(string $column)
+    {
+        $originalSelect = $this->query['select'];
+        $this->query['select'] = ["MAX({$column}) as max"];
+        
+        $sql = $this->buildSelectQuery();
+        $bindings = $this->getBindings();
+
+        $stmt = static::getConnection()->prepare($sql);
+        $stmt->execute($bindings);
+        $result = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        $this->query['select'] = $originalSelect;
+        
+        return $result['max'];
+    }
+
+    /**
+     * Get the minimum value
+     */
+    public function min(string $column)
+    {
+        $originalSelect = $this->query['select'];
+        $this->query['select'] = ["MIN({$column}) as min"];
+        
+        $sql = $this->buildSelectQuery();
+        $bindings = $this->getBindings();
+
+        $stmt = static::getConnection()->prepare($sql);
+        $stmt->execute($bindings);
+        $result = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        $this->query['select'] = $originalSelect;
+        
+        return $result['min'];
+    }
+
+    /**
+     * Get the sum of values
+     */
+    public function sum(string $column)
+    {
+        $originalSelect = $this->query['select'];
+        $this->query['select'] = ["SUM({$column}) as sum"];
+        
+        $sql = $this->buildSelectQuery();
+        $bindings = $this->getBindings();
+
+        $stmt = static::getConnection()->prepare($sql);
+        $stmt->execute($bindings);
+        $result = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        $this->query['select'] = $originalSelect;
+        
+        return $result['sum'] ?? 0;
+    }
+
+    /**
+     * Get the average value
+     */
+    public function avg(string $column)
+    {
+        $originalSelect = $this->query['select'];
+        $this->query['select'] = ["AVG({$column}) as avg"];
+        
+        $sql = $this->buildSelectQuery();
+        $bindings = $this->getBindings();
+
+        $stmt = static::getConnection()->prepare($sql);
+        $stmt->execute($bindings);
+        $result = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        $this->query['select'] = $originalSelect;
+        
+        return $result['avg'] ?? 0;
     }
 
     // ==================== SCOPES ====================
@@ -1113,7 +1283,7 @@ abstract class PlugModel
     /**
      * Define a one-to-many relationship
      */
-    protected function hasMany($related, $foreignKey = null, $localKey = null)
+    protected function hasMany($related, $foreignKey = null, $localKey = null): Collection
     {
         $foreignKey = $foreignKey ?? strtolower(class_basename(static::class)) . '_id';
         $localKey = $localKey ?? $this->primaryKey;
@@ -1137,7 +1307,7 @@ abstract class PlugModel
     /**
      * Define a many-to-many relationship
      */
-    protected function belongsToMany($related, $pivotTable = null, $foreignPivotKey = null, $relatedPivotKey = null, $parentKey = null, $relatedKey = null)
+    protected function belongsToMany($related, $pivotTable = null, $foreignPivotKey = null, $relatedPivotKey = null, $parentKey = null, $relatedKey = null): Collection
     {
         $foreignPivotKey = $foreignPivotKey ?? strtolower(class_basename(static::class)) . '_id';
         $relatedPivotKey = $relatedPivotKey ?? strtolower(class_basename($related)) . '_id';
@@ -1162,15 +1332,17 @@ abstract class PlugModel
         $results = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
         $instance = new $related();
-        return array_map(function($result) use ($instance) {
+        $models = array_map(function($result) use ($instance) {
             return $instance->newFromBuilder($result);
         }, $results);
+
+        return new Collection($models);
     }
 
     /**
      * Eager load relationships
      */
-    public function with($relations)
+    public function with($relations): Collection
     {
         if (is_string($relations)) {
             $relations = func_get_args();
