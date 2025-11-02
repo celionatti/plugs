@@ -71,11 +71,56 @@ abstract class PlugModel
     }
 
     /**
-     * Set database connection
+     * Set database connection from array parameters
+     * 
+     * @param array $config Database configuration array
+     *        Expected keys: driver, host, port, database, username, password, charset, options
+     * @throws \Exception if connection fails
      */
-    public static function setConnection(PDO $pdo)
+    public static function setConnection(array $config)
     {
-        static::$connection = $pdo;
+        $driver = $config['driver'] ?? 'mysql';
+        $host = $config['host'] ?? 'localhost';
+        $port = $config['port'] ?? 3306;
+        $database = $config['database'] ?? '';
+        $username = $config['username'] ?? 'root';
+        $password = $config['password'] ?? '';
+        $charset = $config['charset'] ?? 'utf8mb4';
+        $options = $config['options'] ?? [];
+
+        // Default PDO options
+        $defaultOptions = [
+            PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+            PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
+            PDO::ATTR_EMULATE_PREPARES => false,
+        ];
+
+        // Merge with custom options
+        $pdoOptions = array_merge($defaultOptions, $options);
+
+        try {
+            // Build DSN based on driver
+            switch ($driver) {
+                case 'mysql':
+                    $dsn = "mysql:host={$host};port={$port};dbname={$database};charset={$charset}";
+                    break;
+                case 'pgsql':
+                    $dsn = "pgsql:host={$host};port={$port};dbname={$database}";
+                    break;
+                case 'sqlite':
+                    $dsn = "sqlite:{$database}";
+                    break;
+                case 'sqlsrv':
+                    $dsn = "sqlsrv:Server={$host},{$port};Database={$database}";
+                    break;
+                default:
+                    throw new \Exception("Unsupported database driver: {$driver}");
+            }
+
+            static::$connection = new PDO($dsn, $username, $password, $pdoOptions);
+        } catch (PDOException $e) {
+            throw new \Exception("Database connection failed: " . $e->getMessage());
+        }
     }
 
     /**
@@ -84,7 +129,7 @@ abstract class PlugModel
     protected static function getConnection()
     {
         if (!static::$connection) {
-            throw new \Exception('Database connection not set. Use Model::setConnection($pdo)');
+            throw new \Exception('Database connection not set. Use Model::setConnection($config)');
         }
         return static::$connection;
     }
@@ -1006,9 +1051,9 @@ abstract class PlugModel
         foreach ($this->relations as $key => $value) {
             if (is_array($value)) {
                 $attributes[$key] = array_map(function($item) {
-                    return $item instanceof Model ? $item->toArray() : $item;
+                    return $item instanceof PlugModel ? $item->toArray() : $item;
                 }, $value);
-            } elseif ($value instanceof Model) {
+            } elseif ($value instanceof PlugModel) {
                 $attributes[$key] = $value->toArray();
             } else {
                 $attributes[$key] = $value;
