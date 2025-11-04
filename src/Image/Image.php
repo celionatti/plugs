@@ -11,19 +11,19 @@ use GdImage;
 | Image Class
 |--------------------------------------------------------------------------
 |
-| This class provides basic image manipulation functionalities such as
-| resizing, cropping, and saving images. It leverages the GD library for
-| image processing tasks.
+| This class provides image manipulation with improved error handling
+| and memory management for production use.
 */
 
 class Image
 {
-    private ?GdImage $image;
+    private ?GdImage $image = null;
     private $width;
     private $height;
     private $type;
     private $quality = 90;
-    
+    private $sourcePath;
+
     /**
      * Load image from file
      */
@@ -32,48 +32,85 @@ class Image
         if (!file_exists($path)) {
             throw new \RuntimeException("Image not found: {$path}");
         }
-        
-        $info = getimagesize($path);
-        
+
+        if (!is_readable($path)) {
+            throw new \RuntimeException("Image is not readable: {$path}");
+        }
+
+        $info = @getimagesize($path);
+
         if ($info === false) {
             throw new \RuntimeException("Invalid image file: {$path}");
         }
-        
+
         $this->width = $info[0];
         $this->height = $info[1];
         $this->type = $info[2];
-        
-        switch ($this->type) {
-            case IMAGETYPE_JPEG:
-                $this->image = imagecreatefromjpeg($path);
-                break;
-            case IMAGETYPE_PNG:
-                $this->image = imagecreatefrompng($path);
-                break;
-            case IMAGETYPE_GIF:
-                $this->image = imagecreatefromgif($path);
-                break;
-            case IMAGETYPE_WEBP:
-                $this->image = imagecreatefromwebp($path);
-                break;
-            default:
-                throw new \RuntimeException("Unsupported image type");
+        $this->sourcePath = $path;
+
+        // Free existing image if any
+        if ($this->image !== null) {
+            imagedestroy($this->image);
         }
-        
+
+        // Check memory availability
+        $this->checkMemory($info[0], $info[1]);
+
+        try {
+            switch ($this->type) {
+                case IMAGETYPE_JPEG:
+                    $this->image = imagecreatefromjpeg($path);
+                    break;
+                case IMAGETYPE_PNG:
+                    $this->image = imagecreatefrompng($path);
+                    break;
+                case IMAGETYPE_GIF:
+                    $this->image = imagecreatefromgif($path);
+                    break;
+                case IMAGETYPE_WEBP:
+                    if (!function_exists('imagecreatefromwebp')) {
+                        throw new \RuntimeException("WebP support not available");
+                    }
+                    $this->image = imagecreatefromwebp($path);
+                    break;
+                case IMAGETYPE_BMP:
+                    if (function_exists('imagecreatefrombmp')) {
+                        $this->image = imagecreatefrombmp($path);
+                    } else {
+                        throw new \RuntimeException("BMP support not available");
+                    }
+                    break;
+                default:
+                    throw new \RuntimeException("Unsupported image type: " . image_type_to_mime_type($this->type));
+            }
+        } catch (\Exception $e) {
+            throw new \RuntimeException("Failed to load image: " . $e->getMessage());
+        }
+
+        if ($this->image === false) {
+            throw new \RuntimeException("Failed to create image resource from: {$path}");
+        }
+
         return $this;
     }
-    
+
     /**
      * Create from resource
      */
     public function fromResource($resource): self
     {
+        if (!$resource instanceof GdImage) {
+            throw new \InvalidArgumentException("Invalid GD resource provided");
+        }
+
         $this->image = $resource;
         $this->width = imagesx($resource);
         $this->height = imagesy($resource);
+        $this->type = IMAGETYPE_PNG; // Default type for resources
+
         return $this;
     }
-    
+
     /**
      * Set quality (1-100)
      */
@@ -82,12 +119,14 @@ class Image
         $this->quality = max(1, min(100, $quality));
         return $this;
     }
-    
+
     /**
-     * Resize image
+     * Resize image maintaining aspect ratio
      */
     public function resize(int $width, int $height, bool $aspectRatio = true): self
     {
+        $this->ensureImageLoaded();
+
         if ($aspectRatio) {
             $ratio = min($width / $this->width, $height / $this->height);
             $newWidth = (int) ($this->width * $ratio);
@@ -96,273 +135,403 @@ class Image
             $newWidth = $width;
             $newHeight = $height;
         }
-        
+
+        // Check memory before creating new image
+        $this->checkMemory($newWidth, $newHeight);
+
         $newImage = imagecreatetruecolor($newWidth, $newHeight);
-        
-        // Preserve transparency for PNG
-        if ($this->type === IMAGETYPE_PNG) {
-            imagealphablending($newImage, false);
-            imagesavealpha($newImage, true);
+
+        if ($newImage === false) {
+            throw new \RuntimeException('Failed to create new image resource');
         }
-        
-        imagecopyresampled(
+
+        // Preserve transparency for PNG and GIF
+        $this->preserveTransparency($newImage);
+
+        $result = imagecopyresampled(
             $newImage,
             $this->image,
-            0, 0, 0, 0,
+            0,
+            0,
+            0,
+            0,
             $newWidth,
             $newHeight,
             $this->width,
             $this->height
         );
-        
+
+        if (!$result) {
+            imagedestroy($newImage);
+            throw new \RuntimeException('Failed to resize image');
+        }
+
         imagedestroy($this->image);
         $this->image = $newImage;
         $this->width = $newWidth;
         $this->height = $newHeight;
-        
+
         return $this;
     }
-    
+
     /**
-     * Fit image to dimensions (crops if needed)
+     * Resize to fit within max dimensions
+     */
+    public function resizeToFit(int $maxWidth, int $maxHeight): self
+    {
+        $this->ensureImageLoaded();
+
+        if ($this->width <= $maxWidth && $this->height <= $maxHeight) {
+            return $this; // Already fits
+        }
+
+        return $this->resize($maxWidth, $maxHeight, true);
+    }
+
+    /**
+     * Resize to cover dimensions (will crop if needed)
      */
     public function fit(int $width, int $height): self
     {
+        $this->ensureImageLoaded();
+
         $ratio = max($width / $this->width, $height / $this->height);
-        
+
         $newWidth = (int) ($this->width * $ratio);
         $newHeight = (int) ($this->height * $ratio);
-        
+
         $tempImage = imagecreatetruecolor($newWidth, $newHeight);
-        
-        // Preserve transparency
-        if ($this->type === IMAGETYPE_PNG) {
-            imagealphablending($tempImage, false);
-            imagesavealpha($tempImage, true);
+
+        if ($tempImage === false) {
+            throw new \RuntimeException('Failed to create temporary image');
         }
-        
+
+        $this->preserveTransparency($tempImage);
+
         imagecopyresampled(
             $tempImage,
             $this->image,
-            0, 0, 0, 0,
+            0,
+            0,
+            0,
+            0,
             $newWidth,
             $newHeight,
             $this->width,
             $this->height
         );
-        
+
         // Crop to exact size
         $newImage = imagecreatetruecolor($width, $height);
-        
-        if ($this->type === IMAGETYPE_PNG) {
-            imagealphablending($newImage, false);
-            imagesavealpha($newImage, true);
+
+        if ($newImage === false) {
+            imagedestroy($tempImage);
+            throw new \RuntimeException('Failed to create final image');
         }
-        
-        $cropX = ($newWidth - $width) / 2;
-        $cropY = ($newHeight - $height) / 2;
-        
-        imagecopy($newImage, $tempImage, 0, 0, (int) $cropX, (int) $cropY, $width, $height);
-        
+
+        $this->preserveTransparency($newImage);
+
+        $cropX = (int) (($newWidth - $width) / 2);
+        $cropY = (int) (($newHeight - $height) / 2);
+
+        imagecopy($newImage, $tempImage, 0, 0, $cropX, $cropY, $width, $height);
+
         imagedestroy($this->image);
         imagedestroy($tempImage);
-        
+
         $this->image = $newImage;
         $this->width = $width;
         $this->height = $height;
-        
+
         return $this;
     }
-    
+
     /**
      * Crop image
      */
     public function crop(int $x, int $y, int $width, int $height): self
     {
-        $newImage = imagecreatetruecolor($width, $height);
-        
-        if ($this->type === IMAGETYPE_PNG) {
-            imagealphablending($newImage, false);
-            imagesavealpha($newImage, true);
+        $this->ensureImageLoaded();
+
+        // Validate crop coordinates
+        if ($x < 0 || $y < 0 || $x + $width > $this->width || $y + $height > $this->height) {
+            throw new \InvalidArgumentException('Crop coordinates exceed image boundaries');
         }
-        
+
+        $newImage = imagecreatetruecolor($width, $height);
+
+        if ($newImage === false) {
+            throw new \RuntimeException('Failed to create cropped image');
+        }
+
+        $this->preserveTransparency($newImage);
+
         imagecopy($newImage, $this->image, 0, 0, $x, $y, $width, $height);
-        
+
         imagedestroy($this->image);
         $this->image = $newImage;
         $this->width = $width;
         $this->height = $height;
-        
+
         return $this;
     }
-    
+
     /**
      * Rotate image
      */
     public function rotate(float $angle, int $bgColor = 0): self
     {
+        $this->ensureImageLoaded();
+
         $newImage = imagerotate($this->image, $angle, $bgColor);
-        
+
+        if ($newImage === false) {
+            throw new \RuntimeException('Failed to rotate image');
+        }
+
         imagedestroy($this->image);
         $this->image = $newImage;
         $this->width = imagesx($newImage);
         $this->height = imagesy($newImage);
-        
+
         return $this;
     }
-    
+
     /**
      * Flip image horizontally
      */
     public function flipHorizontal(): self
     {
+        $this->ensureImageLoaded();
         imageflip($this->image, IMG_FLIP_HORIZONTAL);
         return $this;
     }
-    
+
     /**
      * Flip image vertically
      */
     public function flipVertical(): self
     {
+        $this->ensureImageLoaded();
         imageflip($this->image, IMG_FLIP_VERTICAL);
         return $this;
     }
-    
+
     /**
      * Convert to grayscale
      */
     public function grayscale(): self
     {
+        $this->ensureImageLoaded();
         imagefilter($this->image, IMG_FILTER_GRAYSCALE);
         return $this;
     }
-    
+
     /**
      * Adjust brightness (-255 to 255)
      */
     public function brightness(int $level): self
     {
+        $this->ensureImageLoaded();
+        $level = max(-255, min(255, $level));
         imagefilter($this->image, IMG_FILTER_BRIGHTNESS, $level);
         return $this;
     }
-    
+
     /**
      * Adjust contrast (-100 to 100)
      */
     public function contrast(int $level): self
     {
+        $this->ensureImageLoaded();
+        $level = max(-100, min(100, $level));
         imagefilter($this->image, IMG_FILTER_CONTRAST, $level);
         return $this;
     }
-    
+
     /**
      * Apply blur
      */
     public function blur(int $passes = 1): self
     {
+        $this->ensureImageLoaded();
+        $passes = max(1, min(10, $passes)); // Limit passes to prevent excessive processing
+
         for ($i = 0; $i < $passes; $i++) {
             imagefilter($this->image, IMG_FILTER_GAUSSIAN_BLUR);
         }
         return $this;
     }
-    
+
     /**
      * Sharpen image
      */
     public function sharpen(): self
     {
+        $this->ensureImageLoaded();
         imagefilter($this->image, IMG_FILTER_MEAN_REMOVAL);
         return $this;
     }
-    
+
     /**
      * Add watermark
      */
-    public function watermark(string $watermarkPath, string $position = 'bottom-right', int $margin = 10): self
+    public function watermark(string $watermarkPath, string $position = 'bottom-right', int $margin = 10, int $opacity = 100): self
     {
-        $watermark = imagecreatefrompng($watermarkPath);
+        $this->ensureImageLoaded();
+
+        if (!file_exists($watermarkPath)) {
+            throw new \RuntimeException("Watermark image not found: {$watermarkPath}");
+        }
+
+        $watermark = @imagecreatefrompng($watermarkPath);
+
+        if ($watermark === false) {
+            throw new \RuntimeException('Failed to load watermark image');
+        }
+
         $wmWidth = imagesx($watermark);
         $wmHeight = imagesy($watermark);
-        
+
         // Calculate position
-        switch ($position) {
-            case 'top-left':
-                $x = $margin;
-                $y = $margin;
-                break;
-            case 'top-right':
-                $x = $this->width - $wmWidth - $margin;
-                $y = $margin;
-                break;
-            case 'bottom-left':
-                $x = $margin;
-                $y = $this->height - $wmHeight - $margin;
-                break;
-            case 'bottom-right':
-            default:
-                $x = $this->width - $wmWidth - $margin;
-                $y = $this->height - $wmHeight - $margin;
-                break;
-            case 'center':
-                $x = ($this->width - $wmWidth) / 2;
-                $y = ($this->height - $wmHeight) / 2;
-                break;
+        [$x, $y] = $this->calculateWatermarkPosition($position, $wmWidth, $wmHeight, $margin);
+
+        // Apply opacity
+        if ($opacity < 100) {
+            $this->applyWatermarkOpacity($watermark, $opacity);
         }
-        
-        imagecopy($this->image, $watermark, (int) $x, (int) $y, 0, 0, $wmWidth, $wmHeight);
+
+        imagecopy($this->image, $watermark, $x, $y, 0, 0, $wmWidth, $wmHeight);
         imagedestroy($watermark);
-        
+
         return $this;
     }
-    
+
+    /**
+     * Calculate watermark position
+     */
+    private function calculateWatermarkPosition(string $position, int $wmWidth, int $wmHeight, int $margin): array
+    {
+        switch ($position) {
+            case 'top-left':
+                return [$margin, $margin];
+            case 'top-right':
+                return [$this->width - $wmWidth - $margin, $margin];
+            case 'bottom-left':
+                return [$margin, $this->height - $wmHeight - $margin];
+            case 'bottom-right':
+                return [$this->width - $wmWidth - $margin, $this->height - $wmHeight - $margin];
+            case 'center':
+                return [
+                    (int) (($this->width - $wmWidth) / 2),
+                    (int) (($this->height - $wmHeight) / 2)
+                ];
+            default:
+                throw new \InvalidArgumentException("Invalid watermark position: {$position}");
+        }
+    }
+
+    /**
+     * Apply opacity to watermark
+     */
+    private function applyWatermarkOpacity($watermark, int $opacity): void
+    {
+        $opacity = max(0, min(100, $opacity));
+        $alpha = (100 - $opacity) * 1.27;
+        imagefilter($watermark, IMG_FILTER_COLORIZE, 0, 0, 0, (int) $alpha);
+    }
+
     /**
      * Add text to image
      */
     public function text(string $text, int $x, int $y, int $size = 20, array $color = [0, 0, 0]): self
     {
+        $this->ensureImageLoaded();
+
         $textColor = imagecolorallocate($this->image, $color[0], $color[1], $color[2]);
-        
+
         // Use built-in font if TTF not available
         imagestring($this->image, $size, $x, $y, $text, $textColor);
-        
+
         return $this;
     }
-    
+
     /**
      * Save image to file
      */
     public function save(string $path, ?int $type = null): bool
     {
+        $this->ensureImageLoaded();
+
         $type = $type ?? $this->type ?? IMAGETYPE_JPEG;
-        
+
         $directory = dirname($path);
         if (!is_dir($directory)) {
-            mkdir($directory, 0755, true);
+            if (!mkdir($directory, 0755, true)) {
+                throw new \RuntimeException("Failed to create directory: {$directory}");
+            }
         }
-        
-        switch ($type) {
-            case IMAGETYPE_JPEG:
-                return imagejpeg($this->image, $path, $this->quality);
-            case IMAGETYPE_PNG:
-                $pngQuality = (int) (9 - ($this->quality / 100 * 9));
-                return imagepng($this->image, $path, $pngQuality);
-            case IMAGETYPE_GIF:
-                return imagegif($this->image, $path);
-            case IMAGETYPE_WEBP:
-                return imagewebp($this->image, $path, $this->quality);
-            default:
-                throw new \RuntimeException("Unsupported image type for saving");
+
+        if (!is_writable($directory)) {
+            throw new \RuntimeException("Directory is not writable: {$directory}");
         }
+
+        $result = false;
+
+        try {
+            switch ($type) {
+                case IMAGETYPE_JPEG:
+                    $result = imagejpeg($this->image, $path, $this->quality);
+                    break;
+                case IMAGETYPE_PNG:
+                    $pngQuality = (int) (9 - ($this->quality / 100 * 9));
+                    $result = imagepng($this->image, $path, $pngQuality);
+                    break;
+                case IMAGETYPE_GIF:
+                    $result = imagegif($this->image, $path);
+                    break;
+                case IMAGETYPE_WEBP:
+                    if (!function_exists('imagewebp')) {
+                        throw new \RuntimeException("WebP support not available");
+                    }
+                    $result = imagewebp($this->image, $path, $this->quality);
+                    break;
+                default:
+                    throw new \RuntimeException("Unsupported image type for saving");
+            }
+        } catch (\Exception $e) {
+            throw new \RuntimeException("Failed to save image: " . $e->getMessage());
+        }
+
+        if (!$result) {
+            throw new \RuntimeException("Failed to save image to: {$path}");
+        }
+
+        // Set file permissions
+        @chmod($path, 0644);
+
+        // Verify file was saved
+        if (!file_exists($path) || filesize($path) === 0) {
+            throw new \RuntimeException("Image file was not saved correctly");
+        }
+
+        return true;
     }
-    
+
     /**
      * Output image to browser
      */
     public function output(?int $type = null): void
     {
+        $this->ensureImageLoaded();
+
         $type = $type ?? $this->type ?? IMAGETYPE_JPEG;
-        
+
+        // Clear any previous output
+        if (ob_get_level()) {
+            ob_clean();
+        }
+
         switch ($type) {
             case IMAGETYPE_JPEG:
                 header('Content-Type: image/jpeg');
@@ -381,9 +550,11 @@ class Image
                 header('Content-Type: image/webp');
                 imagewebp($this->image, null, $this->quality);
                 break;
+            default:
+                throw new \RuntimeException("Unsupported image type for output");
         }
     }
-    
+
     /**
      * Get image dimensions
      */
@@ -394,13 +565,86 @@ class Image
             'height' => $this->height,
         ];
     }
-    
+
+    /**
+     * Get image resource
+     */
+    public function getResource(): ?GdImage
+    {
+        return $this->image;
+    }
+
+    /**
+     * Preserve transparency when creating new images
+     */
+    private function preserveTransparency($image): void
+    {
+        if ($this->type === IMAGETYPE_PNG || $this->type === IMAGETYPE_GIF) {
+            imagealphablending($image, false);
+            imagesavealpha($image, true);
+            $transparent = imagecolorallocatealpha($image, 0, 0, 0, 127);
+            imagefill($image, 0, 0, $transparent);
+        }
+    }
+
+    /**
+     * Check if there's enough memory to process image
+     */
+    private function checkMemory(int $width, int $height): void
+    {
+        $memoryNeeded = $width * $height * 4 * 1.8; // Rough estimate with safety margin
+        $memoryLimit = $this->getMemoryLimit();
+
+        if ($memoryLimit > 0 && $memoryNeeded > $memoryLimit - memory_get_usage()) {
+            throw new \RuntimeException(
+                'Insufficient memory to process image. Required: ' .
+                    round($memoryNeeded / 1024 / 1024, 2) . 'MB'
+            );
+        }
+    }
+
+    /**
+     * Get PHP memory limit in bytes
+     */
+    private function getMemoryLimit(): int
+    {
+        $memoryLimit = ini_get('memory_limit');
+
+        if ($memoryLimit === '-1') {
+            return -1; // No limit
+        }
+
+        $unit = strtolower(substr($memoryLimit, -1));
+        $value = (int) $memoryLimit;
+
+        switch ($unit) {
+            case 'g':
+                $value *= 1024;
+            case 'm':
+                $value *= 1024;
+            case 'k':
+                $value *= 1024;
+        }
+
+        return $value;
+    }
+
+    /**
+     * Ensure image is loaded
+     */
+    private function ensureImageLoaded(): void
+    {
+        if ($this->image === null) {
+            throw new \RuntimeException('No image loaded. Call load() first.');
+        }
+    }
+
     /**
      * Destroy image resource
      */
     public function __destruct()
     {
-        if (is_resource($this->image)) {
+        if ($this->image !== null && $this->image instanceof GdImage) {
             imagedestroy($this->image);
         }
     }
