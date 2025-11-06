@@ -7,6 +7,9 @@ namespace Plugs\Base\Model;
 use PDO;
 use PDOException;
 use Plugs\Database\Collection;
+use BadMethodCallException;
+use Exception;
+use DateTime;
 
 abstract class PlugModel
 {
@@ -25,7 +28,7 @@ abstract class PlugModel
     protected $softDelete = false;
     protected $deletedAtColumn = 'deleted_at';
     protected $appends = [];
-    protected $with = []; // Eager load by default
+    protected $with = [];
 
     // Query Builder Properties
     protected $query = [
@@ -38,24 +41,25 @@ abstract class PlugModel
         'limit' => null,
         'offset' => null,
         'withTrashed' => false,
-        'distinct' => false
+        'distinct' => false,
+        'bindings' => []
     ];
 
     // Model events & scopes
     protected static $booted = [];
     protected static $globalScopes = [];
     protected static $observers = [];
-    
+
     // Query logging & caching
     protected static $queryLog = [];
     protected static $enableQueryLog = false;
     protected static $queryCache = [];
     protected static $cacheEnabled = false;
-    protected static $cacheTTL = 3600; // 1 hour default
-    
+    protected static $cacheTTL = 3600;
+
     // Transaction tracking
     protected static $transactionDepth = 0;
-    
+
     // Model registry for polymorphic relations
     protected static $morphMap = [];
 
@@ -68,7 +72,7 @@ abstract class PlugModel
         }
     }
 
-    protected function bootIfNotBooted()
+    protected function bootIfNotBooted(): void
     {
         $class = static::class;
         if (!isset(static::$booted[$class])) {
@@ -77,12 +81,12 @@ abstract class PlugModel
         }
     }
 
-    protected static function boot()
+    protected static function boot(): void
     {
         // Override in child classes
     }
 
-    public static function setConnection(array $config)
+    public static function setConnection(array $config): void
     {
         $driver = $config['driver'] ?? 'mysql';
         $host = $config['host'] ?? 'localhost';
@@ -116,37 +120,37 @@ abstract class PlugModel
                     $dsn = "sqlsrv:Server={$host},{$port};Database={$database}";
                     break;
                 default:
-                    throw new \Exception("Unsupported database driver: {$driver}");
+                    throw new Exception("Unsupported database driver: {$driver}");
             }
 
             static::$connection = new PDO($dsn, $username, $password, $pdoOptions);
         } catch (PDOException $e) {
-            throw new \Exception("Database connection failed: " . $e->getMessage());
+            throw new Exception("Database connection failed: " . $e->getMessage());
         }
     }
 
-    protected static function getConnection()
+    protected static function getConnection(): PDO
     {
         if (!static::$connection) {
-            throw new \Exception('Database connection not set. Use Model::setConnection($config)');
+            throw new Exception('Database connection not set. Use Model::setConnection($config)');
         }
         return static::$connection;
     }
 
     // ==================== QUERY CACHING ====================
 
-    public static function enableCache(int $ttl = 3600)
+    public static function enableCache(int $ttl = 3600): void
     {
         static::$cacheEnabled = true;
         static::$cacheTTL = $ttl;
     }
 
-    public static function disableCache()
+    public static function disableCache(): void
     {
         static::$cacheEnabled = false;
     }
 
-    public static function flushCache()
+    public static function flushCache(): void
     {
         static::$queryCache = [];
     }
@@ -171,7 +175,7 @@ abstract class PlugModel
         return $cached['data'];
     }
 
-    protected function putInCache(string $key, $data)
+    protected function putInCache(string $key, $data): void
     {
         if (static::$cacheEnabled) {
             static::$queryCache[$key] = [
@@ -185,34 +189,34 @@ abstract class PlugModel
     {
         $clone = $this->cloneQuery();
         $ttl = $ttl ?? static::$cacheTTL;
-        
+
         $sql = $clone->buildSelectQuery();
         $bindings = $clone->getBindings();
         $cacheKey = $clone->getCacheKey($sql, $bindings);
-        
+
         $cached = $clone->getFromCache($cacheKey);
         if ($cached !== null) {
             return $cached;
         }
-        
+
         $result = $clone->get();
-        
+
         static::$queryCache[$cacheKey] = [
             'data' => $result,
             'expires' => time() + $ttl
         ];
-        
+
         return $result;
     }
 
     // ==================== QUERY LOGGING ====================
 
-    public static function enableQueryLog()
+    public static function enableQueryLog(): void
     {
         static::$enableQueryLog = true;
     }
 
-    public static function disableQueryLog()
+    public static function disableQueryLog(): void
     {
         static::$enableQueryLog = false;
     }
@@ -222,12 +226,12 @@ abstract class PlugModel
         return static::$queryLog;
     }
 
-    public static function flushQueryLog()
+    public static function flushQueryLog(): void
     {
         static::$queryLog = [];
     }
 
-    protected static function logQuery(string $sql, array $bindings, float $time)
+    protected static function logQuery(string $sql, array $bindings, float $time): void
     {
         if (static::$enableQueryLog) {
             static::$queryLog[] = [
@@ -242,14 +246,14 @@ abstract class PlugModel
     protected function executeQuery(string $sql, array $bindings = [])
     {
         $startTime = microtime(true);
-        
+
         try {
             $stmt = static::getConnection()->prepare($sql);
             $stmt->execute($bindings);
-            
+
             $time = microtime(true) - $startTime;
             static::logQuery($sql, $bindings, $time);
-            
+
             return $stmt;
         } catch (PDOException $e) {
             static::logQuery($sql, $bindings, microtime(true) - $startTime);
@@ -273,7 +277,7 @@ abstract class PlugModel
     public static function commit(): bool
     {
         if (static::$transactionDepth === 0) {
-            throw new \Exception('No active transaction to commit');
+            throw new Exception('No active transaction to commit');
         }
         static::$transactionDepth--;
         if (static::$transactionDepth === 0) {
@@ -286,7 +290,7 @@ abstract class PlugModel
     public static function rollBack(): bool
     {
         if (static::$transactionDepth === 0) {
-            throw new \Exception('No active transaction to rollback');
+            throw new Exception('No active transaction to rollback');
         }
         static::$transactionDepth--;
         if (static::$transactionDepth === 0) {
@@ -303,7 +307,7 @@ abstract class PlugModel
             $result = $callback();
             static::commit();
             return $result;
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             static::rollBack();
             throw $e;
         }
@@ -316,12 +320,12 @@ abstract class PlugModel
 
     // ==================== MODEL OBSERVERS ====================
 
-    public static function observe($observer)
+    public static function observe($observer): void
     {
         static::$observers[static::class][] = $observer;
     }
 
-    protected function fireObserverEvent(string $event, ...$args)
+    protected function fireObserverEvent(string $event, ...$args): void
     {
         $class = static::class;
         if (!isset(static::$observers[$class])) {
@@ -345,7 +349,7 @@ abstract class PlugModel
     {
         $rules = $rules ?? $this->rules;
         $messages = $messages ?? $this->messages;
-        
+
         if (empty($rules)) {
             return true;
         }
@@ -358,7 +362,7 @@ abstract class PlugModel
 
             foreach ($ruleList as $rule) {
                 if (!$this->validateRule($field, $value, $rule, $messages)) {
-                    break; // Stop on first error for this field
+                    break;
                 }
             }
         }
@@ -445,7 +449,7 @@ abstract class PlugModel
     {
         $data = json_decode($json, true);
         if (json_last_error() !== JSON_ERROR_NONE) {
-            throw new \Exception('Invalid JSON: ' . json_last_error_msg());
+            throw new Exception('Invalid JSON: ' . json_last_error_msg());
         }
         return $this->fill($data);
     }
@@ -468,24 +472,24 @@ abstract class PlugModel
     public function whereBetween(string $column, array $values)
     {
         if (count($values) !== 2) {
-            throw new \Exception('whereBetween requires exactly 2 values');
+            throw new Exception('whereBetween requires exactly 2 values');
         }
         return $this->where($column, '>=', $values[0])
-                    ->where($column, '<=', $values[1]);
+            ->where($column, '<=', $values[1]);
     }
 
     public function whereNotBetween(string $column, array $values)
     {
         if (count($values) !== 2) {
-            throw new \Exception('whereNotBetween requires exactly 2 values');
+            throw new Exception('whereNotBetween requires exactly 2 values');
         }
         return $this->where($column, '<', $values[0])
-                    ->orWhere($column, '>', $values[1]);
+            ->orWhere($column, '>', $values[1]);
     }
 
     public function whereDate(string $column, string $date)
     {
-        return $this->where("DATE({$column})", $date);
+        return $this->where($column, '=', $date);
     }
 
     public function whereYear(string $column, int $year)
@@ -505,28 +509,12 @@ abstract class PlugModel
 
     public function whereLike(string $column, string $value)
     {
-        $clone = $this->cloneQuery();
-        $clone->query['where'][] = [
-            'column' => $column,
-            'operator' => 'LIKE',
-            'value' => $value,
-            'boolean' => 'AND',
-            'type' => 'basic'
-        ];
-        return $clone;
+        return $this->where($column, 'LIKE', $value);
     }
 
     public function orWhereLike(string $column, string $value)
     {
-        $clone = $this->cloneQuery();
-        $clone->query['where'][] = [
-            'column' => $column,
-            'operator' => 'LIKE',
-            'value' => $value,
-            'boolean' => 'OR',
-            'type' => 'basic'
-        ];
-        return $clone;
+        return $this->orWhere($column, 'LIKE', $value);
     }
 
     public function search(string $column, string $term, bool $exact = false)
@@ -539,26 +527,42 @@ abstract class PlugModel
     {
         $clone = $this->cloneQuery();
         $pattern = "%{$term}%";
-        
-        foreach ($columns as $index => $column) {
-            if ($index === 0) {
-                $clone = $clone->whereLike($column, $pattern);
-            } else {
-                $clone = $clone->orWhereLike($column, $pattern);
+
+        $clone->query['where'][] = [
+            'type' => 'nested',
+            'boolean' => 'AND',
+            'query' => function ($query) use ($columns, $pattern) {
+                foreach ($columns as $index => $column) {
+                    if ($index === 0) {
+                        $query->where($column, 'LIKE', $pattern);
+                    } else {
+                        $query->orWhere($column, 'LIKE', $pattern);
+                    }
+                }
             }
-        }
-        
+        ];
+
         return $clone;
     }
 
     public function inRandomOrder()
     {
-        return $this->orderBy('RAND()');
+        return $this->orderByRaw('RAND()');
     }
 
     public function random(int $count = 1)
     {
         return $this->inRandomOrder()->limit($count)->get();
+    }
+
+    public function orderByRaw(string $expression)
+    {
+        $clone = $this->cloneQuery();
+        $clone->query['orderBy'][] = [
+            'type' => 'raw',
+            'expression' => $expression
+        ];
+        return $clone;
     }
 
     // ==================== SOFT DELETE ENHANCEMENTS ====================
@@ -568,12 +572,7 @@ abstract class PlugModel
         return static::query();
     }
 
-    public static function onlyTrashedStatic()
-    {
-        return static::query()->onlyTrashed();
-    }
-
-    public static function restoreAll()
+    public static function restoreAll(): bool
     {
         $instance = new static();
         if (!$instance->softDelete) {
@@ -582,14 +581,18 @@ abstract class PlugModel
 
         $sql = "UPDATE {$instance->table} SET {$instance->deletedAtColumn} = NULL 
                 WHERE {$instance->deletedAtColumn} IS NOT NULL";
-        
+
         $instance->executeQuery($sql);
         return true;
     }
 
-    public static function forceDeleteAll()
+    public static function forceDeleteAll(): bool
     {
         $instance = new static();
+        if (!$instance->softDelete) {
+            return false;
+        }
+
         $sql = "DELETE FROM {$instance->table} WHERE {$instance->deletedAtColumn} IS NOT NULL";
         $instance->executeQuery($sql);
         return true;
@@ -597,12 +600,12 @@ abstract class PlugModel
 
     // ==================== POLYMORPHIC RELATIONSHIPS ====================
 
-    public static function morphMap(array $map)
+    public static function morphMap(array $map): void
     {
         static::$morphMap = array_merge(static::$morphMap, $map);
     }
 
-    public static function getMorphedModel(string $alias)
+    public static function getMorphedModel(string $alias): string
     {
         return static::$morphMap[$alias] ?? $alias;
     }
@@ -615,7 +618,7 @@ abstract class PlugModel
 
         $class = $this->getAttribute($type);
         $class = static::getMorphedModel($class);
-        
+
         if (!$class) {
             return null;
         }
@@ -631,8 +634,8 @@ abstract class PlugModel
 
         $instance = new $related();
         return $instance->where($type, static::class)
-                       ->where($id, $this->getAttribute($localKey))
-                       ->get();
+            ->where($id, $this->getAttribute($localKey))
+            ->get();
     }
 
     protected function morphOne($related, $name, $type = null, $id = null, $localKey = null)
@@ -651,12 +654,10 @@ abstract class PlugModel
 
         $castType = $this->casts[$key];
 
-        // Handle encrypted casting
         if ($castType === 'encrypted') {
             return $this->decrypt($value);
         }
 
-        // Handle collection casting
         if ($castType === 'collection') {
             $data = is_string($value) ? json_decode($value, true) : $value;
             return new Collection(is_array($data) ? $data : []);
@@ -684,7 +685,7 @@ abstract class PlugModel
                 return is_string($value) ? json_decode($value) : $value;
             case 'datetime':
             case 'date':
-                return $value instanceof \DateTime ? $value : new \DateTime($value);
+                return $value instanceof DateTime ? $value : new DateTime($value);
             case 'timestamp':
                 return is_numeric($value) ? $value : strtotime($value);
             default:
@@ -694,13 +695,11 @@ abstract class PlugModel
 
     protected function encrypt(string $value): string
     {
-        // Simple encryption - replace with proper encryption in production
         return base64_encode($value);
     }
 
     protected function decrypt(string $value): string
     {
-        // Simple decryption - replace with proper decryption in production
         return base64_decode($value);
     }
 
@@ -719,7 +718,7 @@ abstract class PlugModel
         $instance = new static();
         $originalGuarded = $instance->guarded;
         $instance->guarded = [];
-        
+
         try {
             return $callback();
         } finally {
@@ -742,20 +741,19 @@ abstract class PlugModel
     protected function incrementOrDecrement(string $column, int $amount, string $type): bool
     {
         $operator = $type === 'increment' ? '+' : '-';
-        
+
         $sql = "UPDATE {$this->table} SET {$column} = {$column} {$operator} ? 
                 WHERE {$this->primaryKey} = ?";
-        
+
         $bindings = [$amount, $this->getAttribute($this->primaryKey)];
-        
+
         $this->executeQuery($sql, $bindings);
-        
-        // Update local attribute
+
         $current = $this->getAttribute($column) ?? 0;
         $new = $type === 'increment' ? $current + $amount : $current - $amount;
         $this->setAttribute($column, $new);
         $this->original[$column] = $new;
-        
+
         return true;
     }
 
@@ -774,7 +772,7 @@ abstract class PlugModel
     public static function touchAll(array $ids): bool
     {
         $instance = new static();
-        
+
         if (!$instance->timestamps) {
             return false;
         }
@@ -782,10 +780,10 @@ abstract class PlugModel
         $placeholders = implode(',', array_fill(0, count($ids), '?'));
         $sql = "UPDATE {$instance->table} SET updated_at = ? 
                 WHERE {$instance->primaryKey} IN ({$placeholders})";
-        
+
         $bindings = array_merge([date('Y-m-d H:i:s')], $ids);
         $instance->executeQuery($sql, $bindings);
-        
+
         return true;
     }
 
@@ -796,11 +794,11 @@ abstract class PlugModel
         $instance = new static();
         $stmt = $instance->executeQuery($sql, $bindings);
         $results = $stmt->fetchAll(PDO::FETCH_ASSOC);
-        
+
         $models = array_map(function ($result) use ($instance) {
             return $instance->newFromBuilder($result);
         }, $results);
-        
+
         return new Collection($models);
     }
 
@@ -829,24 +827,24 @@ abstract class PlugModel
         $instance = new static();
         $columns = array_keys($records[0]);
         $columnList = implode(', ', $columns);
-        
+
         $placeholders = '(' . implode(', ', array_fill(0, count($columns), '?')) . ')';
         $values = implode(', ', array_fill(0, count($records), $placeholders));
-        
+
         $sql = "INSERT INTO {$instance->table} ({$columnList}) VALUES {$values}";
-        
+
         $bindings = [];
         foreach ($records as $record) {
             foreach ($columns as $column) {
                 $bindings[] = $record[$column] ?? null;
             }
         }
-        
+
         try {
             $instance->executeQuery($sql, $bindings);
             return true;
         } catch (PDOException $e) {
-            throw new \Exception("Batch insert failed: " . $e->getMessage());
+            throw new Exception("Batch insert failed: " . $e->getMessage());
         }
     }
 
@@ -857,17 +855,17 @@ abstract class PlugModel
         }
 
         static::beginTransaction();
-        
+
         try {
             $instance = new static();
             foreach ($records as $record) {
                 if (!isset($record[$instance->primaryKey])) {
-                    throw new \Exception('Each record must have a primary key for batch update');
+                    throw new Exception('Each record must have a primary key for batch update');
                 }
-                
+
                 $id = $record[$instance->primaryKey];
                 unset($record[$instance->primaryKey]);
-                
+
                 $setClauses = [];
                 $bindings = [];
                 foreach ($record as $key => $value) {
@@ -875,16 +873,16 @@ abstract class PlugModel
                     $bindings[] = $value;
                 }
                 $bindings[] = $id;
-                
+
                 $sql = "UPDATE {$instance->table} SET " . implode(', ', $setClauses) .
-                       " WHERE {$instance->primaryKey} = ?";
-                
+                    " WHERE {$instance->primaryKey} = ?";
+
                 $instance->executeQuery($sql, $bindings);
             }
-            
+
             static::commit();
             return true;
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             static::rollBack();
             throw $e;
         }
@@ -898,78 +896,79 @@ abstract class PlugModel
 
         $instance = new static();
         $columns = array_keys($records[0]);
-        
+
         if (empty($updateColumns)) {
             $updateColumns = array_diff($columns, $uniqueKeys);
         }
-        
-        $updateClause = implode(', ', array_map(function($col) {
+
+        $updateClause = implode(', ', array_map(function ($col) {
             return "{$col} = VALUES({$col})";
         }, $updateColumns));
-        
+
         $columnList = implode(', ', $columns);
         $placeholders = '(' . implode(', ', array_fill(0, count($columns), '?')) . ')';
         $values = implode(', ', array_fill(0, count($records), $placeholders));
-        
+
         $sql = "INSERT INTO {$instance->table} ({$columnList}) VALUES {$values} 
                 ON DUPLICATE KEY UPDATE {$updateClause}";
-        
+
         $bindings = [];
         foreach ($records as $record) {
             foreach ($columns as $column) {
                 $bindings[] = $record[$column] ?? null;
             }
         }
-        
+
         try {
             $instance->executeQuery($sql, $bindings);
             return true;
         } catch (PDOException $e) {
-            throw new \Exception("Upsert failed: " . $e->getMessage());
+            throw new Exception("Upsert failed: " . $e->getMessage());
         }
     }
 
     public static function chunk(int $size, callable $callback): bool
     {
         $page = 1;
-        
+
         do {
             $results = static::query()->skip(($page - 1) * $size)->take($size)->get();
-            
+
             if ($results->isEmpty()) {
                 break;
             }
-            
+
             if ($callback($results, $page) === false) {
                 return false;
             }
-            
+
             $page++;
         } while ($results->count() === $size);
-        
+
         return true;
     }
 
     public static function each(callable $callback, int $chunkSize = 1000): bool
     {
-        return static::chunk($chunkSize, function($records) use ($callback) {
+        return static::chunk($chunkSize, function ($records) use ($callback) {
             foreach ($records as $record) {
                 if ($callback($record) === false) {
                     return false;
                 }
             }
+            return true;
         });
     }
 
-    // ==================== CORE METHODS (Continued in next part) ====================
+    // ==================== CORE METHODS ====================
 
-    protected function getTableName()
+    protected function getTableName(): string
     {
         $className = (new \ReflectionClass($this))->getShortName();
         return strtolower($className) . 's';
     }
 
-    public function setTable($table)
+    public function setTable(string $table)
     {
         $this->table = $table;
         return $this;
@@ -985,7 +984,7 @@ abstract class PlugModel
         return $this;
     }
 
-    protected function isFillable($key)
+    protected function isFillable(string $key): bool
     {
         if (in_array('*', $this->guarded)) {
             return in_array($key, $this->fillable);
@@ -1022,7 +1021,7 @@ abstract class PlugModel
         return null;
     }
 
-    protected function getRelationValue($key)
+    protected function getRelationValue(string $key)
     {
         if (array_key_exists($key, $this->relations)) {
             return $this->relations[$key];
@@ -1062,7 +1061,9 @@ abstract class PlugModel
     protected function cloneQuery()
     {
         $clone = clone $this;
-        $clone->query = $this->query;
+        $clone->query = array_merge([], $this->query);
+        $clone->query['where'] = array_merge([], $this->query['where']);
+        $clone->query['bindings'] = array_merge([], $this->query['bindings']);
         return $clone;
     }
 
@@ -1080,7 +1081,7 @@ abstract class PlugModel
     {
         $result = static::find($id);
         if (!$result) {
-            throw new \Exception("Model not found with ID: {$id}");
+            throw new Exception("Model not found with ID: {$id}");
         }
         return $result;
     }
@@ -1107,7 +1108,7 @@ abstract class PlugModel
     public function where($column, $operator = null, $value = null)
     {
         $clone = $this->cloneQuery();
-        
+
         if (func_num_args() === 2) {
             $value = $operator;
             $operator = '=';
@@ -1121,13 +1122,15 @@ abstract class PlugModel
             'type' => 'basic'
         ];
 
+        $clone->query['bindings'][] = $value;
+
         return $clone;
     }
 
     public function orWhere($column, $operator = null, $value = null)
     {
         $clone = $this->cloneQuery();
-        
+
         if (func_num_args() === 2) {
             $value = $operator;
             $operator = '=';
@@ -1141,10 +1144,12 @@ abstract class PlugModel
             'type' => 'basic'
         ];
 
+        $clone->query['bindings'][] = $value;
+
         return $clone;
     }
 
-    public function whereIn($column, array $values)
+    public function whereIn(string $column, array $values)
     {
         $clone = $this->cloneQuery();
         $clone->query['where'][] = [
@@ -1153,10 +1158,13 @@ abstract class PlugModel
             'boolean' => 'AND',
             'type' => 'in'
         ];
+
+        $clone->query['bindings'] = array_merge($clone->query['bindings'], $values);
+
         return $clone;
     }
 
-    public function whereNotIn($column, array $values)
+    public function whereNotIn(string $column, array $values)
     {
         $clone = $this->cloneQuery();
         $clone->query['where'][] = [
@@ -1165,10 +1173,13 @@ abstract class PlugModel
             'boolean' => 'AND',
             'type' => 'notIn'
         ];
+
+        $clone->query['bindings'] = array_merge($clone->query['bindings'], $values);
+
         return $clone;
     }
 
-    public function whereNull($column)
+    public function whereNull(string $column)
     {
         $clone = $this->cloneQuery();
         $clone->query['where'][] = [
@@ -1179,7 +1190,7 @@ abstract class PlugModel
         return $clone;
     }
 
-    public function whereNotNull($column)
+    public function whereNotNull(string $column)
     {
         $clone = $this->cloneQuery();
         $clone->query['where'][] = [
@@ -1197,7 +1208,7 @@ abstract class PlugModel
         return $clone;
     }
 
-    public function having($column, $operator, $value)
+    public function having(string $column, string $operator, $value)
     {
         $clone = $this->cloneQuery();
         $clone->query['having'][] = [
@@ -1205,10 +1216,13 @@ abstract class PlugModel
             'operator' => $operator,
             'value' => $value
         ];
+
+        $clone->query['bindings'][] = $value;
+
         return $clone;
     }
 
-    public function orderBy($column, $direction = 'ASC')
+    public function orderBy(string $column, string $direction = 'ASC')
     {
         $clone = $this->cloneQuery();
         $clone->query['orderBy'][] = [
@@ -1218,41 +1232,41 @@ abstract class PlugModel
         return $clone;
     }
 
-    public function orderByDesc($column)
+    public function orderByDesc(string $column)
     {
         return $this->orderBy($column, 'DESC');
     }
 
-    public function latest($column = 'created_at')
+    public function latest(string $column = 'created_at')
     {
         return $this->orderBy($column, 'DESC');
     }
 
-    public function oldest($column = 'created_at')
+    public function oldest(string $column = 'created_at')
     {
         return $this->orderBy($column, 'ASC');
     }
 
-    public function limit($limit)
+    public function limit(int $limit)
     {
         $clone = $this->cloneQuery();
         $clone->query['limit'] = $limit;
         return $clone;
     }
 
-    public function take($limit)
+    public function take(int $limit)
     {
         return $this->limit($limit);
     }
 
-    public function offset($offset)
+    public function offset(int $offset)
     {
         $clone = $this->cloneQuery();
         $clone->query['offset'] = $offset;
         return $clone;
     }
 
-    public function skip($offset)
+    public function skip(int $offset)
     {
         return $this->offset($offset);
     }
@@ -1290,7 +1304,7 @@ abstract class PlugModel
     {
         $result = $this->first();
         if (!$result) {
-            throw new \Exception("No query results found");
+            throw new Exception("No query results found");
         }
         return $result;
     }
@@ -1316,7 +1330,7 @@ abstract class PlugModel
         return !$this->exists();
     }
 
-    public function paginate($perPage = 15, $page = 1): array
+    public function paginate(int $perPage = 15, int $page = 1): array
     {
         $clone = $this->cloneQuery();
         $total = $clone->count();
@@ -1357,23 +1371,23 @@ abstract class PlugModel
         return new Collection($models);
     }
 
-    protected function buildSelectQuery()
+    protected function buildSelectQuery(): string
     {
         $distinct = $this->query['distinct'] ? 'DISTINCT ' : '';
         $sql = "SELECT {$distinct}" . implode(', ', $this->query['select']) . " FROM {$this->table}";
 
         $whereClauses = [];
-        
+
         if (!empty($this->query['where'])) {
             $whereClauses[] = $this->buildWhereClause();
         }
-        
+
         if ($this->softDelete && !$this->query['withTrashed']) {
             $whereClauses[] = "{$this->deletedAtColumn} IS NULL";
         }
 
         if (!empty($whereClauses)) {
-            $sql .= " WHERE " . implode(' AND ', array_map(function($clause) {
+            $sql .= " WHERE " . implode(' AND ', array_map(function ($clause) {
                 return "({$clause})";
             }, $whereClauses));
         }
@@ -1383,7 +1397,7 @@ abstract class PlugModel
         }
 
         if (!empty($this->query['having'])) {
-            $havingClauses = array_map(function($having) {
+            $havingClauses = array_map(function ($having) {
                 return "{$having['column']} {$having['operator']} ?";
             }, $this->query['having']);
             $sql .= " HAVING " . implode(' AND ', $havingClauses);
@@ -1391,6 +1405,9 @@ abstract class PlugModel
 
         if (!empty($this->query['orderBy'])) {
             $orderByClauses = array_map(function ($order) {
+                if (isset($order['type']) && $order['type'] === 'raw') {
+                    return $order['expression'];
+                }
                 return "{$order['column']} {$order['direction']}";
             }, $this->query['orderBy']);
             $sql .= " ORDER BY " . implode(', ', $orderByClauses);
@@ -1407,7 +1424,7 @@ abstract class PlugModel
         return $sql;
     }
 
-    protected function buildWhereClause()
+    protected function buildWhereClause(): string
     {
         $clauses = [];
         foreach ($this->query['where'] as $index => $where) {
@@ -1431,9 +1448,12 @@ abstract class PlugModel
                 case 'notNull':
                     $clause = "{$where['column']} IS NOT NULL";
                     break;
+                case 'nested':
+                    $clause = $where['query']($this)->buildWhereClause();
+                    break;
             }
 
-            if ($index > 0) {
+            if ($index > 0 && $where['type'] !== 'nested') {
                 $clause = "{$where['boolean']} {$clause}";
             }
             $clauses[] = $clause;
@@ -1441,22 +1461,9 @@ abstract class PlugModel
         return implode(' ', $clauses);
     }
 
-    protected function getBindings()
+    protected function getBindings(): array
     {
-        $bindings = [];
-        foreach ($this->query['where'] as $where) {
-            if (isset($where['value'])) {
-                $bindings[] = $where['value'];
-            } elseif (isset($where['values'])) {
-                $bindings = array_merge($bindings, $where['values']);
-            }
-        }
-        
-        foreach ($this->query['having'] as $having) {
-            $bindings[] = $having['value'];
-        }
-        
-        return $bindings;
+        return $this->query['bindings'] ?? [];
     }
 
     protected function newFromBuilder(array $attributes)
@@ -1521,7 +1528,7 @@ abstract class PlugModel
             $this->fireObserverEvent('created');
             return true;
         } catch (PDOException $e) {
-            throw new \Exception("Insert failed: " . $e->getMessage());
+            throw new Exception("Insert failed: " . $e->getMessage());
         }
     }
 
@@ -1560,11 +1567,11 @@ abstract class PlugModel
             $this->fireObserverEvent('updated');
             return true;
         } catch (PDOException $e) {
-            throw new \Exception("Update failed: " . $e->getMessage());
+            throw new Exception("Update failed: " . $e->getMessage());
         }
     }
 
-    protected function getDirty()
+    protected function getDirty(): array
     {
         $dirty = [];
         foreach ($this->attributes as $key => $value) {
@@ -1696,7 +1703,7 @@ abstract class PlugModel
             $this->fireObserverEvent('deleted');
             return true;
         } catch (PDOException $e) {
-            throw new \Exception("Delete failed: " . $e->getMessage());
+            throw new Exception("Delete failed: " . $e->getMessage());
         }
     }
 
@@ -1744,7 +1751,13 @@ abstract class PlugModel
 
     public function onlyTrashed()
     {
-        return $this->whereNotNull($this->deletedAtColumn);
+        if (!$this->softDelete) {
+            return $this; // Return instance instead of throwing error for better chaining
+        }
+
+        $clone = $this->cloneQuery();
+        $clone->query['withTrashed'] = true; // Need to see trashed records to filter them
+        return $clone->whereNotNull($this->deletedAtColumn);
     }
 
     public function trashed(): bool
@@ -1881,44 +1894,7 @@ abstract class PlugModel
         return $result['avg'] ?? 0;
     }
 
-    public function __call($method, $parameters)
-    {
-        $scopeMethod = 'scope' . ucfirst($method);
-        if (method_exists($this, $scopeMethod)) {
-            array_unshift($parameters, $this);
-            return call_user_func_array([$this, $scopeMethod], $parameters);
-        }
-
-        throw new \BadMethodCallException("Method {$method} does not exist.");
-    }
-
-    public static function __callStatic($method, $parameters)
-    {
-        $instance = new static();
-
-        $staticMethods = [
-            'where', 'orWhere', 'whereIn', 'whereNotIn', 'whereNull', 'whereNotNull',
-            'whereBetween', 'whereNotBetween', 'whereDate', 'whereYear', 'whereMonth',
-            'whereDay', 'whereLike', 'orWhereLike', 'search', 'searchMultiple',
-            'orderBy', 'orderByDesc', 'latest', 'oldest', 'inRandomOrder', 'random',
-            'limit', 'take', 'offset', 'skip', 'first', 'firstOrFail', 'get', 'count',
-            'exists', 'doesntExist', 'paginate', 'max', 'min', 'sum', 'avg',
-            'withTrashed', 'onlyTrashed', 'with', 'select', 'addSelect', 'groupBy',
-            'having', 'when', 'unless', 'tap', 'distinct', 'remember'
-        ];
-
-        if (in_array($method, $staticMethods)) {
-            return call_user_func_array([$instance, $method], $parameters);
-        }
-
-        $scopeMethod = 'scope' . ucfirst($method);
-        if (method_exists($instance, $scopeMethod)) {
-            array_unshift($parameters, $instance);
-            return call_user_func_array([$instance, $scopeMethod], $parameters);
-        }
-
-        throw new \BadMethodCallException("Static method {$method} does not exist.");
-    }
+    // ==================== RELATIONSHIPS ====================
 
     protected function hasOne($related, $foreignKey = null, $localKey = null)
     {
@@ -1980,7 +1956,7 @@ abstract class PlugModel
     public function with($relations)
     {
         $clone = $this->cloneQuery();
-        
+
         if (is_string($relations)) {
             $relations = func_get_args();
         }
@@ -2025,10 +2001,98 @@ abstract class PlugModel
     protected function deleted() {}
     protected function restoring() {}
     protected function restored() {}
+
+    // ==================== MAGIC METHODS ====================
+
+    public function __call($method, $parameters)
+    {
+        $scopeMethod = 'scope' . ucfirst($method);
+        if (method_exists($this, $scopeMethod)) {
+            array_unshift($parameters, $this);
+            return call_user_func_array([$this, $scopeMethod], $parameters);
+        }
+
+        throw new BadMethodCallException("Method {$method} does not exist.");
+    }
+
+    public static function __callStatic($method, $parameters)
+    {
+        $instance = new static();
+
+        // Check if it's a query builder method
+        $queryMethods = [
+            'where',
+            'orWhere',
+            'whereIn',
+            'whereNotIn',
+            'whereNull',
+            'whereNotNull',
+            'whereBetween',
+            'whereNotBetween',
+            'whereDate',
+            'whereYear',
+            'whereMonth',
+            'whereDay',
+            'whereLike',
+            'orWhereLike',
+            'search',
+            'searchMultiple',
+            'orderBy',
+            'orderByDesc',
+            'latest',
+            'oldest',
+            'inRandomOrder',
+            'random',
+            'limit',
+            'take',
+            'offset',
+            'skip',
+            'first',
+            'firstOrFail',
+            'get',
+            'count',
+            'exists',
+            'doesntExist',
+            'paginate',
+            'max',
+            'min',
+            'sum',
+            'avg',
+            'withTrashed',
+            'onlyTrashed',
+            'select',
+            'addSelect',
+            'groupBy',
+            'having',
+            'when',
+            'unless',
+            'tap',
+            'distinct',
+            'remember'
+        ];
+
+        if (in_array($method, $queryMethods)) {
+            return call_user_func_array([$instance, $method], $parameters);
+        }
+
+        // Check for scope method
+        $scopeMethod = 'scope' . ucfirst($method);
+        if (method_exists($instance, $scopeMethod)) {
+            array_unshift($parameters, $instance);
+            return call_user_func_array([$instance, $scopeMethod], $parameters);
+        }
+
+        // Check for static finder methods
+        if (in_array($method, ['find', 'findMany', 'findOrFail', 'all'])) {
+            return call_user_func_array([$instance, $method], $parameters);
+        }
+
+        throw new BadMethodCallException("Static method {$method} does not exist.");
+    }
 }
 
 if (!function_exists('class_basename')) {
-    function class_basename($class)
+    function class_basename($class): string
     {
         $class = is_object($class) ? get_class($class) : $class;
         return basename(str_replace('\\', '/', $class));
