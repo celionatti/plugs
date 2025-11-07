@@ -1140,16 +1140,15 @@ abstract class PlugModel
     }
 
     // ==================== QUERY BUILDER METHODS WITH STATIC SUPPORT ====================
-
-    // public static function where($column, $operator = null, $value = null)
-    // {
-    //     return static::query()->instanceWhere($column, $operator, $value);
-    // }
     public static function where($column, $operator = null, $value = null)
     {
         $instance = static::query();
-        $args = func_get_args();  // Get actual arguments passed
-        return call_user_func_array([$instance, 'instanceWhere'], $args);  // Forward them
+
+        // Get the actual number of arguments passed to this static method
+        $args = func_get_args();
+
+        // Forward all arguments to instanceWhere
+        return call_user_func_array([$instance, 'instanceWhere'], $args);
     }
 
     public function instanceWhere($column, $operator = null, $value = null)
@@ -1189,7 +1188,13 @@ abstract class PlugModel
 
     public static function orWhere($column, $operator = null, $value = null)
     {
-        return static::query()->instanceOrWhere($column, $operator, $value);
+        $instance = static::query();
+
+        // Get the actual number of arguments passed to this static method
+        $args = func_get_args();
+
+        // Forward all arguments to instanceOrWhere
+        return call_user_func_array([$instance, 'instanceOrWhere'], $args);
     }
 
     public function instanceOrWhere($column, $operator = null, $value = null)
