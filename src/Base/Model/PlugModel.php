@@ -403,7 +403,7 @@ abstract class PlugModel
                 $column = $params[1] ?? $field;
                 $query = static::where($column, $value);
                 if ($this->exists) {
-                    $query = $query->where($this->primaryKey, '!=', $this->getAttribute($this->primaryKey));
+                    $query = $query->instanceWhere($this->primaryKey, '!=', $this->getAttribute($this->primaryKey));
                 }
                 $valid = !$query->exists();
                 $message = $message ?? "The {$field} has already been taken.";
@@ -474,8 +474,8 @@ abstract class PlugModel
         if (count($values) !== 2) {
             throw new Exception('whereBetween requires exactly 2 values');
         }
-        return $this->where($column, '>=', $values[0])
-            ->where($column, '<=', $values[1]);
+        return $this->instanceWhere($column, '>=', $values[0])
+            ->instanceWhere($column, '<=', $values[1]);
     }
 
     public function whereNotBetween(string $column, array $values)
@@ -483,38 +483,38 @@ abstract class PlugModel
         if (count($values) !== 2) {
             throw new Exception('whereNotBetween requires exactly 2 values');
         }
-        return $this->where($column, '<', $values[0])
-            ->orWhere($column, '>', $values[1]);
+        return $this->instanceWhere($column, '<', $values[0])
+            ->instanceOrWhere($column, '>', $values[1]);
     }
 
     public function whereDate(string $column, string $date)
     {
-        return $this->where($column, '=', $date);
+        return $this->instanceWhere($column, '=', $date);
     }
 
     public function whereYear(string $column, int $year)
     {
-        return $this->where("YEAR({$column})", $year);
+        return $this->instanceWhere("YEAR({$column})", $year);
     }
 
     public function whereMonth(string $column, int $month)
     {
-        return $this->where("MONTH({$column})", $month);
+        return $this->instanceWhere("MONTH({$column})", $month);
     }
 
     public function whereDay(string $column, int $day)
     {
-        return $this->where("DAY({$column})", $day);
+        return $this->instanceWhere("DAY({$column})", $day);
     }
 
     public function whereLike(string $column, string $value)
     {
-        return $this->where($column, 'LIKE', $value);
+        return $this->instanceWhere($column, 'LIKE', $value);
     }
 
     public function orWhereLike(string $column, string $value)
     {
-        return $this->orWhere($column, 'LIKE', $value);
+        return $this->instanceOrWhere($column, 'LIKE', $value);
     }
 
     public function search(string $column, string $term, bool $exact = false)
@@ -534,9 +534,9 @@ abstract class PlugModel
             'query' => function ($query) use ($columns, $pattern) {
                 foreach ($columns as $index => $column) {
                     if ($index === 0) {
-                        $query->where($column, 'LIKE', $pattern);
+                        $query->instanceWhere($column, 'LIKE', $pattern);
                     } else {
-                        $query->orWhere($column, 'LIKE', $pattern);
+                        $query->instanceOrWhere($column, 'LIKE', $pattern);
                     }
                 }
             }
@@ -633,8 +633,8 @@ abstract class PlugModel
         $localKey = $localKey ?? $this->primaryKey;
 
         $instance = new $related();
-        return $instance->where($type, static::class)
-            ->where($id, $this->getAttribute($localKey))
+        return $instance->instanceWhere($type, static::class)
+            ->instanceWhere($id, $this->getAttribute($localKey))
             ->get();
     }
 
@@ -1061,20 +1061,54 @@ abstract class PlugModel
     protected function cloneQuery()
     {
         $clone = clone $this;
-        $clone->query = array_merge([], $this->query);
-        $clone->query['where'] = array_merge([], $this->query['where']);
-        $clone->query['bindings'] = array_merge([], $this->query['bindings']);
+        $clone->query = [
+            'select' => $this->query['select'],
+            'where' => [],
+            'joins' => [],
+            'orderBy' => [],
+            'groupBy' => [],
+            'having' => [],
+            'limit' => $this->query['limit'],
+            'offset' => $this->query['offset'],
+            'withTrashed' => $this->query['withTrashed'],
+            'distinct' => $this->query['distinct'],
+            'bindings' => []
+        ];
+
+        // Deep copy where clauses
+        foreach ($this->query['where'] as $where) {
+            $clone->query['where'][] = $where;
+        }
+
+        // Deep copy bindings
+        foreach ($this->query['bindings'] as $binding) {
+            $clone->query['bindings'][] = $binding;
+        }
+
+        // Copy other arrays
+        foreach ($this->query['orderBy'] as $order) {
+            $clone->query['orderBy'][] = $order;
+        }
+
+        foreach ($this->query['groupBy'] as $group) {
+            $clone->query['groupBy'][] = $group;
+        }
+
+        foreach ($this->query['having'] as $having) {
+            $clone->query['having'][] = $having;
+        }
+
         return $clone;
     }
 
     public static function find($id)
     {
-        return static::query()->where((new static())->primaryKey, $id)->first();
+        return static::query()->instanceWhere((new static())->primaryKey, $id)->first();
     }
 
     public static function findMany(array $ids): Collection
     {
-        return static::query()->whereIn((new static())->primaryKey, $ids)->get();
+        return static::query()->instanceWhereIn((new static())->primaryKey, $ids)->get();
     }
 
     public static function findOrFail($id)
@@ -1105,14 +1139,40 @@ abstract class PlugModel
         return $clone;
     }
 
-    public function where($column, $operator = null, $value = null)
+    // ==================== QUERY BUILDER METHODS WITH STATIC SUPPORT ====================
+
+    // public static function where($column, $operator = null, $value = null)
+    // {
+    //     return static::query()->instanceWhere($column, $operator, $value);
+    // }
+    public static function where($column, $operator = null, $value = null)
+    {
+        $instance = static::query();
+        $args = func_get_args();  // Get actual arguments passed
+        return call_user_func_array([$instance, 'instanceWhere'], $args);  // Forward them
+    }
+
+    public function instanceWhere($column, $operator = null, $value = null)
     {
         $clone = $this->cloneQuery();
 
-        if (func_num_args() === 2) {
+        $args = func_num_args();
+
+        if ($args === 1) {
+            // where(['column' => 'value']) - array syntax
+            if (is_array($column)) {
+                foreach ($column as $key => $val) {
+                    $clone = $clone->instanceWhere($key, '=', $val);
+                }
+                return $clone;
+            }
+            throw new Exception("Invalid arguments for where clause");
+        } elseif ($args === 2) {
+            // where('column', 'value')
             $value = $operator;
             $operator = '=';
         }
+        // else $args === 3, use as provided
 
         $clone->query['where'][] = [
             'column' => $column,
@@ -1127,11 +1187,23 @@ abstract class PlugModel
         return $clone;
     }
 
-    public function orWhere($column, $operator = null, $value = null)
+    public static function orWhere($column, $operator = null, $value = null)
+    {
+        return static::query()->instanceOrWhere($column, $operator, $value);
+    }
+
+    public function instanceOrWhere($column, $operator = null, $value = null)
     {
         $clone = $this->cloneQuery();
 
-        if (func_num_args() === 2) {
+        $args = func_num_args();
+
+        if ($args === 1 && is_array($column)) {
+            foreach ($column as $key => $val) {
+                $clone = $clone->instanceOrWhere($key, '=', $val);
+            }
+            return $clone;
+        } elseif ($args === 2) {
             $value = $operator;
             $operator = '=';
         }
@@ -1149,7 +1221,12 @@ abstract class PlugModel
         return $clone;
     }
 
-    public function whereIn(string $column, array $values)
+    public static function whereIn(string $column, array $values)
+    {
+        return static::query()->instanceWhereIn($column, $values);
+    }
+
+    public function instanceWhereIn(string $column, array $values)
     {
         $clone = $this->cloneQuery();
         $clone->query['where'][] = [
@@ -1164,7 +1241,12 @@ abstract class PlugModel
         return $clone;
     }
 
-    public function whereNotIn(string $column, array $values)
+    public static function whereNotIn(string $column, array $values)
+    {
+        return static::query()->instanceWhereNotIn($column, $values);
+    }
+
+    public function instanceWhereNotIn(string $column, array $values)
     {
         $clone = $this->cloneQuery();
         $clone->query['where'][] = [
@@ -1179,7 +1261,12 @@ abstract class PlugModel
         return $clone;
     }
 
-    public function whereNull(string $column)
+    public static function whereNull(string $column)
+    {
+        return static::query()->instanceWhereNull($column);
+    }
+
+    public function instanceWhereNull(string $column)
     {
         $clone = $this->cloneQuery();
         $clone->query['where'][] = [
@@ -1190,7 +1277,12 @@ abstract class PlugModel
         return $clone;
     }
 
-    public function whereNotNull(string $column)
+    public static function whereNotNull(string $column)
+    {
+        return static::query()->instanceWhereNotNull($column);
+    }
+
+    public function instanceWhereNotNull(string $column)
     {
         $clone = $this->cloneQuery();
         $clone->query['where'][] = [
@@ -1222,7 +1314,12 @@ abstract class PlugModel
         return $clone;
     }
 
-    public function orderBy(string $column, string $direction = 'ASC')
+    public static function orderBy(string $column, string $direction = 'ASC')
+    {
+        return static::query()->instanceOrderBy($column, $direction);
+    }
+
+    public function instanceOrderBy(string $column, string $direction = 'ASC')
     {
         $clone = $this->cloneQuery();
         $clone->query['orderBy'][] = [
@@ -1232,19 +1329,34 @@ abstract class PlugModel
         return $clone;
     }
 
-    public function orderByDesc(string $column)
+    public static function orderByDesc(string $column)
     {
-        return $this->orderBy($column, 'DESC');
+        return static::orderBy($column, 'DESC');
     }
 
-    public function latest(string $column = 'created_at')
+    public function orderByDescInstance(string $column)
     {
-        return $this->orderBy($column, 'DESC');
+        return $this->instanceOrderBy($column, 'DESC');
     }
 
-    public function oldest(string $column = 'created_at')
+    public static function latest(string $column = 'created_at')
     {
-        return $this->orderBy($column, 'ASC');
+        return static::orderBy($column, 'DESC');
+    }
+
+    public function latestInstance(string $column = 'created_at')
+    {
+        return $this->instanceOrderBy($column, 'DESC');
+    }
+
+    public static function oldest(string $column = 'created_at')
+    {
+        return static::orderBy($column, 'ASC');
+    }
+
+    public function oldestInstance(string $column = 'created_at')
+    {
+        return $this->instanceOrderBy($column, 'ASC');
     }
 
     public function limit(int $limit)
@@ -1466,6 +1578,43 @@ abstract class PlugModel
         return $this->query['bindings'] ?? [];
     }
 
+    /**
+     * Get the SQL query that would be executed (for debugging)
+     */
+    public function toSql(): string
+    {
+        return $this->buildSelectQuery();
+    }
+
+    /**
+     * Get the bindings for debugging
+     */
+    public function getBindingsArray(): array
+    {
+        return $this->getBindings();
+    }
+
+    /**
+     * Debug the query - shows SQL and bindings
+     */
+    public function dd()
+    {
+        echo "SQL: " . $this->toSql() . "\n";
+        echo "Bindings: " . json_encode($this->getBindingsArray()) . "\n";
+        die();
+    }
+
+    public function dump()
+    {
+        echo "<pre>";
+        echo "SQL: " . $this->toSql() . "\n\n";
+        echo "Bindings: " . print_r($this->getBindingsArray(), true) . "\n\n";
+        echo "Query State: " . print_r($this->query, true);
+        echo "</pre>";
+        // return $this;
+        die();
+    }
+
     protected function newFromBuilder(array $attributes)
     {
         $instance = new static();
@@ -1631,7 +1780,7 @@ abstract class PlugModel
         $instance = static::query();
 
         foreach ($attributes as $key => $value) {
-            $instance = $instance->where($key, $value);
+            $instance = $instance->instanceWhere($key, $value);
         }
 
         $model = $instance->first();
@@ -1649,7 +1798,7 @@ abstract class PlugModel
         $instance = static::query();
 
         foreach ($attributes as $key => $value) {
-            $instance = $instance->where($key, $value);
+            $instance = $instance->instanceWhere($key, $value);
         }
 
         $model = $instance->first();
@@ -1666,7 +1815,7 @@ abstract class PlugModel
         $instance = static::query();
 
         foreach ($attributes as $key => $value) {
-            $instance = $instance->where($key, $value);
+            $instance = $instance->instanceWhere($key, $value);
         }
 
         $model = $instance->first();
@@ -1752,12 +1901,12 @@ abstract class PlugModel
     public function onlyTrashed()
     {
         if (!$this->softDelete) {
-            return $this; // Return instance instead of throwing error for better chaining
+            return $this;
         }
 
         $clone = $this->cloneQuery();
-        $clone->query['withTrashed'] = true; // Need to see trashed records to filter them
-        return $clone->whereNotNull($this->deletedAtColumn);
+        $clone->query['withTrashed'] = true;
+        return $clone->instanceWhereNotNull($this->deletedAtColumn);
     }
 
     public function trashed(): bool
@@ -1901,7 +2050,7 @@ abstract class PlugModel
         $foreignKey = $foreignKey ?? strtolower(class_basename(static::class)) . '_id';
         $localKey = $localKey ?? $this->primaryKey;
         $instance = new $related();
-        return $instance->where($foreignKey, $this->getAttribute($localKey))->first();
+        return $instance->instanceWhere($foreignKey, $this->getAttribute($localKey))->first();
     }
 
     protected function hasMany($related, $foreignKey = null, $localKey = null): Collection
@@ -1909,7 +2058,7 @@ abstract class PlugModel
         $foreignKey = $foreignKey ?? strtolower(class_basename(static::class)) . '_id';
         $localKey = $localKey ?? $this->primaryKey;
         $instance = new $related();
-        return $instance->where($foreignKey, $this->getAttribute($localKey))->get();
+        return $instance->instanceWhere($foreignKey, $this->getAttribute($localKey))->get();
     }
 
     protected function belongsTo($related, $foreignKey = null, $ownerKey = null)
@@ -1917,7 +2066,7 @@ abstract class PlugModel
         $foreignKey = $foreignKey ?? strtolower(class_basename($related)) . '_id';
         $ownerKey = $ownerKey ?? 'id';
         $instance = new $related();
-        return $instance->where($ownerKey, $this->getAttribute($foreignKey))->first();
+        return $instance->instanceWhere($ownerKey, $this->getAttribute($foreignKey))->first();
     }
 
     protected function belongsToMany($related, $pivotTable = null, $foreignPivotKey = null, $relatedPivotKey = null, $parentKey = null, $relatedKey = null): Collection
@@ -2006,6 +2155,12 @@ abstract class PlugModel
 
     public function __call($method, $parameters)
     {
+        // Handle instance method calls that should use instance variants
+        $instanceMethod = 'instance' . ucfirst($method);
+        if (method_exists($this, $instanceMethod)) {
+            return call_user_func_array([$this, $instanceMethod], $parameters);
+        }
+
         $scopeMethod = 'scope' . ucfirst($method);
         if (method_exists($this, $scopeMethod)) {
             array_unshift($parameters, $this);
@@ -2017,61 +2172,16 @@ abstract class PlugModel
 
     public static function __callStatic($method, $parameters)
     {
+        // For static calls, always create a new instance first
         $instance = new static();
 
-        // Check if it's a query builder method
-        $queryMethods = [
-            'where',
-            'orWhere',
-            'whereIn',
-            'whereNotIn',
-            'whereNull',
-            'whereNotNull',
-            'whereBetween',
-            'whereNotBetween',
-            'whereDate',
-            'whereYear',
-            'whereMonth',
-            'whereDay',
-            'whereLike',
-            'orWhereLike',
-            'search',
-            'searchMultiple',
-            'orderBy',
-            'orderByDesc',
-            'latest',
-            'oldest',
-            'inRandomOrder',
-            'random',
-            'limit',
-            'take',
-            'offset',
-            'skip',
-            'first',
-            'firstOrFail',
-            'get',
-            'count',
-            'exists',
-            'doesntExist',
-            'paginate',
-            'max',
-            'min',
-            'sum',
-            'avg',
-            'withTrashed',
-            'onlyTrashed',
-            'select',
-            'addSelect',
-            'groupBy',
-            'having',
-            'when',
-            'unless',
-            'tap',
-            'distinct',
-            'remember'
-        ];
+        // Check if there's a static method defined
+        if (method_exists(static::class, $method)) {
+            return forward_static_call_array([static::class, $method], $parameters);
+        }
 
-        if (in_array($method, $queryMethods)) {
+        // Check for instance method and call it
+        if (method_exists($instance, $method)) {
             return call_user_func_array([$instance, $method], $parameters);
         }
 
@@ -2082,12 +2192,7 @@ abstract class PlugModel
             return call_user_func_array([$instance, $scopeMethod], $parameters);
         }
 
-        // Check for static finder methods
-        if (in_array($method, ['find', 'findMany', 'findOrFail', 'all'])) {
-            return call_user_func_array([$instance, $method], $parameters);
-        }
-
-        throw new BadMethodCallException("Static method {$method} does not exist.");
+        throw new BadMethodCallException("Static method {$method} does not exist on " . get_called_class());
     }
 }
 
