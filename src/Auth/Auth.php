@@ -64,8 +64,8 @@ class Auth
         $this->config = array_merge([
             'password_algo' => PASSWORD_BCRYPT,
             'password_cost' => 12,
-            'session_key' => 'auth_user_id',
-            'remember_token_name' => 'remember_token',
+            'session_key' => env('AUTH_SESSION_ID') ?? 'auth_user_id',
+            'remember_token_name' => env('REMEMBER_TOEKN') ?? 'remember_token',
             'remember_days' => 30,
             'oauth' => []
         ], $config);
