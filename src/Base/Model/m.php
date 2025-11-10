@@ -5,17 +5,15 @@ declare(strict_types=1);
 namespace Plugs\Base\Model;
 
 use PDO;
-use DateTime;
-use Exception;
 use PDOException;
-use BadMethodCallException;
 use Plugs\Database\Collection;
-use Plugs\Database\Connection;
+use BadMethodCallException;
+use Exception;
+use DateTime;
 
-abstract class PlugModel
+abstract class m
 {
     protected static $connection;
-    protected static $connectionName = 'default';
     protected $table;
     protected $primaryKey = 'id';
     protected $fillable = [];
@@ -44,11 +42,8 @@ abstract class PlugModel
         'offset' => null,
         'withTrashed' => false,
         'distinct' => false,
-        // 'bindings' => []
+        'bindings' => []
     ];
-
-    // Separate bindings for better memory management
-    protected $bindings = [];
 
     // Model events & scopes
     protected static $booted = [];
@@ -67,9 +62,6 @@ abstract class PlugModel
 
     // Model registry for polymorphic relations
     protected static $morphMap = [];
-
-    // Prepared statement cache
-    protected static $preparedStatements = [];
 
     public function __construct(array $attributes = [])
     {
@@ -93,36 +85,6 @@ abstract class PlugModel
     {
         // Override in child classes
     }
-
-    /**
-     * Get key value
-     */
-    public function getKey()
-    {
-        return $this->getAttribute($this->primaryKey);
-    }
-
-    /**
-     * Get key name
-     */
-    public function getKeyName(): string
-    {
-        return $this->primaryKey;
-    }
-
-    /**
-     * Get table name
-     */
-    public function getTable(): string
-    {
-        return $this->table;
-    }
-
-    // ==================== CONNECTION MANAGEMENT ====================
-
-    /**
-     * Set connection using configuration array (original method)
-     */
 
     public static function setConnection(array $config): void
     {
@@ -167,83 +129,13 @@ abstract class PlugModel
         }
     }
 
-    /**
-     * Get connection name
-     */
-    public function getConnectionName(): string
+    protected static function getConnection(): PDO
     {
-        return static::$connectionName;
-    }
-
-    /**
-     * Set the connection name for Connection class usage (new method)
-     */
-    public static function connection(string $name): void
-    {
-        static::$connectionName = $name;
-    }
-
-    protected static function getConnection(): Connection|PDO
-    {
-        if (static::$connection instanceof PDO) {
-            return static::$connection;
+        if (!static::$connection) {
+            throw new Exception('Database connection not set. Use Model::setConnection($config)');
         }
-
-        // Otherwise use Connection class
-        return Connection::getInstance(null, static::$connectionName);
+        return static::$connection;
     }
-
-    /**
-     * Get the PDO instance (enhanced)
-     */
-    protected static function getPdo(): PDO
-    {
-        $connection = static::getConnection();
-
-        if ($connection instanceof PDO) {
-            return $connection;
-        }
-
-        // If using Connection class
-        return $connection->getPdo();
-    }
-
-    // ==================== GLOBAL SCOPES ====================
-
-    /**
-     * Add global scope
-     */
-    public static function addGlobalScope(string $name, callable $callback)
-    {
-        static::$globalScopes[static::class][$name] = $callback;
-    }
-
-    /**
-     * Remove global scope
-     */
-    public static function removeGlobalScope(string $name)
-    {
-        unset(static::$globalScopes[static::class][$name]);
-    }
-
-    /**
-     * Apply global scopes to query
-     */
-    protected function applyGlobalScopes()
-    {
-        $class = static::class;
-        if (!isset(static::$globalScopes[$class])) {
-            return $this;
-        }
-
-        $clone = $this;
-        foreach (static::$globalScopes[$class] as $scope) {
-            $clone = $scope($clone);
-        }
-
-        return $clone;
-    }
-
 
     // ==================== QUERY CACHING ====================
 
@@ -293,31 +185,6 @@ abstract class PlugModel
         }
     }
 
-    /**
-     * Find with caching
-     */
-    public static function findCached($id, int $ttl = 3600)
-    {
-        $instance = new static();
-        $cacheKey = md5(static::class . "find_{$id}");
-
-        $cached = $instance->getFromCache($cacheKey);
-        if ($cached !== null) {
-            return $cached;
-        }
-
-        $model = static::find($id);
-
-        if ($model) {
-            static::$queryCache[$cacheKey] = [
-                'data' => $model,
-                'expires' => time() + $ttl
-            ];
-        }
-
-        return $model;
-    }
-
     public function remember(?int $ttl = null)
     {
         $clone = $this->cloneQuery();
@@ -340,44 +207,6 @@ abstract class PlugModel
         ];
 
         return $result;
-    }
-
-    /**
-     * Preload models efficiently
-     */
-    public static function preload(array $ids): Collection
-    {
-        if (empty($ids)) {
-            return new Collection([]);
-        }
-
-        $ids = array_unique($ids);
-
-        return static::whereIn((new static())->primaryKey, $ids)->get();
-    }
-
-    /**
-     * Get memory statistics
-     */
-    public static function getMemoryStats(): array
-    {
-        return [
-            'query_cache_size' => count(static::$queryCache),
-            'query_log_size' => count(static::$queryLog),
-            'observers_count' => count(static::$observers),
-            'global_scopes_count' => isset(static::$globalScopes[static::class]) ?
-                count(static::$globalScopes[static::class]) : 0,
-        ];
-    }
-
-    /**
-     * Clear all caches and logs
-     */
-    public static function clearAll(): void
-    {
-        static::flushCache();
-        static::flushQueryLog();
-        static::$preparedStatements = [];
     }
 
     // ==================== QUERY LOGGING ====================
@@ -419,16 +248,8 @@ abstract class PlugModel
         $startTime = microtime(true);
 
         try {
-            $connection = static::getConnection();
-
-            if ($connection instanceof PDO) {
-                // Use original PDO execution
-                $stmt = $connection->prepare($sql);
-                $stmt->execute($bindings);
-            } else {
-                // Use Connection class
-                $stmt = $connection->query($sql, $bindings);
-            }
+            $stmt = static::getConnection()->prepare($sql);
+            $stmt->execute($bindings);
 
             $time = microtime(true) - $startTime;
             static::logQuery($sql, $bindings, $time);
@@ -907,49 +728,31 @@ abstract class PlugModel
 
     // ==================== INCREMENT & DECREMENT ====================
 
-    public function increment(string $column, int $amount = 1, array $extra = []): bool
+    public function increment(string $column, int $amount = 1): bool
     {
-        return $this->incrementOrDecrement($column, $amount, $extra, 'increment');
+        return $this->incrementOrDecrement($column, $amount, 'increment');
     }
 
-    public function decrement(string $column, int $amount = 1, array $extra = []): bool
+    public function decrement(string $column, int $amount = 1): bool
     {
-        return $this->incrementOrDecrement($column, $amount, $extra, 'decrement');
+        return $this->incrementOrDecrement($column, $amount, 'decrement');
     }
 
-    protected function incrementOrDecrement(string $column, int $amount, array $extra, string $type): bool
+    protected function incrementOrDecrement(string $column, int $amount, string $type): bool
     {
         $operator = $type === 'increment' ? '+' : '-';
 
-        $sets = ["{$column} = {$column} {$operator} ?"];
-        $bindings = [$amount];
+        $sql = "UPDATE {$this->table} SET {$column} = {$column} {$operator} ? 
+                WHERE {$this->primaryKey} = ?";
 
-        foreach ($extra as $key => $value) {
-            $sets[] = "{$key} = ?";
-            $bindings[] = $value;
-        }
-
-        if ($this->timestamps) {
-            $sets[] = "updated_at = ?";
-            $bindings[] = date('Y-m-d H:i:s');
-        }
-
-        $sql = "UPDATE {$this->table} SET " . implode(', ', $sets) .
-            " WHERE {$this->primaryKey} = ?";
-        $bindings[] = $this->getAttribute($this->primaryKey);
+        $bindings = [$amount, $this->getAttribute($this->primaryKey)];
 
         $this->executeQuery($sql, $bindings);
 
-        // Update local attributes
         $current = $this->getAttribute($column) ?? 0;
         $new = $type === 'increment' ? $current + $amount : $current - $amount;
         $this->setAttribute($column, $new);
         $this->original[$column] = $new;
-
-        foreach ($extra as $key => $value) {
-            $this->setAttribute($key, $value);
-            $this->original[$key] = $value;
-        }
 
         return true;
     }
@@ -1045,21 +848,6 @@ abstract class PlugModel
         }
     }
 
-    /**
-     * Insert and get ID
-     */
-    public static function insertGetId(array $values): string
-    {
-        $instance = new static();
-        $columns = implode(', ', array_keys($values));
-        $placeholders = implode(', ', array_fill(0, count($values), '?'));
-
-        $sql = "INSERT INTO {$instance->table} ({$columns}) VALUES ({$placeholders})";
-
-        $instance->executeQuery($sql, array_values($values));
-        return static::getPdo()->lastInsertId();
-    }
-
     public static function updateMany(array $records): bool
     {
         if (empty($records)) {
@@ -1137,40 +925,6 @@ abstract class PlugModel
         } catch (PDOException $e) {
             throw new Exception("Upsert failed: " . $e->getMessage());
         }
-    }
-
-    /**
-     * Raw update
-     */
-    public static function updateRaw(array $values, array $where = []): bool
-    {
-        $instance = new static();
-
-        $setClauses = [];
-        $bindings = [];
-        foreach ($values as $key => $value) {
-            $setClauses[] = "{$key} = ?";
-            $bindings[] = $value;
-        }
-
-        $sql = "UPDATE {$instance->table} SET " . implode(', ', $setClauses);
-
-        if (!empty($where)) {
-            $whereClauses = [];
-            foreach ($where as $key => $value) {
-                $whereClauses[] = "{$key} = ?";
-                $bindings[] = $value;
-            }
-            $sql .= " WHERE " . implode(' AND ', $whereClauses);
-        }
-
-        $instance->executeQuery($sql, $bindings);
-
-        if (static::$cacheEnabled) {
-            static::flushCache();
-        }
-
-        return true;
     }
 
     public static function chunk(int $size, callable $callback): bool
@@ -1318,15 +1072,20 @@ abstract class PlugModel
             'offset' => $this->query['offset'],
             'withTrashed' => $this->query['withTrashed'],
             'distinct' => $this->query['distinct'],
+            'bindings' => []
         ];
 
-        // Deep copy arrays
-        $clone->bindings = $this->bindings;
-
+        // Deep copy where clauses
         foreach ($this->query['where'] as $where) {
             $clone->query['where'][] = $where;
         }
 
+        // Deep copy bindings
+        foreach ($this->query['bindings'] as $binding) {
+            $clone->query['bindings'][] = $binding;
+        }
+
+        // Copy other arrays
         foreach ($this->query['orderBy'] as $order) {
             $clone->query['orderBy'][] = $order;
         }
@@ -1395,15 +1154,11 @@ abstract class PlugModel
     public function instanceWhere($column, $operator = null, $value = null)
     {
         $clone = $this->cloneQuery();
+
         $args = func_num_args();
 
         if ($args === 1) {
-            // Handle callable for nested where
-            if (is_callable($column)) {
-                return $this->whereNested($column);
-            }
-
-            // Handle array syntax
+            // where(['column' => 'value']) - array syntax
             if (is_array($column)) {
                 foreach ($column as $key => $val) {
                     $clone = $clone->instanceWhere($key, '=', $val);
@@ -1412,9 +1167,11 @@ abstract class PlugModel
             }
             throw new Exception("Invalid arguments for where clause");
         } elseif ($args === 2) {
+            // where('column', 'value')
             $value = $operator;
             $operator = '=';
         }
+        // else $args === 3, use as provided
 
         $clone->query['where'][] = [
             'column' => $column,
@@ -1424,28 +1181,7 @@ abstract class PlugModel
             'type' => 'basic'
         ];
 
-        $clone->bindings[] = $value;
-
-        return $clone;
-    }
-
-    /**
-     * Support for nested where clauses
-     */
-    protected function whereNested(callable $callback)
-    {
-        $clone = $this->cloneQuery();
-        $query = new static();
-
-        $callback($query);
-
-        $clone->query['where'][] = [
-            'type' => 'nested',
-            'query' => $query,
-            'boolean' => 'AND'
-        ];
-
-        $clone->bindings = array_merge($clone->bindings, $query->bindings);
+        $clone->query['bindings'][] = $value;
 
         return $clone;
     }
@@ -1562,36 +1298,6 @@ abstract class PlugModel
         return $clone;
     }
 
-    /**
-     * Raw where clause
-     */
-    public function whereRaw(string $sql, array $bindings = [])
-    {
-        $clone = $this->cloneQuery();
-        $clone->query['where'][] = [
-            'type' => 'raw',
-            'sql' => $sql,
-            'boolean' => 'AND'
-        ];
-        $clone->bindings = array_merge($clone->bindings, $bindings);
-        return $clone;
-    }
-
-    /**
-     * Raw or where clause
-     */
-    public function orWhereRaw(string $sql, array $bindings = [])
-    {
-        $clone = $this->cloneQuery();
-        $clone->query['where'][] = [
-            'type' => 'raw',
-            'sql' => $sql,
-            'boolean' => 'OR'
-        ];
-        $clone->bindings = array_merge($clone->bindings, $bindings);
-        return $clone;
-    }
-
     public function groupBy(...$columns)
     {
         $clone = $this->cloneQuery();
@@ -1663,49 +1369,6 @@ abstract class PlugModel
         $clone = $this->cloneQuery();
         $clone->query['limit'] = $limit;
         return $clone;
-    }
-
-    // ==================== NEW UTILITY METHODS ====================
-
-    /**
-     * Get single record or throw if multiple/no records
-     */
-    public function sole()
-    {
-        $results = $this->take(2)->get();
-
-        if ($results->count() === 0) {
-            throw new Exception("No records found");
-        }
-
-        if ($results->count() > 1) {
-            throw new Exception("Multiple records found");
-        }
-
-        return $results->first();
-    }
-
-    /**
-     * Get single column value from first result
-     */
-    public function value(string $column)
-    {
-        $result = $this->first();
-        return $result ? $result->getAttribute($column) : null;
-    }
-
-    /**
-     * Pluck column values
-     */
-    public function pluck(string $column, ?string $key = null)
-    {
-        $results = $this->get();
-
-        if ($key) {
-            return $results->pluck($column, $key);
-        }
-
-        return $results->pluck($column);
     }
 
     public function take(int $limit)
@@ -1784,34 +1447,6 @@ abstract class PlugModel
         return !$this->exists();
     }
 
-    /**
-     * Simple pagination without total count
-     */
-    public function simplePaginate(int $perPage = 15, int $page = 1): array
-    {
-        $clone = $this->cloneQuery();
-        $clone->query['limit'] = $perPage + 1;
-        $clone->query['offset'] = ($page - 1) * $perPage;
-        $items = $clone->get();
-
-        $hasMore = $items->count() > $perPage;
-        if ($hasMore) {
-            $items = $items->take($perPage);
-        }
-
-        return [
-            'data' => $items,
-            'current_page' => $page,
-            'per_page' => $perPage,
-            'from' => (($page - 1) * $perPage) + 1,
-            'to' => (($page - 1) * $perPage) + $items->count(),
-            'has_more' => $hasMore,
-            'next_page_url' => $hasMore ? "?page=" . ($page + 1) : null,
-            'prev_page_url' => $page > 1 ? "?page=" . ($page - 1) : null,
-            'path' => '?page='
-        ];
-    }
-
     public function paginate(int $perPage = 15, int $page = 1): array
     {
         $clone = $this->cloneQuery();
@@ -1835,53 +1470,6 @@ abstract class PlugModel
             'prev_page_url' => $page > 1 ? "?page=" . ($page - 1) : null,
             'path' => '?page='
         ];
-    }
-
-    /**
-     * Chunk by ID for better performance with large datasets
-     */
-    public static function chunkById(int $size, callable $callback, ?string $column = null): bool
-    {
-        $instance = new static();
-        $column = $column ?? $instance->primaryKey;
-        $lastId = 0;
-
-        do {
-            $results = static::query()
-                ->where($column, '>', $lastId)
-                ->orderBy($column)
-                ->limit($size)
-                ->get();
-
-            if ($results->isEmpty()) {
-                break;
-            }
-
-            if ($callback($results) === false) {
-                return false;
-            }
-
-            $lastId = $results->last()->getAttribute($column);
-            unset($results);
-        } while (true);
-
-        return true;
-    }
-
-    /**
-     * Cursor for memory-efficient iteration
-     */
-    public static function cursor()
-    {
-        $instance = new static();
-        $sql = $instance->buildSelectQuery();
-        $bindings = $instance->bindings;
-
-        $stmt = $instance->executeQuery($sql, $bindings);
-
-        while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
-            yield $instance->newFromBuilder($row);
-        }
     }
 
     public function get(): Collection
@@ -2331,37 +1919,6 @@ abstract class PlugModel
         return $this->softDelete && !is_null($this->getAttribute($this->deletedAtColumn));
     }
 
-    /**
-     * Destroy multiple records efficiently
-     */
-    public static function destroyMany(array $ids): int
-    {
-        if (empty($ids)) {
-            return 0;
-        }
-
-        $instance = new static();
-
-        if ($instance->softDelete) {
-            $placeholders = implode(',', array_fill(0, count($ids), '?'));
-            $sql = "UPDATE {$instance->table} SET {$instance->deletedAtColumn} = ? 
-                    WHERE {$instance->primaryKey} IN ({$placeholders})";
-            $bindings = array_merge([date('Y-m-d H:i:s')], $ids);
-        } else {
-            $placeholders = implode(',', array_fill(0, count($ids), '?'));
-            $sql = "DELETE FROM {$instance->table} WHERE {$instance->primaryKey} IN ({$placeholders})";
-            $bindings = $ids;
-        }
-
-        $stmt = $instance->executeQuery($sql, $bindings);
-
-        if (static::$cacheEnabled) {
-            static::flushCache();
-        }
-
-        return $stmt->rowCount();
-    }
-
     public function refresh()
     {
         if (!$this->exists) {
@@ -2491,72 +2048,6 @@ abstract class PlugModel
         return $result['avg'] ?? 0;
     }
 
-    /**
-     * Get fresh instance with relations
-     */
-    public function fresh(array $with = [])
-    {
-        if (!$this->exists) {
-            return null;
-        }
-
-        $key = $this->getAttribute($this->primaryKey);
-
-        if (empty($with)) {
-            return static::find($key);
-        }
-
-        return static::where($this->primaryKey, $key)->with($with)->first();
-    }
-
-    /**
-     * Check if attributes were changed after save
-     */
-    public function wasChanged($attributes = null): bool
-    {
-        return $this->isDirty($attributes);
-    }
-
-    /**
-     * Replicate model
-     */
-    public function replicate(array $except = []): self
-    {
-        $defaults = [
-            $this->primaryKey,
-            'created_at',
-            'updated_at',
-        ];
-
-        if ($this->softDelete) {
-            $defaults[] = $this->deletedAtColumn;
-        }
-
-        $except = array_merge($defaults, $except);
-
-        $attributes = array_diff_key($this->attributes, array_flip($except));
-
-        $instance = new static();
-        $instance->attributes = $attributes;
-
-        return $instance;
-    }
-
-    /**
-     * Compare models
-     */
-    public function is(?self $model): bool
-    {
-        return $model instanceof static &&
-            $this->getAttribute($this->primaryKey) === $model->getAttribute($model->primaryKey) &&
-            $this->table === $model->table;
-    }
-
-    public function isNot(?self $model): bool
-    {
-        return !$this->is($model);
-    }
-
     // ==================== RELATIONSHIPS ====================
 
     protected function hasOne($related, $foreignKey = null, $localKey = null)
@@ -2618,51 +2109,21 @@ abstract class PlugModel
 
     public function with($relations)
     {
+        $clone = $this->cloneQuery();
+
         if (is_string($relations)) {
             $relations = func_get_args();
         }
 
-        $results = $this->get();
-
-        if ($results->isEmpty()) {
-            return $results;
-        }
+        $results = $clone->get();
 
         foreach ($relations as $relation) {
-            $this->eagerLoadRelation($results, $relation);
-        }
-
-        return $results;
-    }
-
-    protected function eagerLoadRelation(Collection $models, string $relation)
-    {
-        $firstModel = $models->first();
-
-        if (!method_exists($firstModel, $relation)) {
-            return;
-        }
-
-        // Load relation for each model
-        foreach ($models as $model) {
-            $model->load($relation);
-        }
-    }
-
-    /**
-     * Load missing relations
-     */
-    public function loadMissing($relations)
-    {
-        $relations = is_string($relations) ? func_get_args() : $relations;
-
-        foreach ($relations as $relation) {
-            if (!isset($this->relations[$relation])) {
-                $this->load($relation);
+            foreach ($results as $model) {
+                $model->load($relation);
             }
         }
 
-        return $this;
+        return $results;
     }
 
     public function load($relation)
@@ -2737,22 +2198,6 @@ abstract class PlugModel
         }
 
         throw new BadMethodCallException("Static method {$method} does not exist on " . get_called_class());
-    }
-
-    public function __toString(): string
-    {
-        return $this->toJson();
-    }
-
-    public function __debugInfo(): array
-    {
-        return [
-            'attributes' => $this->attributes,
-            'original' => $this->original,
-            'relations' => $this->relations,
-            'exists' => $this->exists,
-            'table' => $this->table,
-        ];
     }
 }
 
