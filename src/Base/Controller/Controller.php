@@ -48,49 +48,44 @@ abstract class Controller
             if (config('app.debug', false)) {
                 throw $e;
             }
-
-            // return ResponseFactory::html(
-            //     '<h1>View Error</h1><p>Unable to render view.</p>',
-            //     500
-            // );
             return ResponseFactory::html(
         '<html>
-        <head>
-            <style>
-                body {
-                    display: flex;
-                    justify-content: center;
-                    align-items: center;
-                    min-height: 100vh;
-                    margin: 0;
-                    font-family: ui-sans-serif, system-ui, -apple-system, sans-serif;
-                    background-color: #000000;
-                    color: #6b7280;
-                }
-                .container {
-                    text-align: center;
-                    max-width: 400px;
-                    padding: 2rem;
-                }
-                .message {
-                    font-size: 1.125rem;
-                    line-height: 1.6;
-                    margin: 1.5rem 0;
-                }
-            </style>
-        </head>
-        <body>
-            <div class="container">
-                <h1>500 | View Error</h1>
-                <div class="message">
-                    Unable to render view. Please try again later.
-                </div>
-                <a href="/" style="color: #3b82f6; text-decoration: none;">Go to Homepage</a>
-            </div>
-        </body>
-    </html>',
-        500
-    );
+                <head>
+                    <style>
+                        body {
+                            display: flex;
+                            justify-content: center;
+                            align-items: center;
+                            min-height: 100vh;
+                            margin: 0;
+                            font-family: ui-sans-serif, system-ui, -apple-system, sans-serif;
+                            background-color: #000000;
+                            color: #6b7280;
+                        }
+                        .container {
+                            text-align: center;
+                            max-width: 400px;
+                            padding: 2rem;
+                        }
+                        .message {
+                            font-size: 1.125rem;
+                            line-height: 1.6;
+                            margin: 1.5rem 0;
+                        }
+                    </style>
+                </head>
+                <body>
+                    <div class="container">
+                        <h1>500 | View Error</h1>
+                        <div class="message">
+                            Unable to render view. Please try again later.
+                        </div>
+                        <a href="/" style="color: #3b82f6; text-decoration: none;">Go to Homepage</a>
+                    </div>
+                </body>
+            </html>',
+                500
+            );
         }
     }
 

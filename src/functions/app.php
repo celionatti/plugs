@@ -212,12 +212,12 @@ if (!function_exists('url')) {
     }
 }
 
-if (!function_exists('asset')) {
-    function asset(string $path): string
-    {
-        return url('assets/' . ltrim($path, '/'));
-    }
-}
+// if (!function_exists('asset')) {
+//     function asset(string $path): string
+//     {
+//         return url('assets/' . ltrim($path, '/'));
+//     }
+// }
 
 if (!function_exists('now')) {
     function now(): int
