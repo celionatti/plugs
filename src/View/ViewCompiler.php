@@ -205,7 +205,7 @@ class ViewCompiler
         $content = $this->compilePhp($content);
         $content = $this->compileRawEchos($content);
         $content = $this->compileEscapedEchos($content);
-        // $content = $this->compileCustomDirectives($content);
+        $content = $this->compileCustomDirectives($content);
         $content = $this->compileConditionals($content);
         $content = $this->compileLoops($content);
         $content = $this->compileIncludes($content);
@@ -654,6 +654,22 @@ class ViewCompiler
             '<?php echo json_encode($1, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT); ?>',
             $content
         );
+    }
+
+    private function compileCustomDirectives(string $content): string
+    {
+        foreach ($this->customDirectives as $name => $handler) {
+            $content = preg_replace_callback(
+                '/\@' . preg_quote($name, '/') . '(?:\s*\((.*?)\))?/s',
+                function ($matches) use ($handler) {
+                    $expression = $matches[1] ?? null;
+                    return call_user_func($handler, $expression);
+                },
+                $content
+            );
+        }
+
+        return $content;
     }
 
     /**
