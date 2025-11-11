@@ -13,185 +13,141 @@ namespace Plugs\View;
 | It manages view paths, caching, and shared data across views.
 */
 
+use RuntimeException;
+use Throwable;
+
 class ViewEngine
 {
-    private $viewPath;
-    private $cachePath;
-    private $cacheEnabled;
-    private $sharedData = [];
-    private $componentPath;
-    private $viewCompiler;
+    private string $viewPath;
+    private string $cachePath;
+    private bool $cacheEnabled;
+    private array $sharedData = [];
+    private string $componentPath;
+    private ViewCompiler $viewCompiler;
+    private array $customDirectives = [];
+
+    private const VIEW_EXTENSIONS = ['.plug.php', '.php', '.html'];
+    private const PRODUCTION_ERROR_LEVEL = E_ERROR | E_PARSE | E_CORE_ERROR | E_COMPILE_ERROR;
 
     public function __construct(string $viewPath, string $cachePath, bool $cacheEnabled = false)
     {
-        $this->viewPath = rtrim($viewPath, '/');
-        $this->cachePath = rtrim($cachePath, '/');
+        $this->viewPath = rtrim($viewPath, '/\\');
+        $this->cachePath = rtrim($cachePath, '/\\');
         $this->cacheEnabled = $cacheEnabled;
-        $this->componentPath = $this->viewPath . '/components';
+        $this->componentPath = $this->viewPath . DIRECTORY_SEPARATOR . 'components';
 
-        if (!is_dir($this->cachePath)) {
-            mkdir($this->cachePath, 0755, true);
-        }
+        $this->ensureDirectoryExists($this->cachePath);
+        $this->ensureDirectoryExists($this->componentPath);
 
-        if (!is_dir($this->componentPath)) {
-            mkdir($this->componentPath, 0755, true);
-        }
-
-        // Initialize compiler
         $this->viewCompiler = new ViewCompiler($this);
+        $this->registerDefaultDirectives();
     }
 
-    /**
-     * Render a component
-     */
-    public function renderComponent(string $componentName, array $data = []): string
+    public function directive(string $name, callable $handler): void
     {
-        $componentFile = $this->getComponentPath($componentName);
-
-        if (!file_exists($componentFile)) {
-            throw new \RuntimeException("Component [{$componentName}] not found at {$componentFile}");
-        }
-
-        // Handle slot content if provided via slot ID
-        $slotId = $data['__slot_id'] ?? null;
-        unset($data['__slot_id']);
-
-        $slot = '';
-        if ($slotId) {
-            // Get the compiled slot content
-            $compiledSlot = $this->viewCompiler->getCompiledSlot($slotId);
-
-            // Execute the compiled slot with current data context
-            if (!empty($compiledSlot)) {
-                $slot = $this->executeCompiledContent($compiledSlot, $data);
-            }
-        }
-
-        // Merge data and add slot variable
-        $componentData = array_merge($data, ['slot' => $slot]);
-
-        return $this->render($componentName, $componentData, true);
+        $this->customDirectives[$name] = $handler;
+        $this->viewCompiler->registerCustomDirective($name, $handler);
     }
 
-    /**
-     * Execute compiled PHP content with provided data
-     */
-    private function executeCompiledContent(string $compiledContent, array $data): string
+    public function hasDirective(string $name): bool
     {
-        // Remove any strict_types declarations from compiled content
-        $compiledContent = $this->stripStrictTypesDeclaration($compiledContent);
-
-        // Extract data into local scope
-        extract(array_merge($this->sharedData, $data), EXTR_SKIP);
-
-        // Ensure view engine is available
-        $view = $this;
-
-        // Initialize template variables
-        $__sections = $__sections ?? [];
-        $__stacks = $__stacks ?? [];
-
-        // Suppress undefined variable warnings in production
-        $previousErrorLevel = error_reporting();
-        if (!$this->isDebugMode()) {
-            error_reporting($previousErrorLevel & ~E_WARNING & ~E_NOTICE);
-        }
-
-        ob_start();
-        try {
-            // Execute the compiled content
-            eval('?>' . $compiledContent);
-            $result = ob_get_clean();
-            error_reporting($previousErrorLevel);
-            return $result;
-        } catch (\Throwable $e) {
-            ob_end_clean();
-            error_reporting($previousErrorLevel);
-            throw new \RuntimeException(
-                "Error executing compiled content: " . $e->getMessage(),
-                0,
-                $e
-            );
-        }
+        return isset($this->customDirectives[$name]);
     }
 
-    /**
-     * Check if debug mode is enabled
-     */
-    private function isDebugMode(): bool
+    public function getDirectives(): array
     {
-        // Check constant first
-        if (defined('APP_DEBUG')) {
-            return (bool) constant('APP_DEBUG');
-        }
-
-        // Check environment variables
-        if (isset($_ENV['APP_DEBUG'])) {
-            return filter_var($_ENV['APP_DEBUG'], FILTER_VALIDATE_BOOLEAN);
-        }
-
-        if (getenv('APP_DEBUG') !== false) {
-            return filter_var(getenv('APP_DEBUG'), FILTER_VALIDATE_BOOLEAN);
-        }
-
-        // Default to false (production mode)
-        return false;
+        return array_keys($this->customDirectives);
     }
 
-    /**
-     * Strip strict_types declaration from compiled content
-     * This is necessary because eval() cannot have declare() as the first statement
-     */
-    private function stripStrictTypesDeclaration(string $content): string
+    private function registerDefaultDirectives(): void
     {
-        // Remove declare(strict_types=1); from the beginning of PHP blocks
-        $content = preg_replace(
-            '/(<\?php\s+)declare\s*\(\s*strict_types\s*=\s*1\s*\)\s*;?\s*/i',
-            '$1',
-            $content
-        );
+        $this->directive('dd', function ($expression) {
+            return "<?php var_dump($expression); exit; ?>";
+        });
 
-        return $content;
-    }
+        $this->directive('dump', function ($expression) {
+            return "<?php var_dump($expression); ?>";
+        });
 
-    /**
-     * Get the path to a component file
-     */
-    private function getComponentPath(string $componentName): string
-    {
-        // Convert CamelCase to snake_case
-        $filename = preg_replace_callback('/([a-z])([A-Z])/', function ($matches) {
-            return $matches[1] . '_' . strtolower($matches[2]);
-        }, $componentName);
-        $filename = strtolower($filename);
+        $this->directive('env', function ($expression) {
+            return "<?php if (config('app.env') === $expression): ?>";
+        });
 
-        return "{$this->componentPath}/{$filename}.plug.php";
+        $this->directive('endenv', function () {
+            return "<?php endif; ?>";
+        });
+
+        $this->directive('production', function () {
+            return "<?php if (config('app.env') === 'production'): ?>";
+        });
+
+        $this->directive('endproduction', function () {
+            return "<?php endif; ?>";
+        });
+
+        $this->directive('auth', function () {
+            return "<?php if (function_exists('auth') && auth()->check()): ?>";
+        });
+
+        $this->directive('endauth', function () {
+            return "<?php endif; ?>";
+        });
+
+        $this->directive('guest', function () {
+            return "<?php if (function_exists('auth') && !auth()->check()): ?>";
+        });
+
+        $this->directive('endguest', function () {
+            return "<?php endif; ?>";
+        });
     }
 
     public function render(string $view, array $data = [], bool $isComponent = false): string
     {
         $data = array_merge($this->sharedData, $data);
-
-        // Always pass the view engine instance
         $data['view'] = $this;
 
-        $viewFile = $isComponent ? $this->getComponentPath($view) : $this->getViewPath($view);
+        $viewFile = $isComponent
+            ? $this->getComponentPath($view)
+            : $this->getViewPath($view);
 
         if (!file_exists($viewFile)) {
-            throw new \RuntimeException("View [{$view}] not found at {$viewFile}");
+            throw new RuntimeException(
+                sprintf('View [%s] not found at %s', $view, $viewFile)
+            );
         }
 
         if ($this->cacheEnabled) {
-            $compiled = $this->getCompiledPath($view . ($isComponent ? '_component' : ''));
-
-            if (!file_exists($compiled) || filemtime($viewFile) > filemtime($compiled)) {
-                $this->compile($viewFile, $compiled);
-            }
-
-            return $this->renderCompiled($compiled, $data);
+            return $this->renderCached($view, $viewFile, $data, $isComponent);
         }
 
         return $this->renderDirect($viewFile, $data);
+    }
+
+    public function renderComponent(string $componentName, array $data = []): string
+    {
+        $componentFile = $this->getComponentPath($componentName);
+
+        if (!file_exists($componentFile)) {
+            throw new RuntimeException(
+                sprintf('Component [%s] not found at %s', $componentName, $componentFile)
+            );
+        }
+
+        $slotId = $data['__slot_id'] ?? null;
+        unset($data['__slot_id']);
+
+        $slot = '';
+        if ($slotId) {
+            $compiledSlot = $this->viewCompiler->getCompiledSlot($slotId);
+            if (!empty($compiledSlot)) {
+                $slot = $this->executeCompiledContent($compiledSlot, $data);
+            }
+        }
+
+        $componentData = array_merge($data, ['slot' => $slot]);
+
+        return $this->render($componentName, $componentData, true);
     }
 
     public function share(string $key, $value): void
@@ -199,78 +155,99 @@ class ViewEngine
         $this->sharedData[$key] = $value;
     }
 
-    private function getViewPath(string $view): string
-    {
-        $view = str_replace('.', '/', $view);
-        $viewPath = "{$this->viewPath}/{$view}.plug.php";
-
-        // Prevent directory traversal
-        $realViewPath = realpath($viewPath);
-        $realBasePath = realpath($this->viewPath);
-
-        if ($realViewPath === false || strpos($realViewPath, $realBasePath) !== 0) {
-            throw new \RuntimeException("Invalid view path: {$view}");
-        }
-
-        return $viewPath;
-    }
-
-    private function getCompiledPath(string $view): string
-    {
-        return "{$this->cachePath}/" . md5($view) . '.php';
-    }
-
-    private function compile(string $viewFile, string $compiled): void
-    {
-        $content = file_get_contents($viewFile);
-        $content = $this->viewCompiler->compile($content);
-
-        // Strip strict_types from compiled content before saving
-        $content = $this->stripStrictTypesDeclaration($content);
-
-        file_put_contents($compiled, $content);
-    }
-
-    /**
-     * Check if a component exists
-     */
     public function componentExists(string $componentName): bool
     {
         return file_exists($this->getComponentPath($componentName));
     }
 
-    /**
-     * Get all available components
-     */
     public function getAvailableComponents(): array
     {
         $components = [];
-        $files = glob($this->componentPath . '/*.plug.php');
 
-        foreach ($files as $file) {
-            $filename = pathinfo($file, PATHINFO_FILENAME);
-            $componentName = str_replace('_', '', ucwords($filename, '_'));
-            $components[$componentName] = $file;
+        foreach (self::VIEW_EXTENSIONS as $extension) {
+            $pattern = $this->componentPath . DIRECTORY_SEPARATOR . '*' . $extension;
+            $files = glob($pattern);
+
+            foreach ($files as $file) {
+                $filename = pathinfo($file, PATHINFO_FILENAME);
+                $componentName = $this->snakeToPascalCase($filename);
+
+                if (!isset($components[$componentName])) {
+                    $components[$componentName] = $file;
+                }
+            }
         }
 
         return $components;
+    }
+
+    public function clearCache(): void
+    {
+        $this->viewCompiler->clearCache();
+
+        if ($this->cacheEnabled && is_dir($this->cachePath)) {
+            $pattern = $this->cachePath . DIRECTORY_SEPARATOR . '*.php';
+            $files = glob($pattern);
+
+            foreach ($files as $file) {
+                if (is_file($file)) {
+                    @unlink($file);
+                }
+            }
+        }
+    }
+
+    private function executeCompiledContent(string $compiledContent, array $data): string
+    {
+        $compiledContent = $this->stripStrictTypesDeclaration($compiledContent);
+
+        extract(array_merge($this->sharedData, $data), EXTR_SKIP);
+
+        $view = $this;
+        $__sections = $__sections ?? [];
+        $__stacks = $__stacks ?? [];
+
+        $previousErrorLevel = $this->suppressNonCriticalErrors();
+
+        ob_start();
+        try {
+            eval('?>' . $compiledContent);
+            $result = ob_get_clean();
+            error_reporting($previousErrorLevel);
+            return $result;
+        } catch (Throwable $e) {
+            ob_end_clean();
+            error_reporting($previousErrorLevel);
+            throw new RuntimeException(
+                sprintf('Error executing compiled content: %s', $e->getMessage()),
+                0,
+                $e
+            );
+        }
+    }
+
+    private function renderCached(string $view, string $viewFile, array $data, bool $isComponent): string
+    {
+        $cacheKey = $view . ($isComponent ? '_component' : '');
+        $compiled = $this->getCompiledPath($cacheKey);
+
+        if (!file_exists($compiled) || filemtime($viewFile) > filemtime($compiled)) {
+            $this->compile($viewFile, $compiled);
+        }
+
+        return $this->renderCompiled($compiled, $data);
     }
 
     private function renderCompiled(string $compiled, array $data): string
     {
         extract($data, EXTR_SKIP);
 
-        // Initialize template variables
         $__sections = [];
         $__stacks = [];
         $__extends = null;
         $__currentSection = null;
 
-        // Suppress undefined variable warnings in production
-        $previousErrorLevel = error_reporting();
-        if (!$this->isDebugMode()) {
-            error_reporting($previousErrorLevel & ~E_WARNING & ~E_NOTICE);
-        }
+        $previousErrorLevel = $this->suppressNonCriticalErrors();
 
         ob_start();
         try {
@@ -278,18 +255,63 @@ class ViewEngine
             $childContent = ob_get_clean();
             error_reporting($previousErrorLevel);
 
-            // Handle template inheritance
             if (isset($__extends) && $__extends) {
                 return $this->renderParent($__extends, $data, $__sections);
             }
 
             return $childContent;
-        } catch (\Throwable $e) {
+        } catch (Throwable $e) {
             ob_end_clean();
             error_reporting($previousErrorLevel);
-            throw new \RuntimeException(
-                "Error rendering compiled view: " . $e->getMessage() .
-                    "\nFile: " . $compiled . "\nLine: " . $e->getLine(),
+            throw new RuntimeException(
+                sprintf(
+                    'Error rendering compiled view: %s (File: %s, Line: %d)',
+                    $e->getMessage(),
+                    $compiled,
+                    $e->getLine()
+                ),
+                0,
+                $e
+            );
+        }
+    }
+
+    private function renderDirect(string $viewFile, array $data): string
+    {
+        $content = file_get_contents($viewFile);
+        $compiledContent = $this->viewCompiler->compile($content);
+        $compiledContent = $this->stripStrictTypesDeclaration($compiledContent);
+
+        extract($data, EXTR_SKIP);
+
+        $__sections = [];
+        $__stacks = [];
+        $__extends = null;
+        $__currentSection = null;
+
+        $previousErrorLevel = $this->suppressNonCriticalErrors();
+
+        ob_start();
+        try {
+            eval('?>' . $compiledContent);
+            $childContent = ob_get_clean();
+            error_reporting($previousErrorLevel);
+
+            if (isset($__extends) && $__extends) {
+                return $this->renderParentDirect($__extends, $data, $__sections);
+            }
+
+            return $childContent;
+        } catch (Throwable $e) {
+            ob_end_clean();
+            error_reporting($previousErrorLevel);
+            throw new RuntimeException(
+                sprintf(
+                    'Error rendering view: %s (File: %s, Line: %d)',
+                    $e->getMessage(),
+                    $viewFile,
+                    $e->getLine()
+                ),
                 0,
                 $e
             );
@@ -299,11 +321,13 @@ class ViewEngine
     private function renderParent(string $parentView, array $data, array $sections): string
     {
         $parentFile = $this->getViewPath($parentView);
+
         if (!file_exists($parentFile)) {
-            throw new \RuntimeException("Parent view [{$parentView}] not found at {$parentFile}");
+            throw new RuntimeException(
+                sprintf('Parent view [%s] not found at %s', $parentView, $parentFile)
+            );
         }
 
-        // Merge sections into data for parent
         $parentData = array_merge($data, ['__sections' => $sections]);
 
         if ($this->cacheEnabled) {
@@ -317,92 +341,167 @@ class ViewEngine
         return $this->renderDirect($parentFile, $parentData);
     }
 
-    private function renderDirect(string $viewFile, array $data): string
+    private function renderParentDirect(string $parentView, array $data, array $sections): string
     {
-        // Compile the view content
-        $content = file_get_contents($viewFile);
-        $compiledContent = $this->viewCompiler->compile($content);
+        $parentFile = $this->getViewPath($parentView);
 
-        // Remove strict_types declaration before eval
-        $compiledContent = $this->stripStrictTypesDeclaration($compiledContent);
-
-        extract($data, EXTR_SKIP);
-
-        // Initialize template variables
-        $__sections = [];
-        $__stacks = [];
-        $__extends = null;
-        $__currentSection = null;
-
-        // Suppress undefined variable warnings in production
-        $previousErrorLevel = error_reporting();
-        if (!$this->isDebugMode()) {
-            error_reporting($previousErrorLevel & ~E_WARNING & ~E_NOTICE);
+        if (!file_exists($parentFile)) {
+            throw new RuntimeException(
+                sprintf('Parent view [%s] not found', $parentView)
+            );
         }
+
+        $parentContent = file_get_contents($parentFile);
+        $compiledParent = $this->viewCompiler->compile($parentContent);
+        $compiledParent = $this->stripStrictTypesDeclaration($compiledParent);
+
+        extract(array_merge($data, ['__sections' => $sections]), EXTR_SKIP);
+
+        $__stacks = [];
+        $previousErrorLevel = $this->suppressNonCriticalErrors();
 
         ob_start();
         try {
-            // Execute compiled content
-            eval('?>' . $compiledContent);
-            $childContent = ob_get_clean();
+            eval('?>' . $compiledParent);
+            $result = ob_get_clean();
             error_reporting($previousErrorLevel);
-
-            // Handle template inheritance
-            if (isset($__extends) && $__extends) {
-                $parentView = $this->getViewPath($__extends);
-                if (!file_exists($parentView)) {
-                    throw new \RuntimeException("Parent view [{$__extends}] not found");
-                }
-
-                // Compile and render parent
-                $parentContent = file_get_contents($parentView);
-                $compiledParent = $this->viewCompiler->compile($parentContent);
-
-                // Remove strict_types from parent as well
-                $compiledParent = $this->stripStrictTypesDeclaration($compiledParent);
-
-                // Re-extract data for parent template
-                extract($data, EXTR_SKIP);
-
-                // Re-initialize template variables for parent
-                $__sections = $__sections ?? [];
-                $__stacks = $__stacks ?? [];
-
-                ob_start();
-                eval('?>' . $compiledParent);
-                $result = ob_get_clean();
-                error_reporting($previousErrorLevel);
-                return $result;
-            }
-
-            return $childContent;
-        } catch (\Throwable $e) {
+            return $result;
+        } catch (Throwable $e) {
             ob_end_clean();
             error_reporting($previousErrorLevel);
-            throw new \RuntimeException(
-                "Error rendering view: " . $e->getMessage() .
-                    "\nFile: " . $viewFile .
-                    "\nLine: " . $e->getLine(),
+            throw new RuntimeException(
+                sprintf(
+                    'Error rendering parent view: %s (File: %s)',
+                    $e->getMessage(),
+                    $parentFile
+                ),
                 0,
                 $e
             );
         }
     }
 
-    /**
-     * Clear compilation cache
-     */
-    public function clearCache(): void
+    private function compile(string $viewFile, string $compiled): void
     {
-        $this->viewCompiler->clearCache();
+        $content = file_get_contents($viewFile);
+        $content = $this->viewCompiler->compile($content);
+        $content = $this->stripStrictTypesDeclaration($content);
 
-        // Also clear cached files if needed
-        if ($this->cacheEnabled && is_dir($this->cachePath)) {
-            $files = glob($this->cachePath . '/*.php');
-            foreach ($files as $file) {
-                if (is_file($file)) {
-                    @unlink($file);
+        file_put_contents($compiled, $content, LOCK_EX);
+    }
+
+    private function getViewPath(string $view): string
+    {
+        $view = str_replace('.', DIRECTORY_SEPARATOR, $view);
+
+        foreach (self::VIEW_EXTENSIONS as $extension) {
+            $viewPath = $this->viewPath . DIRECTORY_SEPARATOR . $view . $extension;
+
+            if (file_exists($viewPath)) {
+                $realViewPath = realpath(dirname($viewPath));
+                $realBasePath = realpath($this->viewPath);
+
+                if (
+                    $realViewPath === false ||
+                    $realBasePath === false ||
+                    strpos($realViewPath, $realBasePath) !== 0
+                ) {
+                    throw new RuntimeException(
+                        sprintf('Invalid view path: %s', $view)
+                    );
                 }
+
+                return $viewPath;
+            }
+        }
+
+        throw new RuntimeException(
+            sprintf(
+                'View [%s] not found. Looked for: %s',
+                $view,
+                implode(', ', array_map(function ($ext) use ($view) {
+                    return $view . $ext;
+                }, self::VIEW_EXTENSIONS))
+            )
+        );
+    }
+
+    private function getComponentPath(string $componentName): string
+    {
+        $filename = $this->pascalToSnakeCase($componentName);
+
+        foreach (self::VIEW_EXTENSIONS as $extension) {
+            $componentPath = $this->componentPath . DIRECTORY_SEPARATOR . $filename . $extension;
+
+            if (file_exists($componentPath)) {
+                return $componentPath;
+            }
+        }
+
+        return $this->componentPath . DIRECTORY_SEPARATOR . $filename . self::VIEW_EXTENSIONS[0];
+    }
+
+    private function getCompiledPath(string $view): string
+    {
+        return $this->cachePath . DIRECTORY_SEPARATOR . md5($view) . '.php';
+    }
+
+    private function stripStrictTypesDeclaration(string $content): string
+    {
+        return preg_replace(
+            '/(<\?php\s+)declare\s*\(\s*strict_types\s*=\s*1\s*\)\s*;?\s*/i',
+            '$1',
+            $content
+        );
+    }
+
+    private function pascalToSnakeCase(string $input): string
+    {
+        $result = preg_replace('/([a-z])([A-Z])/', '$1_$2', $input);
+        return strtolower($result);
+    }
+
+    private function snakeToPascalCase(string $input): string
+    {
+        return str_replace('_', '', ucwords($input, '_'));
+    }
+
+    private function isDebugMode(): bool
+    {
+        if (defined('APP_DEBUG')) {
+            return (bool) constant('APP_DEBUG');
+        }
+
+        if (isset($_ENV['APP_DEBUG'])) {
+            return filter_var($_ENV['APP_DEBUG'], FILTER_VALIDATE_BOOLEAN);
+        }
+
+        $envDebug = getenv('APP_DEBUG');
+        if ($envDebug !== false) {
+            return filter_var($envDebug, FILTER_VALIDATE_BOOLEAN);
+        }
+
+        return false;
+    }
+
+    private function suppressNonCriticalErrors(): int
+    {
+        $previousLevel = error_reporting();
+
+        if (!$this->isDebugMode()) {
+            error_reporting(self::PRODUCTION_ERROR_LEVEL);
+        }
+
+        return $previousLevel;
+    }
+
+    private function ensureDirectoryExists(string $path): void
+    {
+        if (!is_dir($path)) {
+            if (!mkdir($path, 0755, true) && !is_dir($path)) {
+                throw new RuntimeException(
+                    sprintf('Failed to create directory: %s', $path)
+                );
             }
         }
     }
