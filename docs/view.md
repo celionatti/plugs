@@ -303,6 +303,22 @@ $components = $engine->getAvailableComponents();
 // Returns: ['Button', 'Alert', 'Sidebar', ...]
 ```
 
+### Using Custom Directives
+
+#### Register custom directive
+
+$viewEngine->directive('icon', function ($expression) {
+    return "<?php echo '<i class=\"icon-' . {$expression} . '\"></i>'; ?>";
+});
+
+// Use in view
+@icon('home')
+
+// Views with different extensions
+welcome.plug.php  // Preferred
+about.php         // Works
+contact.html      // Also works
+
 ## Common Issues & Solutions
 
 ### Issue 1: Component Not Found
