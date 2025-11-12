@@ -1,6 +1,6 @@
 <?php
 
-declare(strict_types=1);
+declare (strict_types = 1);
 
 namespace Plugs\View;
 
@@ -26,14 +26,14 @@ class ViewEngine
     private ViewCompiler $viewCompiler;
     private array $customDirectives = [];
 
-    private const VIEW_EXTENSIONS = ['.plug.php', '.php', '.html'];
+    private const VIEW_EXTENSIONS        = ['.plug.php', '.php', '.html'];
     private const PRODUCTION_ERROR_LEVEL = E_ERROR | E_PARSE | E_CORE_ERROR | E_COMPILE_ERROR;
 
     public function __construct(string $viewPath, string $cachePath, bool $cacheEnabled = false)
     {
-        $this->viewPath = rtrim($viewPath, '/\\');
-        $this->cachePath = rtrim($cachePath, '/\\');
-        $this->cacheEnabled = $cacheEnabled;
+        $this->viewPath      = rtrim($viewPath, '/\\');
+        $this->cachePath     = rtrim($cachePath, '/\\');
+        $this->cacheEnabled  = $cacheEnabled;
         $this->componentPath = $this->viewPath . DIRECTORY_SEPARATOR . 'components';
 
         $this->ensureDirectoryExists($this->cachePath);
@@ -104,14 +104,14 @@ class ViewEngine
 
     public function render(string $view, array $data = [], bool $isComponent = false): string
     {
-        $data = array_merge($this->sharedData, $data);
+        $data         = array_merge($this->sharedData, $data);
         $data['view'] = $this;
 
         $viewFile = $isComponent
             ? $this->getComponentPath($view)
             : $this->getViewPath($view);
 
-        if (!file_exists($viewFile)) {
+        if (! file_exists($viewFile)) {
             throw new RuntimeException(
                 sprintf('View [%s] not found at %s', $view, $viewFile)
             );
@@ -128,7 +128,7 @@ class ViewEngine
     {
         $componentFile = $this->getComponentPath($componentName);
 
-        if (!file_exists($componentFile)) {
+        if (! file_exists($componentFile)) {
             throw new RuntimeException(
                 sprintf('Component [%s] not found at %s', $componentName, $componentFile)
             );
@@ -140,7 +140,7 @@ class ViewEngine
         $slot = '';
         if ($slotId) {
             $compiledSlot = $this->viewCompiler->getCompiledSlot($slotId);
-            if (!empty($compiledSlot)) {
+            if (! empty($compiledSlot)) {
                 $slot = $this->executeCompiledContent($compiledSlot, $data);
             }
         }
@@ -166,13 +166,13 @@ class ViewEngine
 
         foreach (self::VIEW_EXTENSIONS as $extension) {
             $pattern = $this->componentPath . DIRECTORY_SEPARATOR . '*' . $extension;
-            $files = glob($pattern);
+            $files   = glob($pattern);
 
             foreach ($files as $file) {
-                $filename = pathinfo($file, PATHINFO_FILENAME);
+                $filename      = pathinfo($file, PATHINFO_FILENAME);
                 $componentName = $this->snakeToPascalCase($filename);
 
-                if (!isset($components[$componentName])) {
+                if (! isset($components[$componentName])) {
                     $components[$componentName] = $file;
                 }
             }
@@ -187,7 +187,7 @@ class ViewEngine
 
         if ($this->cacheEnabled && is_dir($this->cachePath)) {
             $pattern = $this->cachePath . DIRECTORY_SEPARATOR . '*.php';
-            $files = glob($pattern);
+            $files   = glob($pattern);
 
             foreach ($files as $file) {
                 if (is_file($file)) {
@@ -203,9 +203,9 @@ class ViewEngine
 
         extract(array_merge($this->sharedData, $data), EXTR_SKIP);
 
-        $view = $this;
+        $view       = $this;
         $__sections = $__sections ?? [];
-        $__stacks = $__stacks ?? [];
+        $__stacks   = $__stacks ?? [];
 
         $previousErrorLevel = $this->suppressNonCriticalErrors();
 
@@ -231,7 +231,7 @@ class ViewEngine
         $cacheKey = $view . ($isComponent ? '_component' : '');
         $compiled = $this->getCompiledPath($cacheKey);
 
-        if (!file_exists($compiled) || filemtime($viewFile) > filemtime($compiled)) {
+        if (! file_exists($compiled) || filemtime($viewFile) > filemtime($compiled)) {
             $this->compile($viewFile, $compiled);
         }
 
@@ -242,9 +242,9 @@ class ViewEngine
     {
         extract($data, EXTR_SKIP);
 
-        $__sections = [];
-        $__stacks = [];
-        $__extends = null;
+        $__sections       = [];
+        $__stacks         = [];
+        $__extends        = null;
         $__currentSection = null;
 
         $previousErrorLevel = $this->suppressNonCriticalErrors();
@@ -256,7 +256,8 @@ class ViewEngine
             error_reporting($previousErrorLevel);
 
             if (isset($__extends) && $__extends) {
-                return $this->renderParent($__extends, $data, $__sections);
+                // FIX: Pass stacks to parent layout
+                return $this->renderParent($__extends, $data, $__sections, $__stacks);
             }
 
             return $childContent;
@@ -278,15 +279,15 @@ class ViewEngine
 
     private function renderDirect(string $viewFile, array $data): string
     {
-        $content = file_get_contents($viewFile);
+        $content         = file_get_contents($viewFile);
         $compiledContent = $this->viewCompiler->compile($content);
         $compiledContent = $this->stripStrictTypesDeclaration($compiledContent);
 
         extract($data, EXTR_SKIP);
 
-        $__sections = [];
-        $__stacks = [];
-        $__extends = null;
+        $__sections       = [];
+        $__stacks         = [];
+        $__extends        = null;
         $__currentSection = null;
 
         $previousErrorLevel = $this->suppressNonCriticalErrors();
@@ -298,7 +299,8 @@ class ViewEngine
             error_reporting($previousErrorLevel);
 
             if (isset($__extends) && $__extends) {
-                return $this->renderParentDirect($__extends, $data, $__sections);
+                // FIX: Pass stacks to parent layout
+                return $this->renderParentDirect($__extends, $data, $__sections, $__stacks);
             }
 
             return $childContent;
@@ -318,21 +320,26 @@ class ViewEngine
         }
     }
 
-    private function renderParent(string $parentView, array $data, array $sections): string
+    // FIX: Added $stacks parameter
+    private function renderParent(string $parentView, array $data, array $sections, array $stacks = []): string
     {
         $parentFile = $this->getViewPath($parentView);
 
-        if (!file_exists($parentFile)) {
+        if (! file_exists($parentFile)) {
             throw new RuntimeException(
                 sprintf('Parent view [%s] not found at %s', $parentView, $parentFile)
             );
         }
 
-        $parentData = array_merge($data, ['__sections' => $sections]);
+        // FIX: Pass stacks to parent
+        $parentData = array_merge($data, [
+            '__sections' => $sections,
+            '__stacks'   => $stacks,
+        ]);
 
         if ($this->cacheEnabled) {
             $parentCompiled = $this->getCompiledPath($parentView);
-            if (!file_exists($parentCompiled) || filemtime($parentFile) > filemtime($parentCompiled)) {
+            if (! file_exists($parentCompiled) || filemtime($parentFile) > filemtime($parentCompiled)) {
                 $this->compile($parentFile, $parentCompiled);
             }
             return $this->renderCompiled($parentCompiled, $parentData);
@@ -341,23 +348,27 @@ class ViewEngine
         return $this->renderDirect($parentFile, $parentData);
     }
 
-    private function renderParentDirect(string $parentView, array $data, array $sections): string
+    // FIX: Added $stacks parameter
+    private function renderParentDirect(string $parentView, array $data, array $sections, array $stacks = []): string
     {
         $parentFile = $this->getViewPath($parentView);
 
-        if (!file_exists($parentFile)) {
+        if (! file_exists($parentFile)) {
             throw new RuntimeException(
                 sprintf('Parent view [%s] not found', $parentView)
             );
         }
 
-        $parentContent = file_get_contents($parentFile);
+        $parentContent  = file_get_contents($parentFile);
         $compiledParent = $this->viewCompiler->compile($parentContent);
         $compiledParent = $this->stripStrictTypesDeclaration($compiledParent);
 
-        extract(array_merge($data, ['__sections' => $sections]), EXTR_SKIP);
+        // FIX: Pass stacks to parent
+        extract(array_merge($data, [
+            '__sections' => $sections,
+            '__stacks'   => $stacks,
+        ]), EXTR_SKIP);
 
-        $__stacks = [];
         $previousErrorLevel = $this->suppressNonCriticalErrors();
 
         ob_start();
@@ -488,7 +499,7 @@ class ViewEngine
     {
         $previousLevel = error_reporting();
 
-        if (!$this->isDebugMode()) {
+        if (! $this->isDebugMode()) {
             error_reporting(self::PRODUCTION_ERROR_LEVEL);
         }
 
@@ -497,8 +508,8 @@ class ViewEngine
 
     private function ensureDirectoryExists(string $path): void
     {
-        if (!is_dir($path)) {
-            if (!mkdir($path, 0755, true) && !is_dir($path)) {
+        if (! is_dir($path)) {
+            if (! mkdir($path, 0755, true) && ! is_dir($path)) {
                 throw new RuntimeException(
                     sprintf('Failed to create directory: %s', $path)
                 );
