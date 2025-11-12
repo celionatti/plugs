@@ -251,20 +251,29 @@ class ViewCompiler
         );
 
         // Match quoted attributes: attr="value" or attr='value'
-        preg_match_all('/(\w+)\s*=\s*(["\'])(.*?)\2/s', $attributes, $matches, PREG_SET_ORDER);
+        preg_match_all(
+            '/(\w+)\s*=\s*(["\'])((?:[^\2\\\\]|\\\\.)*)\2/s',
+            $attributes,
+            $matches,
+            PREG_SET_ORDER
+        );
 
         foreach ($matches as $match) {
+            $key = $match[1];
             $value = $match[3];
             $hasExpression = false;
 
+            // Unescape quotes
+            $value = str_replace('\\' . $match[2], $match[2], $value);
+
             foreach ($expressionMap as $placeholder => $expression) {
-                if (strpos($value, $placeholder) !== false) {
-                    $value = str_replace($placeholder, $expression, $value);
+                if (strpos((string) $value, (string) $placeholder) !== false) {
+                    $value = str_replace((string) $placeholder, (string) $expression, (string) $value);
                     $hasExpression = true;
                 }
             }
 
-            $result[$match[1]] = [
+            $result[$key] = [
                 'value' => $value,
                 'quoted' => true,
                 'is_variable' => $hasExpression
@@ -388,13 +397,19 @@ class ViewCompiler
                 $array = trim($matches[1]);
                 $iteration = trim($matches[2]);
 
-                preg_match('/^\$[\w\[\]\-\>\'\"]+/', $array, $varMatch);
-                $varName = $varMatch[0] ?? $array;
+                // Extract base variable name for safety check
+                // Handle: $var, $obj->prop, $arr['key'], $this->method()
+                if (preg_match('/^(\$[\w]+)/', $array, $varMatch)) {
+                    $varName = $varMatch[1];
+                } else {
+                    // Fallback for complex expressions
+                    $varName = $array;
+                }
 
                 return sprintf(
                     '<?php if(isset(%s) && is_iterable(%s)): foreach (%s as %s): ?>',
                     $varName,
-                    $varName,
+                    $array,
                     $array,
                     $iteration
                 );
@@ -442,7 +457,15 @@ class ViewCompiler
         return preg_replace_callback(
             '/\@include\s*\([\'"](.+?)[\'"]\s*(?:,\s*(\[.+?\]))?\s*\)/s',
             function ($matches) {
-                $view = addslashes($matches[1]);
+                $view = $matches[1];
+
+                // Basic validation
+                if (strpos($view, '..') !== false || strpos($view, DIRECTORY_SEPARATOR) === 0) {
+                    // Let getViewPath handle validation, but flag obvious issues
+                    return sprintf('<?php /* Invalid include path: %s */ ?>', htmlspecialchars($view));
+                }
+
+                $view = addslashes($view);
                 $data = $matches[2] ?? '[]';
 
                 return sprintf(
@@ -496,6 +519,27 @@ class ViewCompiler
             $content
         );
 
+        // Add @append directive
+        $content = preg_replace_callback(
+            '/\@append\s*\([\'"](.+?)[\'"]\)/',
+            function ($matches) {
+                $name = addslashes($matches[1]);
+                return sprintf(
+                    '<?php $__currentSection = \'%s\'; $__appendMode = true; ob_start(); ?>',
+                    $name
+                );
+            },
+            $content
+        );
+
+        $content = preg_replace(
+            '/\@endappend\b/',
+            '<?php if (isset($__currentSection)) { ' .
+            '$__sections[$__currentSection] = ($__sections[$__currentSection] ?? \'\') . ob_get_clean(); ' .
+            'unset($__currentSection, $__appendMode); } ?>',
+            $content
+        );
+
         $content = preg_replace(
             '/\@show\b/',
             '<?php if (isset($__currentSection)) { $__sections[$__currentSection] = ob_get_clean(); echo $__sections[$__currentSection]; unset($__currentSection); } ?>',
@@ -536,8 +580,8 @@ class ViewCompiler
         $content = preg_replace(
             '/\@endpush\b/',
             '<?php if (isset($__currentStack)) { ' .
-                'if (!isset($__stacks[$__currentStack])) { $__stacks[$__currentStack] = []; } ' .
-                '$__stacks[$__currentStack][] = ob_get_clean(); unset($__currentStack); } ?>',
+            'if (!isset($__stacks[$__currentStack])) { $__stacks[$__currentStack] = []; } ' .
+            '$__stacks[$__currentStack][] = ob_get_clean(); unset($__currentStack); } ?>',
             $content
         );
 
@@ -554,8 +598,8 @@ class ViewCompiler
         $content = preg_replace(
             '/\@endprepend\b/',
             '<?php if (isset($__currentStack)) { ' .
-                'if (!isset($__stacks[$__currentStack])) { $__stacks[$__currentStack] = []; } ' .
-                'array_unshift($__stacks[$__currentStack], ob_get_clean()); unset($__currentStack, $__isPrepend); } ?>',
+            'if (!isset($__stacks[$__currentStack])) { $__stacks[$__currentStack] = []; } ' .
+            'array_unshift($__stacks[$__currentStack], ob_get_clean()); unset($__currentStack, $__isPrepend); } ?>',
             $content
         );
 
@@ -580,7 +624,7 @@ class ViewCompiler
         return preg_replace(
             '/\@csrf\b/',
             '<?php echo function_exists(\'csrf_field\') ? csrf_field() : ' .
-                '\'<input type="hidden" name="_token" value="\' . ($_SESSION[\'_csrf_token\'] ?? \'\') . \'">\'; ?>',
+            '\'<input type="hidden" name="_token" value="\' . ($_SESSION[\'_csrf_token\'] ?? \'\') . \'">\'; ?>',
             $content
         );
     }
@@ -682,7 +726,7 @@ class ViewCompiler
     private function cacheCompilation(string $key, string $content): void
     {
         if (count($this->compilationCache) >= self::MAX_CACHE_SIZE) {
-            // Remove oldest entries (simple FIFO)
+            // Keep most recent 500 entries (remove oldest 500)
             $this->compilationCache = array_slice($this->compilationCache, -500, null, true);
         }
 

@@ -39,6 +39,11 @@ class View
     private array $data;
 
     /**
+     * Maximum number of stack trace lines to display
+     */
+    private const MAX_TRACE_LINES = 10;
+
+    /**
      * Create a new View instance
      *
      * @param ViewEngine $engine View engine for rendering
@@ -227,8 +232,19 @@ class View
         $message = htmlspecialchars($e->getMessage(), ENT_QUOTES, 'UTF-8');
         $file = htmlspecialchars($e->getFile(), ENT_QUOTES, 'UTF-8');
         $line = $e->getLine();
-        $trace = htmlspecialchars($e->getTraceAsString(), ENT_QUOTES, 'UTF-8');
         $view = htmlspecialchars($this->view, ENT_QUOTES, 'UTF-8');
+
+        // FIX: Limit stack trace to prevent excessive information disclosure
+        $fullTrace = $e->getTraceAsString();
+        $traceLines = explode("\n", $fullTrace);
+        $limitedTraceLines = array_slice($traceLines, 0, self::MAX_TRACE_LINES);
+        $limitedTrace = implode("\n", $limitedTraceLines);
+
+        if (count($traceLines) > self::MAX_TRACE_LINES) {
+            $limitedTrace .= "\n... (" . (count($traceLines) - self::MAX_TRACE_LINES) . " more lines)";
+        }
+
+        $trace = htmlspecialchars($limitedTrace, ENT_QUOTES, 'UTF-8');
 
         return <<<HTML
         <div style="background: #f8d7da; color: #721c24; padding: 1.5rem; border: 2px solid #f5c6cb; border-radius: 4px; margin: 1rem; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;">
@@ -237,10 +253,21 @@ class View
             <p style="margin: 0.5rem 0;"><strong>Error:</strong> {$message}</p>
             <p style="margin: 0.5rem 0;"><strong>File:</strong> {$file}:{$line}</p>
             <details style="margin-top: 1rem;">
-                <summary style="cursor: pointer; font-weight: bold; padding: 0.5rem; background: #f5c6cb; border-radius: 4px;">Stack Trace</summary>
+                <summary style="cursor: pointer; font-weight: bold; padding: 0.5rem; background: #f5c6cb; border-radius: 4px;">Stack Trace (limited to {$this->getTraceLineCount($traceLines)} lines)</summary>
                 <pre style="margin-top: 0.5rem; padding: 1rem; background: #fff; border: 1px solid #ccc; overflow-x: auto; font-size: 0.875rem; line-height: 1.5;">{$trace}</pre>
             </details>
         </div>
         HTML;
+    }
+
+    /**
+     * Get the count of trace lines to display
+     *
+     * @param array $traceLines Full trace lines
+     * @return int Number of lines shown
+     */
+    private function getTraceLineCount(array $traceLines): int
+    {
+        return min(count($traceLines), self::MAX_TRACE_LINES);
     }
 }
