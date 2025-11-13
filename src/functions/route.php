@@ -87,6 +87,52 @@ if (!function_exists('redirectBack')) {
     }
 }
 
+if (!function_exists('request')) {
+    /**
+     * Get the current request instance.
+     *
+     * @return ServerRequestInterface|null
+     */
+    function request(): ?ServerRequestInterface
+    {
+        static $request = null;
+        
+        // Try to get from container first
+        try {
+            $container = app();
+            if ($container->has(ServerRequestInterface::class)) {
+                return $container->get(ServerRequestInterface::class);
+            }
+        } catch (\Exception $e) {
+            // Container doesn't have request, continue
+        }
+        
+        return $request;
+    }
+}
+
+if (!function_exists('setRequest')) {
+    /**
+     * Set the current request instance.
+     * This should be called early in your application bootstrap.
+     *
+     * @param ServerRequestInterface $request
+     * @return void
+     */
+    function setRequest(ServerRequestInterface $request): void
+    {
+        // Store in container if available
+        try {
+            $container = app();
+            $container->singleton(ServerRequestInterface::class, function() use ($request) {
+                return $request;
+            });
+        } catch (\Exception $e) {
+            // Container not available, will use static storage
+        }
+    }
+}
+
 if (!function_exists('currentRoute')) {
     /**
      * Get the current route from request.
@@ -140,7 +186,7 @@ if (!function_exists('isRoute')) {
     function isRoute($routeName, ?ServerRequestInterface $request = null): bool
     {
         $current = currentRouteName($request);
-
+        
         if ($current === null) {
             return false;
         }
@@ -164,7 +210,7 @@ if (!function_exists('isPath')) {
     function isPath(string $path, ?ServerRequestInterface $request = null): bool
     {
         $currentPath = currentPath($request);
-
+        
         // Exact match
         if ($currentPath === $path) {
             return true;
@@ -192,7 +238,7 @@ if (!function_exists('routeIs')) {
     function routeIs($patterns, ?ServerRequestInterface $request = null): bool
     {
         $current = currentRouteName($request);
-
+        
         if ($current === null) {
             return false;
         }
@@ -236,7 +282,7 @@ if (!function_exists('activeClass')) {
         bool $checkPath = false,
         ?ServerRequestInterface $request = null
     ): string {
-        $isActive = $checkPath
+        $isActive = $checkPath 
             ? isPath($routeOrPath, $request)
             : routeIs($routeOrPath, $request);
 
@@ -258,7 +304,7 @@ if (!function_exists('activeLink')) {
         bool $checkPath = false,
         ?ServerRequestInterface $request = null
     ): string {
-        $isActive = $checkPath
+        $isActive = $checkPath 
             ? isPath($routeOrPath, $request)
             : routeIs($routeOrPath, $request);
 
@@ -283,7 +329,7 @@ if (!function_exists('urlFor')) {
         bool $absolute = false
     ): string {
         $url = route($name, $parameters, $absolute);
-
+        
         if (!empty($query)) {
             $url .= '?' . http_build_query($query);
         }
@@ -302,7 +348,7 @@ if (!function_exists('currentUrl')) {
     function currentUrl(?ServerRequestInterface $request = null): string
     {
         $request = $request ?? request();
-
+        
         if ($request === null) {
             return '';
         }
@@ -327,16 +373,16 @@ if (!function_exists('currentUrlWithQuery')) {
         ?ServerRequestInterface $request = null
     ): string {
         $request = $request ?? request();
-
+        
         if ($request === null) {
             return '';
         }
 
         $query = $request->getQueryParams();
-
+        
         // Add/update parameters
         $query = array_merge($query, $add);
-
+        
         // Remove specified parameters
         if ($remove !== null) {
             foreach ($remove as $key) {
@@ -346,7 +392,7 @@ if (!function_exists('currentUrlWithQuery')) {
 
         $uri = $request->getUri();
         $url = $uri->getScheme() . '://' . $uri->getAuthority() . $uri->getPath();
-
+        
         if (!empty($query)) {
             $url .= '?' . http_build_query($query);
         }
@@ -381,7 +427,7 @@ if (!function_exists('routeParams')) {
     function routeParams(?string $key = null, $default = null, ?ServerRequestInterface $request = null)
     {
         $route = currentRoute($request);
-
+        
         if ($route === null) {
             return $key === null ? [] : $default;
         }
@@ -409,13 +455,13 @@ if (!function_exists('isMethod')) {
     function isMethod($method, ?ServerRequestInterface $request = null): bool
     {
         $request = $request ?? request();
-
+        
         if ($request === null) {
             return false;
         }
 
         $currentMethod = strtoupper($request->getMethod());
-        $methods = is_array($method)
+        $methods = is_array($method) 
             ? array_map('strtoupper', $method)
             : [strtoupper($method)];
 

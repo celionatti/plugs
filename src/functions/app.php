@@ -147,12 +147,12 @@ if (!function_exists('old')) {
     }
 }
 
-if (!function_exists('redirect')) {
-    function redirect(string $url, int $status = 302): \Psr\Http\Message\ResponseInterface
-    {
-        return \Plugs\Http\ResponseFactory::redirect($url, $status);
-    }
-}
+// if (!function_exists('redirect')) {
+//     function redirect(string $url, int $status = 302): \Psr\Http\Message\ResponseInterface
+//     {
+//         return \Plugs\Http\ResponseFactory::redirect($url, $status);
+//     }
+// }
 
 if (!function_exists('response')) {
     function response($content = '', int $status = 200, array $headers = []): \Psr\Http\Message\ResponseInterface
@@ -165,31 +165,12 @@ if (!function_exists('response')) {
     }
 }
 
-if (!function_exists('request')) {
-    function request(): \Psr\Http\Message\ServerRequestInterface
-    {
-        return app(\Psr\Http\Message\ServerRequestInterface::class);
-    }
-}
-
 if (!function_exists('abort')) {
     function abort(int $code, string $message = ''): void
     {
         throw new \RuntimeException($message ?: "HTTP {$code}", $code);
     }
 }
-
-// if (!function_exists('dd')) {
-//     function dd(...$vars): void
-//     {
-//         foreach ($vars as $var) {
-//             echo '<pre>';
-//             var_dump($var);
-//             echo '</pre>';
-//         }
-//         die(1);
-//     }
-// }
 
 if (!function_exists('sanitize')) {
     function sanitize($value, string $type = 'string')
