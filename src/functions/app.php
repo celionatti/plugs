@@ -165,6 +165,13 @@ if (!function_exists('response')) {
     }
 }
 
+if (!function_exists('request')) {
+    function request(): \Psr\Http\Message\ServerRequestInterface
+    {
+        return app(\Psr\Http\Message\ServerRequestInterface::class);
+    }
+}
+
 if (!function_exists('abort')) {
     function abort(int $code, string $message = ''): void
     {
@@ -172,17 +179,17 @@ if (!function_exists('abort')) {
     }
 }
 
-if (!function_exists('dd')) {
-    function dd(...$vars): void
-    {
-        foreach ($vars as $var) {
-            echo '<pre>';
-            var_dump($var);
-            echo '</pre>';
-        }
-        die(1);
-    }
-}
+// if (!function_exists('dd')) {
+//     function dd(...$vars): void
+//     {
+//         foreach ($vars as $var) {
+//             echo '<pre>';
+//             var_dump($var);
+//             echo '</pre>';
+//         }
+//         die(1);
+//     }
+// }
 
 if (!function_exists('sanitize')) {
     function sanitize($value, string $type = 'string')
@@ -199,6 +206,13 @@ if (!function_exists('sanitize')) {
 
 if (!function_exists('escape')) {
     function escape($value): string
+    {
+        return htmlspecialchars((string) $value, ENT_QUOTES, 'UTF-8');
+    }
+}
+
+if (!function_exists('e')) {
+    function e($value): string
     {
         return htmlspecialchars((string) $value, ENT_QUOTES, 'UTF-8');
     }
@@ -243,13 +257,13 @@ if (!function_exists('logger')) {
     }
 }
 
-if (!function_exists('route')) {
-    /**
-     * Generate URL for named route
-     */
-    function route(string $name, array $parameters = []): string
-    {
-        $router = app(Plugs\Router\Router::class);
-        return $router->route($name, $parameters);
-    }
-}
+// if (!function_exists('route')) {
+//     /**
+//      * Generate URL for named route
+//      */
+//     function route(string $name, array $parameters = []): string
+//     {
+//         $router = app(Plugs\Router\Router::class);
+//         return $router->route($name, $parameters);
+//     }
+// }
