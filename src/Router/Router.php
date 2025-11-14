@@ -13,6 +13,8 @@ namespace Plugs\Router;
 */
 
 use Plugs\Container\Container;
+use ReflectionParameter;
+
 use Plugs\Http\MiddlewareDispatcher;
 use Plugs\Http\ResponseFactory;
 use Psr\Http\Message\ResponseInterface;
@@ -510,24 +512,30 @@ class Router
     }
 
     /**
-     * Invoke callable with dependency injection
+     * Invoke callable with enhanced dependency injection
      */
     private function invokeCallable(callable $handler, ServerRequestInterface $request)
     {
-        $container = Container::getInstance();
-
-        // Try to resolve dependencies if handler is a closure
+        // Try to resolve dependencies if handler is a closure or invokable
         if ($handler instanceof \Closure) {
             $reflection = new \ReflectionFunction($handler);
             $parameters = $this->resolveMethodParameters($reflection, $request);
             return $handler(...$parameters);
         }
 
+        // Handle array callables [Class, 'method'] or [$instance, 'method']
+        if (is_array($handler) && count($handler) === 2) {
+            $reflection = new \ReflectionMethod($handler[0], $handler[1]);
+            $parameters = $this->resolveMethodParameters($reflection, $request);
+            return $handler(...$parameters);
+        }
+
+        // Fallback to direct call
         return $handler($request);
     }
 
     /**
-     * Execute controller action
+     * Execute controller action with enhanced dependency injection
      */
     private function executeControllerAction(string $handler, ServerRequestInterface $request)
     {
@@ -547,7 +555,7 @@ class Router
             );
         }
 
-        // Resolve method parameters with dependency injection
+        // Resolve method parameters with enhanced dependency injection
         $reflection = new \ReflectionMethod($instance, $method);
         $parameters = $this->resolveMethodParameters($reflection, $request);
 
@@ -555,54 +563,147 @@ class Router
     }
 
     /**
-     * Resolve method parameters with dependency injection
+     * Resolve method parameters with enhanced dependency injection
+     *
+     * This method supports:
+     * - ServerRequestInterface in any position
+     * - ResponseInterface (creates empty response)
+     * - Route parameters by name
+     * - Container-resolved dependencies
+     * - Default values
      */
-    private function resolveMethodParameters(\ReflectionFunctionAbstract $reflection, ServerRequestInterface $request): array
-    {
+    private function resolveMethodParameters(
+        \ReflectionFunctionAbstract $reflection,
+        ServerRequestInterface $request
+    ): array {
         $parameters = [];
         $container = Container::getInstance();
+        $routeParams = $this->extractRouteParameters($request);
 
         foreach ($reflection->getParameters() as $parameter) {
-            $type = $parameter->getType();
+            $resolved = $this->resolveParameter($parameter, $request, $routeParams, $container);
 
-            // If parameter type is ServerRequestInterface, inject the request
-            if ($type && !$type->isBuiltin()) {
-                $typeName = $type->getName();
-
-                if ($typeName === ServerRequestInterface::class || is_subclass_of($typeName, ServerRequestInterface::class)) {
-                    $parameters[] = $request;
-                    continue;
-                }
-
-                // Try to resolve from container
-                try {
-                    $parameters[] = $container->make($typeName);
-                    continue;
-                } catch (\Exception $e) {
-                    // Fall through to check for default value
-                }
-            }
-
-            // Check for route parameter match
-            $paramName = $parameter->getName();
-            if ($request->getAttribute($paramName) !== null) {
-                $parameters[] = $request->getAttribute($paramName);
-                continue;
-            }
-
-            // Use default value if available
-            if ($parameter->isDefaultValueAvailable()) {
-                $parameters[] = $parameter->getDefaultValue();
+            if ($resolved !== null) {
+                $parameters[] = $resolved;
                 continue;
             }
 
             // Parameter cannot be resolved
             throw new RuntimeException(
-                "Cannot resolve parameter [{$paramName}] for handler"
+                "Cannot resolve parameter [{$parameter->getName()}] for handler"
             );
         }
 
         return $parameters;
+    }
+
+    /**
+     * Resolve a single parameter
+     */
+    private function resolveParameter(
+        ReflectionParameter $parameter,
+        ServerRequestInterface $request,
+        array $routeParams,
+        Container $container
+    ) {
+        $paramName = $parameter->getName();
+        $type = $parameter->getType();
+
+        // Handle typed parameters
+        if ($type && !$type->isBuiltin()) {
+            $typeName = $type->getName();
+
+            // Inject ServerRequestInterface
+            if (
+                $typeName === ServerRequestInterface::class ||
+                is_subclass_of($typeName, ServerRequestInterface::class)
+            ) {
+                return $request;
+            }
+
+            // Inject ResponseInterface (empty response)
+            if (
+                $typeName === ResponseInterface::class ||
+                is_subclass_of($typeName, ResponseInterface::class)
+            ) {
+                return ResponseFactory::createResponse();
+            }
+
+            // Try to resolve from container
+            try {
+                return $container->make($typeName);
+            } catch (\Exception $e) {
+                // Fall through to other resolution methods
+            }
+        }
+
+        // Check for route parameter match by name
+        if (isset($routeParams[$paramName])) {
+            return $this->castParameterValue($routeParams[$paramName], $type);
+        }
+
+        // Check request attributes (includes route params)
+        $attrValue = $request->getAttribute($paramName);
+        if ($attrValue !== null) {
+            return $this->castParameterValue($attrValue, $type);
+        }
+
+        // Use default value if available
+        if ($parameter->isDefaultValueAvailable()) {
+            return $parameter->getDefaultValue();
+        }
+
+        // Allow nullable parameters
+        if ($type && $type->allowsNull()) {
+            return null;
+        }
+
+        return null;
+    }
+
+    /**
+     * Cast parameter value to appropriate type
+     */
+    private function castParameterValue($value, ?\ReflectionType $type)
+    {
+        if ($type === null || !$type instanceof \ReflectionNamedType) {
+            return $value;
+        }
+
+        if ($type->isBuiltin()) {
+            $typeName = $type->getName();
+
+            switch ($typeName) {
+                case 'int':
+                    return (int) $value;
+                case 'float':
+                    return (float) $value;
+                case 'bool':
+                    return filter_var($value, FILTER_VALIDATE_BOOLEAN);
+                case 'string':
+                    return (string) $value;
+                case 'array':
+                    return is_array($value) ? $value : [$value];
+            }
+        }
+
+        return $value;
+    }
+
+    /**
+     * Extract route parameters from request
+     */
+    private function extractRouteParameters(ServerRequestInterface $request): array
+    {
+        $params = [];
+        $route = $request->getAttribute('_route');
+
+        if ($route instanceof Route) {
+            $path = $request->getUri()->getPath();
+            $params = $route->extractParameters($path);
+        }
+
+        return $params;
     }
 
     /**
