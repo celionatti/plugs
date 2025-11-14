@@ -12,10 +12,8 @@ declare(strict_types=1);
 */
 
 use Plugs\Router\Router;
-use Plugs\Http\ResponseFactory;
 use Plugs\Http\RedirectResponse;
 use Psr\Http\Message\ServerRequestInterface;
-use Psr\Http\Message\ResponseInterface;
 
 if (!function_exists('route')) {
     /**

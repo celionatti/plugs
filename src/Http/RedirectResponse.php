@@ -207,7 +207,8 @@ class RedirectResponse
      */
     public function toResponse(): ResponseInterface
     {
-        $response = app(ResponseFactory::class)->createResponse($this->status);
+        // Create empty response with redirect status
+        $response = ResponseFactory::createResponse($this->status);
         $response = $response->withHeader('Location', $this->url);
 
         foreach ($this->headers as $name => $value) {
