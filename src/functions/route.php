@@ -13,14 +13,49 @@ declare(strict_types=1);
 
 use Plugs\Router\Router;
 use Plugs\Http\ResponseFactory;
+use Plugs\Http\RedirectResponse;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Message\ResponseInterface;
 
 if (!function_exists('route')) {
-    function route(string $name, array $parameters = [], bool $absolute = false): string
+    /**
+     * Generate a URL for a named route
+     */
+    function route(string $name, array $parameters = [], bool $absolute = true): string
     {
         $router = app(Router::class);
         return $router->route($name, $parameters, $absolute);
+    }
+}
+
+if (!function_exists('url')) {
+    /**
+     * Generate a full URL from a path
+     */
+    function url(string $path = '', array $parameters = []): string
+    {
+        $request = request();
+        
+        if ($request === null) {
+            $scheme = isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off' ? 'https' : 'http';
+            $host = $_SERVER['HTTP_HOST'] ?? 'localhost';
+            $basePath = rtrim($path, '/');
+        } else {
+            $uri = $request->getUri();
+            $scheme = $uri->getScheme();
+            $host = $uri->getHost();
+            $port = $uri->getPort();
+            $host .= ($port && !in_array($port, [80, 443])) ? ":$port" : '';
+            $basePath = '/' . ltrim($path, '/');
+        }
+        
+        $url = "$scheme://$host$basePath";
+        
+        if (!empty($parameters)) {
+            $url .= '?' . http_build_query($parameters);
+        }
+        
+        return $url;
     }
 }
 
@@ -42,8 +77,36 @@ if (!function_exists('currentRoute')) {
 if (!function_exists('currentRouteName')) {
     function currentRouteName(?ServerRequestInterface $request = null): ?string
     {
-        $route = currentRoute($request ?? request());
+        $route = currentRoute($request);
         return $route?->getName();
+    }
+}
+
+if (!function_exists('routeIs')) {
+    /**
+     * Check if current route matches given pattern(s)
+     */
+    function routeIs(string|array $patterns): bool
+    {
+        $currentName = currentRouteName();
+        
+        if ($currentName === null) {
+            return false;
+        }
+        
+        $patterns = is_array($patterns) ? $patterns : [$patterns];
+        
+        foreach ($patterns as $pattern) {
+            // Convert wildcard pattern to regex
+            $regex = preg_quote($pattern, '#');
+            $regex = str_replace('\*', '.*', $regex);
+            
+            if (preg_match('#^' . $regex . '$#', $currentName)) {
+                return true;
+            }
+        }
+        
+        return false;
     }
 }
 
@@ -51,27 +114,42 @@ if (!function_exists('currentPath')) {
     function currentPath(?ServerRequestInterface $request = null): string
     {
         $request = $request ?? request();
+        
         if ($request === null) {
             return parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH) ?: '/';
         }
+        
         return $request->getUri()->getPath() ?: '/';
     }
 }
 
 if (!function_exists('currentUrl')) {
-    function currentUrl(?ServerRequestInterface $request = null): string
+    function currentUrl(?ServerRequestInterface $request = null, bool $includeQuery = true): string
     {
         $request = $request ?? request();
 
         if ($request === null) {
-            // Fallback to server variables
             $scheme = isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off' ? 'https' : 'http';
             $host = $_SERVER['HTTP_HOST'] ?? 'localhost';
-            $path = $_SERVER['REQUEST_URI'] ?? '/';
-            return $scheme . '://' . $host . $path;
+            $uri = $_SERVER['REQUEST_URI'] ?? '/';
+            
+            if (!$includeQuery) {
+                $uri = parse_url($uri, PHP_URL_PATH) ?: '/';
+            }
+            
+            return $scheme . '://' . $host . $uri;
         }
 
-        return (string) $request->getUri();
+        $uri = (string) $request->getUri();
+        
+        if (!$includeQuery) {
+            $parsedUri = parse_url($uri);
+            $uri = ($parsedUri['scheme'] ?? 'http') . '://' . 
+                   ($parsedUri['host'] ?? 'localhost') . 
+                   ($parsedUri['path'] ?? '/');
+        }
+        
+        return $uri;
     }
 }
 
@@ -102,7 +180,7 @@ if (!function_exists('routeParams')) {
 
         foreach ($attributes as $attrKey => $value) {
             // Skip framework attributes
-            if (in_array($attrKey, ['_route', '_router', '_middleware'])) {
+            if (str_starts_with($attrKey, '_')) {
                 continue;
             }
             $params[$attrKey] = $value;
@@ -117,7 +195,7 @@ if (!function_exists('routeParams')) {
 }
 
 if (!function_exists('isMethod')) {
-    function isMethod($method, ?ServerRequestInterface $request = null): bool
+    function isMethod(string|array $method, ?ServerRequestInterface $request = null): bool
     {
         $request = $request ?? request();
 
@@ -136,30 +214,74 @@ if (!function_exists('isMethod')) {
     }
 }
 
-if (!function_exists('redirect')) {
-    function redirect(string $url, int $status = 302): void
+if (!function_exists('isGet')) {
+    function isGet(?ServerRequestInterface $request = null): bool
     {
-        // Simple PHP header redirect
-        header("Location: $url", true, $status);
-        exit; // Important: stop script execution
+        return isMethod('GET', $request);
     }
 }
 
-if (!function_exists('redirectTo')) {
-    function redirectTo(string $routeName, array $parameters = [], int $status = 302): void
+if (!function_exists('isPost')) {
+    function isPost(?ServerRequestInterface $request = null): bool
     {
-        $url = route($routeName, $parameters);
-        header("Location: $url", true, $status);
-        exit;
+        return isMethod('POST', $request);
     }
 }
 
-if (!function_exists('redirectBack')) {
-    function redirectBack(string $fallback = '/', int $status = 302): void
+if (!function_exists('isPut')) {
+    function isPut(?ServerRequestInterface $request = null): bool
     {
-        $referer = $_SERVER['HTTP_REFERER'] ?? $fallback;
-        header("Location: $referer", true, $status);
-        exit;
+        return isMethod('PUT', $request);
+    }
+}
+
+if (!function_exists('isDelete')) {
+    function isDelete(?ServerRequestInterface $request = null): bool
+    {
+        return isMethod('DELETE', $request);
+    }
+}
+
+if (!function_exists('isPatch')) {
+    function isPatch(?ServerRequestInterface $request = null): bool
+    {
+        return isMethod('PATCH', $request);
+    }
+}
+
+if (!function_exists('isAjax')) {
+    /**
+     * Check if the request is an AJAX request
+     */
+    function isAjax(?ServerRequestInterface $request = null): bool
+    {
+        $request = $request ?? request();
+        
+        if ($request === null) {
+            return isset($_SERVER['HTTP_X_REQUESTED_WITH']) && 
+                   strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest';
+        }
+        
+        return strtolower($request->getHeaderLine('X-Requested-With')) === 'xmlhttprequest';
+    }
+}
+
+if (!function_exists('wantsJson')) {
+    /**
+     * Check if the request expects a JSON response
+     */
+    function wantsJson(?ServerRequestInterface $request = null): bool
+    {
+        $request = $request ?? request();
+        
+        if ($request === null) {
+            $accept = $_SERVER['HTTP_ACCEPT'] ?? '';
+        } else {
+            $accept = $request->getHeaderLine('Accept');
+        }
+        
+        return str_contains($accept, 'application/json') || 
+               str_contains($accept, 'text/json');
     }
 }
 
@@ -174,5 +296,55 @@ if (!function_exists('back')) {
     function back(): string
     {
         return previousUrl();
+    }
+}
+
+/*
+|--------------------------------------------------------------------------
+| Chainable Redirect Functions
+|--------------------------------------------------------------------------
+*/
+
+if (!function_exists('redirect')) {
+    /**
+     * Create a redirect response (chainable)
+     */
+    function redirect(?string $url = null, int $status = 302): RedirectResponse
+    {
+        $redirectResponse = new RedirectResponse($url ?? '/', $status);
+        
+        return $redirectResponse;
+    }
+}
+
+if (!function_exists('redirectTo')) {
+    /**
+     * Create a redirect to a named route (chainable)
+     */
+    function redirectTo(string $routeName, array $parameters = [], int $status = 302): RedirectResponse
+    {
+        $url = route($routeName, $parameters);
+        return redirect($url, $status);
+    }
+}
+
+if (!function_exists('redirectBack')) {
+    /**
+     * Create a redirect to the previous URL (chainable)
+     */
+    function redirectBack(string $fallback = '/', int $status = 302): RedirectResponse
+    {
+        $url = previousUrl($fallback);
+        return redirect($url, $status);
+    }
+}
+
+if (!function_exists('redirectRoute')) {
+    /**
+     * Alias for redirectTo
+     */
+    function redirectRoute(string $routeName, array $parameters = [], int $status = 302): RedirectResponse
+    {
+        return redirectTo($routeName, $parameters, $status);
     }
 }
