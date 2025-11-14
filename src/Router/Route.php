@@ -16,6 +16,7 @@ use Plugs\Http\HTTP;
 use Plugs\Container\Container;
 use Psr\Http\Message\ServerRequestInterface;
 use RuntimeException;
+use InvalidArgumentException;
 
 
 class Route
@@ -28,16 +29,20 @@ class Route
     private ?string $name = null;
     private array $where = [];
     private ?Router $router = null;
+    private array $defaults = [];
+    private ?string $domain = null;
+    private ?string $scheme = null;
 
-    /**
-     * Create a new Route instance.
-     *
-     * @param string $method HTTP method
-     * @param string $path Route path pattern
-     * @param callable|string|array $handler Route handler
-     * @param array $middleware Middleware stack
-     * @param Router|null $router Parent router instance
-     */
+    /** @var array Common parameter patterns */
+    private const COMMON_PATTERNS = [
+        'id' => '[0-9]+',
+        'uuid' => '[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}',
+        'slug' => '[a-z0-9-]+',
+        'alpha' => '[a-zA-Z]+',
+        'alphanum' => '[a-zA-Z0-9]+',
+        'any' => '.*',
+    ];
+
     public function __construct(
         string $method,
         string $path,
@@ -45,6 +50,7 @@ class Route
         array $middleware = [],
         ?Router $router = null
     ) {
+        $this->validateMethod($method);
         $this->method = strtoupper($method);
         $this->path = $path;
         $this->handler = $handler;
@@ -54,10 +60,19 @@ class Route
     }
 
     /**
-     * Add middleware to route.
-     *
-     * @param string|array $middleware Middleware class name(s)
-     * @return self
+     * Validate HTTP method
+     */
+    private function validateMethod(string $method): void
+    {
+        $validMethods = ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'HEAD', 'OPTIONS', 'TRACE', 'CONNECT'];
+
+        if (!in_array(strtoupper($method), $validMethods, true)) {
+            throw new InvalidArgumentException("Invalid HTTP method: {$method}");
+        }
+    }
+
+    /**
+     * Add middleware to route
      */
     public function middleware($middleware): self
     {
@@ -71,10 +86,7 @@ class Route
     }
 
     /**
-     * Set route name for URL generation.
-     *
-     * @param string $name Unique route name
-     * @return self
+     * Set route name for URL generation
      */
     public function name(string $name): self
     {
@@ -88,16 +100,14 @@ class Route
     }
 
     /**
-     * Add parameter constraint(s).
-     *
-     * @param string|array $key Parameter name or array of constraints
-     * @param string|null $pattern Regex pattern for single parameter
-     * @return self
+     * Add parameter constraint(s)
      */
     public function where($key, ?string $pattern = null): self
     {
         if (is_array($key)) {
-            $this->where = array_merge($this->where, $key);
+            foreach ($key as $k => $v) {
+                $this->where[$k] = $v;
+            }
         } else {
             $this->where[$key] = $pattern;
         }
@@ -109,10 +119,80 @@ class Route
     }
 
     /**
-     * Compile route pattern to regex with parameter constraints.
-     *
-     * @param string $path Route path pattern
-     * @return string Compiled regex pattern
+     * Add common parameter constraints
+     */
+    public function whereNumber(string $parameter): self
+    {
+        return $this->where($parameter, '[0-9]+');
+    }
+
+    public function whereAlpha(string $parameter): self
+    {
+        return $this->where($parameter, '[a-zA-Z]+');
+    }
+
+    public function whereAlphaNumeric(string $parameter): self
+    {
+        return $this->where($parameter, '[a-zA-Z0-9]+');
+    }
+
+    public function whereUuid(string $parameter): self
+    {
+        return $this->where($parameter, self::COMMON_PATTERNS['uuid']);
+    }
+
+    public function whereSlug(string $parameter): self
+    {
+        return $this->where($parameter, self::COMMON_PATTERNS['slug']);
+    }
+
+    public function whereIn(string $parameter, array $values): self
+    {
+        $pattern = '(' . implode('|', array_map('preg_quote', $values)) . ')';
+        return $this->where($parameter, $pattern);
+    }
+
+    /**
+     * Set default values for optional parameters
+     */
+    public function defaults(array $defaults): self
+    {
+        $this->defaults = array_merge($this->defaults, $defaults);
+        return $this;
+    }
+
+    /**
+     * Set domain constraint
+     */
+    public function domain(string $domain): self
+    {
+        $this->domain = $domain;
+        return $this;
+    }
+
+    /**
+     * Set scheme constraint (http/https)
+     */
+    public function scheme(string $scheme): self
+    {
+        if (!in_array($scheme, ['http', 'https'], true)) {
+            throw new InvalidArgumentException("Invalid scheme: {$scheme}");
+        }
+
+        $this->scheme = $scheme;
+        return $this;
+    }
+
+    /**
+     * Require HTTPS
+     */
+    public function secure(): self
+    {
+        return $this->scheme('https');
+    }
+
+    /**
+     * Compile route pattern to regex with parameter constraints
      */
     private function compilePattern(string $path): string
     {
@@ -148,11 +228,7 @@ class Route
     }
 
     /**
-     * Make this route a proxy to an external API endpoint.
-     *
-     * @param string $targetUrl Target API endpoint
-     * @param array $options Proxy options (base_uri, token, headers, timeout)
-     * @return self
+     * Make this route a proxy to an external API endpoint
      */
     public function proxy(string $targetUrl, array $options = []): self
     {
@@ -173,13 +249,24 @@ class Route
                 $http->timeout((int) $options['timeout']);
             }
 
+            // Replace URL parameters
+            $params = $request->getAttributes();
+            foreach ($params as $key => $value) {
+                if (!str_starts_with($key, '_')) {
+                    $targetUrl = str_replace('{' . $key . '}', (string) $value, $targetUrl);
+                }
+            }
+
             // Forward the request with appropriate method
             $method = strtolower($request->getMethod());
 
             // Build query parameters or body data
-            $data = $method === 'get'
-                ? $request->getQueryParams()
-                : (array) $request->getParsedBody();
+            if ($method === 'get') {
+                $data = $request->getQueryParams();
+            } else {
+                $parsedBody = $request->getParsedBody();
+                $data = is_array($parsedBody) ? $parsedBody : [];
+            }
 
             try {
                 $response = $http->$method($targetUrl, $data);
@@ -190,7 +277,10 @@ class Route
                 );
             } catch (\Exception $e) {
                 return \Plugs\Http\ResponseFactory::json(
-                    ['error' => 'Proxy request failed', 'message' => $e->getMessage()],
+                    [
+                        'error' => 'Proxy request failed',
+                        'message' => $e->getMessage()
+                    ],
                     502
                 );
             }
@@ -200,17 +290,21 @@ class Route
     }
 
     /**
-     * Fetch data from URL before handling route.
-     *
-     * @param string $url URL to fetch data from
-     * @param string $attribute Request attribute name for fetched data
-     * @return self
+     * Fetch data from URL before handling route
      */
     public function fetch(string $url, string $attribute = 'fetched_data'): self
     {
         $originalHandler = $this->handler;
 
         $this->handler = function (ServerRequestInterface $request) use ($originalHandler, $url, $attribute) {
+            // Replace URL parameters
+            $params = $request->getAttributes();
+            foreach ($params as $key => $value) {
+                if (!str_starts_with($key, '_')) {
+                    $url = str_replace('{' . $key . '}', (string) $value, $url);
+                }
+            }
+
             try {
                 // Fetch data from URL
                 $response = HTTP::make()->get($url);
@@ -233,12 +327,49 @@ class Route
     }
 
     /**
-     * Execute the original handler with the modified request.
-     *
-     * @param mixed $handler Original route handler
-     * @param ServerRequestInterface $request PSR-7 request
-     * @return mixed Handler response
-     * @throws RuntimeException If handler format is invalid
+     * Cache the response for specified duration
+     */
+    public function cache(int $seconds, ?string $key = null): self
+    {
+        $originalHandler = $this->handler;
+
+        $this->handler = function (ServerRequestInterface $request) use ($originalHandler, $seconds, $key) {
+            // Generate cache key if not provided
+            if ($key === null) {
+                $key = 'route_cache:' . $this->method . ':' . $this->path;
+                // Include parameters in cache key
+                $params = $request->getAttributes();
+                foreach ($params as $k => $v) {
+                    if (!str_starts_with($k, '_')) {
+                        $key .= ':' . $k . '=' . $v;
+                    }
+                }
+            }
+
+            // Check if caching functions are available
+            if (function_exists('cache')) {
+                $cached = cache($key);
+                if ($cached !== null) {
+                    return $cached;
+                }
+            }
+
+            // Execute handler
+            $response = $this->executeOriginalHandler($originalHandler, $request);
+
+            // Store in cache
+            if (function_exists('cache')) {
+                cache([$key => $response], $seconds);
+            }
+
+            return $response;
+        };
+
+        return $this;
+    }
+
+    /**
+     * Execute the original handler with the modified request
      */
     private function executeOriginalHandler($handler, ServerRequestInterface $request)
     {
@@ -248,6 +379,10 @@ class Route
 
         if (is_string($handler) && strpos($handler, '@') !== false) {
             [$controller, $method] = explode('@', $handler, 2);
+
+            if (!class_exists($controller)) {
+                throw new RuntimeException("Controller {$controller} not found");
+            }
 
             $container = Container::getInstance();
             $instance = $container->make($controller);
@@ -264,7 +399,7 @@ class Route
         throw new RuntimeException('Invalid route handler format');
     }
 
-    // Getters with proper return types
+    // Getters
 
     public function getMethod(): string
     {
@@ -276,9 +411,6 @@ class Route
         return $this->path;
     }
 
-    /**
-     * @return callable|string|array
-     */
     public function getHandler()
     {
         return $this->handler;
@@ -304,31 +436,104 @@ class Route
         return $this->where;
     }
 
-    /**
-     * Check if route matches given method and path.
-     *
-     * @param string $method HTTP method
-     * @param string $path Request path
-     * @return bool
-     */
-    public function matches(string $method, string $path): bool
+    public function getDefaults(): array
     {
-        return $this->method === strtoupper($method)
-            && preg_match($this->pattern, $path) === 1;
+        return $this->defaults;
+    }
+
+    public function getDomain(): ?string
+    {
+        return $this->domain;
+    }
+
+    public function getScheme(): ?string
+    {
+        return $this->scheme;
     }
 
     /**
-     * Extract parameters from path using route pattern.
-     *
-     * @param string $path Request path
-     * @return array Extracted parameters
+     * Check if route matches given method and path
+     */
+    public function matches(string $method, string $path): bool
+    {
+        // Check method
+        if ($this->method !== strtoupper($method)) {
+            return false;
+        }
+
+        // Check domain if set
+        if ($this->domain !== null) {
+            $host = $_SERVER['HTTP_HOST'] ?? '';
+            if (!preg_match('#^' . str_replace('\*', '.*', preg_quote($this->domain, '#')) . '$#', $host)) {
+                return false;
+            }
+        }
+
+        // Check scheme if set
+        if ($this->scheme !== null) {
+            $isSecure = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off');
+            $requestScheme = $isSecure ? 'https' : 'http';
+
+            if ($this->scheme !== $requestScheme) {
+                return false;
+            }
+        }
+
+        // Check path pattern
+        return preg_match($this->pattern, $path) === 1;
+    }
+
+    /**
+     * Extract parameters from path using route pattern
      */
     public function extractParameters(string $path): array
     {
-        if (preg_match($this->pattern, $path, $matches)) {
-            return array_filter($matches, 'is_string', ARRAY_FILTER_USE_KEY);
+        if (!preg_match($this->pattern, $path, $matches)) {
+            return [];
         }
 
-        return [];
+        $params = array_filter($matches, 'is_string', ARRAY_FILTER_USE_KEY);
+
+        // Apply defaults for missing optional parameters
+        foreach ($this->defaults as $key => $value) {
+            if (!isset($params[$key]) || $params[$key] === '') {
+                $params[$key] = $value;
+            }
+        }
+
+        return $params;
+    }
+
+    /**
+     * Generate URL for this route with given parameters
+     */
+    public function url(array $parameters = [], bool $absolute = false): string
+    {
+        $path = $this->path;
+
+        // Replace parameters
+        foreach ($parameters as $key => $value) {
+            $path = str_replace('{' . $key . '}', (string) $value, $path);
+            $path = str_replace('{' . $key . '?}', (string) $value, $path);
+        }
+
+        // Remove unfilled optional parameters
+        $path = preg_replace('/\{[^}]+\?\}/', '', $path);
+
+        // Check for unfilled required parameters
+        if (preg_match('/\{([^}?]+)\}/', $path, $matches)) {
+            throw new RuntimeException(
+                "Missing required parameter [{$matches[1]}] for route"
+            );
+        }
+
+        // Generate absolute URL if requested
+        if ($absolute) {
+            $scheme = $this->scheme ?? ((!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http');
+            $host = $this->domain ?? ($_SERVER['HTTP_HOST'] ?? 'localhost');
+            $path = $scheme . '://' . $host . $path;
+        }
+
+        return $path;
     }
 }

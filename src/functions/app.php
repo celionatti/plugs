@@ -2,6 +2,9 @@
 
 declare(strict_types=1);
 
+
+use Psr\Http\Message\ServerRequestInterface;
+
 /*
 |--------------------------------------------------------------------------
 | Application Helper Functions
@@ -147,12 +150,31 @@ if (!function_exists('old')) {
     }
 }
 
-// if (!function_exists('redirect')) {
-//     function redirect(string $url, int $status = 302): \Psr\Http\Message\ResponseInterface
-//     {
-//         return \Plugs\Http\ResponseFactory::redirect($url, $status);
-//     }
-// }
+if (!function_exists('request')) {
+    function request(): ?ServerRequestInterface
+    {
+        try {
+            $container = app();
+
+            // Try to get from container
+            if ($container->bound(ServerRequestInterface::class)) {
+                return $container->make(ServerRequestInterface::class);
+            }
+
+            // Try to get current request from global context
+            if (isset($GLOBALS['__current_request']) && $GLOBALS['__current_request'] instanceof ServerRequestInterface) {
+                return $GLOBALS['__current_request'];
+            }
+        } catch (\Exception $e) {
+            // Silent fail in production, log in development
+            if (env('APP_DEBUG', false)) {
+                error_log('Request helper error: ' . $e->getMessage());
+            }
+        }
+
+        return null;
+    }
+}
 
 if (!function_exists('response')) {
     function response($content = '', int $status = 200, array $headers = []): \Psr\Http\Message\ResponseInterface
@@ -207,13 +229,6 @@ if (!function_exists('url')) {
     }
 }
 
-// if (!function_exists('asset')) {
-//     function asset(string $path): string
-//     {
-//         return url('assets/' . ltrim($path, '/'));
-//     }
-// }
-
 if (!function_exists('now')) {
     function now(): int
     {
@@ -237,14 +252,3 @@ if (!function_exists('logger')) {
         file_put_contents($logFile, $line, FILE_APPEND | LOCK_EX);
     }
 }
-
-// if (!function_exists('route')) {
-//     /**
-//      * Generate URL for named route
-//      */
-//     function route(string $name, array $parameters = []): string
-//     {
-//         $router = app(Plugs\Router\Router::class);
-//         return $router->route($name, $parameters);
-//     }
-// }
