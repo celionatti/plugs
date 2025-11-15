@@ -50,6 +50,8 @@ abstract class PlugModel
     // Separate bindings for better memory management
     protected $bindings = [];
 
+    protected $castNulls = true;
+
     // Model events & scopes
     protected static $booted = [];
     protected static $globalScopes = [];
@@ -57,6 +59,8 @@ abstract class PlugModel
 
     // Query logging & caching
     protected static $queryLog = [];
+    protected static $queryCount = 0;
+    protected static $queryLimit = 10000;
     protected static $enableQueryLog = false;
     protected static $queryCache = [];
     protected static $cacheEnabled = false;
@@ -64,12 +68,16 @@ abstract class PlugModel
 
     // Transaction tracking
     protected static $transactionDepth = 0;
+    protected static $transactionConnection = null;
 
     // Model registry for polymorphic relations
     protected static $morphMap = [];
 
     // Prepared statement cache
     protected static $preparedStatements = [];
+
+    protected static $maxCacheSize = 1000;
+    protected static $maxLogSize = 500;
 
     public function __construct(array $attributes = [])
     {
@@ -286,6 +294,10 @@ abstract class PlugModel
     protected function putInCache(string $key, $data): void
     {
         if (static::$cacheEnabled) {
+            if (count(static::$queryCache) >= static::$maxCacheSize) {
+                array_shift(static::$queryCache); // Remove oldest
+            }
+
             static::$queryCache[$key] = [
                 'data' => $data,
                 'expires' => time() + static::$cacheTTL
@@ -316,6 +328,17 @@ abstract class PlugModel
         }
 
         return $model;
+    }
+
+    public static function clearPreparedStatements(): void
+    {
+        static::$preparedStatements = [];
+    }
+
+    public function useIndex(string $index)
+    {
+        $this->query['index_hint'] = $index;
+        return $this;
     }
 
     public function remember(?int $ttl = null)
@@ -445,7 +468,8 @@ abstract class PlugModel
     public static function beginTransaction(): bool
     {
         if (static::$transactionDepth === 0) {
-            static::getConnection()->beginTransaction();
+            static::$transactionConnection = static::getConnection();
+            static::$transactionConnection->beginTransaction();
         } else {
             static::getConnection()->exec("SAVEPOINT trans_" . static::$transactionDepth);
         }
@@ -568,12 +592,12 @@ abstract class PlugModel
                 $message = $message ?? "The {$field} must be a valid email.";
                 break;
             case 'min':
-                $min = (int)$params[0];
+                $min = (int) $params[0];
                 $valid = is_string($value) ? strlen($value) >= $min : $value >= $min;
                 $message = $message ?? "The {$field} must be at least {$min}.";
                 break;
             case 'max':
-                $max = (int)$params[0];
+                $max = (int) $params[0];
                 $valid = is_string($value) ? strlen($value) <= $max : $value <= $max;
                 $message = $message ?? "The {$field} must not exceed {$max}.";
                 break;
@@ -872,14 +896,32 @@ abstract class PlugModel
         }
     }
 
+    // protected function encrypt(string $value): string
+    // {
+    //     return base64_encode($value);
+    // }
+
+    // protected function decrypt(string $value): string
+    // {
+    //     return base64_decode($value);
+    // }
+
     protected function encrypt(string $value): string
     {
-        return base64_encode($value);
+        // Requires encryption key in config
+        $key = getenv('APP_KEY') ?: throw new Exception('APP_KEY not set');
+        $iv = random_bytes(16);
+        $encrypted = openssl_encrypt($value, 'AES-256-CBC', $key, 0, $iv);
+        return base64_encode($iv . $encrypted);
     }
 
     protected function decrypt(string $value): string
     {
-        return base64_decode($value);
+        $key = getenv('APP_KEY') ?: throw new Exception('APP_KEY not set');
+        $data = base64_decode($value);
+        $iv = substr($data, 0, 16);
+        $encrypted = substr($data, 16);
+        return openssl_decrypt($encrypted, 'AES-256-CBC', $key, 0, $iv);
     }
 
     // ==================== MASS ASSIGNMENT PROTECTION ====================
@@ -1102,6 +1144,14 @@ abstract class PlugModel
 
     public static function upsert(array $records, array $uniqueKeys, array $updateColumns = []): bool
     {
+        $driver = static::getPdo()->getAttribute(PDO::ATTR_DRIVER_NAME);
+
+        if ($driver === 'pgsql') {
+            // Use ON CONFLICT
+        } elseif ($driver === 'sqlite') {
+            // Use INSERT OR REPLACE
+        }
+
         if (empty($records)) {
             return false;
         }
@@ -1267,6 +1317,17 @@ abstract class PlugModel
         return null;
     }
 
+    protected function validateAttributeType($key, $value)
+    {
+        if (isset($this->casts[$key])) {
+            $cast = $this->casts[$key];
+            if ($cast === 'int' && !is_numeric($value)) {
+                throw new \InvalidArgumentException("$key must be numeric");
+            }
+            // Add more validation
+        }
+    }
+
     protected function getRelationValue(string $key)
     {
         if (array_key_exists($key, $this->relations)) {
@@ -1321,7 +1382,11 @@ abstract class PlugModel
         ];
 
         // Deep copy arrays
-        $clone->bindings = $this->bindings;
+        // $clone->bindings = $this->bindings;
+
+        $clone->bindings = array_map(function ($binding) {
+            return is_object($binding) ? clone $binding : $binding;
+        }, $this->bindings);
 
         foreach ($this->query['where'] as $where) {
             $clone->query['where'][] = $where;
@@ -2383,7 +2448,14 @@ abstract class PlugModel
 
     public function toArray(): array
     {
-        $attributes = $this->attributes;
+        // $attributes = $this->attributes;
+
+        $attributes = [];
+
+        // Apply casting to all attributes
+        foreach ($this->attributes as $key => $value) {
+            $attributes[$key] = $this->castAttribute($key, $value);
+        }
 
         foreach ($this->hidden as $hidden) {
             unset($attributes[$hidden]);
@@ -2645,6 +2717,10 @@ abstract class PlugModel
             return;
         }
 
+        $ids = $models->pluck($this->primaryKey)->toArray();
+        // Load all relations in ONE query
+        $relatedModels = $this->$relation()->whereIn('foreign_key', $ids)->get();
+
         // Load relation for each model
         foreach ($models as $model) {
             $model->load($relation);
@@ -2684,18 +2760,42 @@ abstract class PlugModel
         return true;
     }
 
-    protected function retrieving() {}
-    protected function retrieved() {}
-    protected function creating() {}
-    protected function created() {}
-    protected function updating() {}
-    protected function updated() {}
-    protected function saving() {}
-    protected function saved() {}
-    protected function deleting() {}
-    protected function deleted() {}
-    protected function restoring() {}
-    protected function restored() {}
+    protected function retrieving()
+    {
+    }
+    protected function retrieved()
+    {
+    }
+    protected function creating()
+    {
+    }
+    protected function created()
+    {
+    }
+    protected function updating()
+    {
+    }
+    protected function updated()
+    {
+    }
+    protected function saving()
+    {
+    }
+    protected function saved()
+    {
+    }
+    protected function deleting()
+    {
+    }
+    protected function deleted()
+    {
+    }
+    protected function restoring()
+    {
+    }
+    protected function restored()
+    {
+    }
 
     // ==================== MAGIC METHODS ====================
 
