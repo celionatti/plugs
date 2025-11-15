@@ -658,4 +658,31 @@ class User extends PlugModel
 // Use Collections for data manipulation
 // $emails = User::all()->pluck('email')->unique()->filter();
 
+// USAGE EXAMPLES: New with eager loading methods and relation checks.
+
+// Basic eager loading
+// $users = User::with('posts')->get();
+
+// Multiple relations
+// $users = User::with('posts', 'comments')->get();
+// or
+// $users = User::with(['posts', 'comments'])->get();
+
+// Nested relations
+// $users = User::with('posts.comments')->get();
+
+// With constraints
+// $users = User::with(['posts' => function($query) {
+//     $query->where('published', true)->orderBy('created_at', 'desc');
+// }])->get();
+
+// Load after fetching
+// $users = User::all();
+// User::loadRelations($users, 'posts');
+
+// Check if loaded
+// if ($user->relationLoaded('posts')) {
+//     // Posts are loaded
+// }
+
 echo "✅ PlugModel Usage Guide Complete!";
