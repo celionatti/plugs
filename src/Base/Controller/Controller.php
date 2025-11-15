@@ -37,6 +37,8 @@ abstract class Controller
 
         // Share common data with views
         $this->view->share('app_name', config('app.name', 'Plugs Framework'));
+
+        $this->onConstruct();
     }
 
     protected function view(string $view, array $data = []): ResponseInterface
@@ -146,4 +148,7 @@ abstract class Controller
 
         return $uploader->upload($file, $options['name'] ?? null);
     }
+
+    public function onConstruct()
+    {}
 }
