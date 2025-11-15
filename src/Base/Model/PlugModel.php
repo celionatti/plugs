@@ -1505,7 +1505,8 @@ abstract class PlugModel
             'type' => 'in'
         ];
 
-        $clone->query['bindings'] = array_merge($clone->query['bindings'], $values);
+        // $clone->query['bindings'] = array_merge($clone->query['bindings'], $values);
+        $clone->bindings = array_merge($clone->bindings, $values);
 
         return $clone;
     }
@@ -1992,7 +1993,8 @@ abstract class PlugModel
 
     protected function getBindings(): array
     {
-        return $this->query['bindings'] ?? [];
+        // return $this->query['bindings'] ?? [];
+        return $this->bindings;
     }
 
     /**
