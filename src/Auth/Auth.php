@@ -17,13 +17,14 @@ namespace Plugs\Auth;
 */
 
 use PDO;
-use PDOException;
 use Exception;
+use PDOException;
+use Plugs\Facades\Mail;
+use Plugs\Session\Session;
+use Psr\Log\LoggerInterface;
 use Plugs\Container\Container;
 use Plugs\Database\Connection;
-use Plugs\Session\Session;
 use Plugs\Base\Model\PlugModel;
-use Psr\Log\LoggerInterface;
 
 class Auth
 {
@@ -100,6 +101,21 @@ class Auth
             'use_timestamps' => true,
             'created_at_column' => 'created_at',
             'updated_at_column' => 'updated_at',
+            // EMAIL VERIFICATION CONFIG
+            'email_verification' => [
+                'enabled' => false,
+                'token_length' => 6,
+                'expiry_hours' => 24,
+                'send_welcome_email' => false,
+            ],
+            // PASSWORD RESET CONFIG
+            'password_reset' => [
+                'table' => 'password_resets',
+                'token_length' => 64,
+                'expiry_minutes' => 60,
+                'throttle_seconds' => 60,
+                'max_attempts' => 3,
+            ],
         ], $config);
 
         // Auto-detect table schema
@@ -239,13 +255,13 @@ class Auth
                     self::$_table = $tableOrAttributes;
                     self::$_primaryKey = $primaryKey;
                     self::$_hasTimestamps = $hasTimestamps ?? true;
-                    
+
                     $this->table = self::$_table;
                     $this->primaryKey = self::$_primaryKey;
                     $this->timestamps = self::$_hasTimestamps;
                     $this->fillable = [];
                     $this->guarded = [];
-                    
+
                     parent::__construct([]);
                 }
                 // Subsequent calls from create() with attributes array
@@ -255,7 +271,7 @@ class Auth
                     $this->timestamps = self::$_hasTimestamps ?? true;
                     $this->fillable = [];
                     $this->guarded = [];
-                    
+
                     parent::__construct($tableOrAttributes);
                 }
                 // Fallback for no arguments
@@ -265,7 +281,7 @@ class Auth
                     $this->timestamps = self::$_hasTimestamps ?? true;
                     $this->fillable = [];
                     $this->guarded = [];
-                    
+
                     parent::__construct([]);
                 }
             }
@@ -304,6 +320,22 @@ class Auth
                 }
             }
 
+            // Generate verification token if enabled
+            if ($this->config['email_verification']['enabled']) {
+                $verificationToken = $this->generateVerificationToken();
+                $expiryHours = $this->config['email_verification']['expiry_hours'];
+
+                if (in_array('verification_token', $this->tableSchema['all_columns'])) {
+                    $insertData['verification_token'] = $verificationToken;
+                }
+
+                if (in_array('verification_token_expires_at', $this->tableSchema['all_columns'])) {
+                    $insertData['verification_token_expires_at'] = date('Y-m-d H:i:s', strtotime("+{$expiryHours} hours"));
+                }
+
+                error_log("Generated verification token: $verificationToken");
+            }
+
             // Add timestamps if supported
             if ($this->tableSchema['has_timestamps']) {
                 $now = date('Y-m-d H:i:s');
@@ -323,6 +355,13 @@ class Auth
 
             if ($user) {
                 $this->log('info', "User registered successfully", ['email' => $email]);
+
+                // Send verification email
+                if ($this->config['email_verification']['enabled']) {
+                    $sent = $this->sendVerificationEmail($user, $verificationToken ?? null);
+                    error_log("Verification email sent: " . ($sent ? 'YES' : 'NO'));
+                }
+
                 return true;
             }
 
@@ -332,6 +371,289 @@ class Auth
             $this->log('error', "Registration error: {$e->getMessage()}");
             return false;
         }
+    }
+
+    /**
+     * Generate verification token
+     */
+    private function generateVerificationToken(): string
+    {
+        $length = $this->config['email_verification']['token_length'];
+
+        // Generate numeric code (e.g., 123456)
+        if ($length <= 10) {
+            $min = pow(10, $length - 1);
+            $max = pow(10, $length) - 1;
+            return (string) random_int($min, $max);
+        }
+
+        // Generate alphanumeric token
+        return bin2hex(random_bytes(32));
+    }
+
+    /**
+     * Send verification email
+     */
+    private function sendVerificationEmail(PlugModel $user, ?string $token = null): bool
+    {
+        try {
+            $email = $user->getAttribute($this->config['email_column']);
+            $name = $user->getAttribute('name') ?? 'User';
+            $userId = $user->getKey();
+
+            // Get or generate token
+            if (!$token) {
+                $token = $user->getAttribute('verification_token');
+            }
+
+            if (!$token) {
+                error_log("No verification token available for user: $userId");
+                return false;
+            }
+
+            // Build verification URL
+            $baseUrl = rtrim(env('APP_URL', 'http://localhost'), '/');
+            $verificationUrl = "{$baseUrl}/verify-email?token={$token}&email=" . urlencode($email);
+
+            error_log("Verification URL: $verificationUrl");
+
+            // Load email template
+            $template = $this->getEmailTemplate();
+
+            // Replace placeholders
+            $emailBody = str_replace(
+                [
+                    '{{site_name}}',
+                    '{{name}}',
+                    '{{email}}',
+                    '{{verification_url}}',
+                    '{{verification_token}}',
+                    '{{expiry_time}}',
+                    '{{year}}',
+                    '{{site_url}}'
+                ],
+                [
+                    htmlspecialchars($name),
+                    htmlspecialchars($email),
+                    htmlspecialchars($verificationUrl),
+                    htmlspecialchars($token),
+                    $this->config['email_verification']['expiry_hours'],
+                    date('Y'),
+                    $baseUrl
+                ],
+                $template
+            );
+
+            // Send email using Mail facade
+            $sent = Mail::send(
+                $email,
+                'Verify Your Email Address - NattiNation',
+                $emailBody,
+                true
+            );
+
+            if ($sent) {
+                error_log("✅ Verification email sent to: $email");
+                $this->log('info', "Verification email sent", ['email' => $email]);
+            } else {
+                error_log("❌ Failed to send verification email to: $email");
+                $this->log('error', "Failed to send verification email", ['email' => $email]);
+            }
+
+            return $sent;
+
+        } catch (Exception $e) {
+            error_log("❌ Email sending error: " . $e->getMessage());
+            $this->log('error', "Email sending error: {$e->getMessage()}");
+            return false;
+        }
+    }
+
+    /**
+     * Get email template
+     */
+    private function getEmailTemplate(): string
+    {
+        $templatePath = BASE_PATH . '/resources/views/emails/verify-email.plug.php';
+
+        if (file_exists($templatePath)) {
+            return file_get_contents($templatePath);
+        }
+
+        return $this->getDefaultEmailTemplate();
+    }
+
+    /**
+     * Get default email template
+     */
+    private function getDefaultEmailTemplate(): string
+    {
+        return <<<'HTML'
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <meta charset="UTF-8">
+                <style>
+                    body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 0; background: #f4f4f4; }
+                    .container { max-width: 600px; margin: 20px auto; background: white; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+                    .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 40px 20px; text-align: center; }
+                    .header h1 { margin: 0; font-size: 28px; }
+                    .content { padding: 40px 30px; }
+                    .content h2 { color: #333; margin: 0 0 20px; }
+                    .content p { margin: 0 0 15px; color: #555; }
+                    .button { display: inline-block; padding: 14px 32px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; text-decoration: none; border-radius: 5px; font-weight: 600; margin: 20px 0; }
+                    .token { background: #f8f9fa; padding: 20px; text-align: center; font-size: 32px; letter-spacing: 5px; margin: 20px 0; border: 2px dashed #dee2e6; font-family: monospace; }
+                    .warning { background: #fff3cd; border-left: 4px solid #ffc107; padding: 15px; margin: 20px 0; font-size: 14px; color: #856404; }
+                    .footer { background: #f8f9fa; padding: 30px; text-align: center; color: #6c757d; font-size: 14px; }
+                </style>
+            </head>
+            <body>
+                <div class="container">
+                    <div class="header">
+                        <h1>🎉 Welcome to {{site_name}}!</h1>
+                    </div>
+                    <div class="content">
+                        <h2>Hi {{name}},</h2>
+                        <p>Thank you for joining NattiNation! We're excited to have you as part of our community.</p>
+                        <p>To complete your registration, please verify your email address:</p>
+                        <div style="text-align: center;">
+                            <a href="{{verification_url}}" class="button">Verify Email Address</a>
+                        </div>
+                        <p>Or use this verification code:</p>
+                        <div class="token">{{verification_token}}</div>
+                        <div class="warning">
+                            ⚠️ This link expires in {{expiry_time}} hours. If you didn't create this account, please ignore this email.
+                        </div>
+                    </div>
+                    <div class="footer">
+                        <p><strong>NattiNation</strong></p>
+                        <p>© {{year}} NattiNation. All rights reserved.</p>
+                    </div>
+                </div>
+            </body>
+            </html>
+            HTML;
+    }
+
+    /**
+     * =====================================================
+     * VERIFY EMAIL
+     * =====================================================
+     */
+    public function verifyEmail(string $token, ?string $email = null): bool
+    {
+        try {
+            $model = $this->getUserModel();
+            $query = $model::where('verification_token', $token);
+
+            if ($email) {
+                $query = $query->where($this->config['email_column'], $email);
+            }
+
+            $user = $query->first();
+
+            if (!$user) {
+                error_log("Invalid verification token: $token");
+                $this->log('warning', "Invalid verification token", ['token' => $token]);
+                return false;
+            }
+
+            // Check if already verified
+            if ($user->getAttribute('email_verified_at')) {
+                error_log("Email already verified");
+                $this->log('info', "Email already verified", ['email' => $user->getAttribute($this->config['email_column'])]);
+                return true;
+            }
+
+            // Check if token expired
+            $expiresAt = $user->getAttribute('verification_token_expires_at');
+            if ($expiresAt && strtotime($expiresAt) < time()) {
+                error_log("Verification token expired");
+                $this->log('warning', "Verification token expired", ['token' => $token]);
+                return false;
+            }
+
+            // Mark as verified
+            $user->setAttribute('email_verified_at', date('Y-m-d H:i:s'));
+            $user->setAttribute('verification_token', null);
+            $user->setAttribute('verification_token_expires_at', null);
+
+            if ($user->save()) {
+                error_log("✅ Email verified successfully");
+                $this->log('info', "Email verified successfully", [
+                    'email' => $user->getAttribute($this->config['email_column'])
+                ]);
+
+                // Auto-login after verification
+                $this->setUser($user);
+
+                return true;
+            }
+
+            return false;
+
+        } catch (Exception $e) {
+            error_log("❌ Email verification error: " . $e->getMessage());
+            $this->log('error', "Email verification error: {$e->getMessage()}");
+            return false;
+        }
+    }
+
+    /**
+     * Resend verification email
+     */
+    public function resendVerificationEmail(string $email): bool
+    {
+        try {
+            $model = $this->getUserModel();
+            $user = $model::where($this->config['email_column'], $email)->first();
+
+            if (!$user) {
+                error_log("User not found for resend: $email");
+                return false;
+            }
+
+            // Check if already verified
+            if ($user->getAttribute('email_verified_at')) {
+                error_log("Email already verified, cannot resend");
+                return false;
+            }
+
+            // Generate new token
+            $token = $this->generateVerificationToken();
+            $expiryHours = $this->config['email_verification']['expiry_hours'];
+
+            $user->setAttribute('verification_token', $token);
+            $user->setAttribute(
+                'verification_token_expires_at',
+                date('Y-m-d H:i:s', strtotime("+{$expiryHours} hours"))
+            );
+
+            if ($user->save()) {
+                return $this->sendVerificationEmail($user, $token);
+            }
+
+            return false;
+
+        } catch (Exception $e) {
+            error_log("❌ Resend verification error: " . $e->getMessage());
+            $this->log('error', "Resend verification error: {$e->getMessage()}");
+            return false;
+        }
+    }
+
+    /**
+     * Check if user's email is verified
+     */
+    public function isEmailVerified(?PlugModel $user = null): bool
+    {
+        $user = $user ?? $this->user;
+
+        if (!$user) {
+            return false;
+        }
+
+        return !is_null($user->getAttribute('email_verified_at'));
     }
 
     /**
@@ -350,6 +672,13 @@ class Auth
             if (!$user || !password_verify($password, $user->getAttribute($this->config['password_column']))) {
                 $this->log('warning', "Login failed: Invalid credentials", ['email' => $email]);
                 return false;
+            }
+
+            // Check email verification if enabled
+            if ($this->config['email_verification']['enabled'] && !$this->isEmailVerified($user)) {
+                $this->log('warning', "Login failed: Email not verified", ['email' => $email]);
+                $this->session->set('pending_verification_email', $email);
+                throw new Exception("Please verify your email address before logging in.");
             }
 
             // Check if password needs rehashing
@@ -427,6 +756,460 @@ class Auth
 
         $this->session->regenerate();
         $this->log('info', "User logged out");
+    }
+
+    /**
+     * =====================================================
+     * PASSWORD RESET - SEND RESET LINK
+     * =====================================================
+     */
+    public function sendPasswordResetLink(string $email): array
+    {
+        try {
+            // Check throttling
+            if (!$this->canSendResetLink($email)) {
+                return [
+                    'success' => false,
+                    'message' => 'Please wait before requesting another reset link.',
+                    'throttled' => true
+                ];
+            }
+
+            // Check if user exists
+            $model = $this->getUserModel();
+            $user = $model::where($this->config['email_column'], $email)->first();
+
+            if (!$user) {
+                // Don't reveal if email exists - return success anyway
+                $this->log('warning', "Password reset requested for non-existent email", ['email' => $email]);
+                return [
+                    'success' => true,
+                    'message' => 'If that email exists, we\'ve sent a password reset link.'
+                ];
+            }
+
+            // Generate reset token
+            $token = $this->generateResetToken();
+            $expiresAt = date('Y-m-d H:i:s', strtotime("+{$this->config['password_reset']['expiry_minutes']} minutes"));
+
+            // Store reset token
+            $this->storeResetToken($email, $token, $expiresAt);
+
+            // Send reset email
+            $sent = $this->sendPasswordResetEmail($user, $token);
+
+            if ($sent) {
+                $this->log('info', "Password reset link sent", ['email' => $email]);
+                return [
+                    'success' => true,
+                    'message' => 'Password reset link has been sent to your email.'
+                ];
+            }
+
+            return [
+                'success' => false,
+                'message' => 'Failed to send reset email. Please try again.'
+            ];
+
+        } catch (Exception $e) {
+            $this->log('error', "Password reset error: {$e->getMessage()}");
+            return [
+                'success' => false,
+                'message' => 'An error occurred. Please try again later.'
+            ];
+        }
+    }
+
+    /**
+     * Generate reset token
+     */
+    private function generateResetToken(): string
+    {
+        return bin2hex(random_bytes($this->config['password_reset']['token_length'] / 2));
+    }
+
+    /**
+     * Store reset token in database
+     */
+    private function storeResetToken(string $email, string $token, string $expiresAt): void
+    {
+        $table = $this->config['password_reset']['table'];
+
+        // Hash the token before storing
+        $hashedToken = hash('sha256', $token);
+
+        $sql = "INSERT INTO {$table} (email, token, expires_at, ip_address, user_agent) 
+                VALUES (?, ?, ?, ?, ?)";
+
+        $this->connection->execute($sql, [
+            $email,
+            $hashedToken,
+            $expiresAt,
+            $_SERVER['REMOTE_ADDR'] ?? null,
+            $_SERVER['HTTP_USER_AGENT'] ?? null
+        ]);
+    }
+
+    /**
+     * Check if user can send reset link (throttling)
+     */
+    private function canSendResetLink(string $email): bool
+    {
+        $table = $this->config['password_reset']['table'];
+        $throttleSeconds = $this->config['password_reset']['throttle_seconds'];
+
+        $sql = "SELECT COUNT(*) as count FROM {$table} 
+                WHERE email = ? 
+                AND created_at > DATE_SUB(NOW(), INTERVAL ? SECOND)
+                AND used_at IS NULL";
+
+        try {
+            $stmt = $this->connection->query($sql, [$email, $throttleSeconds]);
+            $result = $stmt->fetch(PDO::FETCH_ASSOC);
+
+            return ($result['count'] ?? 0) < $this->config['password_reset']['max_attempts'];
+        } catch (Exception $e) {
+            $this->log('error', "Throttle check error: {$e->getMessage()}");
+            return true; // Allow on error
+        }
+    }
+
+    /**
+     * Send password reset email
+     */
+    private function sendPasswordResetEmail(PlugModel $user, string $token): bool
+    {
+        try {
+            $email = $user->getAttribute($this->config['email_column']);
+            $name = $user->getAttribute('name') ?? 'User';
+
+            // Build reset URL
+            $baseUrl = rtrim(env('APP_URL', 'http://localhost'), '/');
+            $resetUrl = "{$baseUrl}/reset-password?token={$token}&email=" . urlencode($email);
+
+            // Load template
+            $template = $this->getPasswordResetTemplate();
+
+            // Replace placeholders
+            $emailBody = str_replace(
+                [
+                    '{{site_name}}',
+                    '{{name}}',
+                    '{{email}}',
+                    '{{reset_url}}',
+                    '{{reset_token}}',
+                    '{{expiry_time}}',
+                    '{{year}}',
+                    '{{site_url}}'
+                ],
+                [
+                    htmlspecialchars($name),
+                    htmlspecialchars($email),
+                    htmlspecialchars($resetUrl),
+                    htmlspecialchars($token),
+                    $this->config['password_reset']['expiry_minutes'],
+                    date('Y'),
+                    $baseUrl
+                ],
+                $template
+            );
+
+            // Send email
+            $sent = Mail::send(
+                $email,
+                'Reset Your Password - NattiNation',
+                $emailBody,
+                true
+            );
+
+            if ($sent) {
+                $this->log('info', "Password reset email sent", ['email' => $email]);
+            } else {
+                $this->log('error', "Failed to send password reset email", ['email' => $email]);
+            }
+
+            return $sent;
+
+        } catch (Exception $e) {
+            $this->log('error', "Password reset email error: {$e->getMessage()}");
+            return false;
+        }
+    }
+
+    /**
+     * Get password reset email template
+     */
+    private function getPasswordResetTemplate(): string
+    {
+        $templatePath = BASE_PATH . '/resources/views/emails/reset-password.plug.php';
+
+        if (file_exists($templatePath)) {
+            return file_get_contents($templatePath);
+        }
+
+        return $this->getDefaultResetTemplate();
+    }
+
+    /**
+     * Default password reset template
+     */
+    private function getDefaultResetTemplate(): string
+    {
+        return <<<'HTML'
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <meta charset="UTF-8">
+                <style>
+                    body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 0; background: #f4f4f4; }
+                    .container { max-width: 600px; margin: 20px auto; background: white; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+                    .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 40px 20px; text-align: center; }
+                    .header h1 { margin: 0; font-size: 28px; }
+                    .content { padding: 40px 30px; }
+                    .content h2 { color: #333; margin: 0 0 20px; }
+                    .content p { margin: 0 0 15px; color: #555; }
+                    .button { display: inline-block; padding: 14px 32px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; text-decoration: none; border-radius: 5px; font-weight: 600; margin: 20px 0; }
+                    .info-box { background: #e7f3ff; border-left: 4px solid #2196F3; padding: 15px; margin: 20px 0; }
+                    .warning { background: #fff3cd; border-left: 4px solid #ffc107; padding: 15px; margin: 20px 0; font-size: 14px; color: #856404; }
+                    .footer { background: #f8f9fa; padding: 30px; text-align: center; color: #6c757d; font-size: 14px; }
+                </style>
+            </head>
+            <body>
+                <div class="container">
+                    <div class="header">
+                        <h1>🔒 Password Reset Request</h1>
+                    </div>
+                    <div class="content">
+                        <h2>Hi {{name}},</h2>
+                        <p>We received a request to reset your password for your {{site_name}} account.</p>
+                        <p>Click the button below to choose a new password:</p>
+                        <div style="text-align: center;">
+                            <a href="{{reset_url}}" class="button">Reset Password</a>
+                        </div>
+                        <div class="info-box">
+                            <strong>📧 Alternative Method:</strong><br>
+                            If the button doesn't work, copy and paste this link into your browser:<br>
+                            <a href="{{reset_url}}" style="word-break: break-all; color: #667eea;">{{reset_url}}</a>
+                        </div>
+                        <div class="warning">
+                            ⚠️ <strong>Security Notice:</strong><br>
+                            • This link will expire in <strong>{{expiry_time}} minutes</strong><br>
+                            • If you didn't request this reset, please ignore this email and your password will remain unchanged<br>
+                            • For security, we never send unsolicited password reset emails
+                        </div>
+                        <p style="margin-top: 30px; color: #666; font-size: 14px;">
+                            If you're having trouble with password resets or suspect unauthorized access, please contact our support team immediately.
+                        </p>
+                    </div>
+                    <div class="footer">
+                        <p><strong>{{site_name}}</strong></p>
+                        <p>© {{year}} {{site_name}}. All rights reserved.</p>
+                        <p style="margin-top: 15px; font-size: 12px; color: #999;">
+                            This email was sent to {{email}} because a password reset was requested for this account.
+                        </p>
+                    </div>
+                </div>
+            </body>
+            </html>
+            HTML;
+    }
+
+    /**
+     * =====================================================
+     * PASSWORD RESET - VERIFY TOKEN
+     * =====================================================
+     */
+    public function verifyResetToken(string $token, string $email): bool
+    {
+        try {
+            $table = $this->config['password_reset']['table'];
+            $hashedToken = hash('sha256', $token);
+            
+            $sql = "SELECT * FROM {$table} 
+                    WHERE token = ? 
+                    AND email = ? 
+                    AND expires_at > NOW() 
+                    AND used_at IS NULL 
+                    LIMIT 1";
+            
+            $result = $this->connection->fetch($sql, [$hashedToken, $email]);
+            
+            if ($result) {
+                $this->log('info', "Valid reset token verified", ['email' => $email]);
+                return true;
+            }
+            
+            $this->log('warning', "Invalid or expired reset token", ['email' => $email]);
+            return false;
+            
+        } catch (Exception $e) {
+            $this->log('error', "Token verification error: {$e->getMessage()}");
+            return false;
+        }
+    }
+
+    /**
+     * =====================================================
+     * PASSWORD RESET - RESET PASSWORD
+     * =====================================================
+     */
+    public function resetPassword(string $token, string $email, string $newPassword): array
+    {
+        try {
+            // Verify token
+            if (!$this->verifyResetToken($token, $email)) {
+                return [
+                    'success' => false,
+                    'message' => 'Invalid or expired reset token. Please request a new one.'
+                ];
+            }
+
+            // Get user
+            $model = $this->getUserModel();
+            $user = $model::where($this->config['email_column'], $email)->first();
+
+            if (!$user) {
+                return [
+                    'success' => false,
+                    'message' => 'User not found.'
+                ];
+            }
+
+            // Update password
+            $hashedPassword = password_hash($newPassword, $this->config['password_algo'], [
+                'cost' => $this->config['password_cost']
+            ]);
+
+            $user->setAttribute($this->config['password_column'], $hashedPassword);
+            
+            // Update password_reset_at if column exists
+            if (in_array('password_reset_at', $this->tableSchema['all_columns'])) {
+                $user->setAttribute('password_reset_at', date('Y-m-d H:i:s'));
+            }
+
+            if ($user->save()) {
+                // Mark token as used
+                $this->markResetTokenAsUsed($token);
+                
+                // Invalidate all remember tokens for security
+                $this->invalidateAllRememberTokens($user->getKey());
+                
+                $this->log('info', "Password reset successful", ['email' => $email]);
+                
+                // Send confirmation email
+                $this->sendPasswordChangedEmail($user);
+                
+                return [
+                    'success' => true,
+                    'message' => 'Password has been reset successfully. You can now login with your new password.'
+                ];
+            }
+
+            return [
+                'success' => false,
+                'message' => 'Failed to reset password. Please try again.'
+            ];
+
+        } catch (Exception $e) {
+            $this->log('error', "Password reset error: {$e->getMessage()}");
+            return [
+                'success' => false,
+                'message' => 'An error occurred. Please try again later.'
+            ];
+        }
+    }
+
+    /**
+     * Mark reset token as used
+     */
+    private function markResetTokenAsUsed(string $token): void
+    {
+        try {
+            $table = $this->config['password_reset']['table'];
+            $hashedToken = hash('sha256', $token);
+            
+            $sql = "UPDATE {$table} SET used_at = NOW() WHERE token = ?";
+            $this->connection->execute($sql, [$hashedToken]);
+            
+        } catch (Exception $e) {
+            $this->log('error', "Failed to mark token as used: {$e->getMessage()}");
+        }
+    }
+
+    /**
+     * Invalidate all remember tokens for a user
+     */
+    private function invalidateAllRememberTokens(int $userId): void
+    {
+        try {
+            $sql = "DELETE FROM {$this->config['remember_tokens_table']} WHERE user_id = ?";
+            $this->connection->execute($sql, [$userId]);
+            
+            $this->log('info', "All remember tokens invalidated", ['user_id' => $userId]);
+        } catch (Exception $e) {
+            $this->log('error', "Failed to invalidate tokens: {$e->getMessage()}");
+        }
+    }
+
+    /**
+     * Send password changed confirmation email
+     */
+    private function sendPasswordChangedEmail(PlugModel $user): bool
+    {
+        try {
+            $email = $user->getAttribute($this->config['email_column']);
+            $name = $user->getAttribute('name') ?? 'User';
+            $baseUrl = rtrim(env('APP_URL', 'http://localhost'), '/');
+            $siteName = trim(env('APP_NAME', 'Natti Nation'));
+            
+            $emailBody = <<<'HTML'
+                <!DOCTYPE html>
+                <html>
+                <head>
+                    <meta charset="UTF-8">
+                    <style>
+                        body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; background: #f4f4f4; margin: 0; padding: 20px; }
+                        .container { max-width: 600px; margin: 0 auto; background: white; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+                        .header { background: #28a745; color: white; padding: 30px 20px; text-align: center; }
+                        .content { padding: 30px; }
+                        .warning { background: #fff3cd; border-left: 4px solid #ffc107; padding: 15px; margin: 20px 0; }
+                        .footer { background: #f8f9fa; padding: 20px; text-align: center; color: #666; font-size: 12px; }
+                    </style>
+                </head>
+                <body>
+                    <div class="container">
+                        <div class="header">
+                            <h1>✅ Password Changed Successfully</h1>
+                        </div>
+                        <div class="content">
+                            <h2>Hi {$name},</h2>
+                            <p>This email confirms that your password was successfully changed.</p>
+                            <p><strong>Details:</strong></p>
+                            <ul>
+                                <li>Time: {date('F j, Y g:i A')}</li>
+                                <li>IP Address: {$_SERVER['REMOTE_ADDR'] ?? 'Unknown'}</li>
+                            </ul>
+                            <div class="warning">
+                                <strong>⚠️ Didn't change your password?</strong><br>
+                                If you didn't make this change, please contact our support team immediately and secure your account.
+                            </div>
+                            <p>For your security, all existing sessions have been invalidated. You'll need to log in again with your new password.</p>
+                        </div>
+                        <div class="footer">
+                            <p><strong>{$siteName}</strong></p>
+                            <p>© {date('Y')} {$siteName}. All rights reserved.</p>
+                        </div>
+                    </div>
+                </body>
+                </html>
+                HTML;
+
+            return Mail::send($email, 'Password Changed - NattiNation', $emailBody, true);
+            
+        } catch (Exception $e) {
+            $this->log('error', "Failed to send password changed email: {$e->getMessage()}");
+            return false;
+        }
     }
 
     /**
@@ -729,6 +1512,261 @@ class Auth
     }
 
     /**
+     * =====================================================
+     * ADDITIONAL UTILITY METHODS
+     * =====================================================
+     */
+
+    /**
+     * Change password for authenticated user
+     */
+    public function changePassword(string $currentPassword, string $newPassword): array
+    {
+        try {
+            if (!$this->check()) {
+                return [
+                    'success' => false,
+                    'message' => 'You must be logged in to change your password.'
+                ];
+            }
+
+            // Verify current password
+            if (!password_verify($currentPassword, $this->user->getAttribute($this->config['password_column']))) {
+                return [
+                    'success' => false,
+                    'message' => 'Current password is incorrect.'
+                ];
+            }
+
+            // Update password
+            $hashedPassword = password_hash($newPassword, $this->config['password_algo'], [
+                'cost' => $this->config['password_cost']
+            ]);
+
+            $this->user->setAttribute($this->config['password_column'], $hashedPassword);
+            
+            if (in_array('password_reset_at', $this->tableSchema['all_columns'])) {
+                $this->user->setAttribute('password_reset_at', date('Y-m-d H:i:s'));
+            }
+
+            if ($this->user->save()) {
+                // Invalidate other sessions
+                $this->invalidateAllRememberTokens($this->user->getKey());
+                
+                $this->log('info', "Password changed by user", ['user_id' => $this->user->getKey()]);
+                
+                // Send confirmation email
+                $this->sendPasswordChangedEmail($this->user);
+                
+                return [
+                    'success' => true,
+                    'message' => 'Password changed successfully.'
+                ];
+            }
+
+            return [
+                'success' => false,
+                'message' => 'Failed to change password. Please try again.'
+            ];
+
+        } catch (Exception $e) {
+            $this->log('error', "Password change error: {$e->getMessage()}");
+            return [
+                'success' => false,
+                'message' => 'An error occurred. Please try again.'
+            ];
+        }
+    }
+
+    /**
+     * Update user profile
+     */
+    public function updateProfile(array $data): array
+    {
+        try {
+            if (!$this->check()) {
+                return [
+                    'success' => false,
+                    'message' => 'You must be logged in.'
+                ];
+            }
+
+            // Only update allowed fields that exist in table
+            $allowedFields = ['name', 'username', 'phone', 'bio', 'avatar'];
+            
+            foreach ($data as $field => $value) {
+                if (in_array($field, $allowedFields) && 
+                    in_array($field, $this->tableSchema['all_columns'])) {
+                    $this->user->setAttribute($field, $value);
+                }
+            }
+
+            if ($this->user->save()) {
+                $this->log('info', "Profile updated", ['user_id' => $this->user->getKey()]);
+                return [
+                    'success' => true,
+                    'message' => 'Profile updated successfully.',
+                    'user' => $this->user->toArray()
+                ];
+            }
+
+            return [
+                'success' => false,
+                'message' => 'Failed to update profile.'
+            ];
+
+        } catch (Exception $e) {
+            $this->log('error', "Profile update error: {$e->getMessage()}");
+            return [
+                'success' => false,
+                'message' => 'An error occurred.'
+            ];
+        }
+    }
+
+    /**
+     * Delete user account
+     */
+    public function deleteAccount(string $password): array
+    {
+        try {
+            if (!$this->check()) {
+                return [
+                    'success' => false,
+                    'message' => 'You must be logged in.'
+                ];
+            }
+
+            // Verify password
+            if (!password_verify($password, $this->user->getAttribute($this->config['password_column']))) {
+                return [
+                    'success' => false,
+                    'message' => 'Password is incorrect.'
+                ];
+            }
+
+            $userId = $this->user->getKey();
+            $email = $this->user->getAttribute($this->config['email_column']);
+
+            // Delete user
+            if ($this->user->delete()) {
+                // Clean up related data
+                $this->invalidateAllRememberTokens($userId);
+                
+                // Logout
+                $this->logout();
+                
+                $this->log('info', "Account deleted", ['email' => $email]);
+                
+                return [
+                    'success' => true,
+                    'message' => 'Account deleted successfully.'
+                ];
+            }
+
+            return [
+                'success' => false,
+                'message' => 'Failed to delete account.'
+            ];
+
+        } catch (Exception $e) {
+            $this->log('error', "Account deletion error: {$e->getMessage()}");
+            return [
+                'success' => false,
+                'message' => 'An error occurred.'
+            ];
+        }
+    }
+
+    /**
+     * Get user by email
+     */
+    public function getUserByEmail(string $email): ?PlugModel
+    {
+        try {
+            $model = $this->getUserModel();
+            return $model::where($this->config['email_column'], $email)->first();
+        } catch (Exception $e) {
+            $this->log('error', "Get user error: {$e->getMessage()}");
+            return null;
+        }
+    }
+
+    /**
+     * Get user by ID
+     */
+    public function getUserById(int $id): ?PlugModel
+    {
+        try {
+            $model = $this->getUserModel();
+            return $model::find($id);
+        } catch (Exception $e) {
+            $this->log('error', "Get user error: {$e->getMessage()}");
+            return null;
+        }
+    }
+
+    /**
+     * Check if password is valid for current user
+     */
+    public function checkPassword(string $password): bool
+    {
+        if (!$this->check()) {
+            return false;
+        }
+
+        return password_verify($password, $this->user->getAttribute($this->config['password_column']));
+    }
+
+    /**
+     * Refresh current user data from database
+     */
+    public function refreshUser(): bool
+    {
+        if (!$this->check()) {
+            return false;
+        }
+
+        try {
+            $fresh = $this->getUserById($this->user->getKey());
+            
+            if ($fresh) {
+                $this->user = $fresh;
+                if ($this->config['password_column']) {
+                    $this->user->makeHidden($this->config['password_column']);
+                }
+                return true;
+            }
+
+            return false;
+        } catch (Exception $e) {
+            $this->log('error', "User refresh error: {$e->getMessage()}");
+            return false;
+        }
+    }
+
+    /**
+     * Clean up expired reset tokens
+     */
+    public function cleanExpiredResetTokens(): int
+    {
+        try {
+            $table = $this->config['password_reset']['table'];
+            
+            $sql = "DELETE FROM {$table} WHERE expires_at < NOW()";
+            $stmt = $this->connection->query($sql);
+            
+            $deleted = $stmt->rowCount();
+            $this->log('info', "Cleaned expired reset tokens", ['count' => $deleted]);
+            
+            return $deleted;
+        } catch (Exception $e) {
+            $this->log('error', "Token cleanup error: {$e->getMessage()}");
+            return 0;
+        }
+    }
+
+    /**
      * Check if user is authenticated
      */
     public function check(): bool
@@ -986,5 +2024,6 @@ class Auth
         if ($this->logger) {
             $this->logger->log($level, $message, $context);
         }
+        error_log("[Auth:{$level}] {$message} " . json_encode($context));
     }
 }
