@@ -219,9 +219,14 @@ class Auth
             return new $modelClass();
         }
 
+        // Create anonymous model with CORRECT configuration
+        $table = $this->config['table'];
+        $primaryKey = $this->config['primary_key'];
+        $hasTimestamps = $this->tableSchema['has_timestamps'];
+
         // Create anonymous model for the table with proper constructor
-        return new class ($this->config['table'], $this->config['primary_key']) extends PlugModel {
-            public function __construct(?string $table = null, ?string $primaryKey = null)
+        return new class ($table, $primaryKey, $hasTimestamps) extends PlugModel {
+            public function __construct(?string $table = null, ?string $primaryKey = null, ?bool $hasTimestamps = true)
             {
                 if ($table) {
                     $this->table = $table;
@@ -229,8 +234,9 @@ class Auth
                 if ($primaryKey) {
                     $this->primaryKey = $primaryKey;
                 }
-                $this->timestamps = false;
-                $this->fillable = ['*']; // IMPORTANT
+
+                $this->timestamps = $hasTimestamps ?? true;
+                $this->fillable = []; // IMPORTANT
                 $this->guarded = [];     // IMPORTANT
                 parent::__construct();
             }
@@ -256,24 +262,33 @@ class Auth
                 'cost' => $this->config['password_cost']
             ]);
 
-            // Build insert data based on available columns
+            // Build insert data
             $insertData = [
                 $this->config['email_column'] => $email,
                 $this->config['password_column'] => $hashedPassword,
             ];
 
-            // Add user data for columns that exist in the table
+            // Add user data for columns that exist
             foreach ($userData as $key => $value) {
                 if (in_array($key, $this->tableSchema['all_columns'])) {
                     $insertData[$key] = $value;
+                    error_log("Added field: $key");
+                } else {
+                    error_log("Skipped field $key (not in table)");
                 }
             }
 
             // Add timestamps if supported
             if ($this->tableSchema['has_timestamps']) {
                 $now = date('Y-m-d H:i:s');
-                $insertData[$this->config['created_at_column']] = $now;
-                $insertData[$this->config['updated_at_column']] = $now;
+
+                if (!isset($insertData[$this->config['created_at_column']])) {
+                    $insertData[$this->config['created_at_column']] = $now;
+                }
+
+                if (!isset($insertData[$this->config['updated_at_column']])) {
+                    $insertData[$this->config['updated_at_column']] = $now;
+                }
             }
 
             // Use PlugModel for insertion
@@ -730,14 +745,42 @@ class Auth
     /**
      * Check if email exists
      */
+    // private function userExists(string $email): bool
+    // {
+    //     if (!$this->config['email_column']) {
+    //         return false;
+    //     }
+
+    //     $model = $this->getUserModel();
+    //     return $model::where($this->config['email_column'], $email)->exists();
+    // }
+
     private function userExists(string $email): bool
     {
-        if (!$this->config['email_column']) {
+        try {
+            if (!$this->config['email_column']) {
+                return false;
+            }
+
+            $model = $this->getUserModel();
+            $emailColumn = $this->config['email_column'];
+
+            // Try exists() method
+            try {
+                $exists = $model::where($emailColumn, $email)->exists();
+                return $exists;
+            } catch (Exception $e) {
+                // Fallback to count
+                try {
+                    $count = $model::where($emailColumn, $email)->count();
+                    return $count > 0;
+                } catch (Exception $e2) {
+                    return false;
+                }
+            }
+        } catch (Exception $e) {
             return false;
         }
-
-        $model = $this->getUserModel();
-        return $model::where($this->config['email_column'], $email)->exists();
     }
 
     /**

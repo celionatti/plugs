@@ -1290,12 +1290,37 @@ abstract class PlugModel
         return $this;
     }
 
+    // protected function isFillable(string $key): bool
+    // {
+    //     if (in_array('*', $this->guarded)) {
+    //         return in_array($key, $this->fillable);
+    //     }
+    //     return !in_array($key, $this->guarded);
+    // }
+
     protected function isFillable(string $key): bool
     {
-        if (in_array('*', $this->guarded)) {
-            return in_array($key, $this->fillable);
+        // If both are empty, allow everything
+        if (empty($this->fillable) && empty($this->guarded)) {
+            return true;
         }
-        return !in_array($key, $this->guarded);
+
+        // If fillable is empty but guarded is not, check guarded
+        if (empty($this->fillable)) {
+            // If guarded contains '*', nothing is fillable unless explicitly in fillable
+            if (in_array('*', $this->guarded)) {
+                return false;
+            }
+            // Otherwise, allow everything not in guarded
+            return !in_array($key, $this->guarded);
+        }
+
+        // If fillable is set, only allow what's in fillable (unless it's also guarded)
+        if (in_array($key, $this->fillable)) {
+            return !in_array($key, $this->guarded);
+        }
+
+        return false;
     }
 
     public function setAttribute($key, $value)
@@ -2226,19 +2251,41 @@ abstract class PlugModel
         $this->fireObserverEvent('creating');
 
         if ($this->timestamps) {
-            $this->setAttribute('created_at', date('Y-m-d H:i:s'));
-            $this->setAttribute('updated_at', date('Y-m-d H:i:s'));
+            $now = date('Y-m-d H:i:s');
+
+            // Only set if not already set
+            if (!isset($this->attributes['created_at'])) {
+                $this->setAttribute('created_at', $now);
+            }
+            if (!isset($this->attributes['updated_at'])) {
+                $this->setAttribute('updated_at', $now);
+            }
         }
 
         $attributes = $this->attributes;
+
+        if (empty($attributes)) {
+            return false;
+        }
+
         $columns = implode(', ', array_keys($attributes));
         $placeholders = implode(', ', array_fill(0, count($attributes), '?'));
+        $values = array_values($attributes);
 
         $sql = "INSERT INTO {$this->table} ({$columns}) VALUES ({$placeholders})";
 
         try {
-            $stmt = $this->executeQuery($sql, array_values($attributes));
-            $lastId = static::getConnection()->lastInsertId();
+            // $stmt = $this->executeQuery($sql, array_values($attributes));
+            $stmt = $this->executeQuery($sql, $values);
+            // $lastId = static::getConnection()->lastInsertId();
+            // Get last insert ID
+            $connection = static::getConnection();
+            if ($connection instanceof PDO) {
+                $lastId = $connection->lastInsertId();
+            } else {
+                $lastId = $connection->getPdo()->lastInsertId();
+            }
+
             if ($lastId) {
                 $this->setAttribute($this->primaryKey, $lastId);
             }
@@ -2342,15 +2389,19 @@ abstract class PlugModel
 
     public static function create(array $attributes)
     {
-        $instance = new static($attributes);
-        $saved = $instance->save();
+        try {
+            $instance = new static($attributes);
 
-        if (!$saved) {
-            error_log("Save failed in create() method");
-            return null;
+            $saved = $instance->save();
+
+            if (!$saved) {
+                return null;
+            }
+
+            return $instance;
+        } catch (Exception $e) {
+            throw $e;
         }
-
-        return $instance;
     }
 
     public function update(array $attributes): bool
