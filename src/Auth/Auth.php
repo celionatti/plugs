@@ -212,19 +212,23 @@ class Auth
     /**
      * Get user model instance
      */
-    private function getUserModel(): PlugModel
+    public function getUserModel(): PlugModel
     {
         if ($this->config['user_model']) {
             $modelClass = $this->config['user_model'];
             return new $modelClass();
         }
 
-        // Create anonymous model for the table
+        // Create anonymous model for the table with proper constructor
         return new class ($this->config['table'], $this->config['primary_key']) extends PlugModel {
-            public function __construct(string $table, string $primaryKey)
+            public function __construct(?string $table = null, ?string $primaryKey = null)
             {
-                $this->table = $table;
-                $this->primaryKey = $primaryKey;
+                if ($table) {
+                    $this->table = $table;
+                }
+                if ($primaryKey) {
+                    $this->primaryKey = $primaryKey;
+                }
                 $this->timestamps = false;
                 parent::__construct();
             }
