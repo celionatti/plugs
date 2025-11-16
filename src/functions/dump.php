@@ -4,749 +4,22 @@ declare(strict_types=1);
 
 /*
 |--------------------------------------------------------------------------
-| Plugs Framework Debug Utility
+| Plugs Framework Debug Utility - Laravel 12 Style
 |--------------------------------------------------------------------------
 |
-| Advanced debugging with memory analysis, query detection, and N+1 detection
+| Enhanced debugging with query tracking, performance analysis, and beautiful UI
 */
 
 if (!function_exists('dd')) {
     /**
-     * Plugs Debug - Advanced variable debugging with performance analysis
+     * Plugs Debug & Die - Dump and terminate execution
      * 
      * @param mixed ...$vars Variables to dump
      * @return void
      */
     function dd(...$vars): void
     {
-        if (!headers_sent()) {
-            header('Content-Type: text/html; charset=UTF-8');
-        }
-
-        $backtrace = debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS, 1);
-        $caller = $backtrace[0] ?? [];
-        $file = $caller['file'] ?? 'unknown';
-        $line = $caller['line'] ?? 'unknown';
-        
-        $memoryUsage = memory_get_usage(true);
-        $peakMemory = memory_get_peak_usage(true);
-        $executionTime = microtime(true) - ($_SERVER['REQUEST_TIME_FLOAT'] ?? microtime(true));
-
-        echo '<style>
-            * { box-sizing: border-box; margin: 0; padding: 0; }
-            
-            body { 
-                background: #0a0e27;
-                font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-            }
-            
-            .plugs-debug {
-                font-size: 14px;
-                line-height: 1.6;
-                margin: 20px auto;
-                max-width: 1400px;
-                background: linear-gradient(135deg, #1e3c72 0%, #2a5298 50%, #7e8ba3 100%);
-                border-radius: 16px;
-                box-shadow: 0 20px 60px rgba(0,0,0,0.4), 0 0 100px rgba(30,60,114,0.3);
-                overflow: hidden;
-                animation: slideIn 0.4s cubic-bezier(0.16, 1, 0.3, 1);
-            }
-            
-            @keyframes slideIn {
-                from { opacity: 0; transform: translateY(-30px) scale(0.95); }
-                to { opacity: 1; transform: translateY(0) scale(1); }
-            }
-            
-            .plugs-header {
-                background: rgba(0,0,0,0.25);
-                backdrop-filter: blur(20px);
-                padding: 24px 28px;
-                display: flex;
-                justify-content: space-between;
-                align-items: center;
-                border-bottom: 1px solid rgba(255,255,255,0.1);
-            }
-            
-            .plugs-logo {
-                display: flex;
-                align-items: center;
-                gap: 14px;
-                color: #fff;
-            }
-            
-            .plugs-icon {
-                width: 40px;
-                height: 40px;
-                background: linear-gradient(135deg, #00d4ff 0%, #0099ff 100%);
-                border-radius: 10px;
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                font-size: 22px;
-                box-shadow: 0 6px 20px rgba(0,153,255,0.4);
-                animation: pulse 2s infinite;
-            }
-            
-            @keyframes pulse {
-                0%, 100% { transform: scale(1); }
-                50% { transform: scale(1.05); }
-            }
-            
-            .plugs-title {
-                font-size: 20px;
-                font-weight: 700;
-                letter-spacing: 1px;
-                text-shadow: 0 2px 10px rgba(0,0,0,0.3);
-            }
-            
-            .plugs-subtitle {
-                font-size: 12px;
-                color: rgba(255,255,255,0.7);
-                font-weight: 500;
-            }
-            
-            .plugs-badge {
-                background: rgba(0,212,255,0.2);
-                backdrop-filter: blur(10px);
-                padding: 8px 16px;
-                border-radius: 20px;
-                font-size: 11px;
-                font-weight: 700;
-                color: #00d4ff;
-                text-transform: uppercase;
-                letter-spacing: 1.2px;
-                border: 1px solid rgba(0,212,255,0.3);
-                box-shadow: 0 4px 15px rgba(0,212,255,0.2);
-            }
-            
-            .plugs-meta {
-                background: rgba(0,0,0,0.2);
-                backdrop-filter: blur(10px);
-                padding: 20px 28px;
-                display: grid;
-                grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-                gap: 20px;
-                border-bottom: 1px solid rgba(255,255,255,0.1);
-            }
-            
-            .meta-item {
-                display: flex;
-                flex-direction: column;
-                gap: 6px;
-            }
-            
-            .meta-label {
-                color: rgba(255,255,255,0.6);
-                font-size: 10px;
-                font-weight: 700;
-                text-transform: uppercase;
-                letter-spacing: 1px;
-                display: flex;
-                align-items: center;
-                gap: 6px;
-            }
-            
-            .meta-value {
-                color: #fff;
-                font-size: 14px;
-                font-family: "Monaco", "Menlo", "Consolas", monospace;
-                word-break: break-all;
-                font-weight: 600;
-            }
-            
-            .plugs-content {
-                background: #0f1419;
-                padding: 28px;
-                max-height: 75vh;
-                overflow-y: auto;
-            }
-            
-            .plugs-content::-webkit-scrollbar {
-                width: 12px;
-            }
-            
-            .plugs-content::-webkit-scrollbar-track {
-                background: rgba(255,255,255,0.03);
-                border-radius: 10px;
-            }
-            
-            .plugs-content::-webkit-scrollbar-thumb {
-                background: linear-gradient(135deg, #0099ff 0%, #00d4ff 100%);
-                border-radius: 10px;
-                border: 2px solid #0f1419;
-            }
-            
-            .plugs-content::-webkit-scrollbar-thumb:hover {
-                background: linear-gradient(135deg, #00b4ff 0%, #00e4ff 100%);
-            }
-            
-            .debug-item {
-                background: linear-gradient(135deg, #1a1f2e 0%, #1e2533 100%);
-                border-radius: 14px;
-                margin-bottom: 24px;
-                overflow: hidden;
-                border: 1px solid rgba(0,153,255,0.2);
-                transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
-            }
-            
-            .debug-item:hover {
-                border-color: rgba(0,153,255,0.5);
-                box-shadow: 0 12px 30px rgba(0,153,255,0.15);
-                transform: translateY(-2px);
-            }
-            
-            .item-header {
-                background: linear-gradient(135deg, rgba(0,153,255,0.15) 0%, rgba(0,212,255,0.1) 100%);
-                padding: 18px 24px;
-                display: flex;
-                justify-content: space-between;
-                align-items: center;
-                cursor: pointer;
-                user-select: none;
-                border-bottom: 1px solid rgba(0,153,255,0.1);
-            }
-            
-            .item-header:hover {
-                background: linear-gradient(135deg, rgba(0,153,255,0.2) 0%, rgba(0,212,255,0.15) 100%);
-            }
-            
-            .item-title {
-                color: #fff;
-                font-weight: 700;
-                font-size: 15px;
-                display: flex;
-                align-items: center;
-                gap: 12px;
-            }
-            
-            .item-badges {
-                display: flex;
-                gap: 10px;
-                flex-wrap: wrap;
-            }
-            
-            .badge {
-                padding: 5px 12px;
-                border-radius: 14px;
-                font-size: 10px;
-                font-weight: 700;
-                text-transform: uppercase;
-                letter-spacing: 0.8px;
-                border: 1px solid transparent;
-            }
-            
-            .badge-type { 
-                background: rgba(0,212,255,0.15); 
-                color: #00d4ff; 
-                border-color: rgba(0,212,255,0.3);
-            }
-            .badge-memory { 
-                background: rgba(52,211,153,0.15); 
-                color: #34d399; 
-                border-color: rgba(52,211,153,0.3);
-            }
-            .badge-warning { 
-                background: rgba(251,191,36,0.15); 
-                color: #fbbf24; 
-                border-color: rgba(251,191,36,0.3);
-            }
-            .badge-danger { 
-                background: rgba(239,68,68,0.15); 
-                color: #ef4444; 
-                border-color: rgba(239,68,68,0.3);
-            }
-            .badge-query { 
-                background: rgba(59,130,246,0.15); 
-                color: #3b82f6; 
-                border-color: rgba(59,130,246,0.3);
-            }
-            .badge-success { 
-                background: rgba(16,185,129,0.15); 
-                color: #10b981; 
-                border-color: rgba(16,185,129,0.3);
-            }
-            
-            .item-body {
-                padding: 24px;
-            }
-            
-            .code-block {
-                background: #0d1117;
-                border-radius: 10px;
-                padding: 20px;
-                overflow-x: auto;
-                border: 1px solid rgba(0,153,255,0.15);
-                font-family: "Monaco", "Menlo", "Consolas", "Ubuntu Mono", monospace;
-                font-size: 13px;
-                line-height: 1.7;
-                color: #e6edf3;
-                box-shadow: inset 0 2px 8px rgba(0,0,0,0.3);
-            }
-            
-            .code-block::-webkit-scrollbar {
-                height: 10px;
-            }
-            
-            .code-block::-webkit-scrollbar-track {
-                background: rgba(0,0,0,0.3);
-                border-radius: 5px;
-            }
-            
-            .code-block::-webkit-scrollbar-thumb {
-                background: rgba(0,153,255,0.3);
-                border-radius: 5px;
-            }
-            
-            .code-block::-webkit-scrollbar-thumb:hover {
-                background: rgba(0,153,255,0.5);
-            }
-            
-            .stats-section {
-                margin-top: 20px;
-                padding-top: 20px;
-                border-top: 1px solid rgba(0,153,255,0.1);
-            }
-            
-            .section-title {
-                color: #00d4ff;
-                font-size: 12px;
-                font-weight: 700;
-                text-transform: uppercase;
-                letter-spacing: 1.5px;
-                margin-bottom: 14px;
-                display: flex;
-                align-items: center;
-                gap: 8px;
-            }
-            
-            .stats-grid {
-                display: grid;
-                grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
-                gap: 14px;
-            }
-            
-            .stat-card {
-                background: rgba(0,153,255,0.08);
-                border: 1px solid rgba(0,153,255,0.2);
-                border-radius: 10px;
-                padding: 14px 16px;
-                transition: all 0.2s ease;
-            }
-            
-            .stat-card:hover {
-                background: rgba(0,153,255,0.12);
-                border-color: rgba(0,153,255,0.3);
-                transform: translateY(-2px);
-            }
-            
-            .stat-label {
-                color: rgba(255,255,255,0.5);
-                font-size: 10px;
-                font-weight: 700;
-                text-transform: uppercase;
-                margin-bottom: 6px;
-                letter-spacing: 0.8px;
-            }
-            
-            .stat-value {
-                color: #fff;
-                font-size: 18px;
-                font-weight: 700;
-                font-family: "Monaco", "Menlo", "Consolas", monospace;
-            }
-            
-            .alert {
-                background: rgba(251,191,36,0.1);
-                border-left: 4px solid #fbbf24;
-                padding: 18px 20px;
-                margin-top: 16px;
-                border-radius: 8px;
-                color: #fbbf24;
-                font-size: 13px;
-                line-height: 1.7;
-            }
-            
-            .alert-danger {
-                background: rgba(239,68,68,0.1);
-                border-left-color: #ef4444;
-                color: #fca5a5;
-            }
-            
-            .alert-success {
-                background: rgba(16,185,129,0.1);
-                border-left-color: #10b981;
-                color: #6ee7b7;
-            }
-            
-            .alert-info {
-                background: rgba(59,130,246,0.1);
-                border-left-color: #3b82f6;
-                color: #93c5fd;
-            }
-            
-            .alert-title {
-                font-weight: 700;
-                margin-bottom: 10px;
-                display: flex;
-                align-items: center;
-                gap: 10px;
-                font-size: 14px;
-            }
-            
-            .alert-content {
-                color: rgba(255,255,255,0.8);
-                line-height: 1.8;
-            }
-            
-            .query-analysis {
-                margin-top: 20px;
-                padding: 20px;
-                background: rgba(59,130,246,0.08);
-                border: 1px solid rgba(59,130,246,0.2);
-                border-radius: 10px;
-            }
-            
-            .recommendations {
-                margin-top: 16px;
-                padding: 16px;
-                background: rgba(16,185,129,0.08);
-                border: 1px solid rgba(16,185,129,0.2);
-                border-radius: 8px;
-            }
-            
-            .recommendation-item {
-                display: flex;
-                align-items: flex-start;
-                gap: 10px;
-                margin-bottom: 10px;
-                color: rgba(255,255,255,0.8);
-                font-size: 13px;
-                line-height: 1.6;
-            }
-            
-            .recommendation-item:last-child {
-                margin-bottom: 0;
-            }
-            
-            .recommendation-icon {
-                color: #10b981;
-                font-weight: 700;
-                flex-shrink: 0;
-            }
-            
-            .trace-info {
-                background: rgba(0,0,0,0.2);
-                border-radius: 8px;
-                padding: 14px 16px;
-                margin-top: 16px;
-                font-size: 12px;
-                color: rgba(255,255,255,0.6);
-                font-family: "Monaco", "Menlo", "Consolas", monospace;
-            }
-            
-            .trace-path {
-                color: #00d4ff;
-                word-break: break-all;
-            }
-            
-            /* Syntax highlighting for printed values */
-            .syntax-null { color: #ef4444; font-weight: 600; }
-            .syntax-bool { color: #3b82f6; font-weight: 600; }
-            .syntax-number { color: #34d399; }
-            .syntax-string { color: #a5f3fc; }
-            .syntax-array { color: #c084fc; }
-            .syntax-object { color: #fb923c; }
-            
-            .empty-state {
-                text-align: center;
-                padding: 60px 20px;
-                color: rgba(255,255,255,0.4);
-            }
-            
-            .empty-icon {
-                font-size: 48px;
-                margin-bottom: 16px;
-                opacity: 0.5;
-            }
-        </style>';
-
-        echo '<div class="plugs-debug">';
-        
-        // Header
-        echo '<div class="plugs-header">';
-        echo '<div class="plugs-logo">';
-        echo '<div class="plugs-icon">🔌</div>';
-        echo '<div>';
-        echo '<div class="plugs-title">PLUGS FRAMEWORK</div>';
-        echo '<div class="plugs-subtitle">Debug Console</div>';
-        echo '</div>';
-        echo '</div>';
-        echo '<div class="plugs-badge">● Active</div>';
-        echo '</div>';
-        
-        // Meta information
-        echo '<div class="plugs-meta">';
-        
-        echo '<div class="meta-item">';
-        echo '<div class="meta-label">📁 File Location</div>';
-        echo '<div class="meta-value">' . htmlspecialchars(basename($file)) . '</div>';
-        echo '</div>';
-        
-        echo '<div class="meta-item">';
-        echo '<div class="meta-label">📍 Line Number</div>';
-        echo '<div class="meta-value">' . $line . '</div>';
-        echo '</div>';
-        
-        echo '<div class="meta-item">';
-        echo '<div class="meta-label">💾 Current Memory</div>';
-        echo '<div class="meta-value">' . formatBytes($memoryUsage) . '</div>';
-        echo '</div>';
-        
-        echo '<div class="meta-item">';
-        echo '<div class="meta-label">📊 Peak Memory</div>';
-        echo '<div class="meta-value">' . formatBytes($peakMemory) . '</div>';
-        echo '</div>';
-        
-        echo '<div class="meta-item">';
-        echo '<div class="meta-label">⏱️ Execution Time</div>';
-        echo '<div class="meta-value">' . number_format($executionTime * 1000, 2) . ' ms</div>';
-        echo '</div>';
-        
-        echo '<div class="meta-item">';
-        echo '<div class="meta-label">🕐 Timestamp</div>';
-        echo '<div class="meta-value">' . date('H:i:s') . '</div>';
-        echo '</div>';
-        
-        echo '</div>';
-        
-        // Content
-        echo '<div class="plugs-content">';
-
-        if (empty($vars)) {
-            echo '<div class="empty-state">';
-            echo '<div class="empty-icon">📦</div>';
-            echo '<div style="font-size: 16px; font-weight: 600; margin-bottom: 8px;">No Variables Provided</div>';
-            echo '<div>Pass variables to pd() to debug them</div>';
-            echo '</div>';
-        } else {
-            foreach ($vars as $index => $var) {
-                $varSize = getVariableSize($var);
-                $type = gettype($var);
-                $analysis = analyzeVariable($var);
-                
-                echo '<div class="debug-item">';
-                echo '<div class="item-header" onclick="toggleDebugItem(this)">';
-                echo '<div class="item-title">';
-                echo '<span>📦</span>';
-                echo '<span>Variable #' . ($index + 1) . '</span>';
-                echo '</div>';
-                echo '<div class="item-badges">';
-                
-                echo '<span class="badge badge-type">' . $type . '</span>';
-                echo '<span class="badge badge-memory">' . formatBytes($varSize) . '</span>';
-                
-                if ($analysis['isQuery']) {
-                    echo '<span class="badge badge-query">SQL</span>';
-                }
-                
-                if ($varSize > 1024 * 1024) {
-                    echo '<span class="badge badge-danger">Large</span>';
-                } elseif ($varSize > 100 * 1024) {
-                    echo '<span class="badge badge-warning">Medium</span>';
-                } else {
-                    echo '<span class="badge badge-success">Small</span>';
-                }
-                
-                echo '</div>';
-                echo '</div>';
-                
-                echo '<div class="item-body">';
-                
-                // Main content with formatted output
-                echo '<div class="section-title">📄 Variable Content</div>';
-                echo '<div class="code-block">';
-                echo formatVariableOutput($var);
-                echo '</div>';
-                
-                // Statistics section
-                echo '<div class="stats-section">';
-                echo '<div class="section-title">📊 Statistics</div>';
-                echo '<div class="stats-grid">';
-                
-                echo '<div class="stat-card">';
-                echo '<div class="stat-label">Data Type</div>';
-                echo '<div class="stat-value">' . ucfirst($type) . '</div>';
-                echo '</div>';
-                
-                echo '<div class="stat-card">';
-                echo '<div class="stat-label">Memory Size</div>';
-                echo '<div class="stat-value">' . formatBytes($varSize) . '</div>';
-                echo '</div>';
-                
-                if (is_countable($var)) {
-                    $count = count($var);
-                    echo '<div class="stat-card">';
-                    echo '<div class="stat-label">Item Count</div>';
-                    echo '<div class="stat-value">' . number_format($count) . '</div>';
-                    echo '</div>';
-                }
-                
-                if (is_string($var)) {
-                    echo '<div class="stat-card">';
-                    echo '<div class="stat-label">String Length</div>';
-                    echo '<div class="stat-value">' . number_format(strlen($var)) . '</div>';
-                    echo '</div>';
-                    
-                    echo '<div class="stat-card">';
-                    echo '<div class="stat-label">Word Count</div>';
-                    echo '<div class="stat-value">' . str_word_count($var) . '</div>';
-                    echo '</div>';
-                }
-                
-                if (is_object($var)) {
-                    echo '<div class="stat-card">';
-                    echo '<div class="stat-label">Class Name</div>';
-                    echo '<div class="stat-value" style="font-size: 13px;">' . get_class($var) . '</div>';
-                    echo '</div>';
-                }
-                
-                echo '</div>';
-                echo '</div>';
-                
-                // Query analysis
-                if ($analysis['isQuery']) {
-                    echo '<div class="stats-section">';
-                    echo '<div class="section-title">🔍 SQL Query Analysis</div>';
-                    echo '<div class="query-analysis">';
-                    
-                    if (is_array($var)) {
-                        $queryCount = count($var);
-                        
-                        echo '<div class="stats-grid">';
-                        echo '<div class="stat-card">';
-                        echo '<div class="stat-label">Total Queries</div>';
-                        echo '<div class="stat-value">' . number_format($queryCount) . '</div>';
-                        echo '</div>';
-                        
-                        echo '<div class="stat-card">';
-                        echo '<div class="stat-label">Estimated Time</div>';
-                        echo '<div class="stat-value">' . ($queryCount * 2) . ' ms</div>';
-                        echo '</div>';
-                        echo '</div>';
-                        
-                        // N+1 Detection
-                        $nPlusOne = detectNPlusOne($var);
-                        if ($nPlusOne['detected']) {
-                            echo '<div class="alert alert-danger" style="margin-top: 16px;">';
-                            echo '<div class="alert-title">⚠️ N+1 Query Problem Detected</div>';
-                            echo '<div class="alert-content">';
-                            echo 'Found <strong>' . $nPlusOne['count'] . '</strong> similar queries executing in a loop. This is a classic N+1 problem.';
-                            echo '</div>';
-                            echo '</div>';
-                            
-                            echo '<div class="recommendations">';
-                            echo '<div class="section-title" style="color: #10b981; margin-bottom: 12px;">💡 Recommended Solutions</div>';
-                            echo '<div class="recommendation-item">';
-                            echo '<span class="recommendation-icon">→</span>';
-                            echo '<span>Use <strong>eager loading</strong> (e.g., <code>with()</code>) to load relationships upfront</span>';
-                            echo '</div>';
-                            echo '<div class="recommendation-item">';
-                            echo '<span class="recommendation-icon">→</span>';
-                            echo '<span>Implement <strong>batch queries</strong> using <code>whereIn()</code> to fetch multiple records at once</span>';
-                            echo '</div>';
-                            echo '<div class="recommendation-item">';
-                            echo '<span class="recommendation-icon">→</span>';
-                            echo '<span>Consider using <strong>query result caching</strong> for frequently accessed data</span>';
-                            echo '</div>';
-                            echo '</div>';
-                        }
-                        
-                        // Production readiness
-                        if ($queryCount > 20) {
-                            echo '<div class="alert alert-danger">';
-                            echo '<div class="alert-title">❌ Not Production Ready</div>';
-                            echo '<div class="alert-content">';
-                            echo 'Too many queries (' . $queryCount . '). This will severely impact performance.<br>';
-                            echo '<strong>Recommended:</strong> Reduce to less than 20 queries per request.';
-                            echo '</div>';
-                            echo '</div>';
-                        } elseif ($queryCount > 10) {
-                            echo '<div class="alert alert-warning">';
-                            echo '<div class="alert-title">⚠️ Production Warning</div>';
-                            echo '<div class="alert-content">';
-                            echo 'Query count is borderline (' . $queryCount . '). Consider optimization before deploying.<br>';
-                            echo '<strong>Target:</strong> Aim for less than 10 queries per request for optimal performance.';
-                            echo '</div>';
-                            echo '</div>';
-                        } else {
-                            echo '<div class="alert alert-success">';
-                            echo '<div class="alert-title">✅ Production Ready</div>';
-                            echo '<div class="alert-content">';
-                            echo 'Query count (' . $queryCount . ') is well within acceptable limits for production deployment.';
-                            echo '</div>';
-                            echo '</div>';
-                        }
-                    } else {
-                        // Single query analysis
-                        echo '<div class="alert alert-info">';
-                        echo '<div class="alert-title">ℹ️ Single Query</div>';
-                        echo '<div class="alert-content">';
-                        echo 'This is a single SQL query. Performance should be good for production.';
-                        echo '</div>';
-                        echo '</div>';
-                    }
-                    
-                    echo '</div>';
-                    echo '</div>';
-                }
-                
-                // Memory warnings
-                if ($varSize > 5 * 1024 * 1024) {
-                    echo '<div class="alert alert-danger">';
-                    echo '<div class="alert-title">❌ Critical Memory Warning</div>';
-                    echo '<div class="alert-content">';
-                    echo 'Variable size (' . formatBytes($varSize) . ') is extremely large and will cause memory issues.<br>';
-                    echo '<strong>Action Required:</strong> Implement pagination, chunking, or streaming for this data.';
-                    echo '</div>';
-                    echo '</div>';
-                } elseif ($varSize > 1 * 1024 * 1024) {
-                    echo '<div class="alert alert-warning">';
-                    echo '<div class="alert-title">⚠️ Large Variable Warning</div>';
-                    echo '<div class="alert-content">';
-                    echo 'Variable size (' . formatBytes($varSize) . ') is significant. Monitor memory usage in production.<br>';
-                    echo '<strong>Tip:</strong> Consider lazy loading or pagination if this grows larger.';
-                    echo '</div>';
-                    echo '</div>';
-                }
-                
-                // Trace information
-                echo '<div class="trace-info">';
-                echo '<strong>Full Path:</strong> <span class="trace-path">' . htmlspecialchars($file) . '</span>';
-                echo '</div>';
-                
-                echo '</div>';
-                echo '</div>';
-            }
-        }
-
-        echo '</div>';
-        echo '</div>';
-        
-        echo '<script>
-            function toggleDebugItem(header) {
-                const body = header.parentElement.querySelector(".item-body");
-                if (body.style.display === "none") {
-                    body.style.display = "block";
-                } else {
-                    body.style.display = "none";
-                }
-            }
-            
-            console.log("%c🔌 Plugs Framework Debug", "background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%); color: white; padding: 10px 20px; border-radius: 5px; font-weight: bold; font-size: 14px;");
-            console.log("%cDebug session active at line ' . $line . '", "color: #00d4ff; font-weight: 600;");
-        </script>';
-        
-        exit(1);
+        plugs_dump($vars, true);
     }
 }
 
@@ -759,191 +32,1033 @@ if (!function_exists('d')) {
      */
     function d(...$vars): void
     {
-        ob_start();
-        try {
-            call_user_func_array('dd', $vars);
-        } catch (\Throwable $e) {
-            // Catch the exit
+        plugs_dump($vars, false);
+    }
+}
+
+if (!function_exists('dq')) {
+    /**
+     * Dump Queries - Show all executed queries
+     * 
+     * @param bool $die Whether to terminate execution
+     * @return void
+     */
+    function dq(bool $die = true): void
+    {
+        $modelClass = 'Plugs\\Base\\Model\\PlugModel';
+
+        if (!class_exists($modelClass)) {
+            if (!headers_sent()) {
+                header('Content-Type: text/html; charset=UTF-8');
+            }
+            echo '<div style="padding: 20px; background: #fee; border: 2px solid #f00; color: #900; font-family: monospace;">';
+            echo '<strong>Error:</strong> Model class not found. Make sure PlugModel is loaded.';
+            echo '</div>';
+            if ($die)
+                exit(1);
+            return;
         }
-        $output = ob_get_clean();
-        
-        // Remove the exit script
-        $output = preg_replace('/<script>[\s\S]*?<\/script>\s*$/', '', $output);
-        echo $output;
+
+        try {
+            $queries = call_user_func([$modelClass, 'getQueryLog']);
+
+            if (!is_array($queries)) {
+                $queries = [];
+            }
+
+            $totalTime = 0;
+            foreach ($queries as $query) {
+                $totalTime += $query['time'] ?? 0;
+            }
+
+            $data = [
+                'queries' => $queries,
+                'stats' => [
+                    'total_queries' => count($queries),
+                    'total_time' => $totalTime,
+                    'memory_usage' => memory_get_usage(true),
+                    'peak_memory' => memory_get_peak_usage(true),
+                ]
+            ];
+
+            plugs_dump([$data], $die, 'query');
+        } catch (\Exception $e) {
+            if (!headers_sent()) {
+                header('Content-Type: text/html; charset=UTF-8');
+            }
+            echo '<div style="padding: 20px; background: #fee; border: 2px solid #f00; color: #900; font-family: monospace;">';
+            echo '<strong>Error:</strong> ' . htmlspecialchars($e->getMessage());
+            echo '</div>';
+            if ($die)
+                exit(1);
+        }
+    }
+}
+
+if (!function_exists('dm')) {
+    /**
+     * Dump Model - Show model with relations and queries
+     * 
+     * @param mixed $model Model instance
+     * @param bool $die Whether to terminate execution
+     * @return void
+     */
+    function dm($model, bool $die = true): void
+    {
+        if (!is_object($model)) {
+            plugs_dump([$model], $die);
+            return;
+        }
+
+        $data = [
+            'model' => $model,
+            'queries' => method_exists($model, 'getQueryLog') ? $model::getQueryLog() : [],
+        ];
+
+        plugs_dump([$data], $die, 'model');
     }
 }
 
 /**
- * Format bytes to human readable format
+ * Core dump function with Laravel 12 styling
  */
-function formatBytes(int $bytes, int $precision = 2): string
+function plugs_dump(array $vars, bool $die = false, string $mode = 'default'): void
+{
+    if (!headers_sent()) {
+        header('Content-Type: text/html; charset=UTF-8');
+    }
+
+    $backtrace = debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS, 2);
+    $caller = $backtrace[1] ?? $backtrace[0] ?? [];
+    $file = $caller['file'] ?? 'unknown';
+    $line = $caller['line'] ?? 'unknown';
+
+    $memoryUsage = memory_get_usage(true);
+    $peakMemory = memory_get_peak_usage(true);
+    $executionTime = microtime(true) - ($_SERVER['REQUEST_TIME_FLOAT'] ?? microtime(true));
+
+    // Get query statistics if model is available
+    $queryStats = plugs_get_query_stats();
+
+    echo plugs_render_styles();
+    echo '<div class="plugs-debug-wrapper">';
+    echo plugs_render_header($file, $line, $memoryUsage, $peakMemory, $executionTime, $queryStats);
+    echo '<div class="plugs-debug-content">';
+
+    if ($mode === 'query') {
+        echo plugs_render_queries($vars[0]);
+    } elseif ($mode === 'model') {
+        echo plugs_render_model($vars[0]);
+    } else {
+        echo plugs_render_variables($vars);
+    }
+
+    echo '</div>';
+    echo '</div>';
+
+    if ($die) {
+        exit(1);
+    }
+}
+
+/**
+ * Get query statistics from model
+ */
+function plugs_get_query_stats(): array
+{
+    $modelClass = 'Plugs\\Base\\Model\\PlugModel';
+
+    if (!class_exists($modelClass)) {
+        return [];
+    }
+
+    try {
+        $queries = call_user_func([$modelClass, 'getQueryLog']);
+        $totalTime = array_sum(array_column($queries, 'time'));
+
+        return [
+            'count' => count($queries),
+            'time' => $totalTime,
+            'queries' => $queries,
+        ];
+    } catch (\Exception $e) {
+        return [];
+    }
+}
+
+/**
+ * Render CSS styles (Laravel 12 inspired)
+ */
+function plugs_render_styles(): string
+{
+    return <<<'HTML'
+<style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    
+    body {
+        background: #f8fafc;
+        font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        color: #1e293b;
+        line-height: 1.6;
+    }
+    
+    .plugs-debug-wrapper {
+        min-height: 100vh;
+        padding: 20px;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    }
+    
+    .plugs-debug-header {
+        background: white;
+        border-radius: 12px;
+        padding: 24px 32px;
+        margin-bottom: 20px;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    }
+    
+    .header-top {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 24px;
+        padding-bottom: 20px;
+        border-bottom: 2px solid #e2e8f0;
+    }
+    
+    .logo-section {
+        display: flex;
+        align-items: center;
+        gap: 16px;
+    }
+    
+    .logo {
+        width: 48px;
+        height: 48px;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 24px;
+        box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+    }
+    
+    .logo-text h1 {
+        font-size: 24px;
+        font-weight: 700;
+        color: #1e293b;
+        margin-bottom: 2px;
+    }
+    
+    .logo-text p {
+        font-size: 13px;
+        color: #64748b;
+        font-weight: 500;
+    }
+    
+    .status-badge {
+        background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+        color: white;
+        padding: 8px 20px;
+        border-radius: 20px;
+        font-size: 12px;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        box-shadow: 0 2px 8px rgba(16, 185, 129, 0.3);
+    }
+    
+    .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 16px;
+    }
+    
+    .stat-card {
+        background: #f8fafc;
+        border: 1px solid #e2e8f0;
+        border-radius: 8px;
+        padding: 16px;
+        transition: all 0.2s ease;
+    }
+    
+    .stat-card:hover {
+        background: #f1f5f9;
+        border-color: #cbd5e1;
+        transform: translateY(-2px);
+    }
+    
+    .stat-label {
+        font-size: 11px;
+        font-weight: 600;
+        text-transform: uppercase;
+        color: #64748b;
+        margin-bottom: 8px;
+        letter-spacing: 0.5px;
+    }
+    
+    .stat-value {
+        font-size: 20px;
+        font-weight: 700;
+        color: #1e293b;
+        font-family: 'Monaco', 'Menlo', monospace;
+    }
+    
+    .stat-icon {
+        font-size: 14px;
+        margin-right: 6px;
+    }
+    
+    .plugs-debug-content {
+        background: white;
+        border-radius: 12px;
+        overflow: hidden;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    }
+    
+    .variables-grid {
+        display: grid;
+        gap: 20px;
+        padding: 24px;
+    }
+    
+    .var-item {
+        background: #f8fafc;
+        border: 2px solid #e2e8f0;
+        border-radius: 10px;
+        overflow: hidden;
+        transition: all 0.2s ease;
+    }
+    
+    .var-item:hover {
+        border-color: #667eea;
+        box-shadow: 0 4px 12px rgba(102, 126, 234, 0.1);
+    }
+    
+    .var-header {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 16px 20px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        cursor: pointer;
+    }
+    
+    .var-title {
+        font-size: 15px;
+        font-weight: 600;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+    
+    .var-badges {
+        display: flex;
+        gap: 8px;
+    }
+    
+    .badge {
+        background: rgba(255, 255, 255, 0.2);
+        padding: 4px 12px;
+        border-radius: 12px;
+        font-size: 11px;
+        font-weight: 600;
+        text-transform: uppercase;
+        backdrop-filter: blur(10px);
+    }
+    
+    .var-body {
+        padding: 24px;
+    }
+    
+    .section-title {
+        font-size: 12px;
+        font-weight: 700;
+        text-transform: uppercase;
+        color: #667eea;
+        margin-bottom: 12px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        letter-spacing: 0.5px;
+    }
+    
+    .code-block {
+        background: #1e293b;
+        color: #e2e8f0;
+        border-radius: 8px;
+        padding: 20px;
+        overflow-x: auto;
+        font-family: 'Monaco', 'Menlo', 'Consolas', monospace;
+        font-size: 13px;
+        line-height: 1.8;
+        max-height: 600px;
+        overflow-y: auto;
+    }
+    
+    .code-block::-webkit-scrollbar {
+        width: 10px;
+        height: 10px;
+    }
+    
+    .code-block::-webkit-scrollbar-track {
+        background: #0f172a;
+        border-radius: 5px;
+    }
+    
+    .code-block::-webkit-scrollbar-thumb {
+        background: #667eea;
+        border-radius: 5px;
+    }
+    
+    .code-line {
+        display: block;
+        padding: 2px 0;
+        white-space: pre-wrap;
+        word-break: break-word;
+    }
+    
+    .code-indent {
+        display: inline-block;
+        width: 20px;
+    }
+    
+    .syntax-key { color: #8b5cf6; font-weight: 600; }
+    .syntax-string { color: #34d399; }
+    .syntax-number { color: #60a5fa; }
+    .syntax-bool { color: #f59e0b; }
+    .syntax-null { color: #ef4444; }
+    .syntax-array { color: #ec4899; }
+    .syntax-object { color: #14b8a6; }
+    
+    .info-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+        gap: 16px;
+        margin-top: 20px;
+        padding-top: 20px;
+        border-top: 2px solid #e2e8f0;
+    }
+    
+    .info-card {
+        background: white;
+        border: 1px solid #e2e8f0;
+        border-radius: 8px;
+        padding: 16px;
+    }
+    
+    .info-label {
+        font-size: 11px;
+        font-weight: 600;
+        text-transform: uppercase;
+        color: #64748b;
+        margin-bottom: 6px;
+    }
+    
+    .info-value {
+        font-size: 15px;
+        font-weight: 600;
+        color: #1e293b;
+        font-family: 'Monaco', 'Menlo', monospace;
+    }
+    
+    .alert {
+        border-left: 4px solid;
+        padding: 16px 20px;
+        margin-top: 16px;
+        border-radius: 8px;
+        font-size: 14px;
+    }
+    
+    .alert-warning {
+        background: #fef3c7;
+        border-color: #f59e0b;
+        color: #92400e;
+    }
+    
+    .alert-danger {
+        background: #fee2e2;
+        border-color: #ef4444;
+        color: #991b1b;
+    }
+    
+    .alert-success {
+        background: #d1fae5;
+        border-color: #10b981;
+        color: #065f46;
+    }
+    
+    .alert-info {
+        background: #dbeafe;
+        border-color: #3b82f6;
+        color: #1e40af;
+    }
+    
+    .alert-title {
+        font-weight: 700;
+        margin-bottom: 8px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+    
+    .query-table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 16px;
+    }
+    
+    .query-table th {
+        background: #f8fafc;
+        padding: 12px;
+        text-align: left;
+        font-size: 11px;
+        font-weight: 700;
+        text-transform: uppercase;
+        color: #64748b;
+        border-bottom: 2px solid #e2e8f0;
+    }
+    
+    .query-table td {
+        padding: 12px;
+        border-bottom: 1px solid #e2e8f0;
+        font-size: 13px;
+    }
+    
+    .query-table tr:hover {
+        background: #f8fafc;
+    }
+    
+    .query-sql {
+        font-family: 'Monaco', 'Menlo', monospace;
+        color: #667eea;
+        font-size: 12px;
+        max-width: 600px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+    
+    .query-time {
+        font-weight: 600;
+        font-family: 'Monaco', 'Menlo', monospace;
+    }
+    
+    .time-fast { color: #10b981; }
+    .time-normal { color: #f59e0b; }
+    .time-slow { color: #ef4444; }
+    
+    .trace-info {
+        background: #f8fafc;
+        border: 1px solid #e2e8f0;
+        border-radius: 8px;
+        padding: 16px;
+        margin-top: 16px;
+        font-size: 12px;
+        color: #64748b;
+        font-family: 'Monaco', 'Menlo', monospace;
+    }
+    
+    .trace-path {
+        color: #667eea;
+        font-weight: 600;
+    }
+    
+    @keyframes slideIn {
+        from { opacity: 0; transform: translateY(-20px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+    
+    .plugs-debug-wrapper {
+        animation: slideIn 0.3s ease-out;
+    }
+</style>
+HTML;
+}
+
+/**
+ * Render header section
+ */
+function plugs_render_header(string $file, $line, int $memoryUsage, int $peakMemory, float $executionTime, array $queryStats): string
+{
+    $queryCount = $queryStats['count'] ?? 0;
+    $queryTime = $queryStats['time'] ?? 0;
+
+    $html = '<div class="plugs-debug-header">';
+    $html .= '<div class="header-top">';
+    $html .= '<div class="logo-section">';
+    $html .= '<div class="logo">🔌</div>';
+    $html .= '<div class="logo-text">';
+    $html .= '<h1>Plugs Framework</h1>';
+    $html .= '<p>Debug Console</p>';
+    $html .= '</div>';
+    $html .= '</div>';
+    $html .= '<div class="status-badge">● Active</div>';
+    $html .= '</div>';
+
+    $html .= '<div class="stats-grid">';
+
+    // File & Line
+    $html .= '<div class="stat-card">';
+    $html .= '<div class="stat-label"><span class="stat-icon">📁</span>Location</div>';
+    $html .= '<div class="stat-value" style="font-size: 13px;">' . htmlspecialchars(basename($file)) . ':' . $line . '</div>';
+    $html .= '</div>';
+
+    // Memory Usage
+    $html .= '<div class="stat-card">';
+    $html .= '<div class="stat-label"><span class="stat-icon">💾</span>Memory Usage</div>';
+    $html .= '<div class="stat-value">' . plugs_format_bytes($memoryUsage) . '</div>';
+    $html .= '</div>';
+
+    // Peak Memory
+    $html .= '<div class="stat-card">';
+    $html .= '<div class="stat-label"><span class="stat-icon">📊</span>Peak Memory</div>';
+    $html .= '<div class="stat-value">' . plugs_format_bytes($peakMemory) . '</div>';
+    $html .= '</div>';
+
+    // Execution Time
+    $html .= '<div class="stat-card">';
+    $html .= '<div class="stat-label"><span class="stat-icon">⏱️</span>Execution Time</div>';
+    $html .= '<div class="stat-value">' . number_format($executionTime * 1000, 2) . ' ms</div>';
+    $html .= '</div>';
+
+    // Query Count
+    if ($queryCount > 0) {
+        $html .= '<div class="stat-card">';
+        $html .= '<div class="stat-label"><span class="stat-icon">🔍</span>Queries</div>';
+        $html .= '<div class="stat-value">' . $queryCount . '</div>';
+        $html .= '</div>';
+
+        // Query Time
+        $html .= '<div class="stat-card">';
+        $html .= '<div class="stat-label"><span class="stat-icon">⚡</span>Query Time</div>';
+        $html .= '<div class="stat-value">' . number_format($queryTime * 1000, 2) . ' ms</div>';
+        $html .= '</div>';
+    }
+
+    // Timestamp
+    $html .= '<div class="stat-card">';
+    $html .= '<div class="stat-label"><span class="stat-icon">🕐</span>Timestamp</div>';
+    $html .= '<div class="stat-value" style="font-size: 16px;">' . date('H:i:s') . '</div>';
+    $html .= '</div>';
+
+    $html .= '</div>';
+    $html .= '</div>';
+
+    return $html;
+}
+
+/**
+ * Render variables
+ */
+function plugs_render_variables(array $vars): string
+{
+    $html = '<div class="variables-grid">';
+
+    if (empty($vars)) {
+        $html .= '<div style="text-align: center; padding: 60px; color: #64748b;">';
+        $html .= '<div style="font-size: 48px; margin-bottom: 16px;">📦</div>';
+        $html .= '<h3>No Variables Provided</h3>';
+        $html .= '<p>Pass variables to d() or dd() to debug them</p>';
+        $html .= '</div>';
+    } else {
+        foreach ($vars as $index => $var) {
+            $html .= plugs_render_variable($var, $index);
+        }
+    }
+
+    $html .= '</div>';
+    return $html;
+}
+
+/**
+ * Render single variable
+ */
+function plugs_render_variable($var, int $index): string
+{
+    $type = gettype($var);
+    $size = plugs_get_variable_size($var);
+
+    $html = '<div class="var-item">';
+    $html .= '<div class="var-header">';
+    $html .= '<div class="var-title">';
+    $html .= '<span>📦</span>';
+    $html .= '<span>Variable #' . ($index + 1) . '</span>';
+    $html .= '</div>';
+    $html .= '<div class="var-badges">';
+    $html .= '<span class="badge">' . $type . '</span>';
+    $html .= '<span class="badge">' . plugs_format_bytes($size) . '</span>';
+    $html .= '</div>';
+    $html .= '</div>';
+
+    $html .= '<div class="var-body">';
+    $html .= '<div class="section-title">📄 Value</div>';
+    $html .= '<div class="code-block">';
+    $html .= plugs_format_value($var, 0);
+    $html .= '</div>';
+
+    // Info grid
+    $html .= '<div class="info-grid">';
+
+    $html .= '<div class="info-card">';
+    $html .= '<div class="info-label">Type</div>';
+    $html .= '<div class="info-value">' . ucfirst($type) . '</div>';
+    $html .= '</div>';
+
+    $html .= '<div class="info-card">';
+    $html .= '<div class="info-label">Size</div>';
+    $html .= '<div class="info-value">' . plugs_format_bytes($size) . '</div>';
+    $html .= '</div>';
+
+    if (is_countable($var)) {
+        $html .= '<div class="info-card">';
+        $html .= '<div class="info-label">Count</div>';
+        $html .= '<div class="info-value">' . count($var) . '</div>';
+        $html .= '</div>';
+    }
+
+    if (is_string($var)) {
+        $html .= '<div class="info-card">';
+        $html .= '<div class="info-label">Length</div>';
+        $html .= '<div class="info-value">' . strlen($var) . '</div>';
+        $html .= '</div>';
+    }
+
+    $html .= '</div>';
+
+    // Warnings
+    if ($size > 5 * 1024 * 1024) {
+        $html .= '<div class="alert alert-danger">';
+        $html .= '<div class="alert-title">❌ Critical Memory Warning</div>';
+        $html .= 'Variable size is extremely large (' . plugs_format_bytes($size) . '). Consider pagination or chunking.';
+        $html .= '</div>';
+    } elseif ($size > 1 * 1024 * 1024) {
+        $html .= '<div class="alert alert-warning">';
+        $html .= '<div class="alert-title">⚠️ Large Variable</div>';
+        $html .= 'Variable size is significant (' . plugs_format_bytes($size) . '). Monitor memory usage.';
+        $html .= '</div>';
+    }
+
+    $html .= '</div>';
+    $html .= '</div>';
+
+    return $html;
+}
+
+/**
+ * Render queries
+ */
+function plugs_render_queries(array $data): string
+{
+    $queries = $data['queries'] ?? [];
+    $stats = $data['stats'] ?? [];
+
+    $html = '<div style="padding: 24px;">';
+
+    // Stats cards
+    $html .= '<div class="stats-grid" style="margin-bottom: 24px;">';
+
+    $html .= '<div class="stat-card">';
+    $html .= '<div class="stat-label">Total Queries</div>';
+    $html .= '<div class="stat-value">' . ($stats['total_queries'] ?? 0) . '</div>';
+    $html .= '</div>';
+
+    $html .= '<div class="stat-card">';
+    $html .= '<div class="stat-label">Total Time</div>';
+    $html .= '<div class="stat-value">' . number_format(($stats['total_time'] ?? 0) * 1000, 2) . ' ms</div>';
+    $html .= '</div>';
+
+    $html .= '<div class="stat-card">';
+    $html .= '<div class="stat-label">Avg Time</div>';
+    $avgTime = $stats['total_queries'] > 0 ? ($stats['total_time'] / $stats['total_queries']) : 0;
+    $html .= '<div class="stat-value">' . number_format($avgTime * 1000, 2) . ' ms</div>';
+    $html .= '</div>';
+
+    $html .= '</div>';
+
+    // Performance assessment
+    $totalQueries = $stats['total_queries'] ?? 0;
+    if ($totalQueries > 20) {
+        $html .= '<div class="alert alert-danger">';
+        $html .= '<div class="alert-title">❌ Too Many Queries</div>';
+        $html .= "Detected {$totalQueries} queries. This will impact performance. Consider eager loading or query optimization.";
+        $html .= '</div>';
+    } elseif ($totalQueries > 10) {
+        $html .= '<div class="alert alert-warning">';
+        $html .= '<div class="alert-title">⚠️ High Query Count</div>';
+        $html .= "Found {$totalQueries} queries. Consider optimization before production.";
+        $html .= '</div>';
+    } else {
+        $html .= '<div class="alert alert-success">';
+        $html .= '<div class="alert-title">✅ Good Performance</div>';
+        $html .= "Query count ({$totalQueries}) is within acceptable limits.";
+        $html .= '</div>';
+    }
+
+    // N+1 detection
+    $nPlusOne = plugs_detect_n_plus_one($queries);
+    if ($nPlusOne['detected']) {
+        $html .= '<div class="alert alert-danger" style="margin-top: 16px;">';
+        $html .= '<div class="alert-title">⚠️ N+1 Query Problem Detected</div>';
+        $html .= "Found {$nPlusOne['count']} similar queries. Use eager loading with <code>with()</code> to fix this.";
+        $html .= '</div>';
+    }
+
+    // Query table
+    $html .= '<div style="margin-top: 24px;">';
+    $html .= '<div class="section-title">🔍 Executed Queries</div>';
+    $html .= '<table class="query-table">';
+    $html .= '<thead><tr>';
+    $html .= '<th>#</th>';
+    $html .= '<th>Query</th>';
+    $html .= '<th>Bindings</th>';
+    $html .= '<th>Time</th>';
+    $html .= '<th>Timestamp</th>';
+    $html .= '</tr></thead>';
+    $html .= '<tbody>';
+
+    foreach ($queries as $index => $query) {
+        $time = $query['time'] ?? 0;
+        $timeClass = $time < 0.01 ? 'time-fast' : ($time < 0.05 ? 'time-normal' : 'time-slow');
+
+        $html .= '<tr>';
+        $html .= '<td>' . ($index + 1) . '</td>';
+        $html .= '<td><div class="query-sql" title="' . htmlspecialchars($query['query'] ?? '') . '">' . htmlspecialchars($query['query'] ?? '') . '</div></td>';
+        $html .= '<td><code>' . json_encode($query['bindings'] ?? []) . '</code></td>';
+        $html .= '<td class="query-time ' . $timeClass . '">' . number_format($time * 1000, 2) . ' ms</td>';
+        $html .= '<td>' . ($query['timestamp'] ?? '') . '</td>';
+        $html .= '</tr>';
+    }
+
+    $html .= '</tbody></table>';
+    $html .= '</div>';
+
+    $html .= '</div>';
+    return $html;
+}
+
+/**
+ * Render model
+ */
+function plugs_render_model(array $data): string
+{
+    $model = $data['model'] ?? null;
+    $queries = $data['queries'] ?? [];
+
+    $html = '<div style="padding: 24px;">';
+
+    if ($model) {
+        $html .= '<div class="section-title">📦 Model Data</div>';
+        $html .= '<div class="code-block">';
+        $html .= plugs_format_value($model, 0);
+        $html .= '</div>';
+
+        // Model info
+        if (is_object($model)) {
+            $html .= '<div class="info-grid">';
+
+            $html .= '<div class="info-card">';
+            $html .= '<div class="info-label">Class</div>';
+            $html .= '<div class="info-value" style="font-size: 13px;">' . get_class($model) . '</div>';
+            $html .= '</div>';
+
+            if (method_exists($model, 'getTable')) {
+                $html .= '<div class="info-card">';
+                $html .= '<div class="info-label">Table</div>';
+                $html .= '<div class="info-value">' . $model->getTable() . '</div>';
+                $html .= '</div>';
+            }
+
+            if (method_exists($model, 'getKey')) {
+                $html .= '<div class="info-card">';
+                $html .= '<div class="info-label">Primary Key</div>';
+                $html .= '<div class="info-value">' . ($model->getKey() ?? 'null') . '</div>';
+                $html .= '</div>';
+            }
+
+            $html .= '</div>';
+        }
+    }
+
+    // Show queries if available
+    if (!empty($queries)) {
+        $html .= '<div style="margin-top: 24px;">';
+        $html .= '<div class="section-title">🔍 Related Queries</div>';
+        $html .= '<div class="alert alert-info">';
+        $html .= '<div class="alert-title">ℹ️ Query Count</div>';
+        $html .= 'This model executed ' . count($queries) . ' database queries.';
+        $html .= '</div>';
+        $html .= '</div>';
+    }
+
+    $html .= '</div>';
+    return $html;
+}
+
+/**
+ * Format value for display with proper indentation and syntax highlighting
+ */
+function plugs_format_value($value, int $depth = 0, int $maxDepth = 10): string
+{
+    if ($depth > $maxDepth) {
+        return '<span class="syntax-null">... (max depth)</span>';
+    }
+
+    $indent = str_repeat('  ', $depth);
+
+    if (is_null($value)) {
+        return '<span class="syntax-null">null</span>';
+    }
+
+    if (is_bool($value)) {
+        return '<span class="syntax-bool">' . ($value ? 'true' : 'false') . '</span>';
+    }
+
+    if (is_int($value) || is_float($value)) {
+        return '<span class="syntax-number">' . $value . '</span>';
+    }
+
+    if (is_string($value)) {
+        $escaped = htmlspecialchars($value);
+        if (strlen($value) > 100) {
+            return '<span class="syntax-string">"' . substr($escaped, 0, 100) . '..."</span>';
+        }
+        return '<span class="syntax-string">"' . $escaped . '"</span>';
+    }
+
+    if (is_array($value)) {
+        if (empty($value)) {
+            return '<span class="syntax-array">[]</span>';
+        }
+
+        $html = '<span class="syntax-array">Array(' . count($value) . ')</span> [<br>';
+        $isAssoc = array_keys($value) !== range(0, count($value) - 1);
+
+        $count = 0;
+        foreach ($value as $key => $val) {
+            if ($count > 50) {
+                $html .= $indent . '  <span class="syntax-null">... (' . (count($value) - 50) . ' more items)</span><br>';
+                break;
+            }
+
+            $html .= $indent . '  ';
+
+            if ($isAssoc) {
+                if (is_string($key)) {
+                    $html .= '<span class="syntax-key">"' . htmlspecialchars($key) . '"</span> => ';
+                } else {
+                    $html .= '<span class="syntax-number">' . $key . '</span> => ';
+                }
+            }
+
+            $html .= plugs_format_value($val, $depth + 1, $maxDepth);
+            $html .= '<br>';
+            $count++;
+        }
+
+        $html .= $indent . ']';
+        return $html;
+    }
+
+    if (is_object($value)) {
+        $className = get_class($value);
+        $html = '<span class="syntax-object">Object(' . $className . ')</span> {<br>';
+
+        try {
+            $reflection = new \ReflectionClass($value);
+            $properties = $reflection->getProperties();
+
+            $count = 0;
+            foreach ($properties as $property) {
+                if ($count > 50) {
+                    $html .= $indent . '  <span class="syntax-null">... (' . (count($properties) - 50) . ' more properties)</span><br>';
+                    break;
+                }
+
+                $property->setAccessible(true);
+                $propName = $property->getName();
+                $propValue = $property->getValue($value);
+
+                $html .= $indent . '  ';
+                $html .= '<span class="syntax-key">' . htmlspecialchars($propName) . '</span> => ';
+                $html .= plugs_format_value($propValue, $depth + 1, $maxDepth);
+                $html .= '<br>';
+                $count++;
+            }
+        } catch (\Exception $e) {
+            $html .= $indent . '  <span class="syntax-null">Unable to reflect object</span><br>';
+        }
+
+        $html .= $indent . '}';
+        return $html;
+    }
+
+    return '<span class="syntax-null">' . htmlspecialchars(print_r($value, true)) . '</span>';
+}
+
+/**
+ * Format bytes to human readable
+ */
+function plugs_format_bytes(int $bytes, int $precision = 2): string
 {
     $units = ['B', 'KB', 'MB', 'GB', 'TB'];
-    
+
     for ($i = 0; $bytes > 1024 && $i < count($units) - 1; $i++) {
         $bytes /= 1024;
     }
-    
+
     return round($bytes, $precision) . ' ' . $units[$i];
 }
 
 /**
- * Get approximate memory size of a variable
+ * Get variable memory size
  */
-function getVariableSize($var): int
+function plugs_get_variable_size($var): int
 {
     $startMemory = memory_get_usage();
     $tmp = unserialize(serialize($var));
     $size = memory_get_usage() - $startMemory;
     unset($tmp);
-    
-    return max($size, 0);
-}
 
-/**
- * Analyze variable for special characteristics
- */
-function analyzeVariable($var): array
-{
-    $analysis = [
-        'isQuery' => false,
-        'hasQueries' => false,
-    ];
-    
-    // Check if it's a query or array of queries
-    if (is_string($var) && preg_match('/^\s*(SELECT|INSERT|UPDATE|DELETE|CREATE|ALTER|DROP)/i', trim($var))) {
-        $analysis['isQuery'] = true;
-    }
-    
-    if (is_array($var)) {
-        foreach ($var as $item) {
-            if (is_string($item) && preg_match('/^\s*(SELECT|INSERT|UPDATE|DELETE|CREATE|ALTER|DROP)/i', trim($item))) {
-                $analysis['isQuery'] = true;
-                $analysis['hasQueries'] = true;
-                break;
-            }
-        }
-    }
-    
-    return $analysis;
+    return max($size, 0);
 }
 
 /**
  * Detect N+1 query problems
  */
-function detectNPlusOne(array $queries): array
+function plugs_detect_n_plus_one(array $queries): array
 {
-    if (!is_array($queries)) {
+    if (empty($queries)) {
         return ['detected' => false, 'count' => 0];
     }
-    
+
     $patterns = [];
-    
+
     foreach ($queries as $query) {
-        if (!is_string($query)) continue;
-        
-        // Normalize query (remove specific IDs and values)
-        $normalized = preg_replace('/\b\d+\b/', '?', $query);
+        $sql = $query['query'] ?? '';
+
+        if (!is_string($sql)) {
+            continue;
+        }
+
+        // Normalize query
+        $normalized = preg_replace('/\b\d+\b/', '?', $sql);
         $normalized = preg_replace('/(IN\s*\([^)]+\))/i', 'IN (?)', $normalized);
         $normalized = preg_replace('/(["\'])(?:(?=(\\?))\2.)*?\1/', '?', $normalized);
-        
+
         if (!isset($patterns[$normalized])) {
             $patterns[$normalized] = 0;
         }
         $patterns[$normalized]++;
     }
-    
-    // If we find the same query pattern more than 5 times, it's likely N+1
+
+    // If same pattern appears more than 5 times, it's likely N+1
     foreach ($patterns as $count) {
         if ($count > 5) {
             return ['detected' => true, 'count' => $count];
         }
     }
-    
-    return ['detected' => false, 'count' => 0];
-}
 
-/**
- * Format variable output with better readability
- */
-function formatVariableOutput($var, int $depth = 0, int $maxDepth = 5): string
-{
-    if ($depth > $maxDepth) {
-        return '... (max depth reached)';
-    }
-    
-    $indent = str_repeat('  ', $depth);
-    $output = '';
-    
-    if (is_null($var)) {
-        return '<span class="syntax-null">NULL</span>';
-    }
-    
-    if (is_bool($var)) {
-        return '<span class="syntax-bool">' . ($var ? 'TRUE' : 'FALSE') . '</span>';
-    }
-    
-    if (is_int($var) || is_float($var)) {
-        return '<span class="syntax-number">' . $var . '</span>';
-    }
-    
-    if (is_string($var)) {
-        $escaped = htmlspecialchars($var);
-        if (strlen($var) > 100 && $depth === 0) {
-            // Format long strings nicely
-            $wrapped = wordwrap($escaped, 80, "\n" . $indent);
-            return '<span class="syntax-string">"' . $wrapped . '"</span>';
-        }
-        return '<span class="syntax-string">"' . $escaped . '"</span>';
-    }
-    
-    if (is_array($var)) {
-        if (empty($var)) {
-            return '<span class="syntax-array">[]</span>';
-        }
-        
-        $output .= '<span class="syntax-array">Array(' . count($var) . ')</span> [' . "\n";
-        
-        $isAssoc = array_keys($var) !== range(0, count($var) - 1);
-        
-        foreach ($var as $key => $value) {
-            $output .= $indent . '  ';
-            
-            if ($isAssoc) {
-                if (is_string($key)) {
-                    $output .= '<span class="syntax-string">"' . htmlspecialchars($key) . '"</span>';
-                } else {
-                    $output .= '<span class="syntax-number">' . $key . '</span>';
-                }
-                $output .= ' => ';
-            }
-            
-            $output .= formatVariableOutput($value, $depth + 1, $maxDepth) . "\n";
-        }
-        
-        $output .= $indent . ']';
-        return $output;
-    }
-    
-    if (is_object($var)) {
-        $className = get_class($var);
-        $output .= '<span class="syntax-object">Object(' . $className . ')</span> {' . "\n";
-        
-        $reflection = new \ReflectionClass($var);
-        $properties = $reflection->getProperties();
-        
-        foreach ($properties as $property) {
-            $property->setAccessible(true);
-            $name = $property->getName();
-            $value = $property->getValue($var);
-            
-            $output .= $indent . '  <span class="syntax-string">' . $name . '</span> => ';
-            $output .= formatVariableOutput($value, $depth + 1, $maxDepth) . "\n";
-        }
-        
-        $output .= $indent . '}';
-        return $output;
-    }
-    
-    return htmlspecialchars(print_r($var, true));
+    return ['detected' => false, 'count' => 0];
 }

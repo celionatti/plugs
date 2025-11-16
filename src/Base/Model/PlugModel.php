@@ -4,16 +4,18 @@ declare(strict_types=1);
 
 namespace Plugs\Base\Model;
 
-use BadMethodCallException;
+use PDO;
 use DateTime;
 use Exception;
-use PDO;
 use PDOException;
+use BadMethodCallException;
 use Plugs\Database\Collection;
 use Plugs\Database\Connection;
+use Plugs\Base\Model\Debuggable;
 
 abstract class PlugModel
 {
+    use Debuggable;
     protected static $connection;
     protected static $connectionName = 'default';
     protected $table;
