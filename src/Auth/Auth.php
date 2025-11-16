@@ -6,27 +6,33 @@ namespace Plugs\Auth;
 
 /*
 |--------------------------------------------------------------------------
-| Auth Class
+| Enhanced Auth Class - Production Ready
 |--------------------------------------------------------------------------
 |
 | PSR-compliant Authentication Class for Plugs Framework
-| Supports standard email/password and OAuth2 social authentication
+| - Works with any database table structure
+| - Integrates with Connection and PlugModel
+| - Supports standard email/password and OAuth2 social authentication
+| - Schema-agnostic design with automatic column detection
 */
 
 use PDO;
 use PDOException;
+use Exception;
 use Plugs\Container\Container;
 use Plugs\Database\Connection;
 use Plugs\Session\Session;
+use Plugs\Base\Model\PlugModel;
 use Psr\Log\LoggerInterface;
 
 class Auth
 {
-    private Connection $db;
+    private Connection $connection;
     private Session $session;
     private ?LoggerInterface $logger;
     private array $config;
-    private ?array $user = null;
+    private ?PlugModel $user = null;
+    private array $tableSchema = [];
 
     // OAuth2 endpoints
     private const OAUTH_ENDPOINTS = [
@@ -58,18 +64,48 @@ class Auth
         array $config = [],
         ?LoggerInterface $logger = null
     ) {
-        $this->db = $connection;
+        $this->connection = $connection;
         $this->session = $session;
         $this->logger = $logger;
+
         $this->config = array_merge([
+            // Model configuration
+            'user_model' => null, // User model class (optional)
+            'table' => 'users',
+            'primary_key' => 'id',
+
+            // Authentication columns (auto-detected if not specified)
+            'email_column' => null,
+            'password_column' => null,
+            'remember_token_column' => null,
+            'last_login_column' => null,
+
+            // Password configuration
             'password_algo' => PASSWORD_BCRYPT,
             'password_cost' => 12,
+
+            // Session configuration
             'session_key' => env('AUTH_SESSION_ID') ?? 'auth_user_id',
-            'remember_token_name' => env('REMEMBER_TOEKN') ?? 'remember_token',
+            'remember_token_name' => env('REMEMBER_TOKEN') ?? 'remember_token',
             'remember_days' => 30,
-            'oauth' => []
+
+            // OAuth configuration
+            'oauth' => [],
+            'oauth_table' => 'oauth_accounts',
+
+            // Remember tokens table
+            'remember_tokens_table' => 'remember_tokens',
+
+            // Timestamps
+            'use_timestamps' => true,
+            'created_at_column' => 'created_at',
+            'updated_at_column' => 'updated_at',
         ], $config);
 
+        // Auto-detect table schema
+        $this->detectTableSchema();
+
+        // Load user from session
         $this->loadUserFromSession();
     }
 
@@ -80,22 +116,18 @@ class Auth
     {
         $container = Container::getInstance();
 
-        // Get or create database connection
         $connection = $container->bound('db')
             ? $container->make('db')
             : Connection::getInstance();
 
-        // Get or create session
         $session = $container->bound(Session::class)
             ? $container->make(Session::class)
             : new Session();
 
-        // Get logger if available
         $logger = $container->bound(LoggerInterface::class)
             ? $container->make(LoggerInterface::class)
             : null;
 
-        // Get config if not provided
         if ($config === null && file_exists(BASE_PATH . '/config/auth.php')) {
             $config = require BASE_PATH . '/config/auth.php';
         }
@@ -104,11 +136,111 @@ class Auth
     }
 
     /**
+     * Detect table schema and map columns
+     */
+    private function detectTableSchema(): void
+    {
+        try {
+            $table = $this->config['table'];
+
+            // Get all columns from the table
+            $stmt = $this->connection->query("DESCRIBE {$table}");
+            $columns = $stmt->fetchAll(PDO::FETCH_COLUMN);
+
+            $this->tableSchema = [
+                'all_columns' => $columns,
+                'has_timestamps' => false,
+            ];
+
+            // Auto-detect email column
+            if (!$this->config['email_column']) {
+                $emailPatterns = ['email', 'user_email', 'username', 'login'];
+                foreach ($emailPatterns as $pattern) {
+                    if (in_array($pattern, $columns)) {
+                        $this->config['email_column'] = $pattern;
+                        break;
+                    }
+                }
+            }
+
+            // Auto-detect password column
+            if (!$this->config['password_column']) {
+                $passwordPatterns = ['password', 'user_password', 'pass', 'passwd'];
+                foreach ($passwordPatterns as $pattern) {
+                    if (in_array($pattern, $columns)) {
+                        $this->config['password_column'] = $pattern;
+                        break;
+                    }
+                }
+            }
+
+            // Detect timestamp columns
+            if (
+                in_array($this->config['created_at_column'], $columns) &&
+                in_array($this->config['updated_at_column'], $columns)
+            ) {
+                $this->tableSchema['has_timestamps'] = true;
+            }
+
+            // Detect last login column
+            if (!$this->config['last_login_column']) {
+                $loginPatterns = ['last_login', 'last_login_at', 'logged_in_at'];
+                foreach ($loginPatterns as $pattern) {
+                    if (in_array($pattern, $columns)) {
+                        $this->config['last_login_column'] = $pattern;
+                        break;
+                    }
+                }
+            }
+
+            // Store detected schema
+            $this->tableSchema['email_column'] = $this->config['email_column'];
+            $this->tableSchema['password_column'] = $this->config['password_column'];
+
+            $this->log('info', 'Table schema detected', [
+                'table' => $table,
+                'email_column' => $this->config['email_column'],
+                'password_column' => $this->config['password_column'],
+            ]);
+
+        } catch (PDOException $e) {
+            $this->log('error', "Failed to detect table schema: {$e->getMessage()}");
+            throw new Exception("Failed to detect table schema. Please configure columns manually.");
+        }
+    }
+
+    /**
+     * Get user model instance
+     */
+    private function getUserModel(): PlugModel
+    {
+        if ($this->config['user_model']) {
+            $modelClass = $this->config['user_model'];
+            return new $modelClass();
+        }
+
+        // Create anonymous model for the table
+        return new class ($this->config['table'], $this->config['primary_key']) extends PlugModel {
+            public function __construct(string $table, string $primaryKey)
+            {
+                $this->table = $table;
+                $this->primaryKey = $primaryKey;
+                $this->timestamps = false;
+                parent::__construct();
+            }
+        };
+    }
+
+    /**
      * Register a new user
      */
     public function register(string $email, string $password, array $userData = []): bool
     {
         try {
+            if (!$this->config['email_column'] || !$this->config['password_column']) {
+                throw new Exception("Email or password column not configured/detected");
+            }
+
             if ($this->userExists($email)) {
                 $this->log('warning', "Registration failed: Email already exists", ['email' => $email]);
                 return false;
@@ -118,21 +250,38 @@ class Auth
                 'cost' => $this->config['password_cost']
             ]);
 
-            $sql = "INSERT INTO users (name, email, password, created_at, updated_at) 
-                    VALUES (:name, :email, :password, NOW(), NOW())";
+            // Build insert data based on available columns
+            $insertData = [
+                $this->config['email_column'] => $email,
+                $this->config['password_column'] => $hashedPassword,
+            ];
 
-            $result = $this->db->execute($sql, [
-                'name' => $userData['name'] ?? null,
-                'email' => $email,
-                'password' => $hashedPassword,
-            ]);
-
-            if ($result) {
-                $this->log('info', "User registered successfully", ['email' => $email]);
+            // Add user data for columns that exist in the table
+            foreach ($userData as $key => $value) {
+                if (in_array($key, $this->tableSchema['all_columns'])) {
+                    $insertData[$key] = $value;
+                }
             }
 
-            return $result;
-        } catch (PDOException $e) {
+            // Add timestamps if supported
+            if ($this->tableSchema['has_timestamps']) {
+                $now = date('Y-m-d H:i:s');
+                $insertData[$this->config['created_at_column']] = $now;
+                $insertData[$this->config['updated_at_column']] = $now;
+            }
+
+            // Use PlugModel for insertion
+            $model = $this->getUserModel();
+            $user = $model::create($insertData);
+
+            if ($user) {
+                $this->log('info', "User registered successfully", ['email' => $email]);
+                return true;
+            }
+
+            return false;
+
+        } catch (Exception $e) {
             $this->log('error', "Registration error: {$e->getMessage()}");
             return false;
         }
@@ -144,33 +293,37 @@ class Auth
     public function login(string $email, string $password, bool $remember = false): bool
     {
         try {
-            $user = $this->db->fetch(
-                "SELECT * FROM users WHERE email = :email LIMIT 1",
-                ['email' => $email]
-            );
+            if (!$this->config['email_column'] || !$this->config['password_column']) {
+                throw new Exception("Email or password column not configured");
+            }
 
-            if (!$user || !password_verify($password, $user['password'])) {
+            $model = $this->getUserModel();
+            $user = $model::where($this->config['email_column'], $email)->first();
+
+            if (!$user || !password_verify($password, $user->getAttribute($this->config['password_column']))) {
                 $this->log('warning', "Login failed: Invalid credentials", ['email' => $email]);
                 return false;
             }
 
             // Check if password needs rehashing
-            if (password_needs_rehash($user['password'], $this->config['password_algo'])) {
-                $this->updatePassword($user['id'], $password);
+            if (password_needs_rehash($user->getAttribute($this->config['password_column']), $this->config['password_algo'])) {
+                $this->updatePassword($user->getKey(), $password);
             }
 
             $this->setUser($user);
 
             if ($remember) {
-                $this->createRememberToken($user['id']);
+                $this->createRememberToken($user->getKey());
             }
 
-            $this->updateLastLogin($user['id']);
+            $this->updateLastLogin($user->getKey());
             $this->session->regenerate();
-            $this->log('info', "User logged in", ['user_id' => $user['id']]);
+
+            $this->log('info', "User logged in", ['user_id' => $user->getKey()]);
 
             return true;
-        } catch (PDOException $e) {
+
+        } catch (Exception $e) {
             $this->log('error', "Login error: {$e->getMessage()}");
             return false;
         }
@@ -190,16 +343,18 @@ class Auth
         try {
             $hashedToken = hash('sha256', $token);
 
-            $result = $this->db->fetch(
-                "SELECT u.* FROM users u 
-                 INNER JOIN remember_tokens rt ON u.id = rt.user_id 
-                 WHERE rt.token = :token AND rt.expires_at > NOW() 
-                 LIMIT 1",
-                ['token' => $hashedToken]
-            );
+            $sql = "SELECT u.* FROM {$this->config['table']} u 
+                    INNER JOIN {$this->config['remember_tokens_table']} rt ON u.{$this->config['primary_key']} = rt.user_id 
+                    WHERE rt.token = ? AND rt.expires_at > NOW() 
+                    LIMIT 1";
+
+            $result = $this->connection->fetch($sql, [$hashedToken]);
 
             if ($result) {
-                $this->setUser($result);
+                $model = $this->getUserModel();
+                // Use hydrate to create model instance from result
+                $user = $model::hydrate($result);
+                $this->setUser($user);
                 $this->session->regenerate();
                 return true;
             }
@@ -220,7 +375,7 @@ class Auth
 
         if (isset($_COOKIE[$this->config['remember_token_name']])) {
             $this->deleteRememberToken($_COOKIE[$this->config['remember_token_name']]);
-            setcookie($this->config['remember_token_name'], '', time() - 3600, '/');
+            setcookie($this->config['remember_token_name'], '', time() - 3600, '/', '', true, true);
         }
 
         $this->session->regenerate();
@@ -329,7 +484,9 @@ class Auth
             CURLOPT_POST => true,
             CURLOPT_POSTFIELDS => http_build_query($params),
             CURLOPT_RETURNTRANSFER => true,
-            CURLOPT_HTTPHEADER => ['Accept: application/json']
+            CURLOPT_HTTPHEADER => ['Accept: application/json'],
+            CURLOPT_TIMEOUT => 30,
+            CURLOPT_SSL_VERIFYPEER => true,
         ]);
 
         $response = curl_exec($ch);
@@ -359,7 +516,9 @@ class Auth
                 'Authorization: Bearer ' . $accessToken,
                 'Accept: application/json',
                 'User-Agent: Plugs-Auth-Client'
-            ]
+            ],
+            CURLOPT_TIMEOUT => 30,
+            CURLOPT_SSL_VERIFYPEER => true,
         ]);
 
         $response = curl_exec($ch);
@@ -419,34 +578,34 @@ class Auth
     private function loginOrRegisterOAuthUser(string $provider, array $userData): bool
     {
         try {
-            // Check if user exists by OAuth provider
-            $user = $this->db->fetch(
-                "SELECT u.* FROM users u 
-                 INNER JOIN oauth_accounts o ON u.id = o.user_id 
-                 WHERE o.provider = :provider AND o.provider_id = :provider_id 
-                 LIMIT 1",
-                [
-                    'provider' => $provider,
-                    'provider_id' => $userData['provider_id']
-                ]
-            );
+            $model = $this->getUserModel();
 
-            if ($user) {
-                $this->setUser($user);
-                $this->updateLastLogin($user['id']);
-                return true;
+            // Check if user exists by OAuth provider
+            $sql = "SELECT u.{$this->config['primary_key']} FROM {$this->config['table']} u 
+                    INNER JOIN {$this->config['oauth_table']} o ON u.{$this->config['primary_key']} = o.user_id 
+                    WHERE o.provider = ? AND o.provider_id = ? 
+                    LIMIT 1";
+
+            $result = $this->connection->fetch($sql, [$provider, $userData['provider_id']]);
+
+            if ($result) {
+                // Find the user using the model's find method
+                $user = $model::find($result[$this->config['primary_key']]);
+
+                if ($user) {
+                    $this->setUser($user);
+                    $this->updateLastLogin($user->getKey());
+                    return true;
+                }
             }
 
             // Check if user exists by email
-            if (!empty($userData['email'])) {
-                $user = $this->db->fetch(
-                    "SELECT * FROM users WHERE email = :email LIMIT 1",
-                    ['email' => $userData['email']]
-                );
+            if (!empty($userData['email']) && $this->config['email_column']) {
+                $user = $model::where($this->config['email_column'], $userData['email'])->first();
 
                 if ($user) {
                     // Link OAuth account to existing user
-                    $this->linkOAuthAccount($user['id'], $provider, $userData);
+                    $this->linkOAuthAccount($user->getKey(), $provider, $userData);
                     $this->setUser($user);
                     return true;
                 }
@@ -457,10 +616,7 @@ class Auth
             if ($userId) {
                 $this->linkOAuthAccount($userId, $provider, $userData);
 
-                $user = $this->db->fetch(
-                    "SELECT * FROM users WHERE id = :id LIMIT 1",
-                    ['id' => $userId]
-                );
+                $user = $model::find($userId);
 
                 if ($user) {
                     $this->setUser($user);
@@ -469,7 +625,8 @@ class Auth
             }
 
             return false;
-        } catch (PDOException $e) {
+
+        } catch (Exception $e) {
             $this->log('error', "OAuth login/register error: {$e->getMessage()}");
             return false;
         }
@@ -480,16 +637,36 @@ class Auth
      */
     private function createOAuthUser(array $userData): ?int
     {
-        $sql = "INSERT INTO users (email, name, avatar, created_at, updated_at) 
-                VALUES (:email, :name, :avatar, NOW(), NOW())";
+        $insertData = [];
 
-        $result = $this->db->execute($sql, [
-            'email' => $userData['email'] ?? null,
-            'name' => $userData['name'],
-            'avatar' => $userData['avatar'] ?? null
-        ]);
+        // Only add columns that exist in the table
+        $columnMappings = [
+            'email' => $this->config['email_column'],
+            'name' => 'name',
+            'avatar' => 'avatar',
+        ];
 
-        return $result ? (int)$this->db->lastInsertId() : null;
+        foreach ($columnMappings as $key => $column) {
+            if ($column && in_array($column, $this->tableSchema['all_columns']) && isset($userData[$key])) {
+                $insertData[$column] = $userData[$key];
+            }
+        }
+
+        // Add timestamps if supported
+        if ($this->tableSchema['has_timestamps']) {
+            $now = date('Y-m-d H:i:s');
+            $insertData[$this->config['created_at_column']] = $now;
+            $insertData[$this->config['updated_at_column']] = $now;
+        }
+
+        try {
+            $model = $this->getUserModel();
+            $user = $model::create($insertData);
+            return $user ? (int) $user->getKey() : null;
+        } catch (Exception $e) {
+            $this->log('error', "Failed to create OAuth user: {$e->getMessage()}");
+            return null;
+        }
     }
 
     /**
@@ -497,15 +674,11 @@ class Auth
      */
     private function linkOAuthAccount(int $userId, string $provider, array $userData): void
     {
-        $sql = "INSERT INTO oauth_accounts (user_id, provider, provider_id, created_at) 
-                VALUES (:user_id, :provider, :provider_id, NOW())
+        $sql = "INSERT INTO {$this->config['oauth_table']} (user_id, provider, provider_id, created_at) 
+                VALUES (?, ?, ?, NOW())
                 ON DUPLICATE KEY UPDATE updated_at = NOW()";
 
-        $this->db->execute($sql, [
-            'user_id' => $userId,
-            'provider' => $provider,
-            'provider_id' => $userData['provider_id']
-        ]);
+        $this->connection->execute($sql, [$userId, $provider, $userData['provider_id']]);
     }
 
     /**
@@ -525,19 +698,27 @@ class Auth
     }
 
     /**
-     * Get current user
+     * Get current user (returns PlugModel instance)
      */
-    public function user(): ?array
+    public function user(): ?PlugModel
     {
         return $this->user;
     }
 
     /**
+     * Get user as array
+     */
+    public function userArray(): ?array
+    {
+        return $this->user ? $this->user->toArray() : null;
+    }
+
+    /**
      * Get user ID
      */
-    public function id(): ?int
+    public function id()
     {
-        return $this->user['id'] ?? null;
+        return $this->user ? $this->user->getKey() : null;
     }
 
     /**
@@ -545,21 +726,26 @@ class Auth
      */
     private function userExists(string $email): bool
     {
-        $result = $this->db->fetch(
-            "SELECT COUNT(*) as count FROM users WHERE email = :email",
-            ['email' => $email]
-        );
-        return ($result['count'] ?? 0) > 0;
+        if (!$this->config['email_column']) {
+            return false;
+        }
+
+        $model = $this->getUserModel();
+        return $model::where($this->config['email_column'], $email)->exists();
     }
 
     /**
      * Set current user
      */
-    private function setUser(array $user): void
+    private function setUser(PlugModel $user): void
     {
-        unset($user['password']);
+        // Remove password from attributes for security
+        if ($this->config['password_column']) {
+            $user->makeHidden($this->config['password_column']);
+        }
+
         $this->user = $user;
-        $this->session->set($this->config['session_key'], $user['id']);
+        $this->session->set($this->config['session_key'], $user->getKey());
     }
 
     /**
@@ -571,16 +757,16 @@ class Auth
 
         if ($userId) {
             try {
-                $user = $this->db->fetch(
-                    "SELECT * FROM users WHERE id = :id LIMIT 1",
-                    ['id' => $userId]
-                );
+                $model = $this->getUserModel();
+                $user = $model::find($userId);
 
                 if ($user) {
-                    unset($user['password']);
+                    if ($this->config['password_column']) {
+                        $user->makeHidden($this->config['password_column']);
+                    }
                     $this->user = $user;
                 }
-            } catch (PDOException $e) {
+            } catch (Exception $e) {
                 $this->log('error', "Session load error: {$e->getMessage()}");
             }
         }
@@ -591,10 +777,21 @@ class Auth
      */
     private function updateLastLogin(int $userId): void
     {
-        $this->db->execute(
-            "UPDATE users SET last_login = NOW() WHERE id = :id",
-            ['id' => $userId]
-        );
+        if (!$this->config['last_login_column']) {
+            return;
+        }
+
+        try {
+            $model = $this->getUserModel();
+            $user = $model::find($userId);
+
+            if ($user) {
+                $user->setAttribute($this->config['last_login_column'], date('Y-m-d H:i:s'));
+                $user->save();
+            }
+        } catch (Exception $e) {
+            $this->log('error', "Failed to update last login: {$e->getMessage()}");
+        }
     }
 
     /**
@@ -602,14 +799,25 @@ class Auth
      */
     private function updatePassword(int $userId, string $password): void
     {
+        if (!$this->config['password_column']) {
+            return;
+        }
+
         $hashedPassword = password_hash($password, $this->config['password_algo'], [
             'cost' => $this->config['password_cost']
         ]);
 
-        $this->db->execute(
-            "UPDATE users SET password = :password WHERE id = :id",
-            ['password' => $hashedPassword, 'id' => $userId]
-        );
+        try {
+            $model = $this->getUserModel();
+            $user = $model::find($userId);
+
+            if ($user) {
+                $user->setAttribute($this->config['password_column'], $hashedPassword);
+                $user->save();
+            }
+        } catch (Exception $e) {
+            $this->log('error', "Failed to update password: {$e->getMessage()}");
+        }
     }
 
     /**
@@ -620,23 +828,26 @@ class Auth
         $token = bin2hex(random_bytes(32));
         $hashedToken = hash('sha256', $token);
 
-        $sql = "INSERT INTO remember_tokens (user_id, token, expires_at, created_at) 
-                VALUES (:user_id, :token, DATE_ADD(NOW(), INTERVAL :days DAY), NOW())";
+        $sql = "INSERT INTO {$this->config['remember_tokens_table']} (user_id, token, expires_at, created_at) 
+                VALUES (?, ?, DATE_ADD(NOW(), INTERVAL ? DAY), NOW())";
 
-        $this->db->execute($sql, [
-            'user_id' => $userId,
-            'token' => $hashedToken,
-            'days' => $this->config['remember_days']
+        $this->connection->execute($sql, [
+            $userId,
+            $hashedToken,
+            $this->config['remember_days']
         ]);
 
         setcookie(
             $this->config['remember_token_name'],
             $token,
-            time() + ($this->config['remember_days'] * 24 * 3600),
-            '/',
-            '',
-            true,
-            true
+            [
+                'expires' => time() + ($this->config['remember_days'] * 24 * 3600),
+                'path' => '/',
+                'domain' => '',
+                'secure' => true,
+                'httponly' => true,
+                'samesite' => 'Lax'
+            ]
         );
     }
 
@@ -646,9 +857,9 @@ class Auth
     private function deleteRememberToken(string $token): void
     {
         $hashedToken = hash('sha256', $token);
-        $this->db->execute(
-            "DELETE FROM remember_tokens WHERE token = :token",
-            ['token' => $hashedToken]
+        $this->connection->execute(
+            "DELETE FROM {$this->config['remember_tokens_table']} WHERE token = ?",
+            [$hashedToken]
         );
     }
 
@@ -657,12 +868,14 @@ class Auth
      */
     public function validate(string $email, string $password): bool
     {
-        $user = $this->db->fetch(
-            "SELECT password FROM users WHERE email = :email LIMIT 1",
-            ['email' => $email]
-        );
+        if (!$this->config['email_column'] || !$this->config['password_column']) {
+            return false;
+        }
 
-        return $user && password_verify($password, $user['password']);
+        $model = $this->getUserModel();
+        $user = $model::where($this->config['email_column'], $email)->first();
+
+        return $user && password_verify($password, $user->getAttribute($this->config['password_column']));
     }
 
     /**
@@ -671,6 +884,33 @@ class Auth
     public function getSession(): Session
     {
         return $this->session;
+    }
+
+    /**
+     * Get the connection instance
+     */
+    public function getConnection(): Connection
+    {
+        return $this->connection;
+    }
+
+    /**
+     * Get table schema information
+     */
+    public function getTableSchema(): array
+    {
+        return $this->tableSchema;
+    }
+
+    /**
+     * Get configuration
+     */
+    public function getConfig(?string $key = null)
+    {
+        if ($key) {
+            return $this->config[$key] ?? null;
+        }
+        return $this->config;
     }
 
     /**
