@@ -154,7 +154,7 @@ class Auth
 
             // Auto-detect email column
             if (!$this->config['email_column']) {
-                $emailPatterns = ['email', 'user_email', 'username', 'login'];
+                $emailPatterns = ['email', 'user_email', 'usermail', 'login'];
                 foreach ($emailPatterns as $pattern) {
                     if (in_array($pattern, $columns)) {
                         $this->config['email_column'] = $pattern;
@@ -219,26 +219,55 @@ class Auth
             return new $modelClass();
         }
 
-        // Create anonymous model with CORRECT configuration
+        // Store config in variables to use in anonymous class
         $table = $this->config['table'];
         $primaryKey = $this->config['primary_key'];
         $hasTimestamps = $this->tableSchema['has_timestamps'];
 
-        // Create anonymous model for the table with proper constructor
+        // CRITICAL FIX: Anonymous class constructor MUST accept array $attributes
+        // because PlugModel::create() calls new static($attributes)
         return new class ($table, $primaryKey, $hasTimestamps) extends PlugModel {
-            public function __construct(?string $table = null, ?string $primaryKey = null, ?bool $hasTimestamps = true)
-            {
-                if ($table) {
-                    $this->table = $table;
-                }
-                if ($primaryKey) {
-                    $this->primaryKey = $primaryKey;
-                }
+            private static ?string $_table = null;
+            private static ?string $_primaryKey = null;
+            private static ?bool $_hasTimestamps = null;
 
-                $this->timestamps = $hasTimestamps ?? true;
-                $this->fillable = []; // IMPORTANT
-                $this->guarded = [];     // IMPORTANT
-                parent::__construct();
+            // This constructor is called ONCE to set up the class configuration
+            public function __construct($tableOrAttributes = [], $primaryKey = null, $hasTimestamps = null)
+            {
+                // First time initialization - setting up the class
+                if (is_string($tableOrAttributes) && $primaryKey !== null) {
+                    self::$_table = $tableOrAttributes;
+                    self::$_primaryKey = $primaryKey;
+                    self::$_hasTimestamps = $hasTimestamps ?? true;
+                    
+                    $this->table = self::$_table;
+                    $this->primaryKey = self::$_primaryKey;
+                    $this->timestamps = self::$_hasTimestamps;
+                    $this->fillable = [];
+                    $this->guarded = [];
+                    
+                    parent::__construct([]);
+                }
+                // Subsequent calls from create() with attributes array
+                else if (is_array($tableOrAttributes)) {
+                    $this->table = self::$_table ?? 'users';
+                    $this->primaryKey = self::$_primaryKey ?? 'id';
+                    $this->timestamps = self::$_hasTimestamps ?? true;
+                    $this->fillable = [];
+                    $this->guarded = [];
+                    
+                    parent::__construct($tableOrAttributes);
+                }
+                // Fallback for no arguments
+                else {
+                    $this->table = self::$_table ?? 'users';
+                    $this->primaryKey = self::$_primaryKey ?? 'id';
+                    $this->timestamps = self::$_hasTimestamps ?? true;
+                    $this->fillable = [];
+                    $this->guarded = [];
+                    
+                    parent::__construct([]);
+                }
             }
         };
     }
@@ -272,9 +301,6 @@ class Auth
             foreach ($userData as $key => $value) {
                 if (in_array($key, $this->tableSchema['all_columns'])) {
                     $insertData[$key] = $value;
-                    error_log("Added field: $key");
-                } else {
-                    error_log("Skipped field $key (not in table)");
                 }
             }
 
@@ -745,16 +771,6 @@ class Auth
     /**
      * Check if email exists
      */
-    // private function userExists(string $email): bool
-    // {
-    //     if (!$this->config['email_column']) {
-    //         return false;
-    //     }
-
-    //     $model = $this->getUserModel();
-    //     return $model::where($this->config['email_column'], $email)->exists();
-    // }
-
     private function userExists(string $email): bool
     {
         try {
