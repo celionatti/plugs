@@ -230,6 +230,8 @@ class Auth
                     $this->primaryKey = $primaryKey;
                 }
                 $this->timestamps = false;
+                $this->fillable = ['*']; // IMPORTANT
+                $this->guarded = [];     // IMPORTANT
                 parent::__construct();
             }
         };

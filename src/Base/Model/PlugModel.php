@@ -208,7 +208,8 @@ abstract class PlugModel
         }
 
         // Otherwise use Connection class
-        return Connection::getInstance(null, static::$connectionName);
+        // return Connection::getInstance(null, static::$connectionName);
+        return Connection::getInstance();
     }
 
     /**
@@ -2332,10 +2333,23 @@ abstract class PlugModel
         return $this->getDirty();
     }
 
+    // public static function create(array $attributes)
+    // {
+    //     $instance = new static($attributes);
+    //     $instance->save();
+    //     return $instance;
+    // }
+
     public static function create(array $attributes)
     {
         $instance = new static($attributes);
-        $instance->save();
+        $saved = $instance->save();
+
+        if (!$saved) {
+            error_log("Save failed in create() method");
+            return null;
+        }
+
         return $instance;
     }
 
