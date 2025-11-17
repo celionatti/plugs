@@ -252,3 +252,58 @@ if (!function_exists('logger')) {
         file_put_contents($logFile, $line, FILE_APPEND | LOCK_EX);
     }
 }
+
+function loadFunctions(string|array|null $source): void
+{
+    // If no source provided, use default directory behavior
+    if ($source === null) {
+        $source = __DIR__ . '/functions/';
+    }
+
+    // Handle directory source
+    if (is_string($source) && is_dir($source)) {
+        $files = glob($source . '*.php');
+        requireFiles($files);
+        return;
+    }
+
+    // Handle array source (like your example)
+    if (is_array($source)) {
+        $files = extractFilesFromArray($source);
+        requireFiles($files);
+        return;
+    }
+
+    // Handle single file path
+    if (is_string($source) && file_exists($source)) {
+        requireFiles([$source]);
+        return;
+    }
+}
+
+function requireFiles(array $files): void
+{
+    foreach ($files as $file) {
+        if (file_exists($file) && is_file($file) && pathinfo($file, PATHINFO_EXTENSION) === 'php') {
+            require_once $file;
+        }
+    }
+}
+
+function extractFilesFromArray(array $fileArray): array
+{
+    $files = [];
+
+    foreach ($fileArray as $key => $value) {
+        // Extract file paths from array values
+        if (is_string($value) && file_exists($value) && pathinfo($value, PATHINFO_EXTENSION) === 'php') {
+            $files[] = $value;
+        }
+        // Handle nested arrays recursively
+        elseif (is_array($value)) {
+            $files = array_merge($files, extractFilesFromArray($value));
+        }
+    }
+
+    return array_unique($files); // Remove duplicates
+}
