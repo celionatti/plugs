@@ -32,12 +32,10 @@ class ServerRequest implements ServerRequestInterface
     private array $uploadedFiles = [];
     private $parsedBody = null;
     private array $attributes = [];
-    private array $headerNames = []; // For case-insensitive header lookup
+    private array $headerNames = [];
 
-    /** @var int Maximum body size for JSON parsing (10MB) */
     private const MAX_JSON_BODY_SIZE = 10485760;
 
-    /** @var array Valid HTTP methods */
     private const VALID_HTTP_METHODS = [
         'GET',
         'POST',
@@ -50,7 +48,6 @@ class ServerRequest implements ServerRequestInterface
         'CONNECT'
     ];
 
-    /** @var array Valid HTTP protocol versions */
     private const VALID_PROTOCOL_VERSIONS = [
         '1.0',
         '1.1',
@@ -78,7 +75,7 @@ class ServerRequest implements ServerRequestInterface
     }
 
     /**
-     * Create ServerRequest from PHP globals with enhanced security
+     * Create ServerRequest from PHP globals
      */
     public static function fromGlobals(): self
     {
@@ -86,42 +83,28 @@ class ServerRequest implements ServerRequestInterface
         $uri = self::buildUriFromGlobals();
         $headers = self::extractHeadersFromGlobals();
         $body = new Stream(fopen('php://input', 'r'));
-
-        // Get protocol version - more robust parsing
         $protocol = self::extractProtocolVersion();
 
         $request = new self($method, $uri, $headers, $body, $protocol, $_SERVER);
 
-        // Set cookies
         $request = $request->withCookieParams($_COOKIE ?? []);
-
-        // Set query parameters
         $request = $request->withQueryParams($_GET ?? []);
-
-        // Parse body based on content type
         $request = self::parseBody($request);
-
-        // Normalize uploaded files
         $request = $request->withUploadedFiles(self::normalizeUploadedFiles($_FILES ?? []));
 
         return $request;
     }
 
-    /**
-     * Extract and normalize protocol version from server variables
-     */
     private static function extractProtocolVersion(): string
     {
-        $protocol = '1.1'; // Default fallback
+        $protocol = '1.1';
 
         if (isset($_SERVER['SERVER_PROTOCOL'])) {
             $serverProtocol = trim($_SERVER['SERVER_PROTOCOL']);
 
-            // Handle common formats: "HTTP/1.1", "HTTP/2", etc.
             if (stripos($serverProtocol, 'HTTP/') === 0) {
                 $protocol = substr($serverProtocol, 5);
             } else {
-                // Try to extract any version number
                 preg_match('/(\d+(?:\.\d+)?)/', $serverProtocol, $matches);
                 if ($matches) {
                     $protocol = $matches[1];
@@ -132,18 +115,11 @@ class ServerRequest implements ServerRequestInterface
         return self::normalizeProtocolVersion($protocol);
     }
 
-    /**
-     * Normalize protocol version to standard format
-     */
     private static function normalizeProtocolVersion(string $version): string
     {
-        // Clean up the version string
         $version = trim($version);
-
-        // Remove any non-numeric characters except dots
         $version = preg_replace('/[^0-9.]/', '', $version);
 
-        // Handle common cases
         $versionMap = [
             '' => '1.1',
             '1' => '1.1',
@@ -155,13 +131,10 @@ class ServerRequest implements ServerRequestInterface
             return $versionMap[$version];
         }
 
-        // Validate the version format
         if (!preg_match('/^\d+(\.\d+)?$/', $version)) {
-            // If still invalid, fall back to default
             return '1.1';
         }
 
-        // Ensure we have a valid version
         $major = explode('.', $version)[0];
         if ($major < 1 || $major > 3) {
             return '1.1';
@@ -170,12 +143,8 @@ class ServerRequest implements ServerRequestInterface
         return $version;
     }
 
-    /**
-     * Build URI from globals with security considerations
-     */
     private static function buildUriFromGlobals(): UriInterface
     {
-        // Determine scheme with proxy support
         $scheme = 'http';
         if (
             (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ||
@@ -186,19 +155,11 @@ class ServerRequest implements ServerRequestInterface
             $scheme = 'https';
         }
 
-        // Get host with security validation
         $host = self::getHost();
-
-        // Get port
         $port = self::getPort($scheme);
-
-        // Get path (decode and sanitize)
-        $path = self::getPath();
-
-        // Get query string
+        $path = self::getPathURL();
         $query = $_SERVER['QUERY_STRING'] ?? '';
 
-        // Build URI
         $uriString = sprintf('%s://%s', $scheme, $host);
 
         if ($port !== null) {
@@ -214,12 +175,8 @@ class ServerRequest implements ServerRequestInterface
         return new Uri($uriString);
     }
 
-    /**
-     * Get validated host from server variables
-     */
     private static function getHost(): string
     {
-        // Priority: HTTP_HOST > SERVER_NAME > SERVER_ADDR > localhost
         $host = '';
 
         if (!empty($_SERVER['HTTP_HOST'])) {
@@ -232,12 +189,10 @@ class ServerRequest implements ServerRequestInterface
             $host = 'localhost';
         }
 
-        // Strip port from HTTP_HOST if present
         if (strpos($host, ':') !== false) {
             $host = preg_replace('/:\d+$/', '', $host);
         }
 
-        // Validate host to prevent header injection
         if (!preg_match('/^[a-zA-Z0-9.-]+$/', $host)) {
             return 'localhost';
         }
@@ -245,9 +200,6 @@ class ServerRequest implements ServerRequestInterface
         return strtolower($host);
     }
 
-    /**
-     * Get port if non-standard
-     */
     private static function getPort(string $scheme): ?int
     {
         if (!isset($_SERVER['SERVER_PORT'])) {
@@ -256,7 +208,6 @@ class ServerRequest implements ServerRequestInterface
 
         $port = (int) $_SERVER['SERVER_PORT'];
 
-        // Omit standard ports
         if (($scheme === 'http' && $port === 80) || ($scheme === 'https' && $port === 443)) {
             return null;
         }
@@ -264,42 +215,29 @@ class ServerRequest implements ServerRequestInterface
         return $port;
     }
 
-    /**
-     * Get sanitized request path
-     */
-    private static function getPath(): string
+    private static function getPathURL(): string
     {
         $path = $_SERVER['REQUEST_URI'] ?? '/';
 
-        // Remove query string
         if (($pos = strpos($path, '?')) !== false) {
             $path = substr($path, 0, $pos);
         }
 
-        // Decode and normalize path
         $path = rawurldecode($path);
-
-        // Remove multiple slashes
         $path = preg_replace('#/+#', '/', $path);
 
         return $path ?: '/';
     }
 
-    /**
-     * Extract headers from $_SERVER with proper normalization
-     */
     private static function extractHeadersFromGlobals(): array
     {
         $headers = [];
 
         foreach ($_SERVER as $key => $value) {
-            // HTTP_ prefixed headers
             if (strpos($key, 'HTTP_') === 0) {
                 $name = self::normalizeHeaderName(substr($key, 5));
                 $headers[$name] = [(string) $value];
-            }
-            // Special case headers
-            elseif (in_array($key, ['CONTENT_TYPE', 'CONTENT_LENGTH', 'CONTENT_MD5'], true)) {
+            } elseif (in_array($key, ['CONTENT_TYPE', 'CONTENT_LENGTH', 'CONTENT_MD5'], true)) {
                 $name = self::normalizeHeaderName($key);
                 $headers[$name] = [(string) $value];
             }
@@ -308,17 +246,11 @@ class ServerRequest implements ServerRequestInterface
         return $headers;
     }
 
-    /**
-     * Normalize header name from SERVER format
-     */
     private static function normalizeHeaderName(string $name): string
     {
         return str_replace(' ', '-', ucwords(strtolower(str_replace('_', ' ', $name))));
     }
 
-    /**
-     * Parse request body based on content type
-     */
     private static function parseBody(ServerRequestInterface $request): ServerRequestInterface
     {
         $method = $request->getMethod();
@@ -328,7 +260,6 @@ class ServerRequest implements ServerRequestInterface
             return $request;
         }
 
-        // Form data
         if (
             stripos($contentType, 'application/x-www-form-urlencoded') !== false ||
             stripos($contentType, 'multipart/form-data') !== false
@@ -336,13 +267,11 @@ class ServerRequest implements ServerRequestInterface
             return $request->withParsedBody($_POST ?? []);
         }
 
-        // JSON data with size limit
         if (stripos($contentType, 'application/json') !== false) {
             $body = (string) $request->getBody();
             $bodySize = strlen($body);
 
             if ($bodySize > self::MAX_JSON_BODY_SIZE) {
-                // Don't parse oversized bodies
                 return $request;
             }
 
@@ -357,9 +286,6 @@ class ServerRequest implements ServerRequestInterface
         return $request;
     }
 
-    /**
-     * Normalize uploaded files to PSR-7 structure
-     */
     private static function normalizeUploadedFiles(array $files): array
     {
         $normalized = [];
@@ -383,9 +309,6 @@ class ServerRequest implements ServerRequestInterface
         return $normalized;
     }
 
-    /**
-     * Create uploaded file from array
-     */
     private static function createUploadedFile(array $value)
     {
         if (is_array($value['tmp_name'])) {
@@ -399,9 +322,6 @@ class ServerRequest implements ServerRequestInterface
         return $value;
     }
 
-    /**
-     * Normalize nested file upload arrays
-     */
     private static function normalizeNestedFileArray(array $files): array
     {
         $normalized = [];
@@ -423,9 +343,6 @@ class ServerRequest implements ServerRequestInterface
         return $normalized;
     }
 
-    /**
-     * Validate HTTP method
-     */
     private function validateMethod(string $method): void
     {
         if (!in_array(strtoupper($method), self::VALID_HTTP_METHODS, true)) {
@@ -435,9 +352,6 @@ class ServerRequest implements ServerRequestInterface
         }
     }
 
-    /**
-     * Set headers with case-insensitive mapping
-     */
     private function setHeaders(array $headers): void
     {
         $this->headers = [];
@@ -450,7 +364,255 @@ class ServerRequest implements ServerRequestInterface
         }
     }
 
+    // ============================================
+    // CUSTOM HELPER METHODS
+    // ============================================
+
+    /**
+     * Get input value from query or parsed body
+     * 
+     * @param string $key
+     * @param mixed $default
+     * @return mixed
+     */
+    public function input(string $key, $default = null)
+    {
+        // Check query params first
+        if (isset($this->queryParams[$key])) {
+            return $this->queryParams[$key];
+        }
+
+        // Then check parsed body
+        if (is_array($this->parsedBody) && isset($this->parsedBody[$key])) {
+            return $this->parsedBody[$key];
+        }
+
+        return $default;
+    }
+
+    /**
+     * Check if input key exists
+     * 
+     * @param string $key
+     * @return bool
+     */
+    public function has(string $key): bool
+    {
+        return isset($this->queryParams[$key]) ||
+            (is_array($this->parsedBody) && isset($this->parsedBody[$key]));
+    }
+
+    /**
+     * Get all input data (query + body)
+     * 
+     * @return array
+     */
+    public function all(): array
+    {
+        return array_merge(
+            $this->queryParams,
+            is_array($this->parsedBody) ? $this->parsedBody : []
+        );
+    }
+
+    /**
+     * Get only specified keys from input
+     * 
+     * @param array $keys
+     * @return array
+     */
+    public function only(array $keys): array
+    {
+        $all = $this->all();
+        $result = [];
+
+        foreach ($keys as $key) {
+            if (isset($all[$key])) {
+                $result[$key] = $all[$key];
+            }
+        }
+
+        return $result;
+    }
+
+    /**
+     * Get all input except specified keys
+     * 
+     * @param array $keys
+     * @return array
+     */
+    public function except(array $keys): array
+    {
+        $all = $this->all();
+
+        foreach ($keys as $key) {
+            unset($all[$key]);
+        }
+
+        return $all;
+    }
+
+    /**
+     * Get uploaded file by key
+     * 
+     * @param string $key
+     * @return mixed|null
+     */
+    public function getUploadedFile(string $key)
+    {
+        if (!isset($this->uploadedFiles[$key])) {
+            return null;
+        }
+
+        $file = $this->uploadedFiles[$key];
+
+        // If it's already an UploadedFile instance, return it
+        if ($file instanceof \Plugs\Upload\UploadedFile) {
+            return $file;
+        }
+
+        // If it's an array (raw $_FILES format), create UploadedFile
+        if (is_array($file) && isset($file['tmp_name']) && class_exists('\Plugs\Upload\UploadedFile')) {
+            return new \Plugs\Upload\UploadedFile($file);
+        }
+
+        return $file;
+    }
+
+    /**
+     * Check if file was uploaded successfully
+     * 
+     * @param string $key
+     * @return bool
+     */
+    public function hasFile(string $key): bool
+    {
+        $file = $this->getUploadedFile($key);
+
+        if ($file === null) {
+            return false;
+        }
+
+        // If it's an UploadedFile instance, check if valid
+        if (method_exists($file, 'isValid')) {
+            return $file->isValid();
+        }
+
+        // If it's a PSR-7 UploadedFileInterface, check error
+        if ($file instanceof \Psr\Http\Message\UploadedFileInterface) {
+            return $file->getError() === UPLOAD_ERR_OK;
+        }
+
+        return true;
+    }
+
+    /**
+     * Check if request is AJAX
+     * 
+     * @return bool
+     */
+    public function isAjax(): bool
+    {
+        return strtolower($this->getHeaderLine('X-Requested-With')) === 'xmlhttprequest';
+    }
+
+    /**
+     * Check if request is JSON
+     * 
+     * @return bool
+     */
+    public function isJson(): bool
+    {
+        return stripos($this->getHeaderLine('Content-Type'), 'application/json') !== false;
+    }
+
+    /**
+     * Check if request expects JSON response
+     * 
+     * @return bool
+     */
+    public function expectsJson(): bool
+    {
+        return $this->isJson() || $this->isAjax();
+    }
+
+    /**
+     * Get client IP address
+     * 
+     * @return string|null
+     */
+    public function getClientIp(): ?string
+    {
+        // Check proxy headers first
+        if (!empty($this->serverParams['HTTP_X_FORWARDED_FOR'])) {
+            $ips = explode(',', $this->serverParams['HTTP_X_FORWARDED_FOR']);
+            return trim($ips[0]);
+        }
+
+        if (!empty($this->serverParams['HTTP_X_REAL_IP'])) {
+            return $this->serverParams['HTTP_X_REAL_IP'];
+        }
+
+        if (!empty($this->serverParams['HTTP_CLIENT_IP'])) {
+            return $this->serverParams['HTTP_CLIENT_IP'];
+        }
+
+        return $this->serverParams['REMOTE_ADDR'] ?? null;
+    }
+
+    /**
+     * Get user agent
+     * 
+     * @return string|null
+     */
+    public function getUserAgent(): ?string
+    {
+        return $this->getHeaderLine('User-Agent') ?: null;
+    }
+
+    /**
+     * Get referer URL
+     * 
+     * @return string|null
+     */
+    public function getReferer(): ?string
+    {
+        return $this->getHeaderLine('Referer') ?: null;
+    }
+
+    /**
+     * Check if request is secure (HTTPS)
+     * 
+     * @return bool
+     */
+    public function isSecure(): bool
+    {
+        return $this->uri->getScheme() === 'https';
+    }
+
+    /**
+     * Get full URL
+     * 
+     * @return string
+     */
+    public function getFullUrl(): string
+    {
+        return (string) $this->uri;
+    }
+
+    /**
+     * Get URL path
+     * 
+     * @return string
+     */
+    public function getPath(): string
+    {
+        return $this->uri->getPath();
+    }
+
+    // ============================================
     // PSR-7 ServerRequestInterface Implementation
+    // ============================================
 
     public function getServerParams(): array
     {
@@ -546,8 +708,6 @@ class ServerRequest implements ServerRequestInterface
         unset($new->attributes[$name]);
         return $new;
     }
-
-    // PSR-7 MessageInterface Implementation
 
     public function getProtocolVersion(): string
     {
@@ -666,8 +826,6 @@ class ServerRequest implements ServerRequestInterface
         return $new;
     }
 
-    // PSR-7 RequestInterface Implementation
-
     public function getRequestTarget(): string
     {
         $target = $this->uri->getPath();
@@ -692,7 +850,6 @@ class ServerRequest implements ServerRequestInterface
         }
 
         $new = clone $this;
-        // Note: PSR-7 doesn't require parsing the request target
         return $new;
     }
 
@@ -736,9 +893,6 @@ class ServerRequest implements ServerRequestInterface
         return $new;
     }
 
-    /**
-     * Update Host header from URI
-     */
     private function updateHostFromUri(): self
     {
         $host = $this->uri->getHost();
@@ -754,67 +908,6 @@ class ServerRequest implements ServerRequestInterface
         return $this->withHeader('Host', $host);
     }
 
-    // Helper Methods
-
-    /**
-     * Get uploaded file by key
-     */
-    public function getUploadedFile(string $key)
-    {
-        $files = $this->getUploadedFiles();
-
-        if (!isset($files[$key])) {
-            return null;
-        }
-
-        $file = $files[$key];
-
-        if (is_array($file) && class_exists('\Plugs\Upload\UploadedFile')) {
-            return new \Plugs\Upload\UploadedFile($file);
-        }
-
-        return $file;
-    }
-
-    /**
-     * Check if file was uploaded successfully
-     */
-    public function hasFile(string $key): bool
-    {
-        $file = $this->getUploadedFile($key);
-
-        if ($file === null) {
-            return false;
-        }
-
-        if (method_exists($file, 'isValid')) {
-            return $file->isValid();
-        }
-
-        return true;
-    }
-
-    /**
-     * Get input value from query or parsed body
-     */
-    public function input(string $key, $default = null)
-    {
-        $params = array_merge($this->queryParams, (array) $this->parsedBody);
-        return $params[$key] ?? $default;
-    }
-
-    /**
-     * Check if input key exists
-     */
-    public function has(string $key): bool
-    {
-        $params = array_merge($this->queryParams, (array) $this->parsedBody);
-        return array_key_exists($key, $params);
-    }
-
-    /**
-     * Validate header name
-     */
     private function validateHeaderName($name): void
     {
         if (!is_string($name) || !preg_match('/^[a-zA-Z0-9\'`#$%&*+.^_|~!-]+$/', $name)) {
@@ -822,9 +915,6 @@ class ServerRequest implements ServerRequestInterface
         }
     }
 
-    /**
-     * Validate and normalize header value
-     */
     private function validateHeaderValue($value): array
     {
         if (!is_array($value)) {
