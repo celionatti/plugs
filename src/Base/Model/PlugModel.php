@@ -2843,29 +2843,44 @@ abstract class PlugModel
         return new Collection($models);
     }
 
+    /**
+     * Enhanced with() method that properly queues relations for eager loading
+     */
     // public function with($relations)
     // {
     //     if (is_string($relations)) {
     //         $relations = func_get_args();
     //     }
 
-    //     $results = $this->get();
+    //     $clone = $this->cloneQuery();
 
-    //     if ($results->isEmpty()) {
-    //         return $results;
+    //     foreach ($relations as $key => $value) {
+    //         // Support for nested relations: 'posts.comments'
+    //         // Support for constraints: ['posts' => function($query) { $query->where(...) }]
+    //         if (is_numeric($key)) {
+    //             $clone->eagerLoad[$value] = null;
+    //         } else {
+    //             $clone->eagerLoad[$key] = $value;
+    //         }
     //     }
 
-    //     foreach ($relations as $relation) {
-    //         $this->eagerLoadRelation($results, $relation);
-    //     }
-
-    //     return $results;
+    //     return $clone;
     // }
 
     /**
      * Enhanced with() method that properly queues relations for eager loading
+     * Can be called both statically and as instance method
      */
-    public function with($relations)
+    public static function with($relations)
+    {
+        $instance = new static();
+        return $instance->instanceWith($relations);
+    }
+
+    /**
+     * Instance version of with() for proper query chaining
+     */
+    public function instanceWith($relations)
     {
         if (is_string($relations)) {
             $relations = func_get_args();
