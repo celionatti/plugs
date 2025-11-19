@@ -22,12 +22,19 @@ namespace Plugs\Utils;
  * if (FlashMessage::has('success')) {
  *     echo FlashMessage::get('success');
  * }
+ * 
+ * // Custom styling
+ * FlashMessage::setRenderOptions([
+ *     'include_styles' => false, // Use your own CSS
+ *     'auto_dismiss' => true,
+ *     'dismiss_delay' => 8000
+ * ]);
  */
 class FlashMessage
 {
     protected const SESSION_KEY = '_flash_messages';
     protected const OLD_INPUT_KEY = '_old_input';
-    
+
     protected static array $types = [
         'success' => [
             'class' => 'alert alert-success',
@@ -55,11 +62,135 @@ class FlashMessage
         'show_icon' => true,
         'show_title' => true,
         'show_close' => true,
-        'auto_dismiss' => false,
-        'dismiss_delay' => 5000,
+        'auto_dismiss' => false, // Changed default to false
+        'dismiss_delay' => 10000, // Increased to 10 seconds
         'container_class' => 'flash-messages-container',
+        'position' => 'fixed', // 'fixed' or 'static'
         'animation' => 'fade',
+        'include_styles' => true, // Set to false to use external CSS
+        'custom_css_path' => null, // Path to custom CSS file
     ];
+
+    // Embedded CSS styles
+    protected static string $defaultStyles = <<<'CSS'
+<style>
+/* ========== FLASH MESSAGES ========== */
+.flash-messages-container {
+    position: fixed;
+    top: 80px;
+    right: 20px;
+    z-index: 9999;
+    max-width: 400px;
+    width: 100%;
+}
+.flash-messages-container.static {
+    position: relative;
+    top: 0;
+    right: 0;
+    margin-bottom: 1.5rem;
+}
+.alert {
+    padding: 1rem 1.25rem;
+    margin-bottom: 1rem;
+    border-radius: 8px;
+    display: flex;
+    align-items: flex-start;
+    gap: 0.75rem;
+    position: relative;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    animation: slideInRight 0.4s ease forwards;
+    opacity: 1;
+    transform: translateX(0);
+}
+.alert-success {
+    background-color: rgba(40, 167, 69, 0.1);
+    border-left: 4px solid #28a745;
+}
+.alert-success .alert-header {
+    color: #28a745;
+}
+.alert-danger {
+    background-color: rgba(220, 53, 69, 0.1);
+    border-left: 4px solid #dc3545;
+}
+.alert-danger .alert-header {
+    color: #dc3545;
+}
+.alert-warning {
+    background-color: rgba(255, 193, 7, 0.1);
+    border-left: 4px solid #ffc107;
+}
+.alert-warning .alert-header {
+    color: #ffc107;
+}
+.alert-info {
+    background-color: rgba(23, 162, 184, 0.1);
+    border-left: 4px solid #17a2b8;
+}
+.alert-info .alert-header {
+    color: #17a2b8;
+}
+.alert-header {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-weight: 600;
+    margin-bottom: 0.25rem;
+}
+.alert-header i {
+    font-size: 1.2rem;
+}
+.alert-message {
+    flex: 1;
+    line-height: 1.5;
+    color: #333;
+}
+.alert-close {
+    background: none;
+    border: none;
+    color: inherit;
+    cursor: pointer;
+    padding: 0.25rem;
+    border-radius: 4px;
+    transition: all 0.2s ease;
+    opacity: 0.7;
+    margin-left: auto;
+}
+.alert-close:hover {
+    opacity: 1;
+    background-color: rgba(0, 0, 0, 0.1);
+}
+@keyframes slideInRight {
+    0% {
+        transform: translateX(100%);
+        opacity: 0;
+    }
+    100% {
+        transform: translateX(0);
+        opacity: 1;
+    }
+}
+@keyframes fadeOut {
+    0% {
+        opacity: 1;
+        transform: translateX(0);
+    }
+    100% {
+        opacity: 0;
+        transform: translateX(50px);
+    }
+}
+@media (max-width: 768px) {
+    .flash-messages-container {
+        left: 10px;
+        right: 10px;
+        max-width: none;
+    }
+}
+</style>
+CSS;
+
+    private static bool $stylesRendered = false;
 
     /**
      * Initialize session if not started
@@ -177,7 +308,7 @@ class FlashMessage
                     }
                 }
             }
-            
+
             if ($clear) {
                 $_SESSION[self::SESSION_KEY] = array_values($_SESSION[self::SESSION_KEY]);
             }
@@ -222,6 +353,41 @@ class FlashMessage
     }
 
     /**
+     * Get render options
+     */
+    public static function getRenderOptions(): array
+    {
+        return self::$renderOptions;
+    }
+
+    /**
+     * Set custom CSS styles
+     */
+    public static function setCustomStyles(string $css): void
+    {
+        self::$defaultStyles = "<style>\n{$css}\n</style>";
+    }
+
+    /**
+     * Render styles once per page load
+     */
+    protected static function renderStyles(array $options): string
+    {
+        if (self::$stylesRendered || !$options['include_styles']) {
+            return '';
+        }
+
+        self::$stylesRendered = true;
+
+        // Use custom CSS file if provided
+        if (!empty($options['custom_css_path'])) {
+            return '<link rel="stylesheet" href="' . htmlspecialchars($options['custom_css_path'], ENT_QUOTES, 'UTF-8') . '">';
+        }
+
+        return self::$defaultStyles;
+    }
+
+    /**
      * Render all flash messages as HTML
      */
     public static function render(array $options = []): string
@@ -233,13 +399,20 @@ class FlashMessage
         }
 
         $options = array_merge(self::$renderOptions, $options);
-        
-        $html = '<div class="' . $options['container_class'] . '">';
-        
+
+        $html = self::renderStyles($options);
+
+        $containerClass = $options['container_class'];
+        if ($options['position'] === 'static') {
+            $containerClass .= ' static';
+        }
+
+        $html .= '<div class="' . $containerClass . '">';
+
         foreach ($messages as $flash) {
             $html .= self::renderMessage($flash, $options);
         }
-        
+
         $html .= '</div>';
 
         // Add auto-dismiss JavaScript if enabled
@@ -261,32 +434,32 @@ class FlashMessage
         $typeConfig = self::$types[$type];
 
         $html = '<div class="' . $typeConfig['class'] . ' ' . $options['animation'] . '" role="alert">';
-        
+
         // Icon and title
         if ($options['show_icon'] || $options['show_title']) {
             $html .= '<div class="alert-header">';
-            
+
             if ($options['show_icon']) {
                 $html .= '<i class="bi ' . $typeConfig['icon'] . '"></i>';
             }
-            
+
             if ($options['show_title'] && $title) {
                 $html .= '<strong>' . htmlspecialchars($title, ENT_QUOTES, 'UTF-8') . '</strong>';
             }
-            
+
             $html .= '</div>';
         }
-        
+
         // Message
         $html .= '<div class="alert-message">' . $message . '</div>';
-        
+
         // Close button
         if ($options['show_close']) {
-            $html .= '<button type="button" class="alert-close" onclick="this.parentElement.remove()">';
+            $html .= '<button type="button" class="alert-close" onclick="const alert=this.parentElement;alert.style.animation=\'fadeOut 0.5s ease forwards\';setTimeout(()=>alert.remove(),500)" aria-label="Close">';
             $html .= '<i class="bi bi-x-lg"></i>';
             $html .= '</button>';
         }
-        
+
         $html .= '</div>';
 
         return $html;
@@ -300,13 +473,16 @@ class FlashMessage
         return <<<HTML
         <script>
         (function() {
-            const alerts = document.querySelectorAll('.alert');
-            alerts.forEach(alert => {
+            const alerts = document.querySelectorAll('.flash-messages-container .alert');
+            alerts.forEach((alert, index) => {
+                // Stagger the dismissal if there are multiple alerts
+                const dismissTime = {$delay} + (index * 500);
                 setTimeout(() => {
-                    alert.style.transition = 'opacity 0.3s ease';
-                    alert.style.opacity = '0';
-                    setTimeout(() => alert.remove(), 300);
-                }, {$delay});
+                    alert.style.animation = 'fadeOut 0.5s ease forwards';
+                    setTimeout(() => {
+                        alert.remove();
+                    }, 500);
+                }, dismissTime);
             });
         })();
         </script>
@@ -337,13 +513,20 @@ class FlashMessage
         }
 
         $options = array_merge(self::$renderOptions, $options);
-        
-        $html = '<div class="' . $options['container_class'] . '">';
-        
+
+        $html = self::renderStyles($options);
+
+        $containerClass = $options['container_class'];
+        if ($options['position'] === 'static') {
+            $containerClass .= ' static';
+        }
+
+        $html .= '<div class="' . $containerClass . '">';
+
         foreach ($messages as $flash) {
             $html .= self::renderMessage($flash, $options);
         }
-        
+
         $html .= '</div>';
 
         return $html;
@@ -391,7 +574,7 @@ class FlashMessage
 
         // Clear after retrieval
         unset($_SESSION[self::OLD_INPUT_KEY][$key]);
-        
+
         if (empty($_SESSION[self::OLD_INPUT_KEY])) {
             unset($_SESSION[self::OLD_INPUT_KEY]);
         }
@@ -460,6 +643,14 @@ class FlashMessage
     public static function isEmpty(): bool
     {
         return self::count() === 0;
+    }
+
+    /**
+     * Reset styles rendered flag (useful for testing)
+     */
+    public static function resetStylesFlag(): void
+    {
+        self::$stylesRendered = false;
     }
 
     /**
