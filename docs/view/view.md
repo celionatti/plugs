@@ -1,6 +1,7 @@
 # Plugs View System - Complete Usage Guide
 
 ## Table of Contents
+
 1. [Setup & Configuration](#setup--configuration)
 2. [Basic Usage](#basic-usage)
 3. [Template Syntax](#template-syntax)
@@ -32,7 +33,6 @@ $viewEngine = new ViewEngine(
 
 ### Directory Structure
 
-```
 /views
   /components
     button.plug.php
@@ -42,6 +42,7 @@ $viewEngine = new ViewEngine(
   home.plug.php
   about.plug.php
 /cache
+
 ```
 
 ---
@@ -87,6 +88,7 @@ $viewEngine->share('currentYear', date('Y'));
 ### Outputting Data
 
 #### Escaped Output (Safe)
+
 ```php
 {{ $variable }}
 {{ $user->name }}
@@ -96,22 +98,26 @@ $viewEngine->share('currentYear', date('Y'));
 ```
 
 Compiles to:
+
 ```php
 <?php echo htmlspecialchars((string)($variable), ENT_QUOTES, 'UTF-8'); ?>
 ```
 
 #### Raw Output (Unescaped)
+
 ```php
 {{{ $htmlContent }}}
 {{{ $user->getFormattedBio() }}}
 ```
 
 Compiles to:
+
 ```php
 <?php echo $htmlContent; ?>
 ```
 
 #### JSON Output
+
 ```php
 <script>
     const user = @json($user);
@@ -147,6 +153,7 @@ Compiles to:
 ### Creating Components
 
 **File: `/views/components/button.plug.php`**
+
 ```php
 <button 
     type="{{ $type ?? 'button' }}" 
@@ -158,6 +165,7 @@ Compiles to:
 ```
 
 **File: `/views/components/card.plug.php`**
+
 ```php
 <div class="card {{ $class ?? '' }}">
     @if($title ?? false)
@@ -181,11 +189,13 @@ Compiles to:
 ### Using Components
 
 #### Self-Closing Components
+
 ```php
 <Button type="submit" variant="success" />
 ```
 
 #### Components with Content (Slots)
+
 ```php
 <Button type="submit" variant="primary">
     Save Changes
@@ -198,6 +208,7 @@ Compiles to:
 ```
 
 #### Components with Variables
+
 ```php
 <Button type="button" variant="{{ $buttonStyle }}">
     Click Me
@@ -209,6 +220,7 @@ Compiles to:
 ```
 
 #### Component with Boolean Attributes
+
 ```php
 <Button disabled type="submit">
     Submit
@@ -235,6 +247,7 @@ $components = $viewEngine->getAvailableComponents();
 ### Creating a Layout
 
 **File: `/views/layouts/app.plug.php`**
+
 ```php
 <!DOCTYPE html>
 <html>
@@ -264,6 +277,7 @@ $components = $viewEngine->getAvailableComponents();
 ### Extending Layouts
 
 **File: `/views/home.plug.php`**
+
 ```php
 @extends('layouts.app')
 
@@ -319,6 +333,7 @@ $components = $viewEngine->getAvailableComponents();
 ### Conditionals
 
 #### If/Else
+
 ```php
 @if($user->isAdmin())
     <p>Admin Panel</p>
@@ -330,6 +345,7 @@ $components = $viewEngine->getAvailableComponents();
 ```
 
 #### Unless
+
 ```php
 @unless($user->hasAccess())
     <p>Access Denied</p>
@@ -339,6 +355,7 @@ $components = $viewEngine->getAvailableComponents();
 ```
 
 #### Isset
+
 ```php
 @isset($user)
     <p>Welcome, {{ $user->name }}</p>
@@ -346,6 +363,7 @@ $components = $viewEngine->getAvailableComponents();
 ```
 
 #### Empty
+
 ```php
 @empty($items)
     <p>No items found</p>
@@ -355,6 +373,7 @@ $components = $viewEngine->getAvailableComponents();
 ### Default Directives
 
 #### Environment Checks
+
 ```php
 @env('local')
     <div class="debug-bar">Debug Mode</div>
@@ -366,6 +385,7 @@ $components = $viewEngine->getAvailableComponents();
 ```
 
 #### Authentication
+
 ```php
 @auth
     <a href="/dashboard">Dashboard</a>
@@ -377,6 +397,7 @@ $components = $viewEngine->getAvailableComponents();
 ```
 
 #### Error Handling
+
 ```php
 @error('email')
     <span class="error">{{ $message }}</span>
@@ -390,6 +411,7 @@ $components = $viewEngine->getAvailableComponents();
 ### Foreach
 
 #### Basic Foreach
+
 ```php
 @foreach($users as $user)
     <li>{{ $user->name }}</li>
@@ -397,6 +419,7 @@ $components = $viewEngine->getAvailableComponents();
 ```
 
 #### With Key
+
 ```php
 @foreach($products as $id => $product)
     <div data-id="{{ $id }}">
@@ -406,6 +429,7 @@ $components = $viewEngine->getAvailableComponents();
 ```
 
 #### Safe Foreach (Auto-checks if iterable)
+
 ```php
 {{-- Automatically checks if $items exists and is iterable --}}
 @foreach($items as $item)
@@ -414,6 +438,7 @@ $components = $viewEngine->getAvailableComponents();
 ```
 
 ### For Loop
+
 ```php
 @for($i = 0; $i < 10; $i++)
     <p>Item {{ $i }}</p>
@@ -421,6 +446,7 @@ $components = $viewEngine->getAvailableComponents();
 ```
 
 ### While Loop
+
 ```php
 @while($condition)
     <p>Still looping...</p>
@@ -457,6 +483,7 @@ $components = $viewEngine->getAvailableComponents();
 ## Includes
 
 ### Basic Include
+
 ```php
 @include('partials.header')
 
@@ -464,6 +491,7 @@ $components = $viewEngine->getAvailableComponents();
 ```
 
 ### Include with Data
+
 ```php
 @include('partials.alert', ['type' => 'success', 'message' => 'Saved!'])
 
@@ -473,6 +501,7 @@ $components = $viewEngine->getAvailableComponents();
 ### Include Example
 
 **File: `/views/partials/alert.plug.php`**
+
 ```php
 <div class="alert alert-{{ $type }}">
     {{ $message }}
@@ -480,6 +509,7 @@ $components = $viewEngine->getAvailableComponents();
 ```
 
 **Usage:**
+
 ```php
 @include('partials.alert', ['type' => 'danger', 'message' => 'Error occurred'])
 ```
@@ -493,6 +523,7 @@ Stacks allow you to push content to named stacks that can be rendered elsewhere.
 ### Defining Stacks
 
 **In Layout:**
+
 ```php
 <head>
     @stack('styles')
@@ -507,6 +538,7 @@ Stacks allow you to push content to named stacks that can be rendered elsewhere.
 ### Pushing to Stacks
 
 **In Child Views:**
+
 ```php
 @extends('layouts.app')
 
@@ -689,6 +721,7 @@ $viewEngine = new ViewEngine(
 ### Example 1: Blog Post Page
 
 **Layout: `/views/layouts/blog.plug.php`**
+
 ```php
 <!DOCTYPE html>
 <html>
@@ -717,6 +750,7 @@ $viewEngine = new ViewEngine(
 ```
 
 **Post View: `/views/blog/post.plug.php`**
+
 ```php
 @extends('layouts.blog')
 
@@ -771,6 +805,7 @@ $viewEngine = new ViewEngine(
 ### Example 2: User Dashboard
 
 **Component: `/views/components/stat-card.plug.php`**
+
 ```php
 <div class="stat-card {{ $color ?? 'blue' }}">
     <div class="stat-icon">
@@ -789,6 +824,7 @@ $viewEngine = new ViewEngine(
 ```
 
 **Dashboard View:**
+
 ```php
 @extends('layouts.app')
 
@@ -876,6 +912,7 @@ $viewEngine = new ViewEngine(
 ### Development Mode Errors
 
 When `APP_DEBUG=true`, detailed errors are displayed:
+
 - Exception message
 - File and line number
 - Full stack trace
@@ -883,6 +920,7 @@ When `APP_DEBUG=true`, detailed errors are displayed:
 ### Production Mode Errors
 
 When `APP_DEBUG=false`:
+
 - Generic error message
 - Errors logged via `error_log()`
 - No sensitive information exposed
@@ -905,17 +943,20 @@ putenv('APP_DEBUG=true');
 ## Best Practices
 
 1. **Use caching in production:**
+
    ```php
    $viewEngine = new ViewEngine($viewPath, $cachePath, true);
    ```
 
 2. **Always escape output unless rendering HTML:**
+
    ```php
    {{ $userInput }} // Escaped (safe)
    {{{ $trustedHtml }}} // Raw (only for trusted content)
    ```
 
 3. **Organize components logically:**
+
    ```
    /components
      /forms
@@ -929,12 +970,14 @@ putenv('APP_DEBUG=true');
 4. **Use layouts for consistent structure**
 
 5. **Share common data globally:**
+
    ```php
    $viewEngine->share('siteName', 'My Site');
    $viewEngine->share('currentUser', $user);
    ```
 
 6. **Clear cache after deploying:**
+
    ```php
    $viewEngine->clearCache();
    ```
