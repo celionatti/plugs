@@ -262,16 +262,27 @@ class Router
      */
     private function normalizeHandler($handler)
     {
-        // Convert array [Controller::class, 'method'] to string
+        // Keep array handlers as arrays - don't convert to strings
         if (is_array($handler) && count($handler) === 2) {
+            // Apply namespace to controller if it's a string
             if (is_string($handler[0]) && is_string($handler[1])) {
-                $handler = $handler[0] . '@' . $handler[1];
-            } elseif (is_object($handler[0]) && is_string($handler[1])) {
+                $controller = $handler[0];
+
+                // Apply namespace if controller doesn't have one
+                if ($this->groupNamespace && strpos($controller, '\\') === false) {
+                    $controller = $this->groupNamespace . '\\' . $controller;
+                }
+
+                return [$controller, $handler[1]];
+            }
+
+            // Return object handlers as-is
+            if (is_object($handler[0]) && is_string($handler[1])) {
                 return $handler;
             }
         }
 
-        // Apply namespace
+        // Handle string handlers with namespace
         if (is_string($handler) && strpos($handler, '@') !== false && $this->groupNamespace) {
             [$controller, $method] = explode('@', $handler, 2);
 
@@ -431,14 +442,16 @@ class Router
     {
         $this->currentRoute = $route;
 
-        // Extract parameters
+        // Extract parameters once
         $params = $route->extractParameters($path);
 
-        // Add to request attributes
+        // Add to request attributes individually
         foreach ($params as $key => $value) {
             $request = $request->withAttribute($key, $value);
         }
 
+        // Cache extracted params to avoid re-extraction
+        $request = $request->withAttribute('_route_params', $params);
         $request = $request->withAttribute('_route', $route);
         $request = $request->withAttribute('_router', $this);
 
@@ -503,12 +516,19 @@ class Router
     {
         $response = null;
 
-        if (is_string($handler) && strpos($handler, '@') !== false) {
+        // Handle array format [Controller::class, 'method']
+        if (is_array($handler) && count($handler) === 2) {
             $response = $this->executeControllerAction($handler, $request);
-        } elseif (is_callable($handler)) {
+        }
+        // Handle string format "Controller@method"
+        elseif (is_string($handler) && strpos($handler, '@') !== false) {
+            $response = $this->executeControllerAction($handler, $request);
+        }
+        // Handle callables
+        elseif (is_callable($handler)) {
             $response = $this->invokeCallable($handler, $request);
         } else {
-            throw new RuntimeException('Invalid route handler type');
+            throw new RuntimeException('Invalid route handler type: ' . gettype($handler));
         }
 
         return $this->normalizeResponse($response);
@@ -525,21 +545,30 @@ class Router
             return $handler(...$parameters);
         }
 
+        // This handles array callables like [$object, 'method']
         if (is_array($handler) && count($handler) === 2) {
             $reflection = new ReflectionMethod($handler[0], $handler[1]);
             $parameters = $this->resolveMethodParameters($reflection, $request);
             return $handler(...$parameters);
         }
 
+        // Fallback for simple callables
         return $handler($request);
     }
 
     /**
      * Execute controller action
      */
-    private function executeControllerAction(string $handler, ServerRequestInterface $request)
+    private function executeControllerAction($handler, ServerRequestInterface $request)
     {
-        [$controller, $method] = explode('@', $handler, 2);
+        // Handle both string "Controller@method" and array [Controller::class, 'method'] formats
+        if (is_string($handler)) {
+            [$controller, $method] = explode('@', $handler, 2);
+        } elseif (is_array($handler) && count($handler) === 2) {
+            [$controller, $method] = $handler;
+        } else {
+            throw new RuntimeException('Invalid controller action format');
+        }
 
         if (!class_exists($controller)) {
             throw new RuntimeException("Controller [{$controller}] not found");
@@ -572,15 +601,32 @@ class Router
         $routeParams = $this->extractRouteParameters($request);
 
         foreach ($reflection->getParameters() as $parameter) {
-            $resolved = $this->resolveParameter($parameter, $request, $routeParams, $container);
+            // Use a sentinel value to distinguish "not resolved" from "resolved to null"
+            $sentinel = new \stdClass();
+            $resolved = $this->resolveParameter($parameter, $request, $routeParams, $container, $sentinel);
 
-            if ($resolved !== null) {
-                $parameters[] = $resolved;
+            if ($resolved !== $sentinel) {
+                // Handle variadic parameters - spread the array
+                if ($parameter->isVariadic() && is_array($resolved)) {
+                    array_push($parameters, ...$resolved);
+                } else {
+                    $parameters[] = $resolved;
+                }
                 continue;
             }
 
+            // Better error message showing what was tried
+            $debugInfo = [
+                'parameter_name' => $parameter->getName(),
+                'type' => $parameter->getType() ? $parameter->getType()->getName() : 'mixed',
+                'position' => $parameter->getPosition(),
+                'route_params' => array_keys($routeParams),
+                'request_attributes' => array_keys($request->getAttributes()),
+            ];
+
             throw new RuntimeException(
-                "Cannot resolve parameter [{$parameter->getName()}] for handler"
+                "Cannot resolve parameter [{$parameter->getName()}] at position {$parameter->getPosition()} for handler. " .
+                    "Debug info: " . json_encode($debugInfo)
             );
         }
 
@@ -594,15 +640,56 @@ class Router
         ReflectionParameter $parameter,
         ServerRequestInterface $request,
         array $routeParams,
-        Container $container
+        Container $container,
+        $sentinel = null
     ) {
         $paramName = $parameter->getName();
         $type = $parameter->getType();
 
-        // Handle typed parameters
+        // Handle array type parameters from request body
+        if ($type && $type->getName() === 'array') {
+            $parsedBody = $request->getParsedBody();
+            if (is_array($parsedBody) && array_key_exists($paramName, $parsedBody)) {
+                $value = $parsedBody[$paramName];
+                return is_array($value) ? $value : [$value];
+            }
+
+            // If no specific array parameter, return entire parsed body as array
+            if ($paramName === 'data' || $paramName === 'input') {
+                return is_array($parsedBody) ? $parsedBody : [];
+            }
+        }
+
+        // Handle variadic parameters (e.g., ...$args, ...$params)
+        if ($parameter->isVariadic()) {
+            // For variadic, collect all unused route parameters
+            $consumed = [];
+            $reflection = $parameter->getDeclaringFunction();
+
+            // Get names of all non-variadic parameters that come before this one
+            foreach ($reflection->getParameters() as $param) {
+                if ($param->getPosition() < $parameter->getPosition()) {
+                    $consumed[] = $param->getName();
+                }
+            }
+
+            // Collect remaining route params
+            $variadicValues = [];
+            foreach ($routeParams as $key => $value) {
+                if (!in_array($key, $consumed, true)) {
+                    $variadicValues[] = $this->castParameterValue($value, $type);
+                }
+            }
+
+            return $variadicValues;
+        }
+
+        // Handle typed parameters (classes/interfaces) - BEFORE route params
+        // This ensures Request/Response injection works even if there's a route param with same name
         if ($type && !$type->isBuiltin()) {
             $typeName = $type->getName();
 
+            // PSR-7 Request injection
             if (
                 $typeName === ServerRequestInterface::class ||
                 is_subclass_of($typeName, ServerRequestInterface::class)
@@ -610,6 +697,7 @@ class Router
                 return $request;
             }
 
+            // PSR-7 Response injection
             if (
                 $typeName === ResponseInterface::class ||
                 is_subclass_of($typeName, ResponseInterface::class)
@@ -617,22 +705,41 @@ class Router
                 return ResponseFactory::createResponse();
             }
 
+            // Try dependency injection from container
             try {
                 return $container->make($typeName);
             } catch (\Exception $e) {
-                // Fall through
+                // Fall through to other resolution methods
             }
         }
 
-        // Check route parameters
-        if (isset($routeParams[$paramName])) {
+        // Check route parameters (highest priority for scalars)
+        if (array_key_exists($paramName, $routeParams)) {
             return $this->castParameterValue($routeParams[$paramName], $type);
         }
 
-        // Check request attributes
-        $attrValue = $request->getAttribute($paramName);
-        if ($attrValue !== null) {
+        // Check request attributes (allow null values)
+        $attrValue = $request->getAttribute($paramName, $sentinel);
+        if ($attrValue !== $sentinel) {
             return $this->castParameterValue($attrValue, $type);
+        }
+
+        // Check query parameters for additional data
+        $queryParams = $request->getQueryParams();
+        if (array_key_exists($paramName, $queryParams)) {
+            return $this->castParameterValue($queryParams[$paramName], $type);
+        }
+
+        // Check parsed body (POST/PUT/PATCH data)
+        $parsedBody = $request->getParsedBody();
+        if (is_array($parsedBody) && array_key_exists($paramName, $parsedBody)) {
+            return $this->castParameterValue($parsedBody[$paramName], $type);
+        }
+
+        // Check for uploaded files
+        $uploadedFiles = $request->getUploadedFiles();
+        if (array_key_exists($paramName, $uploadedFiles)) {
+            return $uploadedFiles[$paramName];
         }
 
         // Default value
@@ -640,12 +747,13 @@ class Router
             return $parameter->getDefaultValue();
         }
 
-        // Nullable
+        // Nullable - explicitly return null
         if ($type && $type->allowsNull()) {
             return null;
         }
 
-        return null;
+        // Cannot resolve - return sentinel
+        return $sentinel ?? null;
     }
 
     /**
@@ -653,24 +761,68 @@ class Router
      */
     private function castParameterValue($value, ?\ReflectionType $type)
     {
+        // No type hint or not a named type - return as-is
         if ($type === null || !$type instanceof \ReflectionNamedType) {
             return $value;
         }
 
+        // Allow null for nullable types
+        if ($value === null && $type->allowsNull()) {
+            return null;
+        }
+
+        // Handle empty string for nullable non-string types
+        if ($value === '' && $type->allowsNull() && $type->getName() !== 'string') {
+            return null;
+        }
+
+        // Built-in type casting
         if ($type->isBuiltin()) {
             $typeName = $type->getName();
 
             switch ($typeName) {
                 case 'int':
+                    if ($value === '' || $value === null) {
+                        return $type->allowsNull() ? null : 0;
+                    }
                     return (int) $value;
+
                 case 'float':
+                    if ($value === '' || $value === null) {
+                        return $type->allowsNull() ? null : 0.0;
+                    }
                     return (float) $value;
+
                 case 'bool':
+                    if ($value === '' || $value === null) {
+                        return false;
+                    }
+                    // Handle string booleans
+                    if (is_string($value)) {
+                        $lower = strtolower($value);
+                        if (in_array($lower, ['true', '1', 'yes', 'on'], true)) {
+                            return true;
+                        }
+                        if (in_array($lower, ['false', '0', 'no', 'off', ''], true)) {
+                            return false;
+                        }
+                    }
                     return filter_var($value, FILTER_VALIDATE_BOOLEAN);
+
                 case 'string':
+                    if ($value === null) {
+                        return $type->allowsNull() ? null : '';
+                    }
                     return (string) $value;
+
                 case 'array':
+                    if ($value === null) {
+                        return $type->allowsNull() ? null : [];
+                    }
                     return is_array($value) ? $value : [$value];
+
+                case 'object':
+                    return is_object($value) ? $value : (object) $value;
             }
         }
 
@@ -682,6 +834,13 @@ class Router
      */
     private function extractRouteParameters(ServerRequestInterface $request): array
     {
+        // Try cached parameters first
+        $cachedParams = $request->getAttribute('_route_params');
+        if (is_array($cachedParams)) {
+            return $cachedParams;
+        }
+
+        // Fallback to extraction
         $params = [];
         $route = $request->getAttribute('_route');
 
