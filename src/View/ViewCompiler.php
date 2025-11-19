@@ -164,6 +164,8 @@ class ViewCompiler
 
         // 9. Utilities
         $content = $this->compileJson($content);
+        $content = $this->compileOld($content);
+        $content = $this->compileFlashMessages($content);
         $content = $this->compileErrorDirectives($content);
 
         // 10. Echo statements LAST (after all directives)
@@ -626,13 +628,22 @@ class ViewCompiler
 
     private function compileErrorDirectives(string $content): string
     {
-        $content = preg_replace(
+        // @error directive with message variable
+        $content = preg_replace_callback(
             '/@error\s*\(\s*[\'"](.+?)[\'"]\s*\)/',
-            '<?php if (isset($errors) && $errors->has(\'$1\')): ?>',
+            function ($matches) {
+                $field = $matches[1];
+                return sprintf(
+                    '<?php if (isset($errors) && $errors->has(\'%s\')): ' .
+                        '$message = $errors->first(\'%s\'); ?>',
+                    addslashes($field),
+                    addslashes($field)
+                );
+            },
             $content
         );
 
-        $content = preg_replace('/@enderror\s*(?:\r?\n)?/', '<?php endif; ?>', $content);
+        $content = preg_replace('/@enderror\s*(?:\r?\n)?/', '<?php unset($message); endif; ?>', $content);
 
         return $content;
     }
@@ -658,6 +669,50 @@ class ViewCompiler
                 $content
             );
         }
+
+        return $content;
+    }
+
+    /**
+     * Compile @old directive (alternative syntax)
+     * Usage: @old('name', 'default value')
+     */
+    private function compileOld(string $content): string
+    {
+        return preg_replace_callback(
+            '/@old\s*\(\s*[\'"](.+?)[\'"]\s*(?:,\s*[\'"]?(.*?)[\'"]?)?\s*\)/s',
+            function ($matches) {
+                $key = addslashes($matches[1]);
+                $default = isset($matches[2]) ? addslashes($matches[2]) : '';
+
+                return sprintf(
+                    '<?php echo htmlspecialchars((string)(isset($old) && is_callable($old) ? $old(\'%s\', \'%s\') : (isset($_SESSION[\'_old_input\'][\'%s\']) ? $_SESSION[\'_old_input\'][\'%s\'] : \'%s\')), ENT_QUOTES, \'UTF-8\'); ?>',
+                    $key,
+                    $default,
+                    $key,
+                    $key,
+                    $default
+                );
+            },
+            $content
+        );
+    }
+
+    /**
+     * Compile @success and @error directives for flash messages
+     */
+    private function compileFlashMessages(string $content): string
+    {
+        // @success directive
+        $content = preg_replace_callback(
+            '/@success\s*(?:\r?\n)?/',
+            function ($matches) {
+                return '<?php if (isset($_SESSION[\'_success\'])): $message = $_SESSION[\'_success\']; unset($_SESSION[\'_success\']); ?>';
+            },
+            $content
+        );
+
+        $content = preg_replace('/@endsuccess\s*(?:\r?\n)?/', '<?php unset($message); endif; ?>', $content);
 
         return $content;
     }

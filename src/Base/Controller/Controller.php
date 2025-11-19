@@ -19,6 +19,7 @@ use Plugs\View\ViewEngine;
 use Plugs\Security\Validator;
 use Plugs\Database\Connection;
 use Plugs\Http\ResponseFactory;
+use Plugs\View\ErrorMessage;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use RuntimeException;
@@ -35,10 +36,59 @@ abstract class Controller
         $this->view = $view;
         $this->db = $db;
 
+        // Initialize session if not started
+        $this->ensureSessionStarted();
+
         // Share common data with views
         $this->view->share('app_name', config('app.name', 'Plugs Framework'));
+        
+        // Share global errors (always available, empty if no errors)
+        $this->shareGlobalErrors();
+        
+        // Make old() helper available globally
+        $this->shareOldInputHelper();
 
         $this->onConstruct();
+    }
+
+    /**
+     * Share global errors with all views
+     */
+    private function shareGlobalErrors(): void
+    {
+        // Check if there are flashed errors in session
+        if (isset($_SESSION['_errors'])) {
+            $errors = $_SESSION['_errors'];
+            unset($_SESSION['_errors']); // Clear after retrieving
+        } else {
+            $errors = new ErrorMessage();
+        }
+
+        $this->view->share('errors', $errors);
+    }
+
+    /**
+     * Share old input helper function with views
+     */
+    private function shareOldInputHelper(): void
+    {
+        // Share the old() function result as a callable
+        $this->view->share('old', function (string $key, $default = null) {
+            return $this->getOldInput($key, $default);
+        });
+    }
+
+    /**
+     * Get old input value
+     */
+    private function getOldInput(string $key, $default = null)
+    {
+        // Check session for old input (flash data)
+        if (isset($_SESSION['_old_input'][$key])) {
+            return $_SESSION['_old_input'][$key];
+        }
+
+        return $default;
     }
 
     /**
@@ -48,12 +98,80 @@ abstract class Controller
     {
         try {
             $html = $this->view->render($view, $data);
+            
+            // Clear old input after successful render (only if no errors)
+            if (!isset($_SESSION['_errors'])) {
+                $this->clearOldInput();
+            }
+            
             return ResponseFactory::html($html);
         } catch (\Throwable $e) {
             if (config('app.debug', false)) {
                 throw $e;
             }
             return $this->renderErrorPage();
+        }
+    }
+
+    /**
+     * Redirect back with errors and old input
+     */
+    protected function back(?ErrorMessage $errors = null, array $data = []): ResponseInterface
+    {
+        // Flash errors to session if provided
+        if ($errors && $errors->any()) {
+            $_SESSION['_errors'] = $errors;
+        }
+
+        // Flash old input to session
+        if ($this->currentRequest) {
+            $parsedBody = $this->currentRequest->getParsedBody();
+            if (is_array($parsedBody)) {
+                $_SESSION['_old_input'] = $parsedBody;
+            }
+        }
+
+        // Flash additional data if provided
+        if (!empty($data)) {
+            foreach ($data as $key => $value) {
+                $_SESSION['_flash_' . $key] = $value;
+            }
+        }
+
+        // Get referer or fallback to home
+        $referer = $_SERVER['HTTP_REFERER'] ?? '/';
+        
+        return $this->redirect($referer);
+    }
+
+    /**
+     * Redirect with success message
+     */
+    protected function redirectWithSuccess(string $url, string $message): ResponseInterface
+    {
+        $_SESSION['_success'] = $message;
+        return $this->redirect($url);
+    }
+
+    /**
+     * Redirect with error message
+     */
+    protected function redirectWithError(string $url, string $message): ResponseInterface
+    {
+        $errors = new ErrorMessage();
+        $errors->add('general', $message);
+        $_SESSION['_errors'] = $errors;
+        
+        return $this->redirect($url);
+    }
+
+    /**
+     * Clear old input from session
+     */
+    private function clearOldInput(): void
+    {
+        if (isset($_SESSION['_old_input'])) {
+            unset($_SESSION['_old_input']);
         }
     }
 
@@ -119,9 +237,29 @@ abstract class Controller
     }
 
     /**
-     * Validate request data
+     * Validate request data - now with automatic error handling
      */
-    protected function validate(ServerRequestInterface $request, array $rules): array
+    protected function validate(ServerRequestInterface $request, array $rules): array|object
+    {
+        $data = $request->getParsedBody() ?? [];
+
+        $validator = new Validator($data, $rules);
+
+        if (!$validator->validate()) {
+            // Convert validator errors to ErrorBag
+            $errorBag = new ErrorMessage($validator->errors());
+            
+            // Flash errors and old input, then redirect back
+            return $this->back($errorBag);
+        }
+
+        return $data;
+    }
+
+    /**
+     * Validate request data - throws exception instead of redirecting
+     */
+    protected function validateOrFail(ServerRequestInterface $request, array $rules): array
     {
         $data = $request->getParsedBody() ?? [];
 
@@ -173,9 +311,6 @@ abstract class Controller
 
     /**
      * Get all input data
-     * 
-     * @param ServerRequestInterface $request
-     * @return array
      */
     protected function all(ServerRequestInterface $request): array
     {
@@ -186,6 +321,16 @@ abstract class Controller
             $queryParams,
             is_array($parsedBody) ? $parsedBody : []
         );
+    }
+
+    /**
+     * Ensure session is started
+     */
+    private function ensureSessionStarted(): void
+    {
+        if (session_status() === PHP_SESSION_NONE) {
+            session_start();
+        }
     }
 
     /**

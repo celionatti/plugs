@@ -143,13 +143,6 @@ if (!function_exists('csrf_field')) {
     }
 }
 
-if (!function_exists('old')) {
-    function old(string $key, $default = null)
-    {
-        return $_SESSION['_old_input'][$key] ?? $default;
-    }
-}
-
 if (!function_exists('request')) {
     function request(): ?ServerRequestInterface
     {
