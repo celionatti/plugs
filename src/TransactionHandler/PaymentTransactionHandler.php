@@ -11,6 +11,7 @@ namespace Plugs\TransactionHandler;
 */
 
 use Exception;
+use Plugs\TransactionHandler\Adapter\BTCPayAdapter;
 use Plugs\TransactionHandler\Adapter\PayPalAdapter;
 use Plugs\TransactionHandler\Adapter\StripeAdapter;
 use Plugs\TransactionHandler\Adapter\PayoneerAdapter;
