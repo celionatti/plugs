@@ -31,9 +31,6 @@ class UploadedFile
     private ?string $actualMimeType = null;
     private bool $moved = false;
 
-    /**
-     * Dangerous file extensions that should be blocked
-     */
     private const DANGEROUS_EXTENSIONS = [
         'php',
         'phtml',
@@ -61,12 +58,16 @@ class UploadedFile
         'htaccess',
         'htpasswd',
         'ini',
-        'config'
+        'config',
+        'jsp',
+        'asp',
+        'aspx',
+        'cer',
+        'asa',
+        'swf',
+        'xap'
     ];
 
-    /**
-     * Image MIME types for validation
-     */
     private const IMAGE_MIME_TYPES = [
         'image/jpeg',
         'image/jpg',
@@ -78,12 +79,6 @@ class UploadedFile
         'image/svg+xml'
     ];
 
-    /**
-     * Create a new UploadedFile instance
-     * 
-     * @param array $file The $_FILES array element
-     * @throws InvalidArgumentException If file array is invalid
-     */
     public function __construct(array $file)
     {
         if (!isset($file['name'], $file['tmp_name'], $file['error'], $file['size'])) {
@@ -96,15 +91,11 @@ class UploadedFile
         $this->error = (int) $file['error'];
         $this->size = (int) $file['size'];
 
-        // Get actual MIME type from file content (more secure than client-provided)
         if ($this->isValid() && $this->isUploaded() && is_readable($this->tmpName)) {
             $this->detectActualMimeType();
         }
     }
 
-    /**
-     * Detect the actual MIME type from file content
-     */
     private function detectActualMimeType(): void
     {
         if (!function_exists('finfo_open')) {
@@ -119,122 +110,79 @@ class UploadedFile
         $mimeType = @finfo_file($finfo, $this->tmpName);
         finfo_close($finfo);
 
-        if ($mimeType !== false) {
+        if ($mimeType !== false && is_string($mimeType)) {
             $this->actualMimeType = strtolower($mimeType);
         }
     }
 
-    /**
-     * Get the original client filename
-     */
     public function getClientFilename(): string
     {
         return $this->name;
     }
 
-    /**
-     * Get file extension from original filename
-     */
     public function getClientExtension(): string
     {
         $extension = strtolower(pathinfo($this->name, PATHINFO_EXTENSION));
         return $extension !== '' ? $extension : '';
     }
 
-    /**
-     * Get MIME type provided by the client
-     */
     public function getClientMediaType(): string
     {
         return $this->type;
     }
 
-    /**
-     * Get actual MIME type detected from file content
-     * More reliable than client-provided type for security
-     */
     public function getActualMediaType(): ?string
     {
         return $this->actualMimeType;
     }
 
-    /**
-     * Get the best available MIME type (actual or client)
-     */
     public function getMimeType(): string
     {
         return $this->actualMimeType ?? $this->type;
     }
 
-    /**
-     * Get file size in bytes
-     */
     public function getSize(): int
     {
         return $this->size;
     }
 
-    /**
-     * Get upload error code
-     */
     public function getError(): int
     {
         return $this->error;
     }
 
-    /**
-     * Get temporary file path
-     */
     public function getTempPath(): string
     {
         return $this->tmpName;
     }
 
-    /**
-     * Check if upload was successful (no errors)
-     */
     public function isValid(): bool
     {
         return $this->error === UPLOAD_ERR_OK && !empty($this->tmpName);
     }
 
-    /**
-     * Verify the file was actually uploaded via HTTP POST
-     * Critical security check to prevent local file inclusion attacks
-     */
     public function isUploaded(): bool
     {
         return !empty($this->tmpName) && is_uploaded_file($this->tmpName);
     }
 
-    /**
-     * Check if file has already been moved
-     */
     public function isMoved(): bool
     {
         return $this->moved;
     }
 
-    /**
-     * Check if file appears to be an image based on extension
-     */
     public function isImage(): bool
     {
         $imageExtensions = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp', 'svg'];
         return in_array($this->getClientExtension(), $imageExtensions, true);
     }
 
-    /**
-     * Verify file is actually an image by checking content
-     * More reliable and secure than extension-based check
-     */
     public function isActualImage(): bool
     {
         if (!$this->isValid() || !$this->isUploaded()) {
             return false;
         }
 
-        // Check actual MIME type
         if (
             $this->actualMimeType !== null &&
             !in_array($this->actualMimeType, self::IMAGE_MIME_TYPES, true)
@@ -242,19 +190,14 @@ class UploadedFile
             return false;
         }
 
-        // SVG files need special handling
         if ($this->actualMimeType === 'image/svg+xml') {
             return $this->isSafeSvg();
         }
 
-        // Use getimagesize for additional verification
         $imageInfo = @getimagesize($this->tmpName);
         return $imageInfo !== false;
     }
 
-    /**
-     * Basic SVG safety check (looks for script tags)
-     */
     private function isSafeSvg(): bool
     {
         $content = @file_get_contents($this->tmpName, false, null, 0, 8192);
@@ -262,14 +205,15 @@ class UploadedFile
             return false;
         }
 
-        // Check for dangerous patterns in SVG
         $dangerousPatterns = [
             '/<script/i',
             '/javascript:/i',
-            '/on\w+\s*=/i', // Event handlers like onclick=
+            '/on\w+\s*=/i',
             '/<iframe/i',
             '/<embed/i',
             '/<object/i',
+            '/data:text\/html/i',
+            '/<foreignObject/i',
         ];
 
         foreach ($dangerousPatterns as $pattern) {
@@ -281,20 +225,14 @@ class UploadedFile
         return true;
     }
 
-    /**
-     * Get image dimensions if file is a valid image
-     * 
-     * @return array{width: int, height: int, type: int, mime: string}|null
-     */
     public function getImageDimensions(): ?array
     {
         if (!$this->isActualImage()) {
             return null;
         }
 
-        // SVG dimensions are not easily determined
         if ($this->actualMimeType === 'image/svg+xml') {
-            return null;
+            return $this->getSvgDimensions();
         }
 
         $imageInfo = @getimagesize($this->tmpName);
@@ -310,11 +248,29 @@ class UploadedFile
         ];
     }
 
-    /**
-     * Get file contents as string
-     * 
-     * @throws RuntimeException If file cannot be read
-     */
+    private function getSvgDimensions(): ?array
+    {
+        $content = @file_get_contents($this->tmpName);
+        if ($content === false) {
+            return null;
+        }
+
+        // Try to extract width and height from SVG
+        if (
+            preg_match('/width=["\'](\d+)["\']/', $content, $width) &&
+            preg_match('/height=["\'](\d+)["\']/', $content, $height)
+        ) {
+            return [
+                'width' => (int) $width[1],
+                'height' => (int) $height[1],
+                'type' => IMAGETYPE_SVG ?? 0,
+                'mime' => 'image/svg+xml'
+            ];
+        }
+
+        return null;
+    }
+
     public function getContents(): string
     {
         if (!$this->isValid()) {
@@ -337,12 +293,6 @@ class UploadedFile
         return $contents;
     }
 
-    /**
-     * Move uploaded file to destination
-     * 
-     * @param string $targetPath Absolute path where file should be moved
-     * @throws RuntimeException If move operation fails
-     */
     public function moveTo(string $targetPath): bool
     {
         if ($this->moved) {
@@ -357,7 +307,6 @@ class UploadedFile
             throw new RuntimeException('Security violation: File was not uploaded via HTTP POST');
         }
 
-        // Validate and prepare target directory
         $directory = dirname($targetPath);
         if (!is_dir($directory)) {
             if (!@mkdir($directory, 0755, true)) {
@@ -369,34 +318,38 @@ class UploadedFile
             throw new RuntimeException("Directory is not writable: {$directory}");
         }
 
-        // Validate filename
         $filename = basename($targetPath);
         if ($filename === '' || $filename === '.' || $filename === '..') {
             throw new RuntimeException('Invalid target filename');
         }
 
-        // Security: Check for directory traversal
+        // Security: Prevent directory traversal
         $realDirectory = realpath($directory);
-        $realTarget = $realDirectory . DIRECTORY_SEPARATOR . $filename;
-        if ($realTarget !== $targetPath && realpath($targetPath) !== $realTarget) {
+        if ($realDirectory === false) {
+            throw new RuntimeException('Invalid directory path');
+        }
+
+        $expectedPath = $realDirectory . DIRECTORY_SEPARATOR . $filename;
+        $normalizedTarget = str_replace(['/', '\\'], DIRECTORY_SEPARATOR, $targetPath);
+
+        // Allow both formats but ensure it's within the directory
+        if (strpos($normalizedTarget, $realDirectory) !== 0) {
             throw new RuntimeException('Security violation: Directory traversal detected');
         }
 
-        // Move the file
         if (!@move_uploaded_file($this->tmpName, $targetPath)) {
-            throw new RuntimeException('Failed to move uploaded file to destination');
+            $error = error_get_last();
+            throw new RuntimeException(
+                'Failed to move uploaded file: ' . ($error['message'] ?? 'Unknown error')
+            );
         }
 
-        // Set proper permissions
         @chmod($targetPath, 0644);
 
         $this->moved = true;
         return true;
     }
 
-    /**
-     * Get human-readable error message
-     */
     public function getErrorMessage(): string
     {
         $errors = [
@@ -413,61 +366,47 @@ class UploadedFile
         return $errors[$this->error] ?? 'Unknown upload error (code: ' . $this->error . ')';
     }
 
-    /**
-     * Check if filename has suspicious double extension
-     * Example: malicious.php.jpg
-     */
     public function hasSuspiciousExtension(): bool
     {
         $filename = strtolower($this->name);
 
-        // Check for dangerous extensions anywhere in filename
         foreach (self::DANGEROUS_EXTENSIONS as $ext) {
-            // Look for patterns like .php.jpg or .php%00.jpg
             if (preg_match('/\.' . preg_quote($ext, '/') . '(?:[\x00\.]|$)/i', $filename)) {
                 return true;
             }
         }
 
-        // Check for null byte injection
         if (strpos($filename, "\x00") !== false) {
+            return true;
+        }
+
+        // Check for multiple dots in suspicious patterns
+        if (substr_count($filename, '.') > 2) {
             return true;
         }
 
         return false;
     }
 
-    /**
-     * Check if file extension is dangerous
-     */
     public function hasDangerousExtension(): bool
     {
         $extension = $this->getClientExtension();
         return in_array($extension, self::DANGEROUS_EXTENSIONS, true);
     }
 
-    /**
-     * Generate a safe, sanitized filename
-     * Removes dangerous characters and ensures valid format
-     */
     public function getSafeFilename(): string
     {
         $name = pathinfo($this->name, PATHINFO_FILENAME);
         $extension = $this->getClientExtension();
 
-        // Remove any non-alphanumeric characters except dash and underscore
         $name = preg_replace('/[^a-zA-Z0-9_-]/', '_', $name);
         $name = trim($name, '_-');
-
-        // Remove consecutive underscores/dashes
         $name = preg_replace('/[_-]+/', '_', $name);
 
-        // If name is empty after sanitization, use timestamp
         if ($name === '') {
-            $name = 'file_' . time();
+            $name = 'file_' . time() . '_' . bin2hex(random_bytes(4));
         }
 
-        // Limit length to prevent filesystem issues
         if (strlen($name) > 200) {
             $name = substr($name, 0, 200);
         }
@@ -475,14 +414,13 @@ class UploadedFile
         return $extension !== '' ? $name . '.' . $extension : $name;
     }
 
-    /**
-     * Get file hash for duplicate detection
-     * 
-     * @param string $algorithm Hashing algorithm (md5, sha1, sha256)
-     */
     public function getHash(string $algorithm = 'sha256'): ?string
     {
         if (!$this->isValid() || !$this->isUploaded() || $this->moved) {
+            return null;
+        }
+
+        if (!in_array($algorithm, hash_algos(), true)) {
             return null;
         }
 
