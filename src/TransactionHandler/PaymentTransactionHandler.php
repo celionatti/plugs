@@ -42,6 +42,7 @@ class PaymentTransactionHandler
     const PLATFORM_PAYPAL = 'paypal';
     const PLATFORM_PAYONEER = 'payoneer';
     const PLATFORM_FLUTTERWAVE = 'flutterwave';
+    const PLATFORM_BTCPAY = 'btcpay';
 
     /**
      * Constructor
@@ -76,6 +77,9 @@ class PaymentTransactionHandler
                 break;
             case self::PLATFORM_PAYONEER:
                 $this->adapter = new PayoneerAdapter($this->config);
+                break;
+            case self::PLATFORM_BTCPAY:
+                $this->adapter = new BTCPayAdapter($this->config);
                 break;
             default:
                 throw new Exception("Unsupported platform: {$this->platform}");
