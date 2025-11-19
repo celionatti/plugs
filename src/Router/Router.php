@@ -10,9 +10,18 @@ namespace Plugs\Router;
 |--------------------------------------------------------------------------
 |
 | Router class for handling application routing.
+ * Production-ready router with features including:
+ * - Method spoofing (_method support)
+ * - Route groups with prefixes, middleware, namespaces
+ * - RESTful resources
+ * - Named routes
+ * - Advanced dependency injection
+ * - Route caching
 */
 
 use Plugs\Container\Container;
+use ReflectionMethod;
+
 use ReflectionParameter;
 
 use Plugs\Http\MiddlewareDispatcher;
@@ -24,94 +33,60 @@ use InvalidArgumentException;
 
 class Router
 {
-    /** @var Route[] Registered routes */
     private array $routes = [];
-
-    /** @var string Current group prefix */
     private string $groupPrefix = '';
-
-    /** @var array Current group middleware */
     private array $groupMiddleware = [];
-
-    /** @var string Current group namespace */
     private string $groupNamespace = '';
-
-    /** @var array Named routes for URL generation */
+    private ?string $groupDomain = null;
+    private array $groupWhere = [];
     private array $namedRoutes = [];
-
-    /** @var array Cached middleware aliases */
     private ?array $middlewareAliases = null;
-
-    /** @var array Route cache for performance */
     private array $routeCache = [];
-
-    /** @var bool Enable route caching */
     private bool $cacheEnabled = true;
-
-    /** @var int Maximum cache size */
     private const MAX_CACHE_SIZE = 1000;
-
     private ?ServerRequestInterface $currentRequest = null;
+    private array $globalMiddleware = [];
+    private ?Route $currentRoute = null;
+    private array $patterns = [];
 
     /**
-     * Register a GET route
+     * Register route methods
      */
     public function get(string $path, $handler, array $middleware = []): Route
     {
         return $this->addRoute('GET', $path, $handler, $middleware);
     }
 
-    /**
-     * Register a POST route
-     */
     public function post(string $path, $handler, array $middleware = []): Route
     {
         return $this->addRoute('POST', $path, $handler, $middleware);
     }
 
-    /**
-     * Register a PUT route
-     */
     public function put(string $path, $handler, array $middleware = []): Route
     {
         return $this->addRoute('PUT', $path, $handler, $middleware);
     }
 
-    /**
-     * Register a DELETE route
-     */
     public function delete(string $path, $handler, array $middleware = []): Route
     {
         return $this->addRoute('DELETE', $path, $handler, $middleware);
     }
 
-    /**
-     * Register a PATCH route
-     */
     public function patch(string $path, $handler, array $middleware = []): Route
     {
         return $this->addRoute('PATCH', $path, $handler, $middleware);
     }
 
-    /**
-     * Register an OPTIONS route
-     */
     public function options(string $path, $handler, array $middleware = []): Route
     {
         return $this->addRoute('OPTIONS', $path, $handler, $middleware);
     }
 
-    /**
-     * Register a HEAD route
-     */
     public function head(string $path, $handler, array $middleware = []): Route
     {
         return $this->addRoute('HEAD', $path, $handler, $middleware);
     }
 
-    /**
-     * Register a route for multiple HTTP methods
-     */
     public function match(array $methods, string $path, $handler, array $middleware = []): Route
     {
         if (empty($methods)) {
@@ -126,9 +101,6 @@ class Router
         return $route;
     }
 
-    /**
-     * Register a route for all HTTP methods
-     */
     public function any(string $path, $handler, array $middleware = []): Route
     {
         return $this->match(
@@ -140,17 +112,7 @@ class Router
     }
 
     /**
-     * Register a RESTful resource controller
-     * 
-     * Creates standard CRUD routes:
-     * GET    /resource          -> index
-     * GET    /resource/create   -> create
-     * POST   /resource          -> store
-     * GET    /resource/{id}     -> show
-     * GET    /resource/{id}/edit -> edit
-     * PUT    /resource/{id}     -> update
-     * PATCH  /resource/{id}     -> update
-     * DELETE /resource/{id}     -> destroy
+     * RESTful resource routing
      */
     public function resource(string $name, string $controller, array $options = []): void
     {
@@ -158,17 +120,20 @@ class Router
         $except = $options['except'] ?? [];
         $middleware = $options['middleware'] ?? [];
         $names = $options['names'] ?? [];
+        $parameters = $options['parameters'] ?? ['id'];
 
         $actions = array_diff($only, $except);
+
+        $param = is_array($parameters) ? ($parameters[0] ?? 'id') : $parameters;
 
         $resourceRoutes = [
             'index' => ['GET', '', 'index'],
             'create' => ['GET', '/create', 'create'],
             'store' => ['POST', '', 'store'],
-            'show' => ['GET', '/{id}', 'show'],
-            'edit' => ['GET', '/{id}/edit', 'edit'],
-            'update' => ['PUT', '/{id}', 'update'],
-            'destroy' => ['DELETE', '/{id}', 'destroy'],
+            'show' => ['GET', '/{' . $param . '}', 'show'],
+            'edit' => ['GET', '/{' . $param . '}/edit', 'edit'],
+            'update' => ['PUT', '/{' . $param . '}', 'update'],
+            'destroy' => ['DELETE', '/{' . $param . '}', 'destroy'],
         ];
 
         foreach ($resourceRoutes as $action => $routeData) {
@@ -191,21 +156,13 @@ class Router
                     '/' . trim($name, '/') . $path,
                     $controller . '@' . $controllerMethod,
                     $middleware
-                );
+                )->name($names[$action] ?? "{$name}.{$action}");
             }
 
-            // Set route name if provided
-            if (isset($names[$action])) {
-                $route->name($names[$action]);
-            } else {
-                $route->name("{$name}.{$action}");
-            }
+            $route->name($names[$action] ?? "{$name}.{$action}");
         }
     }
 
-    /**
-     * Register API resource routes (without create/edit)
-     */
     public function apiResource(string $name, string $controller, array $options = []): void
     {
         $options['except'] = array_merge($options['except'] ?? [], ['create', 'edit']);
@@ -213,21 +170,23 @@ class Router
     }
 
     /**
-     * Group routes with common attributes
+     * Route grouping
      */
     public function group(array $attributes, callable $callback): void
     {
         $previousPrefix = $this->groupPrefix;
         $previousMiddleware = $this->groupMiddleware;
         $previousNamespace = $this->groupNamespace;
+        $previousDomain = $this->groupDomain;
+        $previousWhere = $this->groupWhere;
 
-        // Apply group prefix
+        // Apply prefix
         if (isset($attributes['prefix'])) {
             $prefix = trim($attributes['prefix'], '/');
             $this->groupPrefix = $previousPrefix . ($prefix ? '/' . $prefix : '');
         }
 
-        // Apply group middleware
+        // Apply middleware
         if (isset($attributes['middleware'])) {
             $middleware = is_array($attributes['middleware'])
                 ? $attributes['middleware']
@@ -235,24 +194,36 @@ class Router
             $this->groupMiddleware = array_merge($previousMiddleware, $middleware);
         }
 
-        // Apply group namespace
+        // Apply namespace
         if (isset($attributes['namespace'])) {
             $this->groupNamespace = $previousNamespace
                 ? $previousNamespace . '\\' . trim($attributes['namespace'], '\\')
                 : trim($attributes['namespace'], '\\');
         }
 
-        // Execute callback to register routes
+        // Apply domain
+        if (isset($attributes['domain'])) {
+            $this->groupDomain = $attributes['domain'];
+        }
+
+        // Apply where constraints
+        if (isset($attributes['where'])) {
+            $this->groupWhere = array_merge($previousWhere, $attributes['where']);
+        }
+
+        // Execute callback
         $callback($this);
 
         // Restore previous state
         $this->groupPrefix = $previousPrefix;
         $this->groupMiddleware = $previousMiddleware;
         $this->groupNamespace = $previousNamespace;
+        $this->groupDomain = $previousDomain;
+        $this->groupWhere = $previousWhere;
     }
 
     /**
-     * Add a route to the collection
+     * Add route to collection
      */
     private function addRoute(string $method, string $path, $handler, array $middleware = []): Route
     {
@@ -262,41 +233,48 @@ class Router
             $path = rtrim($path, '/');
         }
 
-        // Merge group and route middleware
+        // Merge middleware
         $middleware = array_merge($this->groupMiddleware, $middleware);
 
-        // Apply namespace to handler if it's a string
+        // Apply namespace
         $handler = $this->normalizeHandler($handler);
 
         $route = new Route($method, $path, $handler, $middleware, $this);
-        $this->routes[] = $route;
 
-        // Clear route cache when new routes are added
+        // Apply group domain
+        if ($this->groupDomain !== null) {
+            $route->domain($this->groupDomain);
+        }
+
+        // Apply group where constraints
+        if (!empty($this->groupWhere)) {
+            $route->where($this->groupWhere);
+        }
+
+        $this->routes[] = $route;
         $this->clearCache();
 
         return $route;
     }
 
     /**
-     * Normalize handler to consistent format
+     * Normalize handler format
      */
     private function normalizeHandler($handler)
     {
-        // Convert array handler [Controller::class, 'method'] to string
+        // Convert array [Controller::class, 'method'] to string
         if (is_array($handler) && count($handler) === 2) {
             if (is_string($handler[0]) && is_string($handler[1])) {
                 $handler = $handler[0] . '@' . $handler[1];
             } elseif (is_object($handler[0]) && is_string($handler[1])) {
-                // Instance method - keep as array for callable
                 return $handler;
             }
         }
 
-        // Apply namespace to controller string
+        // Apply namespace
         if (is_string($handler) && strpos($handler, '@') !== false && $this->groupNamespace) {
             [$controller, $method] = explode('@', $handler, 2);
 
-            // Don't apply namespace if controller already has namespace
             if (strpos($controller, '\\') === false) {
                 $handler = $this->groupNamespace . '\\' . $controller . '@' . $method;
             }
@@ -306,16 +284,13 @@ class Router
     }
 
     /**
-     * Get route by name
+     * Named routes
      */
     public function getRouteByName(string $name): ?Route
     {
         return $this->namedRoutes[$name] ?? null;
     }
 
-    /**
-     * Register named route internally
-     */
     public function registerNamedRoute(string $name, Route $route): void
     {
         if (isset($this->namedRoutes[$name])) {
@@ -325,9 +300,6 @@ class Router
         $this->namedRoutes[$name] = $route;
     }
 
-    /**
-     * Generate URL for named route
-     */
     public function route(string $name, array $parameters = [], bool $absolute = false): string
     {
         $route = $this->getRouteByName($name);
@@ -336,41 +308,25 @@ class Router
             throw new RuntimeException("Route [{$name}] not found");
         }
 
-        $path = $route->getPath();
-
-        // Replace required parameters
-        foreach ($parameters as $key => $value) {
-            $path = str_replace('{' . $key . '}', (string) $value, $path);
-            $path = str_replace('{' . $key . '?}', (string) $value, $path);
-        }
-
-        // Remove unfilled optional parameters
-        $path = preg_replace('/\{[^}]+\?\}/', '', $path);
-
-        // Check for unfilled required parameters
-        if (preg_match('/\{([^}?]+)\}/', $path, $matches)) {
-            throw new RuntimeException(
-                "Missing required parameter [{$matches[1]}] for route [{$name}]"
-            );
-        }
-
-        // Generate absolute URL if requested
-        if ($absolute) {
-            $scheme = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
-            $host = $_SERVER['HTTP_HOST'] ?? 'localhost';
-            $path = $scheme . '://' . $host . $path;
-        }
-
-        return $path;
+        return $route->url($parameters, $absolute);
     }
 
+    /**
+     * Current request/route access
+     */
     public function getCurrentRequest(): ?ServerRequestInterface
     {
         return $this->currentRequest;
     }
 
+    public function getCurrentRoute(): ?Route
+    {
+        return $this->currentRoute;
+    }
+
     /**
-     * Dispatch the request to matching route
+     * Dispatch request to matching route
+     * INCLUDES METHOD SPOOFING SUPPORT
      */
     public function dispatch(ServerRequestInterface $request): ?ResponseInterface
     {
@@ -380,15 +336,20 @@ class Router
         $method = $request->getMethod();
         $path = $request->getUri()->getPath();
 
-        // Handle HEAD requests as GET
+        // FIX: Support Laravel-style method spoofing via _method field
+        if ($method === 'POST') {
+            $method = $this->getMethodFromRequest($request);
+        }
+
+        // Handle HEAD as GET
         if ($method === 'HEAD') {
             $method = 'GET';
         }
 
-        // Check cache first
+        // Check cache
         $cacheKey = $method . ':' . $path;
         if ($this->cacheEnabled && isset($this->routeCache[$cacheKey])) {
-            return $this->dispatchCachedRoute($this->routeCache[$cacheKey], $request);
+            return $this->dispatchCachedRoute($this->routeCache[$cacheKey], $request, $method);
         }
 
         // Find matching route
@@ -397,7 +358,7 @@ class Router
                 continue;
             }
 
-            // Cache the route match
+            // Cache match
             if ($this->cacheEnabled) {
                 $this->cacheRoute($cacheKey, $route);
             }
@@ -409,54 +370,100 @@ class Router
     }
 
     /**
-     * Dispatch a cached route
+     * Get method from request supporting _method spoofing
      */
-    private function dispatchCachedRoute(Route $route, ServerRequestInterface $request): ResponseInterface
+    private function getMethodFromRequest(ServerRequestInterface $request): string
+    {
+        $method = $request->getMethod();
+
+        // Only allow method spoofing for POST requests
+        if ($method !== 'POST') {
+            return $method;
+        }
+
+        // Check parsed body first
+        $parsedBody = $request->getParsedBody();
+        if (is_array($parsedBody) && isset($parsedBody['_method'])) {
+            $spoofedMethod = strtoupper($parsedBody['_method']);
+
+            // Only allow safe methods to be spoofed
+            if (in_array($spoofedMethod, ['PUT', 'PATCH', 'DELETE'], true)) {
+                return $spoofedMethod;
+            }
+        }
+
+        // Check query params as fallback
+        $queryParams = $request->getQueryParams();
+        if (isset($queryParams['_method'])) {
+            $spoofedMethod = strtoupper($queryParams['_method']);
+
+            if (in_array($spoofedMethod, ['PUT', 'PATCH', 'DELETE'], true)) {
+                return $spoofedMethod;
+            }
+        }
+
+        // Check X-HTTP-Method-Override header
+        $headerMethod = $request->getHeaderLine('X-HTTP-Method-Override');
+        if ($headerMethod) {
+            $spoofedMethod = strtoupper($headerMethod);
+
+            if (in_array($spoofedMethod, ['PUT', 'PATCH', 'DELETE'], true)) {
+                return $spoofedMethod;
+            }
+        }
+
+        return $method;
+    }
+
+    /**
+     * Dispatch cached route
+     */
+    private function dispatchCachedRoute(Route $route, ServerRequestInterface $request, string $method): ResponseInterface
     {
         $path = $request->getUri()->getPath();
         return $this->dispatchRoute($route, $request, $path);
     }
 
     /**
-     * Dispatch a matched route
+     * Dispatch matched route
      */
     private function dispatchRoute(Route $route, ServerRequestInterface $request, string $path): ResponseInterface
     {
-        // Extract route parameters
+        $this->currentRoute = $route;
+
+        // Extract parameters
         $params = $route->extractParameters($path);
 
-        // Add parameters to request attributes
+        // Add to request attributes
         foreach ($params as $key => $value) {
             $request = $request->withAttribute($key, $value);
         }
 
-        // Add route and router info to request
         $request = $request->withAttribute('_route', $route);
         $request = $request->withAttribute('_router', $this);
 
         $this->currentRequest = $request;
         setCurrentRequest($request);
 
-        // Execute middleware chain or handler directly
-        if (!empty($route->getMiddleware())) {
-            return $this->runMiddleware($route, $request);
+        // Merge global and route middleware
+        $allMiddleware = array_merge($this->globalMiddleware, $route->getMiddleware());
+
+        if (!empty($allMiddleware)) {
+            return $this->runMiddleware($route, $request, $allMiddleware);
         }
 
         return $this->executeHandler($route->getHandler(), $request);
     }
 
     /**
-     * Run middleware chain for route
+     * Run middleware chain
      */
-    private function runMiddleware(Route $route, ServerRequestInterface $request): ResponseInterface
+    private function runMiddleware(Route $route, ServerRequestInterface $request, array $middleware): ResponseInterface
     {
-        $middleware = $route->getMiddleware();
         $handler = $route->getHandler();
 
-        // Create middleware dispatcher
         $stack = new MiddlewareDispatcher();
 
-        // Add middleware to stack
         foreach ($middleware as $mw) {
             if (is_string($mw)) {
                 $mw = $this->resolveMiddleware($mw);
@@ -464,7 +471,6 @@ class Router
             $stack->add($mw);
         }
 
-        // Set the route handler as final handler
         $stack->setFallbackHandler(function ($request) use ($handler) {
             return $this->executeHandler($handler, $request);
         });
@@ -473,22 +479,19 @@ class Router
     }
 
     /**
-     * Resolve middleware from alias or class name
+     * Resolve middleware from alias or class
      */
     private function resolveMiddleware(string $middleware): object
     {
-        // Load middleware aliases on first use
         if ($this->middlewareAliases === null) {
             $config = function_exists('config') ? config('middleware') : [];
             $this->middlewareAliases = is_array($config) ? ($config['aliases'] ?? []) : [];
         }
 
-        // Resolve alias to class name
         if (isset($this->middlewareAliases[$middleware])) {
             $middleware = $this->middlewareAliases[$middleware];
         }
 
-        // Resolve from container
         $container = Container::getInstance();
         return $container->make($middleware);
     }
@@ -512,30 +515,27 @@ class Router
     }
 
     /**
-     * Invoke callable with enhanced dependency injection
+     * Invoke callable with dependency injection
      */
     private function invokeCallable(callable $handler, ServerRequestInterface $request)
     {
-        // Try to resolve dependencies if handler is a closure or invokable
         if ($handler instanceof \Closure) {
             $reflection = new \ReflectionFunction($handler);
             $parameters = $this->resolveMethodParameters($reflection, $request);
             return $handler(...$parameters);
         }
 
-        // Handle array callables [Class, 'method'] or [$instance, 'method']
         if (is_array($handler) && count($handler) === 2) {
-            $reflection = new \ReflectionMethod($handler[0], $handler[1]);
+            $reflection = new ReflectionMethod($handler[0], $handler[1]);
             $parameters = $this->resolveMethodParameters($reflection, $request);
             return $handler(...$parameters);
         }
 
-        // Fallback to direct call
         return $handler($request);
     }
 
     /**
-     * Execute controller action with enhanced dependency injection
+     * Execute controller action
      */
     private function executeControllerAction(string $handler, ServerRequestInterface $request)
     {
@@ -545,7 +545,6 @@ class Router
             throw new RuntimeException("Controller [{$controller}] not found");
         }
 
-        // Resolve controller from container with dependency injection
         $container = Container::getInstance();
         $instance = $container->make($controller);
 
@@ -555,22 +554,14 @@ class Router
             );
         }
 
-        // Resolve method parameters with enhanced dependency injection
-        $reflection = new \ReflectionMethod($instance, $method);
+        $reflection = new ReflectionMethod($instance, $method);
         $parameters = $this->resolveMethodParameters($reflection, $request);
 
         return $instance->$method(...$parameters);
     }
 
     /**
-     * Resolve method parameters with enhanced dependency injection
-     *
-     * This method supports:
-     * - ServerRequestInterface in any position
-     * - ResponseInterface (creates empty response)
-     * - Route parameters by name
-     * - Container-resolved dependencies
-     * - Default values
+     * Resolve method parameters with dependency injection
      */
     private function resolveMethodParameters(
         \ReflectionFunctionAbstract $reflection,
@@ -588,7 +579,6 @@ class Router
                 continue;
             }
 
-            // Parameter cannot be resolved
             throw new RuntimeException(
                 "Cannot resolve parameter [{$parameter->getName()}] for handler"
             );
@@ -598,7 +588,7 @@ class Router
     }
 
     /**
-     * Resolve a single parameter
+     * Resolve single parameter
      */
     private function resolveParameter(
         ReflectionParameter $parameter,
@@ -613,7 +603,6 @@ class Router
         if ($type && !$type->isBuiltin()) {
             $typeName = $type->getName();
 
-            // Inject ServerRequestInterface
             if (
                 $typeName === ServerRequestInterface::class ||
                 is_subclass_of($typeName, ServerRequestInterface::class)
@@ -621,7 +610,6 @@ class Router
                 return $request;
             }
 
-            // Inject ResponseInterface (empty response)
             if (
                 $typeName === ResponseInterface::class ||
                 is_subclass_of($typeName, ResponseInterface::class)
@@ -629,31 +617,30 @@ class Router
                 return ResponseFactory::createResponse();
             }
 
-            // Try to resolve from container
             try {
                 return $container->make($typeName);
             } catch (\Exception $e) {
-                // Fall through to other resolution methods
+                // Fall through
             }
         }
 
-        // Check for route parameter match by name
+        // Check route parameters
         if (isset($routeParams[$paramName])) {
             return $this->castParameterValue($routeParams[$paramName], $type);
         }
 
-        // Check request attributes (includes route params)
+        // Check request attributes
         $attrValue = $request->getAttribute($paramName);
         if ($attrValue !== null) {
             return $this->castParameterValue($attrValue, $type);
         }
 
-        // Use default value if available
+        // Default value
         if ($parameter->isDefaultValueAvailable()) {
             return $parameter->getDefaultValue();
         }
 
-        // Allow nullable parameters
+        // Nullable
         if ($type && $type->allowsNull()) {
             return null;
         }
@@ -662,7 +649,7 @@ class Router
     }
 
     /**
-     * Cast parameter value to appropriate type
+     * Cast parameter value to type
      */
     private function castParameterValue($value, ?\ReflectionType $type)
     {
@@ -691,7 +678,7 @@ class Router
     }
 
     /**
-     * Extract route parameters from request
+     * Extract route parameters
      */
     private function extractRouteParameters(ServerRequestInterface $request): array
     {
@@ -707,76 +694,61 @@ class Router
     }
 
     /**
-     * Normalize response to PSR-7 ResponseInterface
+     * Normalize response to PSR-7
      */
     private function normalizeResponse($response): ResponseInterface
     {
-        // Already a PSR-7 response
         if ($response instanceof ResponseInterface) {
             return $response;
         }
 
-        // String response - HTML response
         if (is_string($response)) {
             return ResponseFactory::html($response);
         }
 
-        // Array response - JSON response
         if (is_array($response)) {
             return ResponseFactory::json($response);
         }
 
-        // Null response - 204 No Content
         if ($response === null) {
             return ResponseFactory::html('', 204);
         }
 
-        // Boolean response
         if (is_bool($response)) {
             return ResponseFactory::json(['success' => $response]);
         }
 
-        // Numeric response
         if (is_numeric($response)) {
             return ResponseFactory::html((string) $response);
         }
 
-        // Object with __toString
         if (is_object($response) && method_exists($response, '__toString')) {
             return ResponseFactory::html((string) $response);
         }
 
         throw new RuntimeException(
             'Route handler must return ResponseInterface, string, array, or null. Got: '
-            . gettype($response)
+                . gettype($response)
         );
     }
 
     /**
-     * Cache a route match
+     * Cache management
      */
     private function cacheRoute(string $key, Route $route): void
     {
-        // Prevent cache from growing too large
         if (count($this->routeCache) >= self::MAX_CACHE_SIZE) {
-            // Remove oldest entry (FIFO)
             array_shift($this->routeCache);
         }
 
         $this->routeCache[$key] = $route;
     }
 
-    /**
-     * Clear route cache
-     */
     public function clearCache(): void
     {
         $this->routeCache = [];
     }
 
-    /**
-     * Enable or disable route caching
-     */
     public function setCacheEnabled(bool $enabled): void
     {
         $this->cacheEnabled = $enabled;
@@ -787,49 +759,66 @@ class Router
     }
 
     /**
-     * Get all registered routes
+     * Global middleware
+     */
+    public function middleware($middleware): self
+    {
+        if (is_array($middleware)) {
+            $this->globalMiddleware = array_merge($this->globalMiddleware, $middleware);
+        } else {
+            $this->globalMiddleware[] = $middleware;
+        }
+
+        return $this;
+    }
+
+    public function getGlobalMiddleware(): array
+    {
+        return $this->globalMiddleware;
+    }
+
+    /**
+     * Pattern registration for reuse
+     */
+    public function pattern(string $key, string $pattern): void
+    {
+        $this->patterns[$key] = $pattern;
+    }
+
+    public function getPatterns(): array
+    {
+        return $this->patterns;
+    }
+
+    /**
+     * Utility methods
      */
     public function getRoutes(): array
     {
         return $this->routes;
     }
 
-    /**
-     * Get all named routes
-     */
     public function getNamedRoutes(): array
     {
         return $this->namedRoutes;
     }
 
-    /**
-     * Check if a named route exists
-     */
     public function hasRoute(string $name): bool
     {
         return isset($this->namedRoutes[$name]);
     }
 
-    /**
-     * Get routes by method
-     */
     public function getRoutesByMethod(string $method): array
     {
         $method = strtoupper($method);
         return array_filter($this->routes, fn($route) => $route->getMethod() === $method);
     }
 
-    /**
-     * Get route count
-     */
     public function count(): int
     {
         return count($this->routes);
     }
 
-    /**
-     * Clear all registered routes (useful for testing)
-     */
     public function clear(): void
     {
         $this->routes = [];
@@ -837,6 +826,9 @@ class Router
         $this->groupPrefix = '';
         $this->groupMiddleware = [];
         $this->groupNamespace = '';
+        $this->groupDomain = null;
+        $this->groupWhere = [];
+        $this->globalMiddleware = [];
         $this->clearCache();
     }
 
@@ -851,5 +843,108 @@ class Router
             }
             return ResponseFactory::html("View: {$view}");
         });
+    }
+
+    /**
+     * Redirect route helper
+     */
+    public function redirect(string $from, string $to, int $status = 302): Route
+    {
+        return $this->any($from, function () use ($to, $status) {
+            return ResponseFactory::redirect($to, $status);
+        });
+    }
+
+    public function permanentRedirect(string $from, string $to): Route
+    {
+        return $this->redirect($from, $to, 301);
+    }
+
+    /**
+     * Fallback route (404 handler)
+     */
+    public function fallback($handler): Route
+    {
+        return $this->any('{fallback}', $handler)
+            ->where('fallback', '.*')
+            ->name('fallback');
+    }
+
+    /**
+     * Route list for debugging
+     */
+    public function getRouteList(): array
+    {
+        $list = [];
+
+        foreach ($this->routes as $route) {
+            $list[] = [
+                'method' => $route->getMethod(),
+                'path' => $route->getPath(),
+                'name' => $route->getName(),
+                'middleware' => $route->getMiddleware(),
+                'handler' => $this->formatHandler($route->getHandler()),
+            ];
+        }
+
+        return $list;
+    }
+
+    private function formatHandler($handler): string
+    {
+        if (is_string($handler)) {
+            return $handler;
+        }
+
+        if (is_array($handler) && count($handler) === 2) {
+            if (is_object($handler[0])) {
+                return get_class($handler[0]) . '@' . $handler[1];
+            }
+            return $handler[0] . '@' . $handler[1];
+        }
+
+        if ($handler instanceof \Closure) {
+            return 'Closure';
+        }
+
+        return 'Callable';
+    }
+
+    /**
+     * Check if method spoofing is supported
+     */
+    public function isMethodSpoofingSupported(): bool
+    {
+        return true;
+    }
+
+    /**
+     * Macro support - Add custom methods to router
+     */
+    private array $macros = [];
+
+    public function macro(string $name, callable $callback): void
+    {
+        $this->macros[$name] = $callback;
+    }
+
+    public function hasMacro(string $name): bool
+    {
+        return isset($this->macros[$name]);
+    }
+
+    public function __call(string $name, array $arguments)
+    {
+        if (!$this->hasMacro($name)) {
+            throw new RuntimeException("Method [{$name}] does not exist on Router");
+        }
+
+        $macro = $this->macros[$name];
+
+        if ($macro instanceof \Closure) {
+            return call_user_func_array($macro->bindTo($this, static::class), $arguments);
+        }
+
+        return call_user_func_array($macro, $arguments);
     }
 }
