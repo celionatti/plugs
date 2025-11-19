@@ -49,8 +49,15 @@ class Route
 
     /** @var array Valid HTTP methods */
     private const VALID_METHODS = [
-        'GET', 'POST', 'PUT', 'DELETE', 'PATCH', 
-        'HEAD', 'OPTIONS', 'TRACE', 'CONNECT'
+        'GET',
+        'POST',
+        'PUT',
+        'DELETE',
+        'PATCH',
+        'HEAD',
+        'OPTIONS',
+        'TRACE',
+        'CONNECT'
     ];
 
     public function __construct(
@@ -89,7 +96,7 @@ class Route
     public function withoutMiddleware($middleware): self
     {
         $middlewareToRemove = is_array($middleware) ? $middleware : [$middleware];
-        
+
         $this->middleware = array_filter(
             $this->middleware,
             fn($mw) => !in_array($mw, $middlewareToRemove, true)
@@ -388,17 +395,50 @@ class Route
     }
 
     // Getters
-    public function getMethod(): string { return $this->method; }
-    public function getPath(): string { return $this->path; }
-    public function getHandler() { return $this->handler; }
-    public function getMiddleware(): array { return $this->middleware; }
-    public function getPattern(): string { return $this->pattern; }
-    public function getName(): ?string { return $this->name; }
-    public function getConstraints(): array { return $this->where; }
-    public function getDefaults(): array { return $this->defaults; }
-    public function getDomain(): ?string { return $this->domain; }
-    public function getScheme(): ?string { return $this->scheme; }
-    public function getAllMetadata(): array { return $this->metadata; }
+    public function getMethod(): string
+    {
+        return $this->method;
+    }
+    public function getPath(): string
+    {
+        return $this->path;
+    }
+    public function getHandler()
+    {
+        return $this->handler;
+    }
+    public function getMiddleware(): array
+    {
+        return $this->middleware;
+    }
+    public function getPattern(): string
+    {
+        return $this->pattern;
+    }
+    public function getName(): ?string
+    {
+        return $this->name;
+    }
+    public function getConstraints(): array
+    {
+        return $this->where;
+    }
+    public function getDefaults(): array
+    {
+        return $this->defaults;
+    }
+    public function getDomain(): ?string
+    {
+        return $this->domain;
+    }
+    public function getScheme(): ?string
+    {
+        return $this->scheme;
+    }
+    public function getAllMetadata(): array
+    {
+        return $this->metadata;
+    }
 
     public function matches(string $method, string $path): bool
     {
@@ -418,7 +458,7 @@ class Route
             $isSecure = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off')
                 || ($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '') === 'https'
                 || (int) ($_SERVER['HTTP_X_FORWARDED_PORT'] ?? 0) === 443;
-            
+
             $requestScheme = $isSecure ? 'https' : 'http';
 
             if ($this->scheme !== $requestScheme) {
