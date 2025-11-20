@@ -164,6 +164,7 @@ class ViewCompiler
 
         // 9. Utilities
         $content = $this->compileJson($content);
+        $content = $this->compileHelperDirectives($content);
         $content = $this->compileOld($content);
         $content = $this->compileFlashMessages($content);
         $content = $this->compileErrorDirectives($content);
@@ -715,6 +716,549 @@ class ViewCompiler
         $content = preg_replace('/@endsuccess\s*(?:\r?\n)?/', '<?php unset($message); endif; ?>', $content);
 
         return $content;
+    }
+
+    private function compileHelperDirectives(string $content): string
+    {
+        // Date & Time
+        $content = $this->compileDate($content);
+        $content = $this->compileTime($content);
+        $content = $this->compileDatetime($content);
+        $content = $this->compileHumanDate($content);
+        $content = $this->compileDiffForHumans($content);
+
+        // Numbers & Currency
+        $content = $this->compileNumber($content);
+        $content = $this->compileCurrency($content);
+        $content = $this->compilePercent($content);
+
+        // String Manipulation
+        $content = $this->compileUpper($content);
+        $content = $this->compileLower($content);
+        $content = $this->compileTitle($content);
+        $content = $this->compileSlug($content);
+        $content = $this->compileTruncate($content);
+        $content = $this->compileExcerpt($content);
+        $content = $this->compileUcfirst($content);
+
+        // Arrays & Collections
+        $content = $this->compileCount($content);
+        $content = $this->compileJoin($content);
+        $content = $this->compileImplode($content);
+
+        // Utility
+        $content = $this->compileDefault($content);
+        $content = $this->compileRoute($content);
+        $content = $this->compileAsset($content);
+        $content = $this->compileUrl($content);
+        $content = $this->compileConfig($content);
+        $content = $this->compileEnv($content);
+
+        return $content;
+    }
+
+    // ============================================
+    // DATE & TIME DIRECTIVES
+    // ============================================
+
+    /**
+     * @date($timestamp, 'Y-m-d')
+     * Format date
+     */
+    private function compileDate(string $content): string
+    {
+        return preg_replace_callback(
+            '/@date\s*\((.+?)\s*,\s*[\'"](.+?)[\'"]\)/',
+            function ($matches) {
+                $timestamp = trim($matches[1]);
+                $format = $matches[2];
+                return sprintf(
+                    '<?php echo date(\'%s\', is_numeric(%s) ? %s : strtotime(%s)); ?>',
+                    addslashes($format),
+                    $timestamp,
+                    $timestamp,
+                    $timestamp
+                );
+            },
+            $content
+        );
+    }
+
+    /**
+     * @time($timestamp, 'H:i:s')
+     * Format time
+     */
+    private function compileTime(string $content): string
+    {
+        return preg_replace_callback(
+            '/@time\s*\((.+?)(?:\s*,\s*[\'"](.+?)[\'"])?\)/',
+            function ($matches) {
+                $timestamp = trim($matches[1]);
+                $format = $matches[2] ?? 'H:i:s';
+                return sprintf(
+                    '<?php echo date(\'%s\', is_numeric(%s) ? %s : strtotime(%s)); ?>',
+                    addslashes($format),
+                    $timestamp,
+                    $timestamp,
+                    $timestamp
+                );
+            },
+            $content
+        );
+    }
+
+    /**
+     * @datetime($timestamp, 'Y-m-d H:i:s')
+     * Format datetime
+     */
+    private function compileDatetime(string $content): string
+    {
+        return preg_replace_callback(
+            '/@datetime\s*\((.+?)(?:\s*,\s*[\'"](.+?)[\'"])?\)/',
+            function ($matches) {
+                $timestamp = trim($matches[1]);
+                $format = $matches[2] ?? 'Y-m-d H:i:s';
+                return sprintf(
+                    '<?php echo date(\'%s\', is_numeric(%s) ? %s : strtotime(%s)); ?>',
+                    addslashes($format),
+                    $timestamp,
+                    $timestamp,
+                    $timestamp
+                );
+            },
+            $content
+        );
+    }
+
+    /**
+     * @humanDate($timestamp)
+     * Output: January 15, 2024
+     */
+    private function compileHumanDate(string $content): string
+    {
+        return preg_replace(
+            '/@humanDate\s*\((.+?)\)/',
+            '<?php echo date(\'F j, Y\', is_numeric($1) ? $1 : strtotime($1)); ?>',
+            $content
+        );
+    }
+
+    /**
+     * @diffForHumans($timestamp)
+     * Output: 2 hours ago, 3 days ago, etc.
+     */
+    private function compileDiffForHumans(string $content): string
+    {
+        return preg_replace_callback(
+            '/@diffForHumans\s*\((.+?)\)/',
+            function ($matches) {
+                $timestamp = trim($matches[1]);
+                return sprintf(
+                    '<?php echo (function($ts) {
+                        $time = is_numeric($ts) ? $ts : strtotime($ts);
+                        $diff = time() - $time;
+                        if ($diff < 60) return $diff . \' seconds ago\';
+                        if ($diff < 3600) return floor($diff / 60) . \' minutes ago\';
+                        if ($diff < 86400) return floor($diff / 3600) . \' hours ago\';
+                        if ($diff < 604800) return floor($diff / 86400) . \' days ago\';
+                        if ($diff < 2592000) return floor($diff / 604800) . \' weeks ago\';
+                        if ($diff < 31536000) return floor($diff / 2592000) . \' months ago\';
+                        return floor($diff / 31536000) . \' years ago\';
+                    })(%s); ?>',
+                    $timestamp
+                );
+            },
+            $content
+        );
+    }
+
+    // ============================================
+    // NUMBER & CURRENCY DIRECTIVES
+    // ============================================
+
+    /**
+     * var @number($value, 2)
+     * Format number with decimals
+     */
+    private function compileNumber(string $content): string
+    {
+        return preg_replace_callback(
+            '/@number\s*\((.+?)(?:\s*,\s*(\d+))?\)/',
+            function ($matches) {
+                $value = trim($matches[1]);
+                $decimals = $matches[2] ?? 0;
+                return sprintf(
+                    '<?php echo number_format(%s, %d); ?>',
+                    $value,
+                    $decimals
+                );
+            },
+            $content
+        );
+    }
+
+    /**
+     * @currency($amount, 'USD')
+     * Format currency (default: USD)
+     */
+    private function compileCurrency(string $content): string
+    {
+        return preg_replace_callback(
+            '/@currency\s*\((.+?)(?:\s*,\s*[\'"](.+?)[\'"])?\)/',
+            function ($matches) {
+                $amount = trim($matches[1]);
+                $currency = $matches[2] ?? 'USD';
+
+                return sprintf(
+                    '<?php echo (function($amt, $curr) {
+                        $symbols = [
+                            \'USD\' => \'$\', \'EUR\' => \'€\', \'GBP\' => \'£\',
+                            \'JPY\' => \'¥\', \'NGN\' => \'₦\', \'INR\' => \'₹\'
+                        ];
+                        $symbol = $symbols[$curr] ?? $curr . \' \';
+                        return $symbol . number_format($amt, 2);
+                    })(%s, \'%s\'); ?>',
+                    $amount,
+                    addslashes($currency)
+                );
+            },
+            $content
+        );
+    }
+
+    /**
+     * @percent($value, 2)
+     * Format as percentage
+     */
+    private function compilePercent(string $content): string
+    {
+        return preg_replace_callback(
+            '/@percent\s*\((.+?)(?:\s*,\s*(\d+))?\)/',
+            function ($matches) {
+                $value = trim($matches[1]);
+                $decimals = $matches[2] ?? 2;
+                return sprintf(
+                    '<?php echo number_format(%s, %d) . \'%%\'; ?>',
+                    $value,
+                    $decimals
+                );
+            },
+            $content
+        );
+    }
+
+    // ============================================
+    // STRING MANIPULATION DIRECTIVES
+    // ============================================
+
+    /**
+     * @upper($string)
+     * Convert to uppercase
+     */
+    private function compileUpper(string $content): string
+    {
+        return preg_replace(
+            '/@upper\s*\((.+?)\)/',
+            '<?php echo strtoupper($1); ?>',
+            $content
+        );
+    }
+
+    /**
+     * @lower($string)
+     * Convert to lowercase
+     */
+    private function compileLower(string $content): string
+    {
+        return preg_replace(
+            '/@lower\s*\((.+?)\)/',
+            '<?php echo strtolower($1); ?>',
+            $content
+        );
+    }
+
+    /**
+     * @title($string)
+     * Convert to title case
+     */
+    private function compileTitle(string $content): string
+    {
+        return preg_replace(
+            '/@title\s*\((.+?)\)/',
+            '<?php echo ucwords(strtolower($1)); ?>',
+            $content
+        );
+    }
+
+    /**
+     * @ucfirst($string)
+     * Capitalize first letter
+     */
+    private function compileUcfirst(string $content): string
+    {
+        return preg_replace(
+            '/@ucfirst\s*\((.+?)\)/',
+            '<?php echo ucfirst($1); ?>',
+            $content
+        );
+    }
+
+    /**
+     * @slug($string)
+     * Convert to URL-friendly slug
+     */
+    private function compileSlug(string $content): string
+    {
+        return preg_replace_callback(
+            '/@slug\s*\((.+?)\)/',
+            function ($matches) {
+                $string = trim($matches[1]);
+                return sprintf(
+                    '<?php echo strtolower(trim(preg_replace(\'/[^A-Za-z0-9-]+/\', \'-\', %s), \'-\')); ?>',
+                    $string
+                );
+            },
+            $content
+        );
+    }
+
+    /**
+     * @truncate($string, 100, '...')
+     * Truncate string to length
+     */
+    private function compileTruncate(string $content): string
+    {
+        return preg_replace_callback(
+            '/@truncate\s*\((.+?)\s*,\s*(\d+)(?:\s*,\s*[\'"](.+?)[\'"])?\)/',
+            function ($matches) {
+                $string = trim($matches[1]);
+                $length = $matches[2];
+                $end = $matches[3] ?? '...';
+                return sprintf(
+                    '<?php echo mb_strlen(%s) > %d ? mb_substr(%s, 0, %d) . \'%s\' : %s; ?>',
+                    $string,
+                    $length,
+                    $string,
+                    $length,
+                    addslashes($end),
+                    $string
+                );
+            },
+            $content
+        );
+    }
+
+    /**
+     * @excerpt($string, 150)
+     * Create excerpt (word-aware truncation)
+     */
+    private function compileExcerpt(string $content): string
+    {
+        return preg_replace_callback(
+            '/@excerpt\s*\((.+?)(?:\s*,\s*(\d+))?\)/',
+            function ($matches) {
+                $string = trim($matches[1]);
+                $length = $matches[2] ?? 150;
+                return sprintf(
+                    '<?php echo (function($str, $len) {
+                        $str = strip_tags($str);
+                        if (mb_strlen($str) <= $len) return $str;
+                        $str = mb_substr($str, 0, $len);
+                        return mb_substr($str, 0, mb_strrpos($str, \' \')) . \'...\';
+                    })(%s, %d); ?>',
+                    $string,
+                    $length
+                );
+            },
+            $content
+        );
+    }
+
+    // ============================================
+    // ARRAY & COLLECTION DIRECTIVES
+    // ============================================
+
+    /**
+     * @count($array)
+     * Count array elements
+     */
+    private function compileCount(string $content): string
+    {
+        return preg_replace(
+            '/@count\s*\((.+?)\)/',
+            '<?php echo count($1); ?>',
+            $content
+        );
+    }
+
+    /**
+     * @join($array, ', ')
+     * Join array elements with separator
+     */
+    private function compileJoin(string $content): string
+    {
+        return preg_replace_callback(
+            '/@join\s*\((.+?)\s*,\s*[\'"](.+?)[\'"]\)/',
+            function ($matches) {
+                $array = trim($matches[1]);
+                $separator = $matches[2];
+                return sprintf(
+                    '<?php echo implode(\'%s\', %s); ?>',
+                    addslashes($separator),
+                    $array
+                );
+            },
+            $content
+        );
+    }
+
+    /**
+     * @implode($array, ', ')
+     * Alias for join
+     */
+    private function compileImplode(string $content): string
+    {
+        return $this->compileJoin($content);
+    }
+
+    // ============================================
+    // UTILITY DIRECTIVES
+    // ============================================
+
+    /**
+     * @default($value, 'fallback')
+     * Provide default value if empty
+     */
+    private function compileDefault(string $content): string
+    {
+        return preg_replace_callback(
+            '/@default\s*\((.+?)\s*,\s*[\'"](.+?)[\'"]\)/',
+            function ($matches) {
+                $value = trim($matches[1]);
+                $default = $matches[2];
+                return sprintf(
+                    '<?php echo !empty(%s) ? %s : \'%s\'; ?>',
+                    $value,
+                    $value,
+                    addslashes($default)
+                );
+            },
+            $content
+        );
+    }
+
+    /**
+     * @route('route.name', ['id' => 1])
+     * Generate route URL
+     */
+    private function compileRoute(string $content): string
+    {
+        return preg_replace_callback(
+            '/@route\s*\([\'"](.+?)[\'"]\s*(?:,\s*(\[.+?\]))?\)/',
+            function ($matches) {
+                $routeName = $matches[1];
+                $params = $matches[2] ?? '[]';
+                return sprintf(
+                    '<?php echo function_exists(\'route\') ? route(\'%s\', %s) : \'#\'; ?>',
+                    addslashes($routeName),
+                    $params
+                );
+            },
+            $content
+        );
+    }
+
+    /**
+     * @asset('css/style.css')
+     * Generate asset URL
+     */
+    private function compileAsset(string $content): string
+    {
+        return preg_replace_callback(
+            '/@asset\s*\([\'"](.+?)[\'"]\)/',
+            function ($matches) {
+                $path = $matches[1];
+                return sprintf(
+                    '<?php echo (function($p) {
+                        $base = rtrim($_SERVER[\'REQUEST_SCHEME\'] . \'://\' . $_SERVER[\'HTTP_HOST\'], \'/\');
+                        return $base . \'/\' . ltrim($p, \'/\');
+                    })(\'%s\'); ?>',
+                    addslashes($path)
+                );
+            },
+            $content
+        );
+    }
+
+    /**
+     * @url('path/to/page')
+     * Generate full URL
+     */
+    private function compileUrl(string $content): string
+    {
+        return preg_replace_callback(
+            '/@url\s*\([\'"](.+?)[\'"]\)/',
+            function ($matches) {
+                $path = $matches[1];
+                return sprintf(
+                    '<?php echo rtrim($_SERVER[\'REQUEST_SCHEME\'] . \'://\' . $_SERVER[\'HTTP_HOST\'], \'/\') . \'/%s\'; ?>',
+                    ltrim(addslashes($path), '/')
+                );
+            },
+            $content
+        );
+    }
+
+    /**
+     * @config('app.name')
+     * Get config value
+     */
+    private function compileConfig(string $content): string
+    {
+        return preg_replace_callback(
+            '/@config\s*\([\'"](.+?)[\'"]\s*(?:,\s*[\'"](.+?)[\'"])?\)/',
+            function ($matches) {
+                $key = $matches[1];
+                $default = $matches[2] ?? null;
+
+                if ($default) {
+                    return sprintf(
+                        '<?php echo function_exists(\'config\') ? config(\'%s\', \'%s\') : \'%s\'; ?>',
+                        addslashes($key),
+                        addslashes($default),
+                        addslashes($default)
+                    );
+                }
+
+                return sprintf(
+                    '<?php echo function_exists(\'config\') ? config(\'%s\') : \'\'; ?>',
+                    addslashes($key)
+                );
+            },
+            $content
+        );
+    }
+
+    /**
+     * @env('APP_NAME', 'Default')
+     * Get environment variable
+     */
+    private function compileEnv(string $content): string
+    {
+        return preg_replace_callback(
+            '/@env\s*\([\'"](.+?)[\'"]\s*(?:,\s*[\'"](.+?)[\'"])?\)/',
+            function ($matches) {
+                $key = $matches[1];
+                $default = $matches[2] ?? '';
+                return sprintf(
+                    '<?php echo $_ENV[\'%s\'] ?? getenv(\'%s\') ?: \'%s\'; ?>',
+                    addslashes($key),
+                    addslashes($key),
+                    addslashes($default)
+                );
+            },
+            $content
+        );
     }
 
     private function cacheCompilation(string $key, string $content): void
