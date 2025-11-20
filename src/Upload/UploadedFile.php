@@ -65,7 +65,9 @@ class UploadedFile
         'cer',
         'asa',
         'swf',
-        'xap'
+        'xap',
+        'dll',
+        'so'
     ];
 
     private const IMAGE_MIME_TYPES = [
@@ -94,6 +96,44 @@ class UploadedFile
         if ($this->isValid() && $this->isUploaded() && is_readable($this->tmpName)) {
             $this->detectActualMimeType();
         }
+    }
+
+    /**
+     * Create from $_FILES array entry
+     */
+    public static function createFromFilesArray(array $file): self
+    {
+        return new self($file);
+    }
+
+    /**
+     * Create multiple from $_FILES array
+     */
+    public static function createMultipleFromFilesArray(array $files): array
+    {
+        $uploadedFiles = [];
+
+        // Handle both single and multiple file uploads
+        if (isset($files['name'])) {
+            if (is_array($files['name'])) {
+                // Multiple files
+                $count = count($files['name']);
+                for ($i = 0; $i < $count; $i++) {
+                    $uploadedFiles[] = new self([
+                        'name' => $files['name'][$i],
+                        'type' => $files['type'][$i] ?? '',
+                        'tmp_name' => $files['tmp_name'][$i],
+                        'error' => $files['error'][$i],
+                        'size' => $files['size'][$i]
+                    ]);
+                }
+            } else {
+                // Single file
+                $uploadedFiles[] = new self($files);
+            }
+        }
+
+        return $uploadedFiles;
     }
 
     private function detectActualMimeType(): void
@@ -200,8 +240,13 @@ class UploadedFile
 
     private function isSafeSvg(): bool
     {
-        $content = @file_get_contents($this->tmpName, false, null, 0, 8192);
+        $content = @file_get_contents($this->tmpName);
         if ($content === false) {
+            return false;
+        }
+
+        // Check file size - SVGs shouldn't be huge
+        if (strlen($content) > 2097152) { // 2MB
             return false;
         }
 
@@ -214,6 +259,8 @@ class UploadedFile
             '/<object/i',
             '/data:text\/html/i',
             '/<foreignObject/i',
+            '/<!ENTITY/i',
+            '/xlink:href\s*=/i',
         ];
 
         foreach ($dangerousPatterns as $pattern) {
@@ -255,7 +302,6 @@ class UploadedFile
             return null;
         }
 
-        // Try to extract width and height from SVG
         if (
             preg_match('/width=["\'](\d+)["\']/', $content, $width) &&
             preg_match('/height=["\'](\d+)["\']/', $content, $height)
@@ -263,7 +309,7 @@ class UploadedFile
             return [
                 'width' => (int) $width[1],
                 'height' => (int) $height[1],
-                'type' => IMAGETYPE_SVG ?? 0,
+                'type' => 0,
                 'mime' => 'image/svg+xml'
             ];
         }
@@ -307,6 +353,9 @@ class UploadedFile
             throw new RuntimeException('Security violation: File was not uploaded via HTTP POST');
         }
 
+        // Normalize path
+        $targetPath = $this->normalizePath($targetPath);
+
         $directory = dirname($targetPath);
         if (!is_dir($directory)) {
             if (!@mkdir($directory, 0755, true)) {
@@ -323,18 +372,9 @@ class UploadedFile
             throw new RuntimeException('Invalid target filename');
         }
 
-        // Security: Prevent directory traversal
-        $realDirectory = realpath($directory);
-        if ($realDirectory === false) {
-            throw new RuntimeException('Invalid directory path');
-        }
-
-        $expectedPath = $realDirectory . DIRECTORY_SEPARATOR . $filename;
-        $normalizedTarget = str_replace(['/', '\\'], DIRECTORY_SEPARATOR, $targetPath);
-
-        // Allow both formats but ensure it's within the directory
-        if (strpos($normalizedTarget, $realDirectory) !== 0) {
-            throw new RuntimeException('Security violation: Directory traversal detected');
+        // Security: Check for null bytes
+        if (strpos($targetPath, "\0") !== false) {
+            throw new RuntimeException('Security violation: Null byte detected in path');
         }
 
         if (!@move_uploaded_file($this->tmpName, $targetPath)) {
@@ -348,6 +388,39 @@ class UploadedFile
 
         $this->moved = true;
         return true;
+    }
+
+    private function normalizePath(string $path): string
+    {
+        // Remove null bytes
+        $path = str_replace("\0", '', $path);
+
+        // Normalize directory separators
+        $path = str_replace(['/', '\\'], DIRECTORY_SEPARATOR, $path);
+
+        // Remove relative path components
+        $parts = explode(DIRECTORY_SEPARATOR, $path);
+        $normalized = [];
+
+        foreach ($parts as $part) {
+            if ($part === '' || $part === '.') {
+                continue;
+            }
+            if ($part === '..') {
+                array_pop($normalized);
+                continue;
+            }
+            $normalized[] = $part;
+        }
+
+        $result = implode(DIRECTORY_SEPARATOR, $normalized);
+
+        // Preserve leading slash for absolute paths
+        if (strpos($path, DIRECTORY_SEPARATOR) === 0) {
+            $result = DIRECTORY_SEPARATOR . $result;
+        }
+
+        return $result;
     }
 
     public function getErrorMessage(): string
@@ -380,9 +453,16 @@ class UploadedFile
             return true;
         }
 
-        // Check for multiple dots in suspicious patterns
+        // Check for multiple dots in suspicious patterns (e.g., file.php.jpg)
         if (substr_count($filename, '.') > 2) {
-            return true;
+            $parts = explode('.', $filename);
+            // Check if any part before the last is a dangerous extension
+            array_pop($parts); // Remove actual extension
+            foreach ($parts as $part) {
+                if (in_array(strtolower($part), self::DANGEROUS_EXTENSIONS, true)) {
+                    return true;
+                }
+            }
         }
 
         return false;
