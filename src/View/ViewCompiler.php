@@ -764,7 +764,7 @@ class ViewCompiler
 
     /**
      * @date($timestamp, 'Y-m-d')
-     * Format date
+     * Format date - handles DateTime objects, timestamps, and strings
      */
     private function compileDate(string $content): string
     {
@@ -774,11 +774,17 @@ class ViewCompiler
                 $timestamp = trim($matches[1]);
                 $format = $matches[2];
                 return sprintf(
-                    '<?php echo date(\'%s\', is_numeric(%s) ? %s : strtotime(%s)); ?>',
-                    addslashes($format),
+                    '<?php echo (function($ts, $fmt) {
+                    if ($ts instanceof DateTime || $ts instanceof DateTimeInterface) {
+                        return $ts->format($fmt);
+                    } elseif (is_numeric($ts)) {
+                        return date($fmt, (int)$ts);
+                    } else {
+                        return date($fmt, strtotime($ts));
+                    }
+                })(%s, \'%s\'); ?>',
                     $timestamp,
-                    $timestamp,
-                    $timestamp
+                    addslashes($format)
                 );
             },
             $content
@@ -787,7 +793,7 @@ class ViewCompiler
 
     /**
      * @time($timestamp, 'H:i:s')
-     * Format time
+     * Format time - handles DateTime objects, timestamps, and strings
      */
     private function compileTime(string $content): string
     {
@@ -797,11 +803,17 @@ class ViewCompiler
                 $timestamp = trim($matches[1]);
                 $format = $matches[2] ?? 'H:i:s';
                 return sprintf(
-                    '<?php echo date(\'%s\', is_numeric(%s) ? %s : strtotime(%s)); ?>',
-                    addslashes($format),
+                    '<?php echo (function($ts, $fmt) {
+                    if ($ts instanceof DateTime || $ts instanceof DateTimeInterface) {
+                        return $ts->format($fmt);
+                    } elseif (is_numeric($ts)) {
+                        return date($fmt, (int)$ts);
+                    } else {
+                        return date($fmt, strtotime($ts));
+                    }
+                })(%s, \'%s\'); ?>',
                     $timestamp,
-                    $timestamp,
-                    $timestamp
+                    addslashes($format)
                 );
             },
             $content
@@ -810,7 +822,7 @@ class ViewCompiler
 
     /**
      * @datetime($timestamp, 'Y-m-d H:i:s')
-     * Format datetime
+     * Format datetime - handles DateTime objects, timestamps, and strings
      */
     private function compileDatetime(string $content): string
     {
@@ -820,11 +832,17 @@ class ViewCompiler
                 $timestamp = trim($matches[1]);
                 $format = $matches[2] ?? 'Y-m-d H:i:s';
                 return sprintf(
-                    '<?php echo date(\'%s\', is_numeric(%s) ? %s : strtotime(%s)); ?>',
-                    addslashes($format),
+                    '<?php echo (function($ts, $fmt) {
+                    if ($ts instanceof DateTime || $ts instanceof DateTimeInterface) {
+                        return $ts->format($fmt);
+                    } elseif (is_numeric($ts)) {
+                        return date($fmt, (int)$ts);
+                    } else {
+                        return date($fmt, strtotime($ts));
+                    }
+                })(%s, \'%s\'); ?>',
                     $timestamp,
-                    $timestamp,
-                    $timestamp
+                    addslashes($format)
                 );
             },
             $content
@@ -834,6 +852,7 @@ class ViewCompiler
     /**
      * @humanDate($timestamp)
      * Output: January 15, 2024
+     * Handles DateTime objects, timestamps, and strings
      */
     private function compileHumanDate(string $content): string
     {
@@ -842,9 +861,15 @@ class ViewCompiler
             function ($matches) {
                 $timestamp = trim($matches[1]);
                 return sprintf(
-                    '<?php echo date(\'F j, Y\', is_numeric(%s) ? %s : strtotime(%s)); ?>',
-                    $timestamp,
-                    $timestamp,
+                    '<?php echo (function($ts) {
+                    if ($ts instanceof DateTime || $ts instanceof DateTimeInterface) {
+                        return $ts->format(\'F j, Y\');
+                    } elseif (is_numeric($ts)) {
+                        return date(\'F j, Y\', (int)$ts);
+                    } else {
+                        return date(\'F j, Y\', strtotime($ts));
+                    }
+                })(%s); ?>',
                     $timestamp
                 );
             },
@@ -855,6 +880,7 @@ class ViewCompiler
     /**
      * @diffForHumans($timestamp)
      * Output: 2 hours ago, 3 days ago, etc.
+     * Handles: DateTime objects, timestamps, and date strings
      */
     private function compileDiffForHumans(string $content): string
     {
@@ -864,15 +890,39 @@ class ViewCompiler
                 $timestamp = trim($matches[1]);
                 return sprintf(
                     '<?php echo (function($ts) {
-                    $time = is_numeric($ts) ? $ts : strtotime($ts);
+                    // Handle different input types
+                    if ($ts instanceof DateTime || $ts instanceof DateTimeInterface) {
+                        $time = $ts->getTimestamp();
+                    } elseif (is_numeric($ts)) {
+                        $time = (int)$ts;
+                    } elseif (is_string($ts)) {
+                        $time = strtotime($ts);
+                    } else {
+                        return "Invalid date";
+                    }
+                    
                     $diff = time() - $time;
-                    if ($diff < 60) return $diff . \' seconds ago\';
-                    if ($diff < 3600) return floor($diff / 60) . \' minutes ago\';
-                    if ($diff < 86400) return floor($diff / 3600) . \' hours ago\';
-                    if ($diff < 604800) return floor($diff / 86400) . \' days ago\';
-                    if ($diff < 2592000) return floor($diff / 604800) . \' weeks ago\';
-                    if ($diff < 31536000) return floor($diff / 2592000) . \' months ago\';
-                    return floor($diff / 31536000) . \' years ago\';
+                    
+                    // Future dates
+                    if ($diff < 0) {
+                        $diff = abs($diff);
+                        if ($diff < 60) return "in " . $diff . " second" . ($diff != 1 ? "s" : "");
+                        if ($diff < 3600) return "in " . floor($diff / 60) . " minute" . (floor($diff / 60) != 1 ? "s" : "");
+                        if ($diff < 86400) return "in " . floor($diff / 3600) . " hour" . (floor($diff / 3600) != 1 ? "s" : "");
+                        if ($diff < 604800) return "in " . floor($diff / 86400) . " day" . (floor($diff / 86400) != 1 ? "s" : "");
+                        if ($diff < 2592000) return "in " . floor($diff / 604800) . " week" . (floor($diff / 604800) != 1 ? "s" : "");
+                        if ($diff < 31536000) return "in " . floor($diff / 2592000) . " month" . (floor($diff / 2592000) != 1 ? "s" : "");
+                        return "in " . floor($diff / 31536000) . " year" . (floor($diff / 31536000) != 1 ? "s" : "");
+                    }
+                    
+                    // Past dates
+                    if ($diff < 60) return $diff . " second" . ($diff != 1 ? "s" : "") . " ago";
+                    if ($diff < 3600) return floor($diff / 60) . " minute" . (floor($diff / 60) != 1 ? "s" : "") . " ago";
+                    if ($diff < 86400) return floor($diff / 3600) . " hour" . (floor($diff / 3600) != 1 ? "s" : "") . " ago";
+                    if ($diff < 604800) return floor($diff / 86400) . " day" . (floor($diff / 86400) != 1 ? "s" : "") . " ago";
+                    if ($diff < 2592000) return floor($diff / 604800) . " week" . (floor($diff / 604800) != 1 ? "s" : "") . " ago";
+                    if ($diff < 31536000) return floor($diff / 2592000) . " month" . (floor($diff / 2592000) != 1 ? "s" : "") . " ago";
+                    return floor($diff / 31536000) . " year" . (floor($diff / 31536000) != 1 ? "s" : "") . " ago";
                 })(%s); ?>',
                     $timestamp
                 );
