@@ -4,30 +4,34 @@ declare(strict_types=1);
 
 namespace Plugs\Security;
 
+use Plugs\View\ErrorMessage;
+
 /*
 |--------------------------------------------------------------------------
 | Validator Class
 |--------------------------------------------------------------------------
 |
 | This class is for validating data against various rules.
+| Now integrated with ErrorMessage for consistent error handling.
 */
 
 class Validator
 {
     private $data;
     private $rules;
-    private $errors = [];
+    private $errors;
     private $customMessages = [];
     private $customAttributes = [];
-    
+
     public function __construct(array $data, array $rules, array $messages = [], array $attributes = [])
     {
         $this->data = $data;
         $this->rules = $rules;
+        $this->errors = new ErrorMessage();
         $this->customMessages = $messages;
         $this->customAttributes = $attributes;
     }
-    
+
     /**
      * Validate all rules
      */
@@ -40,81 +44,81 @@ class Validator
             } else {
                 $value = $this->getValue($field);
                 $ruleList = is_string($rules) ? explode('|', $rules) : $rules;
-                
+
                 foreach ($ruleList as $rule) {
                     $this->validateRule($field, $value, $rule);
                 }
             }
         }
-        
-        return empty($this->errors);
+
+        return !$this->errors->any();
     }
-    
+
     /**
-     * Get validation errors
+     * Get validation errors as ErrorMessage instance
      */
-    public function errors(): array
+    public function errors(): ErrorMessage
     {
         return $this->errors;
     }
-    
+
     /**
      * Get first error for a field
      */
     public function first(string $field): ?string
     {
-        return $this->errors[$field][0] ?? null;
+        return $this->errors->first($field);
     }
-    
+
     /**
      * Check if validation failed
      */
     public function fails(): bool
     {
-        return !empty($this->errors);
+        return $this->errors->any();
     }
-    
+
     /**
      * Check if validation passed
      */
     public function passes(): bool
     {
-        return empty($this->errors);
+        return !$this->errors->any();
     }
-    
+
     /**
      * Get validated data only
      */
     public function validated(): array
     {
         $validated = [];
-        
+
         foreach (array_keys($this->rules) as $field) {
             if (isset($this->data[$field])) {
                 $validated[$field] = $this->data[$field];
             }
         }
-        
+
         return $validated;
     }
-    
+
     /**
      * Validate wildcard fields (e.g., items.*.name)
      */
     private function validateWildcard(string $pattern, $rules): void
     {
         $fields = $this->expandWildcard($pattern);
-        
+
         foreach ($fields as $field) {
             $value = $this->getValue($field);
             $ruleList = is_string($rules) ? explode('|', $rules) : $rules;
-            
+
             foreach ($ruleList as $rule) {
                 $this->validateRule($field, $value, $rule);
             }
         }
     }
-    
+
     /**
      * Expand wildcard pattern to actual fields
      */
@@ -122,12 +126,12 @@ class Validator
     {
         $fields = [];
         $parts = explode('.', $pattern);
-        
+
         $this->expandWildcardRecursive($this->data, $parts, '', $fields);
-        
+
         return $fields;
     }
-    
+
     /**
      * Recursive wildcard expansion
      */
@@ -137,9 +141,9 @@ class Validator
             $fields[] = rtrim($prefix, '.');
             return;
         }
-        
+
         $part = array_shift($parts);
-        
+
         if ($part === '*') {
             if (is_array($data)) {
                 foreach ($data as $key => $value) {
@@ -152,7 +156,7 @@ class Validator
             $this->expandWildcardRecursive($newData, $parts, $newPrefix, $fields);
         }
     }
-    
+
     /**
      * Get value from data using dot notation
      */
@@ -160,7 +164,7 @@ class Validator
     {
         $keys = explode('.', $field);
         $value = $this->data;
-        
+
         foreach ($keys as $key) {
             if (is_array($value) && array_key_exists($key, $value)) {
                 $value = $value[$key];
@@ -168,10 +172,10 @@ class Validator
                 return null;
             }
         }
-        
+
         return $value;
     }
-    
+
     /**
      * Validate single rule
      */
@@ -183,14 +187,14 @@ class Validator
         } else {
             $params = [];
         }
-        
+
         $method = 'validate' . str_replace('_', '', ucwords($rule, '_'));
-        
+
         if (method_exists($this, $method)) {
             $this->$method($field, $value, $params);
         }
     }
-    
+
     /**
      * Parse rule parameters
      */
@@ -200,30 +204,30 @@ class Validator
         if (strpos($params, ',') !== false) {
             return array_map('trim', explode(',', $params));
         }
-        
+
         return [$params];
     }
-    
+
     /**
-     * Add error message
+     * Add error message using ErrorMessage instance
      */
     private function addError(string $field, string $rule, array $replacements = []): void
     {
         $message = $this->getMessage($field, $rule);
-        
+
         // Replace placeholders
         foreach ($replacements as $key => $value) {
             $message = str_replace(":{$key}", $value, $message);
         }
-        
+
         // Replace field name
         $attribute = $this->customAttributes[$field] ?? $field;
         $message = str_replace(':attribute', $attribute, $message);
         $message = str_replace(':field', $attribute, $message);
-        
-        $this->errors[$field][] = $message;
+
+        $this->errors->add($field, $message);
     }
-    
+
     /**
      * Get error message for rule
      */
@@ -233,16 +237,16 @@ class Validator
         if (isset($this->customMessages["{$field}.{$rule}"])) {
             return $this->customMessages["{$field}.{$rule}"];
         }
-        
+
         // Check custom message for rule
         if (isset($this->customMessages[$rule])) {
             return $this->customMessages[$rule];
         }
-        
+
         // Default messages
         return $this->getDefaultMessage($rule);
     }
-    
+
     /**
      * Default error messages
      */
@@ -289,14 +293,14 @@ class Validator
             'timezone' => 'The :attribute must be a valid timezone.',
             'active_url' => 'The :attribute is not a valid URL.',
         ];
-        
+
         return $messages[$rule] ?? "The :attribute is invalid.";
     }
     
     // =====================================================
     // VALIDATION RULES
     // =====================================================
-    
+
     /**
      * Required field
      */
@@ -306,7 +310,7 @@ class Validator
             $this->addError($field, 'required');
         }
     }
-    
+
     /**
      * Required if another field equals a value
      */
@@ -315,12 +319,12 @@ class Validator
         $otherField = $params[0];
         $otherValue = $params[1] ?? null;
         $actualValue = $this->getValue($otherField);
-        
+
         if ($actualValue == $otherValue && ($value === null || $value === '')) {
             $this->addError($field, 'required');
         }
     }
-    
+
     /**
      * Required unless another field equals a value
      */
@@ -329,12 +333,12 @@ class Validator
         $otherField = $params[0];
         $otherValue = $params[1] ?? null;
         $actualValue = $this->getValue($otherField);
-        
+
         if ($actualValue != $otherValue && ($value === null || $value === '')) {
             $this->addError($field, 'required');
         }
     }
-    
+
     /**
      * Required with another field
      */
@@ -350,7 +354,7 @@ class Validator
             }
         }
     }
-    
+
     /**
      * Required without another field
      */
@@ -366,7 +370,7 @@ class Validator
             }
         }
     }
-    
+
     /**
      * Email validation
      */
@@ -376,18 +380,18 @@ class Validator
             $this->addError($field, 'email');
         }
     }
-    
+
     /**
      * Minimum length/value
      */
     private function validateMin(string $field, $value, array $params): void
     {
         $min = (int) $params[0];
-        
+
         if ($value === null || $value === '') {
             return;
         }
-        
+
         if (is_numeric($value)) {
             if ($value < $min) {
                 $this->addError($field, 'min', ['min' => $min]);
@@ -402,18 +406,18 @@ class Validator
             }
         }
     }
-    
+
     /**
      * Maximum length/value
      */
     private function validateMax(string $field, $value, array $params): void
     {
         $max = (int) $params[0];
-        
+
         if ($value === null || $value === '') {
             return;
         }
-        
+
         if (is_numeric($value)) {
             if ($value > $max) {
                 $this->addError($field, 'max', ['max' => $max]);
@@ -428,7 +432,7 @@ class Validator
             }
         }
     }
-    
+
     /**
      * Between min and max
      */
@@ -436,18 +440,18 @@ class Validator
     {
         $min = (int) $params[0];
         $max = (int) $params[1];
-        
+
         if ($value === null || $value === '') {
             return;
         }
-        
+
         $size = is_numeric($value) ? $value : (is_string($value) ? strlen($value) : count($value));
-        
+
         if ($size < $min || $size > $max) {
             $this->addError($field, 'between', ['min' => $min, 'max' => $max]);
         }
     }
-    
+
     /**
      * Numeric validation
      */
@@ -457,7 +461,7 @@ class Validator
             $this->addError($field, 'numeric');
         }
     }
-    
+
     /**
      * Integer validation
      */
@@ -467,7 +471,7 @@ class Validator
             $this->addError($field, 'integer');
         }
     }
-    
+
     /**
      * String validation
      */
@@ -477,7 +481,7 @@ class Validator
             $this->addError($field, 'string');
         }
     }
-    
+
     /**
      * Array validation
      */
@@ -487,19 +491,19 @@ class Validator
             $this->addError($field, 'array');
         }
     }
-    
+
     /**
      * Boolean validation
      */
     private function validateBoolean(string $field, $value): void
     {
         $acceptable = [true, false, 0, 1, '0', '1'];
-        
+
         if ($value !== null && !in_array($value, $acceptable, true)) {
             $this->addError($field, 'boolean');
         }
     }
-    
+
     /**
      * URL validation
      */
@@ -509,7 +513,7 @@ class Validator
             $this->addError($field, 'url');
         }
     }
-    
+
     /**
      * Active URL validation (checks DNS)
      */
@@ -518,38 +522,38 @@ class Validator
         if ($value === null || $value === '') {
             return;
         }
-        
+
         $host = parse_url($value, PHP_URL_HOST);
-        
+
         if (!$host || !checkdnsrr($host, 'A') && !checkdnsrr($host, 'AAAA')) {
             $this->addError($field, 'active_url');
         }
     }
-    
+
     /**
      * Regex pattern validation
      */
     private function validateRegex(string $field, $value, array $params): void
     {
         $pattern = $params[0];
-        
+
         if ($value !== null && $value !== '' && !preg_match($pattern, $value)) {
             $this->addError($field, 'regex');
         }
     }
-    
+
     /**
      * Not regex pattern validation
      */
     private function validateNotRegex(string $field, $value, array $params): void
     {
         $pattern = $params[0];
-        
+
         if ($value !== null && $value !== '' && preg_match($pattern, $value)) {
             $this->addError($field, 'not_regex');
         }
     }
-    
+
     /**
      * Confirmed field validation
      */
@@ -557,12 +561,12 @@ class Validator
     {
         $confirmField = $field . '_confirmation';
         $confirmValue = $this->getValue($confirmField);
-        
+
         if ($value !== $confirmValue) {
             $this->addError($field, 'confirmed');
         }
     }
-    
+
     /**
      * Same as another field
      */
@@ -570,12 +574,12 @@ class Validator
     {
         $otherField = $params[0];
         $otherValue = $this->getValue($otherField);
-        
+
         if ($value !== $otherValue) {
             $this->addError($field, 'same', ['other' => $otherField]);
         }
     }
-    
+
     /**
      * Different from another field
      */
@@ -583,12 +587,12 @@ class Validator
     {
         $otherField = $params[0];
         $otherValue = $this->getValue($otherField);
-        
+
         if ($value === $otherValue) {
             $this->addError($field, 'different', ['other' => $otherField]);
         }
     }
-    
+
     /**
      * In array validation
      */
@@ -598,7 +602,7 @@ class Validator
             $this->addError($field, 'in', ['values' => implode(', ', $params)]);
         }
     }
-    
+
     /**
      * Not in array validation
      */
@@ -608,7 +612,7 @@ class Validator
             $this->addError($field, 'not_in', ['values' => implode(', ', $params)]);
         }
     }
-    
+
     /**
      * Alpha characters only
      */
@@ -618,7 +622,7 @@ class Validator
             $this->addError($field, 'alpha');
         }
     }
-    
+
     /**
      * Alphanumeric characters only
      */
@@ -628,7 +632,7 @@ class Validator
             $this->addError($field, 'alpha_num');
         }
     }
-    
+
     /**
      * Alpha, numeric, dash, and underscore
      */
@@ -638,7 +642,7 @@ class Validator
             $this->addError($field, 'alpha_dash');
         }
     }
-    
+
     /**
      * Date validation
      */
@@ -647,12 +651,12 @@ class Validator
         if ($value === null || $value === '') {
             return;
         }
-        
+
         if (strtotime($value) === false) {
             $this->addError($field, 'date');
         }
     }
-    
+
     /**
      * Date format validation
      */
@@ -661,15 +665,15 @@ class Validator
         if ($value === null || $value === '') {
             return;
         }
-        
+
         $format = $params[0];
         $date = \DateTime::createFromFormat($format, $value);
-        
+
         if (!$date || $date->format($format) !== $value) {
             $this->addError($field, 'date_format', ['format' => $format]);
         }
     }
-    
+
     /**
      * Date before another date
      */
@@ -678,14 +682,14 @@ class Validator
         if ($value === null || $value === '') {
             return;
         }
-        
+
         $compareDate = $params[0];
-        
+
         if (strtotime($value) >= strtotime($compareDate)) {
             $this->addError($field, 'before', ['date' => $compareDate]);
         }
     }
-    
+
     /**
      * Date after another date
      */
@@ -694,14 +698,14 @@ class Validator
         if ($value === null || $value === '') {
             return;
         }
-        
+
         $compareDate = $params[0];
-        
+
         if (strtotime($value) <= strtotime($compareDate)) {
             $this->addError($field, 'after', ['date' => $compareDate]);
         }
     }
-    
+
     /**
      * IP address validation
      */
@@ -711,7 +715,7 @@ class Validator
             $this->addError($field, 'ip');
         }
     }
-    
+
     /**
      * IPv4 validation
      */
@@ -721,7 +725,7 @@ class Validator
             $this->addError($field, 'ipv4');
         }
     }
-    
+
     /**
      * IPv6 validation
      */
@@ -731,7 +735,7 @@ class Validator
             $this->addError($field, 'ipv6');
         }
     }
-    
+
     /**
      * JSON validation
      */
@@ -740,14 +744,14 @@ class Validator
         if ($value === null || $value === '') {
             return;
         }
-        
+
         json_decode($value);
-        
+
         if (json_last_error() !== JSON_ERROR_NONE) {
             $this->addError($field, 'json');
         }
     }
-    
+
     /**
      * UUID validation
      */
@@ -756,26 +760,26 @@ class Validator
         if ($value === null || $value === '') {
             return;
         }
-        
+
         $pattern = '/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i';
-        
+
         if (!preg_match($pattern, $value)) {
             $this->addError($field, 'uuid');
         }
     }
-    
+
     /**
      * Digits validation
      */
     private function validateDigits(string $field, $value, array $params): void
     {
         $length = (int) $params[0];
-        
+
         if ($value !== null && (!ctype_digit((string) $value) || strlen((string) $value) !== $length)) {
             $this->addError($field, 'digits', ['digits' => $length]);
         }
     }
-    
+
     /**
      * Digits between
      */
@@ -784,12 +788,12 @@ class Validator
         $min = (int) $params[0];
         $max = (int) $params[1];
         $length = strlen((string) $value);
-        
+
         if ($value !== null && (!ctype_digit((string) $value) || $length < $min || $length > $max)) {
             $this->addError($field, 'digits_between', ['min' => $min, 'max' => $max]);
         }
     }
-    
+
     /**
      * Timezone validation
      */
@@ -798,12 +802,12 @@ class Validator
         if ($value === null || $value === '') {
             return;
         }
-        
+
         if (!in_array($value, timezone_identifiers_list())) {
             $this->addError($field, 'timezone');
         }
     }
-    
+
     /**
      * File validation (for uploaded files)
      */
@@ -813,7 +817,7 @@ class Validator
             $this->addError($field, 'file');
         }
     }
-    
+
     /**
      * Image validation
      */
@@ -825,7 +829,7 @@ class Validator
             }
         }
     }
-    
+
     /**
      * MIME types validation
      */
@@ -833,27 +837,27 @@ class Validator
     {
         if ($value instanceof \Plugs\Upload\UploadedFile) {
             $extension = $value->getClientExtension();
-            
+
             if (!in_array($extension, $params)) {
                 $this->addError($field, 'mimes', ['values' => implode(', ', $params)]);
             }
         }
     }
-    
+
     /**
      * Size validation
      */
     private function validateSize(string $field, $value, array $params): void
     {
         $size = (int) $params[0];
-        
+
         if ($value === null || $value === '') {
             return;
         }
-        
+
         if ($value instanceof \Plugs\Upload\UploadedFile) {
             $actualSize = $value->getSize() / 1024; // KB
-            
+
             if ($actualSize != $size) {
                 $this->addError($field, 'size', ['size' => $size]);
             }
@@ -871,7 +875,7 @@ class Validator
             }
         }
     }
-    
+
     /**
      * Nullable field (allows null)
      */
@@ -879,7 +883,7 @@ class Validator
     {
         // This rule does nothing - it just marks field as nullable
     }
-    
+
     /**
      * Sometimes validation (only validate if present)
      */
@@ -887,7 +891,7 @@ class Validator
     {
         // This rule does nothing - it just marks field as optional
     }
-    
+
     /**
      * Starts with validation
      */
@@ -896,16 +900,16 @@ class Validator
         if ($value === null || $value === '') {
             return;
         }
-        
+
         foreach ($params as $prefix) {
             if (strpos($value, $prefix) === 0) {
                 return;
             }
         }
-        
+
         $this->addError($field, 'starts_with', ['values' => implode(', ', $params)]);
     }
-    
+
     /**
      * Ends with validation
      */
@@ -914,16 +918,16 @@ class Validator
         if ($value === null || $value === '') {
             return;
         }
-        
+
         foreach ($params as $suffix) {
             if (substr($value, -strlen($suffix)) === $suffix) {
                 return;
             }
         }
-        
+
         $this->addError($field, 'ends_with', ['values' => implode(', ', $params)]);
     }
-    
+
     /**
      * Contains validation
      */
@@ -932,14 +936,14 @@ class Validator
         if ($value === null || $value === '') {
             return;
         }
-        
+
         $needle = $params[0];
-        
+
         if (strpos($value, $needle) === false) {
             $this->addError($field, 'contains', ['value' => $needle]);
         }
     }
-    
+
     /**
      * Lowercase validation
      */
@@ -949,7 +953,7 @@ class Validator
             $this->addError($field, 'lowercase');
         }
     }
-    
+
     /**
      * Uppercase validation
      */
