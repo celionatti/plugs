@@ -768,7 +768,7 @@ class ViewCompiler
     private function compileDate(string $content): string
     {
         return preg_replace_callback(
-            '/@date\s*\((.+?)\s*,\s*[\'"](.+?)[\'"]\)/',
+            '/@date\s*\(\s*(.+?)\s*,\s*[\'"](.+?)[\'"]\s*\)/s',
             function ($matches) {
                 $timestamp = trim($matches[1]);
                 $format = $matches[2];
@@ -791,7 +791,7 @@ class ViewCompiler
     private function compileTime(string $content): string
     {
         return preg_replace_callback(
-            '/@time\s*\((.+?)(?:\s*,\s*[\'"](.+?)[\'"])?\)/',
+            '/@time\s*\(\s*(.+?)\s*(?:,\s*[\'"](.+?)[\'"])?\s*\)/s',
             function ($matches) {
                 $timestamp = trim($matches[1]);
                 $format = $matches[2] ?? 'H:i:s';
@@ -814,7 +814,7 @@ class ViewCompiler
     private function compileDatetime(string $content): string
     {
         return preg_replace_callback(
-            '/@datetime\s*\((.+?)(?:\s*,\s*[\'"](.+?)[\'"])?\)/',
+            '/@datetime\s*\(\s*(.+?)\s*(?:,\s*[\'"](.+?)[\'"])?\s*\)/s',
             function ($matches) {
                 $timestamp = trim($matches[1]);
                 $format = $matches[2] ?? 'Y-m-d H:i:s';
@@ -836,9 +836,17 @@ class ViewCompiler
      */
     private function compileHumanDate(string $content): string
     {
-        return preg_replace(
-            '/@humanDate\s*\((.+?)\)/',
-            '<?php echo date(\'F j, Y\', is_numeric($1) ? $1 : strtotime($1)); ?>',
+        return preg_replace_callback(
+            '/@humanDate\s*\(\s*(.+?)\s*\)/s',
+            function ($matches) {
+                $timestamp = trim($matches[1]);
+                return sprintf(
+                    '<?php echo date(\'F j, Y\', is_numeric(%s) ? %s : strtotime(%s)); ?>',
+                    $timestamp,
+                    $timestamp,
+                    $timestamp
+                );
+            },
             $content
         );
     }
@@ -850,21 +858,21 @@ class ViewCompiler
     private function compileDiffForHumans(string $content): string
     {
         return preg_replace_callback(
-            '/@diffForHumans\s*\((.+?)\)/',
+            '/@diffForHumans\s*\(\s*(.+?)\s*\)/s',
             function ($matches) {
                 $timestamp = trim($matches[1]);
                 return sprintf(
                     '<?php echo (function($ts) {
-                        $time = is_numeric($ts) ? $ts : strtotime($ts);
-                        $diff = time() - $time;
-                        if ($diff < 60) return $diff . \' seconds ago\';
-                        if ($diff < 3600) return floor($diff / 60) . \' minutes ago\';
-                        if ($diff < 86400) return floor($diff / 3600) . \' hours ago\';
-                        if ($diff < 604800) return floor($diff / 86400) . \' days ago\';
-                        if ($diff < 2592000) return floor($diff / 604800) . \' weeks ago\';
-                        if ($diff < 31536000) return floor($diff / 2592000) . \' months ago\';
-                        return floor($diff / 31536000) . \' years ago\';
-                    })(%s); ?>',
+                    $time = is_numeric($ts) ? $ts : strtotime($ts);
+                    $diff = time() - $time;
+                    if ($diff < 60) return $diff . \' seconds ago\';
+                    if ($diff < 3600) return floor($diff / 60) . \' minutes ago\';
+                    if ($diff < 86400) return floor($diff / 3600) . \' hours ago\';
+                    if ($diff < 604800) return floor($diff / 86400) . \' days ago\';
+                    if ($diff < 2592000) return floor($diff / 604800) . \' weeks ago\';
+                    if ($diff < 31536000) return floor($diff / 2592000) . \' months ago\';
+                    return floor($diff / 31536000) . \' years ago\';
+                })(%s); ?>',
                     $timestamp
                 );
             },
@@ -877,13 +885,13 @@ class ViewCompiler
     // ============================================
 
     /**
-     * var @number($value, 2)
+     * @number($value, 2)
      * Format number with decimals
      */
     private function compileNumber(string $content): string
     {
         return preg_replace_callback(
-            '/@number\s*\((.+?)(?:\s*,\s*(\d+))?\)/',
+            '/@number\s*\(\s*(.+?)\s*(?:,\s*(\d+))?\s*\)/s',
             function ($matches) {
                 $value = trim($matches[1]);
                 $decimals = $matches[2] ?? 0;
@@ -904,20 +912,20 @@ class ViewCompiler
     private function compileCurrency(string $content): string
     {
         return preg_replace_callback(
-            '/@currency\s*\((.+?)(?:\s*,\s*[\'"](.+?)[\'"])?\)/',
+            '/@currency\s*\(\s*(.+?)\s*(?:,\s*[\'"](.+?)[\'"])?\s*\)/s',
             function ($matches) {
                 $amount = trim($matches[1]);
                 $currency = $matches[2] ?? 'USD';
 
                 return sprintf(
                     '<?php echo (function($amt, $curr) {
-                        $symbols = [
-                            \'USD\' => \'$\', \'EUR\' => \'€\', \'GBP\' => \'£\',
-                            \'JPY\' => \'¥\', \'NGN\' => \'₦\', \'INR\' => \'₹\'
-                        ];
-                        $symbol = $symbols[$curr] ?? $curr . \' \';
-                        return $symbol . number_format($amt, 2);
-                    })(%s, \'%s\'); ?>',
+                    $symbols = [
+                        \'USD\' => \'$\', \'EUR\' => \'€\', \'GBP\' => \'£\',
+                        \'JPY\' => \'¥\', \'NGN\' => \'₦\', \'INR\' => \'₹\'
+                    ];
+                    $symbol = $symbols[$curr] ?? $curr . \' \';
+                    return $symbol . number_format($amt, 2);
+                })(%s, \'%s\'); ?>',
                     $amount,
                     addslashes($currency)
                 );
@@ -933,7 +941,7 @@ class ViewCompiler
     private function compilePercent(string $content): string
     {
         return preg_replace_callback(
-            '/@percent\s*\((.+?)(?:\s*,\s*(\d+))?\)/',
+            '/@percent\s*\(\s*(.+?)\s*(?:,\s*(\d+))?\s*\)/s',
             function ($matches) {
                 $value = trim($matches[1]);
                 $decimals = $matches[2] ?? 2;
@@ -957,9 +965,12 @@ class ViewCompiler
      */
     private function compileUpper(string $content): string
     {
-        return preg_replace(
-            '/@upper\s*\((.+?)\)/',
-            '<?php echo strtoupper($1); ?>',
+        return preg_replace_callback(
+            '/@upper\s*\(\s*(.+?)\s*\)/s',
+            function ($matches) {
+                $string = trim($matches[1]);
+                return sprintf('<?php echo strtoupper(%s); ?>', $string);
+            },
             $content
         );
     }
@@ -970,9 +981,12 @@ class ViewCompiler
      */
     private function compileLower(string $content): string
     {
-        return preg_replace(
-            '/@lower\s*\((.+?)\)/',
-            '<?php echo strtolower($1); ?>',
+        return preg_replace_callback(
+            '/@lower\s*\(\s*(.+?)\s*\)/s',
+            function ($matches) {
+                $string = trim($matches[1]);
+                return sprintf('<?php echo strtolower(%s); ?>', $string);
+            },
             $content
         );
     }
@@ -983,9 +997,12 @@ class ViewCompiler
      */
     private function compileTitle(string $content): string
     {
-        return preg_replace(
-            '/@title\s*\((.+?)\)/',
-            '<?php echo ucwords(strtolower($1)); ?>',
+        return preg_replace_callback(
+            '/@title\s*\(\s*(.+?)\s*\)/s',
+            function ($matches) {
+                $string = trim($matches[1]);
+                return sprintf('<?php echo ucwords(strtolower(%s)); ?>', $string);
+            },
             $content
         );
     }
@@ -996,9 +1013,12 @@ class ViewCompiler
      */
     private function compileUcfirst(string $content): string
     {
-        return preg_replace(
-            '/@ucfirst\s*\((.+?)\)/',
-            '<?php echo ucfirst($1); ?>',
+        return preg_replace_callback(
+            '/@ucfirst\s*\(\s*(.+?)\s*\)/s',
+            function ($matches) {
+                $string = trim($matches[1]);
+                return sprintf('<?php echo ucfirst(%s); ?>', $string);
+            },
             $content
         );
     }
@@ -1010,7 +1030,7 @@ class ViewCompiler
     private function compileSlug(string $content): string
     {
         return preg_replace_callback(
-            '/@slug\s*\((.+?)\)/',
+            '/@slug\s*\(\s*(.+?)\s*\)/s',
             function ($matches) {
                 $string = trim($matches[1]);
                 return sprintf(
@@ -1024,16 +1044,19 @@ class ViewCompiler
 
     /**
      * @truncate($string, 100, '...')
+     * @truncate($string, 100)
+     * @truncate($string) - defaults to 100 characters
      * Truncate string to length
      */
     private function compileTruncate(string $content): string
     {
         return preg_replace_callback(
-            '/@truncate\s*\((.+?)\s*,\s*(\d+)(?:\s*,\s*[\'"](.+?)[\'"])?\)/',
+            '/@truncate\s*\(\s*(.+?)\s*(?:,\s*(\d+)\s*(?:,\s*[\'"](.+?)[\'"])?)?\s*\)/s',
             function ($matches) {
                 $string = trim($matches[1]);
-                $length = $matches[2];
+                $length = $matches[2] ?? 100; // Default to 100 if not provided
                 $end = $matches[3] ?? '...';
+
                 return sprintf(
                     '<?php echo mb_strlen(%s) > %d ? mb_substr(%s, 0, %d) . \'%s\' : %s; ?>',
                     $string,
@@ -1055,17 +1078,17 @@ class ViewCompiler
     private function compileExcerpt(string $content): string
     {
         return preg_replace_callback(
-            '/@excerpt\s*\((.+?)(?:\s*,\s*(\d+))?\)/',
+            '/@excerpt\s*\(\s*(.+?)\s*(?:,\s*(\d+))?\s*\)/s',
             function ($matches) {
                 $string = trim($matches[1]);
                 $length = $matches[2] ?? 150;
                 return sprintf(
                     '<?php echo (function($str, $len) {
-                        $str = strip_tags($str);
-                        if (mb_strlen($str) <= $len) return $str;
-                        $str = mb_substr($str, 0, $len);
-                        return mb_substr($str, 0, mb_strrpos($str, \' \')) . \'...\';
-                    })(%s, %d); ?>',
+                    $str = strip_tags($str);
+                    if (mb_strlen($str) <= $len) return $str;
+                    $str = mb_substr($str, 0, $len);
+                    return mb_substr($str, 0, mb_strrpos($str, \' \')) . \'...\';
+                })(%s, %d); ?>',
                     $string,
                     $length
                 );
@@ -1084,9 +1107,12 @@ class ViewCompiler
      */
     private function compileCount(string $content): string
     {
-        return preg_replace(
-            '/@count\s*\((.+?)\)/',
-            '<?php echo count($1); ?>',
+        return preg_replace_callback(
+            '/@count\s*\(\s*(.+?)\s*\)/s',
+            function ($matches) {
+                $array = trim($matches[1]);
+                return sprintf('<?php echo count(%s); ?>', $array);
+            },
             $content
         );
     }
@@ -1098,7 +1124,7 @@ class ViewCompiler
     private function compileJoin(string $content): string
     {
         return preg_replace_callback(
-            '/@join\s*\((.+?)\s*,\s*[\'"](.+?)[\'"]\)/',
+            '/@join\s*\(\s*(.+?)\s*,\s*[\'"](.+?)[\'"]\s*\)/s',
             function ($matches) {
                 $array = trim($matches[1]);
                 $separator = $matches[2];
@@ -1132,7 +1158,7 @@ class ViewCompiler
     private function compileDefault(string $content): string
     {
         return preg_replace_callback(
-            '/@default\s*\((.+?)\s*,\s*[\'"](.+?)[\'"]\)/',
+            '/@default\s*\(\s*(.+?)\s*,\s*[\'"](.+?)[\'"]\s*\)/s',
             function ($matches) {
                 $value = trim($matches[1]);
                 $default = $matches[2];
@@ -1154,7 +1180,7 @@ class ViewCompiler
     private function compileRoute(string $content): string
     {
         return preg_replace_callback(
-            '/@route\s*\([\'"](.+?)[\'"]\s*(?:,\s*(\[.+?\]))?\)/',
+            '/@route\s*\(\s*[\'"](.+?)[\'"]\s*(?:,\s*(\[.+?\]))?\s*\)/s',
             function ($matches) {
                 $routeName = $matches[1];
                 $params = $matches[2] ?? '[]';
@@ -1175,14 +1201,14 @@ class ViewCompiler
     private function compileAsset(string $content): string
     {
         return preg_replace_callback(
-            '/@asset\s*\([\'"](.+?)[\'"]\)/',
+            '/@asset\s*\(\s*[\'"](.+?)[\'"]\s*\)/s',
             function ($matches) {
                 $path = $matches[1];
                 return sprintf(
                     '<?php echo (function($p) {
-                        $base = rtrim($_SERVER[\'REQUEST_SCHEME\'] . \'://\' . $_SERVER[\'HTTP_HOST\'], \'/\');
-                        return $base . \'/\' . ltrim($p, \'/\');
-                    })(\'%s\'); ?>',
+                    $base = rtrim($_SERVER[\'REQUEST_SCHEME\'] . \'://\' . $_SERVER[\'HTTP_HOST\'], \'/\');
+                    return $base . \'/\' . ltrim($p, \'/\');
+                })(\'%s\'); ?>',
                     addslashes($path)
                 );
             },
@@ -1197,7 +1223,7 @@ class ViewCompiler
     private function compileUrl(string $content): string
     {
         return preg_replace_callback(
-            '/@url\s*\([\'"](.+?)[\'"]\)/',
+            '/@url\s*\(\s*[\'"](.+?)[\'"]\s*\)/s',
             function ($matches) {
                 $path = $matches[1];
                 return sprintf(
@@ -1216,12 +1242,12 @@ class ViewCompiler
     private function compileConfig(string $content): string
     {
         return preg_replace_callback(
-            '/@config\s*\([\'"](.+?)[\'"]\s*(?:,\s*[\'"](.+?)[\'"])?\)/',
+            '/@config\s*\(\s*[\'"](.+?)[\'"]\s*(?:,\s*[\'"](.+?)[\'"])?\s*\)/s',
             function ($matches) {
                 $key = $matches[1];
                 $default = $matches[2] ?? null;
 
-                if ($default) {
+                if ($default !== null) {
                     return sprintf(
                         '<?php echo function_exists(\'config\') ? config(\'%s\', \'%s\') : \'%s\'; ?>',
                         addslashes($key),
@@ -1246,7 +1272,7 @@ class ViewCompiler
     private function compileEnv(string $content): string
     {
         return preg_replace_callback(
-            '/@env\s*\([\'"](.+?)[\'"]\s*(?:,\s*[\'"](.+?)[\'"])?\)/',
+            '/@env\s*\(\s*[\'"](.+?)[\'"]\s*(?:,\s*[\'"](.+?)[\'"])?\s*\)/s',
             function ($matches) {
                 $key = $matches[1];
                 $default = $matches[2] ?? '';
