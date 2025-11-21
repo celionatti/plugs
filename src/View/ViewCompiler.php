@@ -736,6 +736,7 @@ class ViewCompiler
         $content = $this->compileUpper($content);
         $content = $this->compileLower($content);
         $content = $this->compileTitle($content);
+        $content = $this->compileTitleTruncate($content);
         $content = $this->compileSlug($content);
         $content = $this->compileTruncate($content);
         $content = $this->compileExcerpt($content);
@@ -1002,6 +1003,34 @@ class ViewCompiler
             function ($matches) {
                 $string = trim($matches[1]);
                 return sprintf('<?php echo ucwords(strtolower(%s)); ?>', $string);
+            },
+            $content
+        );
+    }
+
+    /**
+     * Add this new method to your ViewCompiler class
+     * @titleTruncate($string, 50)
+     * Combines title case + truncation in one directive
+     */
+    private function compileTitleTruncate(string $content): string
+    {
+        return preg_replace_callback(
+            '/@titleTruncate\s*\(\s*(.+?)\s*(?:,\s*(\d+)\s*(?:,\s*[\'"](.+?)[\'"])?)?\s*\)/s',
+            function ($matches) {
+                $string = trim($matches[1]);
+                $length = $matches[2] ?? 100;
+                $end = $matches[3] ?? '...';
+
+                return sprintf(
+                    '<?php echo (function($str, $len, $ending) {
+                    $str = ucwords(strtolower($str));
+                    return mb_strlen($str) > $len ? mb_substr($str, 0, $len) . $ending : $str;
+                })(%s, %d, \'%s\'); ?>',
+                    $string,
+                    $length,
+                    addslashes($end)
+                );
             },
             $content
         );
