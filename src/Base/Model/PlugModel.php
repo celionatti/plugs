@@ -220,7 +220,7 @@ abstract class PlugModel
     /**
      * Get the PDO instance (enhanced)
      */
-    protected static function getPdo(): PDO
+    public static function getPdo(): PDO
     {
         $connection = static::getConnection();
 
