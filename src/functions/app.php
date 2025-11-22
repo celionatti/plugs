@@ -300,3 +300,22 @@ function extractFilesFromArray(array $fileArray): array
 
     return array_unique($files); // Remove duplicates
 }
+
+/**
+ * Quick pagination helper
+ */
+function paginate($data, $perPage = 15, $page = null) {
+    $page = $page ?? $_GET['page'] ?? 1;
+    
+    if (is_array($data)) {
+        return \Plugs\Paginator\Pagination::fromArray([
+            'data' => array_slice($data, ($page - 1) * $perPage, $perPage),
+            'per_page' => $perPage,
+            'current_page' => $page,
+            'total' => count($data)
+        ]);
+    }
+    
+    // Assume it's PlugModel pagination array
+    return \Plugs\Paginator\Pagination::fromArray($data);
+}
