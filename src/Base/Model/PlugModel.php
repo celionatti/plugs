@@ -1817,44 +1817,71 @@ abstract class PlugModel
         return $instance;
     }
 
+    // protected function cloneQuery()
+    // {
+    //     $clone = clone $this;
+    //     $clone->query = [
+    //         'select' => $this->query['select'],
+    //         'where' => [],
+    //         'joins' => [],
+    //         'orderBy' => [],
+    //         'groupBy' => [],
+    //         'having' => [],
+    //         'limit' => $this->query['limit'],
+    //         'offset' => $this->query['offset'],
+    //         'withTrashed' => $this->query['withTrashed'],
+    //         'distinct' => $this->query['distinct'],
+    //     ];
+
+    //     // Deep copy arrays
+    //     // $clone->bindings = $this->bindings;
+
+    //     $clone->bindings = array_map(function ($binding) {
+    //         return is_object($binding) ? clone $binding : $binding;
+    //     }, $this->bindings);
+
+    //     foreach ($this->query['where'] as $where) {
+    //         $clone->query['where'][] = $where;
+    //     }
+
+    //     foreach ($this->query['orderBy'] as $order) {
+    //         $clone->query['orderBy'][] = $order;
+    //     }
+
+    //     foreach ($this->query['groupBy'] as $group) {
+    //         $clone->query['groupBy'][] = $group;
+    //     }
+
+    //     foreach ($this->query['having'] as $having) {
+    //         $clone->query['having'][] = $having;
+    //     }
+
+    //     return $clone;
+    // }
+
     protected function cloneQuery()
     {
         $clone = clone $this;
+
+        // Deep copy the query array structure
         $clone->query = [
             'select' => $this->query['select'],
-            'where' => [],
-            'joins' => [],
-            'orderBy' => [],
-            'groupBy' => [],
-            'having' => [],
+            'where' => $this->query['where'],  // Keep the where clauses!
+            'joins' => $this->query['joins'],
+            'orderBy' => $this->query['orderBy'],
+            'groupBy' => $this->query['groupBy'],
+            'having' => $this->query['having'],
             'limit' => $this->query['limit'],
             'offset' => $this->query['offset'],
             'withTrashed' => $this->query['withTrashed'],
             'distinct' => $this->query['distinct'],
         ];
 
-        // Deep copy arrays
-        // $clone->bindings = $this->bindings;
+        // IMPORTANT: Deep copy the bindings array
+        $clone->bindings = $this->bindings;
 
-        $clone->bindings = array_map(function ($binding) {
-            return is_object($binding) ? clone $binding : $binding;
-        }, $this->bindings);
-
-        foreach ($this->query['where'] as $where) {
-            $clone->query['where'][] = $where;
-        }
-
-        foreach ($this->query['orderBy'] as $order) {
-            $clone->query['orderBy'][] = $order;
-        }
-
-        foreach ($this->query['groupBy'] as $group) {
-            $clone->query['groupBy'][] = $group;
-        }
-
-        foreach ($this->query['having'] as $having) {
-            $clone->query['having'][] = $having;
-        }
+        // IMPORTANT: Preserve eager load relations
+        $clone->eagerLoad = $this->eagerLoad;
 
         return $clone;
     }
@@ -2243,13 +2270,32 @@ abstract class PlugModel
         return $this->offset($offset);
     }
 
+    // public function when($condition, callable $callback, ?callable $default = null)
+    // {
+    //     if ($condition) {
+    //         return $callback($this) ?? $this;
+    //     } elseif ($default) {
+    //         return $default($this) ?? $this;
+    //     }
+    //     return $this;
+    // }
+
     public function when($condition, callable $callback, ?callable $default = null)
     {
-        if ($condition) {
-            return $callback($this) ?? $this;
+        // Evaluate the condition
+        $conditionResult = is_callable($condition) ? $condition($this) : $condition;
+
+        if ($conditionResult) {
+            // Execute the callback and return its result or $this
+            $result = $callback($this);
+            return $result instanceof static ? $result : $this;
         } elseif ($default) {
-            return $default($this) ?? $this;
+            // Execute the default callback if provided
+            $result = $default($this);
+            return $result instanceof static ? $result : $this;
         }
+
+        // Return $this to maintain chain
         return $this;
     }
 
