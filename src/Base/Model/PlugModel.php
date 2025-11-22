@@ -91,6 +91,9 @@ abstract class PlugModel
         'morphMany' => 'eagerLoadMorphMany',
     ];
 
+    protected $dateFormat = 'Y-m-d H:i:s';
+    protected $dates = []; // Additional datetime columns beyond timestamps
+
     public function __construct(array $attributes = [])
     {
         $this->bootIfNotBooted();
@@ -660,14 +663,14 @@ abstract class PlugModel
 
     // ==================== JSON OPERATIONS ====================
 
-    public function fromJson(string $json)
-    {
-        $data = json_decode($json, true);
-        if (json_last_error() !== JSON_ERROR_NONE) {
-            throw new Exception('Invalid JSON: ' . json_last_error_msg());
-        }
-        return $this->fill($data);
-    }
+    // public function fromJson(string $json)
+    // {
+    //     $data = json_decode($json, true);
+    //     if (json_last_error() !== JSON_ERROR_NONE) {
+    //         throw new Exception('Invalid JSON: ' . json_last_error_msg());
+    //     }
+    //     return $this->fill($data);
+    // }
 
     public static function createFromJson(string $json)
     {
@@ -861,14 +864,75 @@ abstract class PlugModel
 
     // ==================== ATTRIBUTE CASTING ENHANCEMENTS ====================
 
+    // protected function castAttribute($key, $value)
+    // {
+    //     if (!isset($this->casts[$key]) || $value === null) {
+    //         return $value;
+    //     }
+
+    //     $castType = $this->casts[$key];
+
+    //     if ($castType === 'encrypted') {
+    //         return $this->decrypt($value);
+    //     }
+
+    //     if ($castType === 'collection') {
+    //         $data = is_string($value) ? json_decode($value, true) : $value;
+    //         return new Collection(is_array($data) ? $data : []);
+    //     }
+
+    //     switch ($castType) {
+    //         case 'int':
+    //         case 'integer':
+    //             return (int) $value;
+    //         case 'float':
+    //         case 'double':
+    //         case 'real':
+    //             return (float) $value;
+    //         case 'decimal':
+    //             return number_format((float) $value, 2, '.', '');
+    //         case 'string':
+    //             return (string) $value;
+    //         case 'bool':
+    //         case 'boolean':
+    //             return (bool) $value;
+    //         case 'array':
+    //         case 'json':
+    //             return is_string($value) ? json_decode($value, true) : $value;
+    //         case 'object':
+    //             return is_string($value) ? json_decode($value) : $value;
+    //         case 'datetime':
+    //         case 'date':
+    //             return $value instanceof DateTime ? $value : new DateTime($value);
+    //         case 'timestamp':
+    //             return is_numeric($value) ? $value : strtotime($value);
+    //         default:
+    //             return $value;
+    //     }
+    // }
+
     protected function castAttribute($key, $value)
     {
-        if (!isset($this->casts[$key]) || $value === null) {
+        if ($value === null && !$this->castNulls) {
+            return null;
+        }
+
+        if (!isset($this->casts[$key])) {
+            // Check if it's in the dates array or a timestamp column
+            if ($this->isDateAttribute($key)) {
+                return $this->asDateTime($value);
+            }
             return $value;
         }
 
         $castType = $this->casts[$key];
 
+        // Handle null values based on cast type
+        if ($value === null) {
+            return $this->getNullCastValue($castType);
+        }
+
+        // Special casts
         if ($castType === 'encrypted') {
             return $this->decrypt($value);
         }
@@ -878,45 +942,225 @@ abstract class PlugModel
             return new Collection(is_array($data) ? $data : []);
         }
 
+        // Standard casts
         switch ($castType) {
             case 'int':
             case 'integer':
                 return (int) $value;
+
             case 'float':
             case 'double':
             case 'real':
                 return (float) $value;
+
             case 'decimal':
+                if (strpos($castType, ':') !== false) {
+                    // Handle decimal:2 format
+                    $parts = explode(':', $castType);
+                    $decimals = isset($parts[1]) ? (int) $parts[1] : 2;
+                    return number_format((float) $value, $decimals, '.', '');
+                }
                 return number_format((float) $value, 2, '.', '');
+
             case 'string':
                 return (string) $value;
+
             case 'bool':
             case 'boolean':
-                return (bool) $value;
+                return $this->castToBoolean($value);
+
             case 'array':
             case 'json':
-                return is_string($value) ? json_decode($value, true) : $value;
+                return $this->fromJson($value);
+
             case 'object':
-                return is_string($value) ? json_decode($value) : $value;
+                return $this->fromJson($value, false);
+
             case 'datetime':
             case 'date':
-                return $value instanceof DateTime ? $value : new DateTime($value);
+                return $this->asDateTime($value);
+
             case 'timestamp':
-                return is_numeric($value) ? $value : strtotime($value);
+                return $this->asTimestamp($value);
+
+            case 'immutable_datetime':
+                return $this->asDateTimeImmutable($value);
+
             default:
+                // Support for custom cast format like 'datetime:Y-m-d'
+                if (strpos($castType, 'datetime:') === 0) {
+                    $format = substr($castType, 9);
+                    return $this->asDateTime($value, $format);
+                }
+
+                if (strpos($castType, 'date:') === 0) {
+                    $format = substr($castType, 5);
+                    return $this->asDateTime($value, $format);
+                }
+
                 return $value;
         }
     }
 
-    // protected function encrypt(string $value): string
-    // {
-    //     return base64_encode($value);
-    // }
+    /**
+     * Get null value for a cast type
+     */
+    protected function getNullCastValue($castType)
+    {
+        switch ($castType) {
+            case 'array':
+            case 'json':
+                return [];
+            case 'collection':
+                return new Collection([]);
+            case 'object':
+                return null;
+            default:
+                return null;
+        }
+    }
 
-    // protected function decrypt(string $value): string
-    // {
-    //     return base64_decode($value);
-    // }
+    /**
+     * Cast value to boolean with flexible input handling
+     */
+    protected function castToBoolean($value): bool
+    {
+        if (is_bool($value)) {
+            return $value;
+        }
+
+        if (is_numeric($value)) {
+            return (bool) $value;
+        }
+
+        if (is_string($value)) {
+            $value = strtolower($value);
+            return in_array($value, ['1', 'true', 'yes', 'on'], true);
+        }
+
+        return (bool) $value;
+    }
+
+    /**
+     * Check if attribute is a date
+     */
+    protected function isDateAttribute($key): bool
+    {
+        // Check timestamps
+        if ($this->timestamps && in_array($key, ['created_at', 'updated_at'])) {
+            return true;
+        }
+
+        // Check soft delete column
+        if ($this->softDelete && $key === $this->deletedAtColumn) {
+            return true;
+        }
+
+        // Check dates array
+        return in_array($key, $this->dates);
+    }
+
+    /**
+     * Convert value to DateTime object
+     */
+    protected function asDateTime($value, $format = null)
+    {
+        if ($value === null) {
+            return null;
+        }
+
+        // Already a DateTime object
+        if ($value instanceof DateTime) {
+            return $value;
+        }
+
+        // Already a DateTimeImmutable object
+        if ($value instanceof \DateTimeImmutable) {
+            return DateTime::createFromImmutable($value);
+        }
+
+        // Numeric timestamp
+        if (is_numeric($value)) {
+            $datetime = new DateTime();
+            $datetime->setTimestamp((int) $value);
+            return $datetime;
+        }
+
+        // String format
+        if (is_string($value)) {
+            // Try parsing with custom format first
+            if ($format && $format !== $this->dateFormat) {
+                $datetime = DateTime::createFromFormat($format, $value);
+                if ($datetime !== false) {
+                    return $datetime;
+                }
+            }
+
+            // Try default format
+            $datetime = DateTime::createFromFormat($this->dateFormat, $value);
+            if ($datetime !== false) {
+                return $datetime;
+            }
+
+            // Try standard parsing
+            try {
+                return new DateTime($value);
+            } catch (Exception $e) {
+                throw new Exception("Could not parse datetime value: {$value}");
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Convert value to DateTimeImmutable
+     */
+    protected function asDateTimeImmutable($value)
+    {
+        $datetime = $this->asDateTime($value);
+
+        if ($datetime === null) {
+            return null;
+        }
+
+        return \DateTimeImmutable::createFromMutable($datetime);
+    }
+
+    /**
+     * Convert value to timestamp
+     */
+    protected function asTimestamp($value)
+    {
+        if ($value === null) {
+            return null;
+        }
+
+        if (is_numeric($value)) {
+            return (int) $value;
+        }
+
+        $datetime = $this->asDateTime($value);
+        return $datetime ? $datetime->getTimestamp() : null;
+    }
+
+    /**
+     * Decode JSON string
+     */
+    protected function fromJson($value, $asArray = true)
+    {
+        if (is_string($value)) {
+            $decoded = json_decode($value, $asArray);
+
+            if (json_last_error() !== JSON_ERROR_NONE) {
+                throw new Exception('Invalid JSON: ' . json_last_error_msg());
+            }
+
+            return $decoded;
+        }
+
+        return $asArray ? (array) $value : (object) $value;
+    }
 
     protected function encrypt(string $value): string
     {
@@ -1325,15 +1569,100 @@ abstract class PlugModel
         return false;
     }
 
+    // public function setAttribute($key, $value)
+    // {
+    //     $method = 'set' . str_replace('_', '', ucwords($key, '_')) . 'Attribute';
+    //     if (method_exists($this, $method)) {
+    //         $this->attributes[$key] = $this->$method($value);
+    //     } else {
+    //         $this->attributes[$key] = $value;
+    //     }
+    //     return $this;
+    // }
+
     public function setAttribute($key, $value)
     {
+        // Handle mutators first
         $method = 'set' . str_replace('_', '', ucwords($key, '_')) . 'Attribute';
         if (method_exists($this, $method)) {
             $this->attributes[$key] = $this->$method($value);
-        } else {
-            $this->attributes[$key] = $value;
+            return $this;
         }
+
+        // Apply reverse casting for database storage
+        $value = $this->setAttributeCast($key, $value);
+
+        $this->attributes[$key] = $value;
         return $this;
+    }
+
+    /**
+     * Cast attribute value for database storage (reverse casting)
+     */
+    protected function setAttributeCast($key, $value)
+    {
+        if ($value === null) {
+            return null;
+        }
+
+        // Get cast type
+        $castType = $this->casts[$key] ?? null;
+
+        // Handle datetime casting for storage
+        if ($value instanceof DateTime || $value instanceof \DateTimeImmutable) {
+            return $value->format($this->dateFormat);
+        }
+
+        // Check if it's a date attribute
+        if ($this->isDateAttribute($key)) {
+            if ($value instanceof DateTime || $value instanceof \DateTimeImmutable) {
+                return $value->format($this->dateFormat);
+            }
+            // If string, validate and return as-is
+            return $value;
+        }
+
+        // Handle other cast types for storage
+        if ($castType) {
+            switch ($castType) {
+                case 'array':
+                case 'json':
+                case 'object':
+                    return json_encode($value);
+
+                case 'collection':
+                    if ($value instanceof Collection) {
+                        return json_encode($value->toArray());
+                    }
+                    return json_encode($value);
+
+                case 'encrypted':
+                    return $this->encrypt($value);
+
+                case 'bool':
+                case 'boolean':
+                    return (int) $value; // Store as 0 or 1
+
+                case 'datetime':
+                case 'date':
+                case 'immutable_datetime':
+                    if ($value instanceof DateTime || $value instanceof \DateTimeImmutable) {
+                        return $value->format($this->dateFormat);
+                    }
+                    // Try to parse and format
+                    $datetime = $this->asDateTime($value);
+                    return $datetime ? $datetime->format($this->dateFormat) : $value;
+
+                case 'timestamp':
+                    if (is_numeric($value)) {
+                        return (int) $value;
+                    }
+                    $datetime = $this->asDateTime($value);
+                    return $datetime ? $datetime->getTimestamp() : $value;
+            }
+        }
+
+        return $value;
     }
 
     public function getAttribute($key)
@@ -1352,6 +1681,92 @@ abstract class PlugModel
         }
 
         return null;
+    }
+
+    /**
+     * Set the date format for datetime casting
+     */
+    public function setDateFormat($format)
+    {
+        $this->dateFormat = $format;
+        return $this;
+    }
+
+    /**
+     * Get the date format
+     */
+    public function getDateFormat(): string
+    {
+        return $this->dateFormat;
+    }
+
+    /**
+     * Add additional date attributes
+     */
+    public function addDates(array $dates)
+    {
+        $this->dates = array_unique(array_merge($this->dates, $dates));
+        return $this;
+    }
+
+    /**
+     * Helper method to format a datetime attribute
+     */
+    public function formatDate($key, $format = 'Y-m-d H:i:s')
+    {
+        $value = $this->getAttribute($key);
+
+        if ($value instanceof DateTime) {
+            return $value->format($format);
+        }
+
+        if ($value === null) {
+            return null;
+        }
+
+        $datetime = $this->asDateTime($value);
+        return $datetime ? $datetime->format($format) : $value;
+    }
+
+    /**
+     * Get human-readable time difference (like Carbon's diffForHumans)
+     */
+    public function getTimeDifference($key): string
+    {
+        $value = $this->getAttribute($key);
+
+        if (!$value instanceof DateTime) {
+            $value = $this->asDateTime($value);
+        }
+
+        if (!$value) {
+            return 'never';
+        }
+
+        $now = new DateTime();
+        $diff = $now->getTimestamp() - $value->getTimestamp();
+
+        if ($diff < 60) {
+            return 'just now';
+        } elseif ($diff < 3600) {
+            $minutes = floor($diff / 60);
+            return $minutes . ' minute' . ($minutes > 1 ? 's' : '') . ' ago';
+        } elseif ($diff < 86400) {
+            $hours = floor($diff / 3600);
+            return $hours . ' hour' . ($hours > 1 ? 's' : '') . ' ago';
+        } elseif ($diff < 604800) {
+            $days = floor($diff / 86400);
+            return $days . ' day' . ($days > 1 ? 's' : '') . ' ago';
+        } elseif ($diff < 2592000) {
+            $weeks = floor($diff / 604800);
+            return $weeks . ' week' . ($weeks > 1 ? 's' : '') . ' ago';
+        } elseif ($diff < 31536000) {
+            $months = floor($diff / 2592000);
+            return $months . ' month' . ($months > 1 ? 's' : '') . ' ago';
+        } else {
+            $years = floor($diff / 31536000);
+            return $years . ' year' . ($years > 1 ? 's' : '') . ' ago';
+        }
     }
 
     protected function validateAttributeType($key, $value)
@@ -2845,30 +3260,6 @@ abstract class PlugModel
 
     /**
      * Enhanced with() method that properly queues relations for eager loading
-     */
-    // public function with($relations)
-    // {
-    //     if (is_string($relations)) {
-    //         $relations = func_get_args();
-    //     }
-
-    //     $clone = $this->cloneQuery();
-
-    //     foreach ($relations as $key => $value) {
-    //         // Support for nested relations: 'posts.comments'
-    //         // Support for constraints: ['posts' => function($query) { $query->where(...) }]
-    //         if (is_numeric($key)) {
-    //             $clone->eagerLoad[$value] = null;
-    //         } else {
-    //             $clone->eagerLoad[$key] = $value;
-    //         }
-    //     }
-
-    //     return $clone;
-    // }
-
-    /**
-     * Enhanced with() method that properly queues relations for eager loading
      * Can be called both statically and as instance method
      */
     public static function with($relations)
@@ -3540,7 +3931,6 @@ abstract class PlugModel
             }
 
             return $config;
-
         } catch (\Exception $e) {
             // Fall back to code parsing
             return $this->getRelationConfig($model, $relation, $type);
@@ -3766,42 +4156,18 @@ abstract class PlugModel
         return true;
     }
 
-    protected function retrieving()
-    {
-    }
-    protected function retrieved()
-    {
-    }
-    protected function creating()
-    {
-    }
-    protected function created()
-    {
-    }
-    protected function updating()
-    {
-    }
-    protected function updated()
-    {
-    }
-    protected function saving()
-    {
-    }
-    protected function saved()
-    {
-    }
-    protected function deleting()
-    {
-    }
-    protected function deleted()
-    {
-    }
-    protected function restoring()
-    {
-    }
-    protected function restored()
-    {
-    }
+    protected function retrieving() {}
+    protected function retrieved() {}
+    protected function creating() {}
+    protected function created() {}
+    protected function updating() {}
+    protected function updated() {}
+    protected function saving() {}
+    protected function saved() {}
+    protected function deleting() {}
+    protected function deleted() {}
+    protected function restoring() {}
+    protected function restored() {}
 
     // ==================== MAGIC METHODS ====================
 
