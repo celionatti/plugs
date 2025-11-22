@@ -53,7 +53,7 @@ function cleanHtmlText(string $html): string
 function generateSeoTitle(string $title, int $maxLength = 60): string
 {
     $seoTitle = normalizeWhitespace($title);
-    return truncateText($seoTitle, $maxLength);
+    return truncateText($seoTitle, $maxLength, "");
 }
 
 /**
@@ -72,7 +72,7 @@ function generateSeoDescription(
         $text = $fallback . ' - ' . $text;
     }
 
-    return truncateText($text, $maxLength);
+    return truncateText($text, $maxLength, "");
 }
 
 /**
