@@ -3683,6 +3683,326 @@ abstract class PlugModel
     }
 
     /**
+     * Sync pivot table relationships
+     * Replaces all existing relationships with the provided IDs
+     * 
+     * @param string $relation The relation method name
+     * @param array|int $ids Array of IDs or single ID to sync
+     * @param bool $detaching Whether to detach records not in the list
+     * @return array Returns ['attached' => [], 'detached' => [], 'updated' => []]
+     */
+    public function sync(string $relation, $ids, bool $detaching = true): array
+    {
+        // Normalize IDs to array
+        if (!is_array($ids)) {
+            $ids = [$ids];
+        }
+
+        // Get relation configuration
+        $config = $this->getPivotRelationConfig($relation);
+
+        if (!$config) {
+            throw new Exception("Relation {$relation} is not a belongsToMany relationship");
+        }
+
+        extract($config); // $pivotTable, $foreignPivotKey, $relatedPivotKey, $parentKey
+
+        $parentId = $this->getAttribute($parentKey);
+
+        if (!$parentId) {
+            throw new Exception("Parent model must exist before syncing relationships");
+        }
+
+        // Get current relationship IDs
+        $currentIds = $this->getCurrentPivotIds($pivotTable, $foreignPivotKey, $relatedPivotKey, $parentId);
+
+        // Determine what to attach and detach
+        $idsToAttach = array_diff($ids, $currentIds);
+        $idsToDetach = $detaching ? array_diff($currentIds, $ids) : [];
+        $idsToUpdate = array_intersect($ids, $currentIds);
+
+        $changes = [
+            'attached' => [],
+            'detached' => [],
+            'updated' => []
+        ];
+
+        // Begin transaction
+        static::beginTransaction();
+
+        try {
+            // Detach removed relationships
+            if (!empty($idsToDetach)) {
+                $this->detachPivot($pivotTable, $foreignPivotKey, $relatedPivotKey, $parentId, $idsToDetach);
+                $changes['detached'] = $idsToDetach;
+            }
+
+            // Attach new relationships
+            if (!empty($idsToAttach)) {
+                $this->attachPivot($pivotTable, $foreignPivotKey, $relatedPivotKey, $parentId, $idsToAttach);
+                $changes['attached'] = $idsToAttach;
+            }
+
+            // Record updated (existing) relationships
+            $changes['updated'] = $idsToUpdate;
+
+            static::commit();
+
+            // Clear cache if enabled
+            if (static::$cacheEnabled) {
+                static::flushCache();
+            }
+
+            return $changes;
+        } catch (Exception $e) {
+            static::rollBack();
+            throw $e;
+        }
+    }
+
+    /**
+     * Attach relationships to pivot table
+     * Adds new relationships without removing existing ones
+     * 
+     * @param string $relation The relation method name
+     * @param array|int $ids Array of IDs or single ID to attach
+     * @param array $attributes Additional pivot attributes
+     * @param bool $touch Whether to update timestamps
+     * @return void
+     */
+    public function attach(string $relation, $ids, array $attributes = [], bool $touch = true): void
+    {
+        // Normalize IDs to array
+        if (!is_array($ids)) {
+            $ids = [$ids];
+        }
+
+        // Get relation configuration
+        $config = $this->getPivotRelationConfig($relation);
+
+        if (!$config) {
+            throw new Exception("Relation {$relation} is not a belongsToMany relationship");
+        }
+
+        extract($config); // $pivotTable, $foreignPivotKey, $relatedPivotKey, $parentKey
+
+        $parentId = $this->getAttribute($parentKey);
+
+        if (!$parentId) {
+            throw new Exception("Parent model must exist before attaching relationships");
+        }
+
+        // Get existing relationship IDs to avoid duplicates
+        $existingIds = $this->getCurrentPivotIds($pivotTable, $foreignPivotKey, $relatedPivotKey, $parentId);
+
+        // Only attach IDs that don't already exist
+        $idsToAttach = array_diff($ids, $existingIds);
+
+        if (empty($idsToAttach)) {
+            return; // Nothing to attach
+        }
+
+        static::beginTransaction();
+
+        try {
+            $this->attachPivot($pivotTable, $foreignPivotKey, $relatedPivotKey, $parentId, $idsToAttach, $attributes, $touch);
+
+            static::commit();
+
+            // Clear cache if enabled
+            if (static::$cacheEnabled) {
+                static::flushCache();
+            }
+        } catch (Exception $e) {
+            static::rollBack();
+            throw $e;
+        }
+    }
+
+    /**
+     * Detach relationships from pivot table
+     * Removes relationships without affecting others
+     * 
+     * @param string $relation The relation method name
+     * @param array|int|null $ids Array of IDs, single ID, or null to detach all
+     * @return int Number of relationships detached
+     */
+    public function detach(string $relation, $ids = null): int
+    {
+        // Get relation configuration
+        $config = $this->getPivotRelationConfig($relation);
+
+        if (!$config) {
+            throw new Exception("Relation {$relation} is not a belongsToMany relationship");
+        }
+
+        extract($config); // $pivotTable, $foreignPivotKey, $relatedPivotKey, $parentKey
+
+        $parentId = $this->getAttribute($parentKey);
+
+        if (!$parentId) {
+            return 0;
+        }
+
+        // Normalize IDs to array
+        if ($ids !== null && !is_array($ids)) {
+            $ids = [$ids];
+        }
+
+        static::beginTransaction();
+
+        try {
+            $count = $this->detachPivot($pivotTable, $foreignPivotKey, $relatedPivotKey, $parentId, $ids);
+
+            static::commit();
+
+            // Clear cache if enabled
+            if (static::$cacheEnabled) {
+                static::flushCache();
+            }
+
+            return $count;
+        } catch (Exception $e) {
+            static::rollBack();
+            throw $e;
+        }
+    }
+
+    /**
+     * Toggle relationships in pivot table
+     * Attaches if not present, detaches if present
+     * 
+     * @param string $relation The relation method name
+     * @param array|int $ids Array of IDs or single ID to toggle
+     * @return array Returns ['attached' => [], 'detached' => []]
+     */
+    public function toggle(string $relation, $ids): array
+    {
+        // Normalize IDs to array
+        if (!is_array($ids)) {
+            $ids = [$ids];
+        }
+
+        // Get relation configuration
+        $config = $this->getPivotRelationConfig($relation);
+
+        if (!$config) {
+            throw new Exception("Relation {$relation} is not a belongsToMany relationship");
+        }
+
+        extract($config); // $pivotTable, $foreignPivotKey, $relatedPivotKey, $parentKey
+
+        $parentId = $this->getAttribute($parentKey);
+
+        if (!$parentId) {
+            throw new Exception("Parent model must exist before toggling relationships");
+        }
+
+        // Get current relationship IDs
+        $currentIds = $this->getCurrentPivotIds($pivotTable, $foreignPivotKey, $relatedPivotKey, $parentId);
+
+        // Determine what to attach and detach
+        $idsToAttach = array_diff($ids, $currentIds);
+        $idsToDetach = array_intersect($ids, $currentIds);
+
+        $changes = [
+            'attached' => [],
+            'detached' => []
+        ];
+
+        static::beginTransaction();
+
+        try {
+            // Detach existing
+            if (!empty($idsToDetach)) {
+                $this->detachPivot($pivotTable, $foreignPivotKey, $relatedPivotKey, $parentId, $idsToDetach);
+                $changes['detached'] = $idsToDetach;
+            }
+
+            // Attach new
+            if (!empty($idsToAttach)) {
+                $this->attachPivot($pivotTable, $foreignPivotKey, $relatedPivotKey, $parentId, $idsToAttach);
+                $changes['attached'] = $idsToAttach;
+            }
+
+            static::commit();
+
+            // Clear cache if enabled
+            if (static::$cacheEnabled) {
+                static::flushCache();
+            }
+
+            return $changes;
+        } catch (Exception $e) {
+            static::rollBack();
+            throw $e;
+        }
+    }
+
+    /**
+     * Update existing pivot record attributes
+     * 
+     * @param string $relation The relation method name
+     * @param int $id The related model ID
+     * @param array $attributes Attributes to update
+     * @return bool
+     */
+    public function updatePivot(string $relation, int $id, array $attributes): bool
+    {
+        $config = $this->getPivotRelationConfig($relation);
+
+        if (!$config) {
+            throw new Exception("Relation {$relation} is not a belongsToMany relationship");
+        }
+
+        extract($config); // $pivotTable, $foreignPivotKey, $relatedPivotKey, $parentKey
+
+        $parentId = $this->getAttribute($parentKey);
+
+        if (!$parentId) {
+            return false;
+        }
+
+        if (empty($attributes)) {
+            return false;
+        }
+
+        $setClauses = [];
+        $bindings = [];
+
+        foreach ($attributes as $key => $value) {
+            $setClauses[] = "{$key} = ?";
+            $bindings[] = $value;
+        }
+
+        // Add updated_at if timestamps enabled
+        if (in_array('updated_at', array_keys($attributes)) === false) {
+            $setClauses[] = "updated_at = ?";
+            $bindings[] = date('Y-m-d H:i:s');
+        }
+
+        $bindings[] = $parentId;
+        $bindings[] = $id;
+
+        $sql = "UPDATE {$pivotTable} SET " . implode(', ', $setClauses) .
+            " WHERE {$foreignPivotKey} = ? AND {$relatedPivotKey} = ?";
+
+        try {
+            $this->executeQuery($sql, $bindings);
+
+            // Clear cache if enabled
+            if (static::$cacheEnabled) {
+                static::flushCache();
+            }
+
+            return true;
+        } catch (Exception $e) {
+            error_log("Failed to update pivot: " . $e->getMessage());
+            return false;
+        }
+    }
+
+    /**
      * Eager load morphTo relation (polymorphic belongsTo)
      */
     protected function eagerLoadMorphTo(Collection $models, string $relation, $constraints = null): Collection
@@ -3977,7 +4297,7 @@ abstract class PlugModel
             }
 
             return $config;
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             // Fall back to code parsing
             return $this->getRelationConfig($model, $relation, $type);
         }
@@ -4110,6 +4430,150 @@ abstract class PlugModel
         ];
         sort($tables);
         return implode('_', $tables);
+    }
+
+    /**
+     * Get pivot relation configuration
+     */
+    private function getPivotRelationConfig(string $relation): ?array
+    {
+        if (!method_exists($this, $relation)) {
+            return null;
+        }
+
+        // Get the relation method code to extract configuration
+        $reflection = new \ReflectionMethod($this, $relation);
+        $code = $this->getMethodCode($reflection);
+
+        // Check if it's a belongsToMany relation
+        if (strpos($code, 'belongsToMany') === false) {
+            return null;
+        }
+
+        // Try to detect the related class
+        $relatedClass = null;
+        $patterns = [
+            '/belongsToMany\s*\(\s*([A-Za-z0-9_\\\\]+)::class/',
+            '/belongsToMany\s*\(\s*[\'"]([A-Za-z0-9_\\\\]+)[\'"]/',
+        ];
+
+        foreach ($patterns as $pattern) {
+            if (preg_match($pattern, $code, $matches)) {
+                $relatedClass = $matches[1];
+                break;
+            }
+        }
+
+        if (!$relatedClass) {
+            return null;
+        }
+
+        // Generate default pivot configuration
+        $foreignPivotKey = strtolower(class_basename(static::class)) . '_id';
+        $relatedPivotKey = strtolower(class_basename($relatedClass)) . '_id';
+        $parentKey = $this->primaryKey;
+
+        // Generate pivot table name
+        $tables = [
+            strtolower(class_basename(static::class)),
+            strtolower(class_basename($relatedClass)),
+        ];
+        sort($tables);
+        $pivotTable = implode('_', $tables);
+
+        // Try to extract custom parameters from code if provided
+        // This is a basic implementation - you might want to enhance it
+
+        return [
+            'pivotTable' => $pivotTable,
+            'foreignPivotKey' => $foreignPivotKey,
+            'relatedPivotKey' => $relatedPivotKey,
+            'parentKey' => $parentKey,
+            'relatedClass' => $relatedClass,
+        ];
+    }
+
+    /**
+     * Get current pivot IDs
+     */
+    private function getCurrentPivotIds(string $pivotTable, string $foreignPivotKey, string $relatedPivotKey, $parentId): array
+    {
+        $sql = "SELECT {$relatedPivotKey} FROM {$pivotTable} WHERE {$foreignPivotKey} = ?";
+        $stmt = $this->executeQuery($sql, [$parentId]);
+        $results = $stmt->fetchAll(PDO::FETCH_COLUMN);
+
+        return array_map('intval', $results);
+    }
+
+    /**
+     * Attach pivot records
+     */
+    private function attachPivot(string $pivotTable, string $foreignPivotKey, string $relatedPivotKey, $parentId, array $ids, array $attributes = [], bool $touch = true): void
+    {
+        if (empty($ids)) {
+            return;
+        }
+
+        $records = [];
+        $now = date('Y-m-d H:i:s');
+
+        foreach ($ids as $id) {
+            $record = array_merge($attributes, [
+                $foreignPivotKey => $parentId,
+                $relatedPivotKey => $id,
+            ]);
+
+            // Add timestamps if touching
+            if ($touch) {
+                $record['created_at'] = $now;
+                $record['updated_at'] = $now;
+            }
+
+            $records[] = $record;
+        }
+
+        // Batch insert
+        if (!empty($records)) {
+            $columns = array_keys($records[0]);
+            $columnList = implode(', ', $columns);
+            $placeholders = '(' . implode(', ', array_fill(0, count($columns), '?')) . ')';
+            $values = implode(', ', array_fill(0, count($records), $placeholders));
+
+            $sql = "INSERT INTO {$pivotTable} ({$columnList}) VALUES {$values}";
+
+            $bindings = [];
+            foreach ($records as $record) {
+                foreach ($columns as $column) {
+                    $bindings[] = $record[$column] ?? null;
+                }
+            }
+
+            $this->executeQuery($sql, $bindings);
+        }
+    }
+
+    /**
+     * Detach pivot records
+     */
+    private function detachPivot(string $pivotTable, string $foreignPivotKey, string $relatedPivotKey, $parentId, ?array $ids = null): int
+    {
+        if ($ids === null) {
+            // Detach all
+            $sql = "DELETE FROM {$pivotTable} WHERE {$foreignPivotKey} = ?";
+            $bindings = [$parentId];
+        } else {
+            // Detach specific IDs
+            if (empty($ids)) {
+                return 0;
+            }
+
+            $placeholders = implode(',', array_fill(0, count($ids), '?'));
+            $sql = "DELETE FROM {$pivotTable} WHERE {$foreignPivotKey} = ? AND {$relatedPivotKey} IN ({$placeholders})";
+            $bindings = array_merge([$parentId], $ids);
+        }
+
+        $stmt = $this->executeQuery($sql, $bindings);
+        return $stmt->rowCount();
     }
 
     /**
