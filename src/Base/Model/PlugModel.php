@@ -4138,6 +4138,23 @@ abstract class PlugModel
     }
 
     /**
+     * Get a BelongsToMany relationship accessor
+     * This returns a RelationshipProxy that allows chaining: $model->relation()->sync()
+     */
+    protected function getBelongsToManyRelation(string $relation)
+    {
+        // Get relation configuration
+        $config = $this->getPivotRelationConfig($relation);
+
+        if (!$config) {
+            throw new Exception("Relation {$relation} is not a belongsToMany relationship");
+        }
+
+        // Return a relationship proxy that wraps the collection with pivot methods
+        return new BelongsToManyProxy($this, $relation, $config);
+    }
+
+    /**
      * Extract relation configuration from relation method
      * This parses the relation method to get its parameters
      * FIXED VERSION - more robust extraction
@@ -4435,6 +4452,67 @@ abstract class PlugModel
     /**
      * Get pivot relation configuration
      */
+    // private function getPivotRelationConfig(string $relation): ?array
+    // {
+    //     if (!method_exists($this, $relation)) {
+    //         return null;
+    //     }
+
+    //     // Get the relation method code to extract configuration
+    //     $reflection = new \ReflectionMethod($this, $relation);
+    //     $code = $this->getMethodCode($reflection);
+
+    //     // Check if it's a belongsToMany relation
+    //     if (strpos($code, 'belongsToMany') === false) {
+    //         return null;
+    //     }
+
+    //     // Try to detect the related class
+    //     $relatedClass = null;
+    //     $patterns = [
+    //         '/belongsToMany\s*\(\s*([A-Za-z0-9_\\\\]+)::class/',
+    //         '/belongsToMany\s*\(\s*[\'"]([A-Za-z0-9_\\\\]+)[\'"]/',
+    //     ];
+
+    //     foreach ($patterns as $pattern) {
+    //         if (preg_match($pattern, $code, $matches)) {
+    //             $relatedClass = $matches[1];
+    //             break;
+    //         }
+    //     }
+
+    //     if (!$relatedClass) {
+    //         return null;
+    //     }
+
+    //     // Generate default pivot configuration
+    //     $foreignPivotKey = strtolower(class_basename(static::class)) . '_id';
+    //     $relatedPivotKey = strtolower(class_basename($relatedClass)) . '_id';
+    //     $parentKey = $this->primaryKey;
+
+    //     // Generate pivot table name
+    //     $tables = [
+    //         strtolower(class_basename(static::class)),
+    //         strtolower(class_basename($relatedClass)),
+    //     ];
+    //     sort($tables);
+    //     $pivotTable = implode('_', $tables);
+
+    //     // Try to extract custom parameters from code if provided
+    //     // This is a basic implementation - you might want to enhance it
+
+    //     return [
+    //         'pivotTable' => $pivotTable,
+    //         'foreignPivotKey' => $foreignPivotKey,
+    //         'relatedPivotKey' => $relatedPivotKey,
+    //         'parentKey' => $parentKey,
+    //         'relatedClass' => $relatedClass,
+    //     ];
+    // }
+
+    /**
+     * Get pivot relation configuration
+     */
     private function getPivotRelationConfig(string $relation): ?array
     {
         if (!method_exists($this, $relation)) {
@@ -4480,9 +4558,6 @@ abstract class PlugModel
         ];
         sort($tables);
         $pivotTable = implode('_', $tables);
-
-        // Try to extract custom parameters from code if provided
-        // This is a basic implementation - you might want to enhance it
 
         return [
             'pivotTable' => $pivotTable,
@@ -4681,8 +4756,39 @@ abstract class PlugModel
 
     // ==================== MAGIC METHODS ====================
 
+    // public function __call($method, $parameters)
+    // {
+    //     // Handle instance method calls that should use instance variants
+    //     $instanceMethod = 'instance' . ucfirst($method);
+    //     if (method_exists($this, $instanceMethod)) {
+    //         return call_user_func_array([$this, $instanceMethod], $parameters);
+    //     }
+
+    //     $scopeMethod = 'scope' . ucfirst($method);
+    //     if (method_exists($this, $scopeMethod)) {
+    //         array_unshift($parameters, $this);
+    //         return call_user_func_array([$this, $scopeMethod], $parameters);
+    //     }
+
+    //     throw new BadMethodCallException("Method {$method} does not exist.");
+    // }
+
+    /**
+     * Override __call to return relationship proxy for belongsToMany relations
+     */
     public function __call($method, $parameters)
     {
+        // Check if it's a belongsToMany relationship
+        if (method_exists($this, $method)) {
+            $reflection = new \ReflectionMethod($this, $method);
+            $code = $this->getMethodCode($reflection);
+
+            if (strpos($code, 'belongsToMany') !== false) {
+                // Return a proxy that provides attach/sync/detach methods
+                return $this->getBelongsToManyRelation($method);
+            }
+        }
+
         // Handle instance method calls that should use instance variants
         $instanceMethod = 'instance' . ucfirst($method);
         if (method_exists($this, $instanceMethod)) {
