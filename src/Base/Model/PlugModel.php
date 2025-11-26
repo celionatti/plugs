@@ -3271,6 +3271,39 @@ abstract class PlugModel
         return $instance->instanceWhere($ownerKey, $this->getAttribute($foreignKey))->first();
     }
 
+    // protected function belongsToMany($related, $pivotTable = null, $foreignPivotKey = null, $relatedPivotKey = null, $parentKey = null, $relatedKey = null): Collection
+    // {
+    //     $foreignPivotKey = $foreignPivotKey ?? strtolower(class_basename(static::class)) . '_id';
+    //     $relatedPivotKey = $relatedPivotKey ?? strtolower(class_basename($related)) . '_id';
+    //     $parentKey = $parentKey ?? $this->primaryKey;
+    //     $relatedKey = $relatedKey ?? 'id';
+
+    //     if (!$pivotTable) {
+    //         $tables = [
+    //             strtolower(class_basename(static::class)),
+    //             strtolower(class_basename($related)),
+    //         ];
+    //         sort($tables);
+    //         $pivotTable = implode('_', $tables);
+    //     }
+
+    //     $relatedInstance = new $related();
+    //     $relatedTable = $relatedInstance->table;
+
+    //     $sql = "SELECT r.* FROM {$pivotTable} p
+    //             JOIN {$relatedTable} r ON r.{$relatedKey} = p.{$relatedPivotKey}
+    //             WHERE p.{$foreignPivotKey} = ?";
+
+    //     $stmt = $this->executeQuery($sql, [$this->getAttribute($parentKey)]);
+    //     $results = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+    //     $models = array_map(function ($result) use ($relatedInstance) {
+    //         return $relatedInstance->newFromBuilder($result);
+    //     }, $results);
+
+    //     return new Collection($models);
+    // }
+
     protected function belongsToMany($related, $pivotTable = null, $foreignPivotKey = null, $relatedPivotKey = null, $parentKey = null, $relatedKey = null): Collection
     {
         $foreignPivotKey = $foreignPivotKey ?? strtolower(class_basename(static::class)) . '_id';
@@ -3291,8 +3324,8 @@ abstract class PlugModel
         $relatedTable = $relatedInstance->table;
 
         $sql = "SELECT r.* FROM {$pivotTable} p
-                JOIN {$relatedTable} r ON r.{$relatedKey} = p.{$relatedPivotKey}
-                WHERE p.{$foreignPivotKey} = ?";
+            JOIN {$relatedTable} r ON r.{$relatedKey} = p.{$relatedPivotKey}
+            WHERE p.{$foreignPivotKey} = ?";
 
         $stmt = $this->executeQuery($sql, [$this->getAttribute($parentKey)]);
         $results = $stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -3301,7 +3334,20 @@ abstract class PlugModel
             return $relatedInstance->newFromBuilder($result);
         }, $results);
 
-        return new Collection($models);
+        $collection = new Collection($models);
+
+        // Set pivot context for the collection
+        $config = [
+            'pivotTable' => $pivotTable,
+            'foreignPivotKey' => $foreignPivotKey,
+            'relatedPivotKey' => $relatedPivotKey,
+            'parentKey' => $parentKey,
+            'relatedClass' => $related,
+        ];
+
+        $collection->setPivotContext($this, debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS, 2)[1]['function'], $config);
+
+        return $collection;
     }
 
     /**
