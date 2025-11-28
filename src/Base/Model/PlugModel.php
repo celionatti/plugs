@@ -12,6 +12,7 @@ use BadMethodCallException;
 use Plugs\Database\Collection;
 use Plugs\Database\Connection;
 use Plugs\Base\Model\Debuggable;
+use Plugs\Database\BelongsToManyProxy;
 
 abstract class PlugModel
 {
@@ -93,14 +94,34 @@ abstract class PlugModel
 
     protected $dateFormat = 'Y-m-d H:i:s';
     protected $dates = []; // Additional datetime columns beyond timestamps
+    protected $allowedRawFunctions = ['RAND', 'COUNT', 'SUM', 'AVG', 'MAX', 'MIN'];
+    protected static $relationTypes = [];
+    protected $allowRawQueries = false; // Default to secure
 
     public function __construct(array $attributes = [])
     {
         $this->bootIfNotBooted();
+
+        // Validate configuration
+        $this->validateModelConfiguration();
+
         $this->fill($attributes);
         if (!$this->table) {
             $this->table = $this->getTableName();
         }
+    }
+
+    protected function validateModelConfiguration(): void
+    {
+        if (!empty($this->fillable) && !empty($this->guarded) && in_array('*', $this->guarded)) {
+            throw new Exception('Cannot use both fillable and guarded with wildcard');
+        }
+    }
+
+    public function enableRawQueries(bool $enable = true)
+    {
+        $this->allowRawQueries = $enable;
+        return $this;
     }
 
     protected function bootIfNotBooted(): void
@@ -139,6 +160,15 @@ abstract class PlugModel
     public function getTable(): string
     {
         return $this->table;
+    }
+
+    protected function sanitizeColumnName(string $column): string
+    {
+        // Prevent SQL injection in column names
+        if (!preg_match('/^[a-zA-Z0-9_\.]+$/', $column)) {
+            throw new Exception("Invalid column name: {$column}");
+        }
+        return $column;
     }
 
     // ==================== CONNECTION MANAGEMENT ====================
@@ -206,15 +236,14 @@ abstract class PlugModel
         static::$connectionName = $name;
     }
 
-    protected static function getConnection(): Connection|PDO
+    protected static function getConnection(): PDO
     {
         if (static::$connection instanceof PDO) {
             return static::$connection;
         }
 
-        // Otherwise use Connection class
-        // return Connection::getInstance(null, static::$connectionName);
-        return Connection::getInstance();
+        $connection = Connection::getInstance();
+        return $connection instanceof PDO ? $connection : $connection->getPdo();
     }
 
     /**
@@ -352,6 +381,9 @@ abstract class PlugModel
 
     public function useIndex(string $index)
     {
+        if (!preg_match('/^[a-zA-Z0-9_]+$/', $index)) {
+            throw new Exception("Invalid index name: {$index}");
+        }
         $this->query['index_hint'] = $index;
         return $this;
     }
@@ -460,11 +492,10 @@ abstract class PlugModel
             $connection = static::getConnection();
 
             if ($connection instanceof PDO) {
-                // Use original PDO execution
                 $stmt = $connection->prepare($sql);
                 $stmt->execute($bindings);
             } else {
-                // Use Connection class
+                // ✅ Use Connection's query method with pooling
                 $stmt = $connection->query($sql, $bindings);
             }
 
@@ -662,16 +693,6 @@ abstract class PlugModel
     }
 
     // ==================== JSON OPERATIONS ====================
-
-    // public function fromJson(string $json)
-    // {
-    //     $data = json_decode($json, true);
-    //     if (json_last_error() !== JSON_ERROR_NONE) {
-    //         throw new Exception('Invalid JSON: ' . json_last_error_msg());
-    //     }
-    //     return $this->fill($data);
-    // }
-
     public static function createFromJson(string $json)
     {
         $instance = new static();
@@ -773,13 +794,30 @@ abstract class PlugModel
         return $this->inRandomOrder()->limit($count)->get();
     }
 
-    public function orderByRaw(string $expression)
+    public function orderByRaw(string $expression, array $bindings = [])
     {
+        // More strict validation
+        $this->sanitizeRawSql($expression);
+
+        // Only allow specific function patterns
+        if (preg_match('/^([A-Z_]+)\s*\(/', $expression, $matches)) {
+            if (!in_array($matches[1], $this->allowedRawFunctions)) {
+                throw new \InvalidArgumentException("Function '{$matches[1]}' not allowed in ORDER BY");
+            }
+        }
+
+        // Validate entire expression more strictly
+        if (!preg_match('/^[a-zA-Z0-9_\(\)\s,\.]+$/', $expression)) {
+            throw new \InvalidArgumentException("Invalid ORDER BY expression");
+        }
+
         $clone = $this->cloneQuery();
         $clone->query['orderBy'][] = [
             'type' => 'raw',
             'expression' => $expression,
         ];
+        $clone->bindings = array_merge($clone->bindings, $bindings);
+
         return $clone;
     }
 
@@ -863,15 +901,28 @@ abstract class PlugModel
     }
 
     // ==================== ATTRIBUTE CASTING ENHANCEMENTS ====================
-
     // protected function castAttribute($key, $value)
     // {
-    //     if (!isset($this->casts[$key]) || $value === null) {
+    //     if ($value === null && !$this->castNulls) {
+    //         return null;
+    //     }
+
+    //     if (!isset($this->casts[$key])) {
+    //         // Check if it's in the dates array or a timestamp column
+    //         if ($this->isDateAttribute($key)) {
+    //             return $this->asDateTime($value);
+    //         }
     //         return $value;
     //     }
 
     //     $castType = $this->casts[$key];
 
+    //     // Handle null values based on cast type
+    //     if ($value === null) {
+    //         return $this->getNullCastValue($castType);
+    //     }
+
+    //     // Special casts
     //     if ($castType === 'encrypted') {
     //         return $this->decrypt($value);
     //     }
@@ -881,32 +932,62 @@ abstract class PlugModel
     //         return new Collection(is_array($data) ? $data : []);
     //     }
 
+    //     // Standard casts
     //     switch ($castType) {
     //         case 'int':
     //         case 'integer':
     //             return (int) $value;
+
     //         case 'float':
     //         case 'double':
     //         case 'real':
     //             return (float) $value;
+
     //         case 'decimal':
+    //             if (strpos($castType, ':') !== false) {
+    //                 // Handle decimal:2 format
+    //                 $parts = explode(':', $castType);
+    //                 $decimals = isset($parts[1]) ? (int) $parts[1] : 2;
+    //                 return number_format((float) $value, $decimals, '.', '');
+    //             }
     //             return number_format((float) $value, 2, '.', '');
+
     //         case 'string':
     //             return (string) $value;
+
     //         case 'bool':
     //         case 'boolean':
-    //             return (bool) $value;
+    //             return $this->castToBoolean($value);
+
     //         case 'array':
     //         case 'json':
-    //             return is_string($value) ? json_decode($value, true) : $value;
+    //             return $this->fromJson($value);
+
     //         case 'object':
-    //             return is_string($value) ? json_decode($value) : $value;
+    //             return $this->fromJson($value, false);
+
     //         case 'datetime':
     //         case 'date':
-    //             return $value instanceof DateTime ? $value : new DateTime($value);
+    //             return $this->asDateTime($value);
+
     //         case 'timestamp':
-    //             return is_numeric($value) ? $value : strtotime($value);
+    //             return $this->asTimestamp($value);
+
+    //         case 'immutable_datetime':
+    //             return $this->asDateTimeImmutable($value);
+
     //         default:
+    //             // Support for custom cast format like 'datetime:Y-m-d'
+    //             if (strpos($castType, 'datetime:') === 0) {
+    //                 $format = substr($castType, 9);
+    //                 return $this->asDateTime($value, $format);
+    //             }
+
+    //             if (strpos($castType, 'date:') === 0) {
+    //                 $format = substr($castType, 5);
+    //                 return $this->asDateTime($value, $format);
+    //             }
+
     //             return $value;
     //     }
     // }
@@ -920,7 +1001,9 @@ abstract class PlugModel
         if (!isset($this->casts[$key])) {
             // Check if it's in the dates array or a timestamp column
             if ($this->isDateAttribute($key)) {
-                return $this->asDateTime($value);
+                $datetime = $this->asDateTime($value);
+                // Return as string by default for easier usage
+                return $datetime ? $datetime->format($this->dateFormat) : null;
             }
             return $value;
         }
@@ -955,7 +1038,6 @@ abstract class PlugModel
 
             case 'decimal':
                 if (strpos($castType, ':') !== false) {
-                    // Handle decimal:2 format
                     $parts = explode(':', $castType);
                     $decimals = isset($parts[1]) ? (int) $parts[1] : 2;
                     return number_format((float) $value, $decimals, '.', '');
@@ -978,24 +1060,29 @@ abstract class PlugModel
 
             case 'datetime':
             case 'date':
-                return $this->asDateTime($value);
+                $datetime = $this->asDateTime($value);
+                // Return as formatted string to prevent "Object could not be converted to string" errors
+                return $datetime ? $datetime->format($this->dateFormat) : null;
 
             case 'timestamp':
                 return $this->asTimestamp($value);
 
             case 'immutable_datetime':
-                return $this->asDateTimeImmutable($value);
+                $datetime = $this->asDateTimeImmutable($value);
+                return $datetime ? $datetime->format($this->dateFormat) : null;
 
             default:
                 // Support for custom cast format like 'datetime:Y-m-d'
                 if (strpos($castType, 'datetime:') === 0) {
                     $format = substr($castType, 9);
-                    return $this->asDateTime($value, $format);
+                    $datetime = $this->asDateTime($value, $format);
+                    return $datetime ? $datetime->format($format) : null;
                 }
 
                 if (strpos($castType, 'date:') === 0) {
                     $format = substr($castType, 5);
-                    return $this->asDateTime($value, $format);
+                    $datetime = $this->asDateTime($value, $format);
+                    return $datetime ? $datetime->format($format) : null;
                 }
 
                 return $value;
@@ -1164,20 +1251,30 @@ abstract class PlugModel
 
     protected function encrypt(string $value): string
     {
-        // Requires encryption key in config
         $key = getenv('APP_KEY') ?: throw new Exception('APP_KEY not set');
+
+        // Derive a proper key
+        $salt = random_bytes(16);
+        $derivedKey = hash_pbkdf2('sha256', $key, $salt, 10000, 32, true);
+
         $iv = random_bytes(16);
-        $encrypted = openssl_encrypt($value, 'AES-256-CBC', $key, 0, $iv);
-        return base64_encode($iv . $encrypted);
+        $encrypted = openssl_encrypt($value, 'AES-256-CBC', $derivedKey, OPENSSL_RAW_DATA, $iv);
+
+        return base64_encode($salt . $iv . $encrypted);
     }
 
     protected function decrypt(string $value): string
     {
         $key = getenv('APP_KEY') ?: throw new Exception('APP_KEY not set');
         $data = base64_decode($value);
-        $iv = substr($data, 0, 16);
-        $encrypted = substr($data, 16);
-        return openssl_decrypt($encrypted, 'AES-256-CBC', $key, 0, $iv);
+
+        $salt = substr($data, 0, 16);
+        $iv = substr($data, 16, 16);
+        $encrypted = substr($data, 32);
+
+        $derivedKey = hash_pbkdf2('sha256', $key, $salt, 10000, 32, true);
+
+        return openssl_decrypt($encrypted, 'AES-256-CBC', $derivedKey, OPENSSL_RAW_DATA, $iv);
     }
 
     // ==================== MASS ASSIGNMENT PROTECTION ====================
@@ -1312,6 +1409,18 @@ abstract class PlugModel
     }
 
     // ==================== BATCH OPERATIONS ====================
+
+    public static function insertBatch(array $records, int $batchSize = 1000): bool
+    {
+        // Insert in batches for better memory usage
+        $chunks = array_chunk($records, $batchSize);
+
+        foreach ($chunks as $chunk) {
+            static::insert($chunk);
+        }
+
+        return true;
+    }
 
     public static function insert(array $records): bool
     {
@@ -1536,14 +1645,6 @@ abstract class PlugModel
         return $this;
     }
 
-    // protected function isFillable(string $key): bool
-    // {
-    //     if (in_array('*', $this->guarded)) {
-    //         return in_array($key, $this->fillable);
-    //     }
-    //     return !in_array($key, $this->guarded);
-    // }
-
     protected function isFillable(string $key): bool
     {
         // If both are empty, allow everything
@@ -1568,17 +1669,6 @@ abstract class PlugModel
 
         return false;
     }
-
-    // public function setAttribute($key, $value)
-    // {
-    //     $method = 'set' . str_replace('_', '', ucwords($key, '_')) . 'Attribute';
-    //     if (method_exists($this, $method)) {
-    //         $this->attributes[$key] = $this->$method($value);
-    //     } else {
-    //         $this->attributes[$key] = $value;
-    //     }
-    //     return $this;
-    // }
 
     public function setAttribute($key, $value)
     {
@@ -1817,56 +1907,16 @@ abstract class PlugModel
         return $instance;
     }
 
-    // protected function cloneQuery()
-    // {
-    //     $clone = clone $this;
-    //     $clone->query = [
-    //         'select' => $this->query['select'],
-    //         'where' => [],
-    //         'joins' => [],
-    //         'orderBy' => [],
-    //         'groupBy' => [],
-    //         'having' => [],
-    //         'limit' => $this->query['limit'],
-    //         'offset' => $this->query['offset'],
-    //         'withTrashed' => $this->query['withTrashed'],
-    //         'distinct' => $this->query['distinct'],
-    //     ];
-
-    //     // Deep copy arrays
-    //     // $clone->bindings = $this->bindings;
-
-    //     $clone->bindings = array_map(function ($binding) {
-    //         return is_object($binding) ? clone $binding : $binding;
-    //     }, $this->bindings);
-
-    //     foreach ($this->query['where'] as $where) {
-    //         $clone->query['where'][] = $where;
-    //     }
-
-    //     foreach ($this->query['orderBy'] as $order) {
-    //         $clone->query['orderBy'][] = $order;
-    //     }
-
-    //     foreach ($this->query['groupBy'] as $group) {
-    //         $clone->query['groupBy'][] = $group;
-    //     }
-
-    //     foreach ($this->query['having'] as $having) {
-    //         $clone->query['having'][] = $having;
-    //     }
-
-    //     return $clone;
-    // }
-
     protected function cloneQuery()
     {
         $clone = clone $this;
 
-        // Deep copy the query array structure
+        // Deep copy arrays
         $clone->query = [
             'select' => $this->query['select'],
-            'where' => $this->query['where'],  // Keep the where clauses!
+            'where' => array_map(function ($w) {
+                return $w;
+            }, $this->query['where']),
             'joins' => $this->query['joins'],
             'orderBy' => $this->query['orderBy'],
             'groupBy' => $this->query['groupBy'],
@@ -1877,11 +1927,10 @@ abstract class PlugModel
             'distinct' => $this->query['distinct'],
         ];
 
-        // IMPORTANT: Deep copy the bindings array
         $clone->bindings = $this->bindings;
-
-        // IMPORTANT: Preserve eager load relations
         $clone->eagerLoad = $this->eagerLoad;
+        $clone->attributes = []; // Don't copy attributes to avoid mutations
+        $clone->relations = [];  // Don't copy relations
 
         return $clone;
     }
@@ -1913,7 +1962,26 @@ abstract class PlugModel
     public function select(...$columns)
     {
         $clone = $this->cloneQuery();
-        $clone->query['select'] = $columns;
+
+        // ✅ Validate each column
+        $validatedColumns = array_map(function ($col) {
+            if ($col === '*') return '*';
+
+            // Check if it's a function
+            if (strpos($col, '(') !== false) {
+                return $this->sanitizeFunction($col);
+            }
+
+            // Check if it's an alias (column AS alias)
+            if (stripos($col, ' AS ') !== false) {
+                list($column, $alias) = preg_split('/\s+AS\s+/i', $col, 2);
+                return $this->sanitizeColumnName(trim($column)) . ' AS ' . $this->sanitizeColumnName(trim($alias));
+            }
+
+            return $this->sanitizeColumnName($col);
+        }, $columns);
+
+        $clone->query['select'] = $validatedColumns;
         return $clone;
     }
 
@@ -1922,6 +1990,16 @@ abstract class PlugModel
         $clone = $this->cloneQuery();
         $clone->query['select'] = array_merge($clone->query['select'], $columns);
         return $clone;
+    }
+
+    public function scopeWithTrashed($query)
+    {
+        return $query->withTrashed();
+    }
+
+    public function scopeOnlyTrashed($query)
+    {
+        return $query->onlyTrashed();
     }
 
     // ==================== QUERY BUILDER METHODS WITH STATIC SUPPORT ====================
@@ -2029,7 +2107,7 @@ abstract class PlugModel
             'type' => 'basic',
         ];
 
-        $clone->query['bindings'][] = $value;
+        $clone->bindings[] = $value;
 
         return $clone;
     }
@@ -2049,7 +2127,6 @@ abstract class PlugModel
             'type' => 'in',
         ];
 
-        // $clone->query['bindings'] = array_merge($clone->query['bindings'], $values);
         $clone->bindings = array_merge($clone->bindings, $values);
 
         return $clone;
@@ -2070,7 +2147,7 @@ abstract class PlugModel
             'type' => 'notIn',
         ];
 
-        $clone->query['bindings'] = array_merge($clone->query['bindings'], $values);
+        $clone->bindings = array_merge($clone->bindings, $values);
 
         return $clone;
     }
@@ -2112,6 +2189,14 @@ abstract class PlugModel
      */
     public function whereRaw(string $sql, array $bindings = [])
     {
+        if (!$this->allowRawQueries) {
+            throw new BadMethodCallException(
+                "Raw queries are disabled for security. Enable with enableRawQueries() if needed."
+            );
+        }
+
+        $this->sanitizeRawSql($sql);
+
         $clone = $this->cloneQuery();
         $clone->query['where'][] = [
             'type' => 'raw',
@@ -2127,6 +2212,8 @@ abstract class PlugModel
      */
     public function orWhereRaw(string $sql, array $bindings = [])
     {
+        $this->sanitizeRawSql($sql);
+
         $clone = $this->cloneQuery();
         $clone->query['where'][] = [
             'type' => 'raw',
@@ -2139,8 +2226,13 @@ abstract class PlugModel
 
     public function groupBy(...$columns)
     {
+        // ✅ Sanitize all columns
+        $sanitizedColumns = array_map(function ($col) {
+            return $this->sanitizeColumnName($col);
+        }, $columns);
+
         $clone = $this->cloneQuery();
-        $clone->query['groupBy'] = array_merge($clone->query['groupBy'], $columns);
+        $clone->query['groupBy'] = array_merge($clone->query['groupBy'], $sanitizedColumns);
         return $clone;
     }
 
@@ -2153,7 +2245,7 @@ abstract class PlugModel
             'value' => $value,
         ];
 
-        $clone->query['bindings'][] = $value;
+        $clone->bindings[] = $value;
 
         return $clone;
     }
@@ -2165,10 +2257,19 @@ abstract class PlugModel
 
     public function instanceOrderBy(string $column, string $direction = 'ASC')
     {
+        // ✅ Sanitize column name
+        $column = $this->sanitizeColumnName($column);
+
+        // ✅ Validate direction
+        $direction = strtoupper($direction);
+        if (!in_array($direction, ['ASC', 'DESC'])) {
+            throw new \InvalidArgumentException("Invalid sort direction: {$direction}");
+        }
+
         $clone = $this->cloneQuery();
         $clone->query['orderBy'][] = [
             'column' => $column,
-            'direction' => strtoupper($direction),
+            'direction' => $direction,
         ];
         return $clone;
     }
@@ -2448,22 +2549,6 @@ abstract class PlugModel
         }
     }
 
-    // public function get(): Collection
-    // {
-    //     $this->fireModelEvent('retrieving');
-    //     $sql      = $this->buildSelectQuery();
-    //     $bindings = $this->getBindings();
-    //     $stmt     = $this->executeQuery($sql, $bindings);
-    //     $results  = $stmt->fetchAll(PDO::FETCH_ASSOC);
-
-    //     $models = array_map(function ($result) {
-    //         return $this->newFromBuilder($result);
-    //     }, $results);
-
-    //     $this->fireModelEvent('retrieved');
-    //     return new Collection($models);
-    // }
-
     /**
      * Execute query and load all eager relations
      */
@@ -2491,12 +2576,60 @@ abstract class PlugModel
         return $collection;
     }
 
+    protected function sanitizeTableName(string $table): string
+    {
+        // Allow database.table notation
+        if (!preg_match('/^[a-zA-Z0-9_]+(\.[a-zA-Z0-9_]+)?$/', $table)) {
+            throw new \InvalidArgumentException("Invalid table name: {$table}");
+        }
+        return $table;
+    }
+
+    protected function sanitizeFunction(string $expression): string
+    {
+        // Remove extra whitespace
+        $expression = trim($expression);
+
+        // Allow specific SQL functions with safe patterns
+        // Pattern allows: FUNCTION(column) or FUNCTION(column) AS alias
+        $allowedPattern = '/^(COUNT|SUM|AVG|MAX|MIN|DATE|YEAR|MONTH|DAY|CONCAT|COALESCE|IFNULL|NULLIF)\s*\(\s*(\*|[a-zA-Z0-9_\.,\s\*]+)\s*\)(\s+(AS|as)\s+[a-zA-Z0-9_]+)?$/i';
+
+        if (!preg_match($allowedPattern, $expression)) {
+            throw new \InvalidArgumentException("Invalid function expression: {$expression}");
+        }
+
+        return $expression;
+    }
+
     protected function buildSelectQuery(): string
     {
         $distinct = $this->query['distinct'] ? 'DISTINCT ' : '';
-        $sql = "SELECT {$distinct}" . implode(', ', $this->query['select']) . " FROM {$this->table}";
+
+        // Sanitize SELECT columns
+        $selectColumns = array_map(function ($col) {
+            if ($col === '*') return '*';
+
+            // Handle functions like COUNT(*) as count, MAX(id) AS max_id
+            if (preg_match('/\(/', $col)) {
+                return $this->sanitizeFunction($col);
+            }
+
+            // Handle column aliases: column AS alias
+            if (preg_match('/\s+as\s+/i', $col)) {
+                list($column, $alias) = preg_split('/\s+AS\s+/i', $col, 2);
+                return $this->sanitizeColumnName(trim($column)) . ' AS ' . $this->sanitizeColumnName(trim($alias));
+            }
+
+            return $this->sanitizeColumnName($col);
+        }, $this->query['select']);
+
+        $sql = "SELECT {$distinct}" . implode(', ', $selectColumns) . " FROM " . $this->sanitizeTableName($this->table);
 
         $whereClauses = [];
+
+        if (isset($this->query['index_hint'])) {
+            $sql .= " USE INDEX ({$this->query['index_hint']})";
+        }
 
         if (!empty($this->query['where'])) {
             $whereClauses[] = $this->buildWhereClause();
@@ -2547,38 +2680,77 @@ abstract class PlugModel
     protected function buildWhereClause(): string
     {
         $clauses = [];
+
         foreach ($this->query['where'] as $index => $where) {
             $clause = '';
 
             switch ($where['type']) {
                 case 'basic':
-                    $clause = "{$where['column']} {$where['operator']} ?";
+                    // ✅ Sanitize column name
+                    $column = $this->sanitizeColumnName($where['column']);
+                    $clause = "{$column} {$where['operator']} ?";
                     break;
+
                 case 'in':
-                    $placeholders = implode(', ', array_fill(0, count($where['values']), '?'));
-                    $clause = "{$where['column']} IN ({$placeholders})";
-                    break;
                 case 'notIn':
+                    // ✅ Sanitize column name
+                    $column = $this->sanitizeColumnName($where['column']);
                     $placeholders = implode(', ', array_fill(0, count($where['values']), '?'));
-                    $clause = "{$where['column']} NOT IN ({$placeholders})";
+                    $operator = $where['type'] === 'in' ? 'IN' : 'NOT IN';
+                    $clause = "{$column} {$operator} ({$placeholders})";
                     break;
+
                 case 'null':
-                    $clause = "{$where['column']} IS NULL";
-                    break;
                 case 'notNull':
-                    $clause = "{$where['column']} IS NOT NULL";
+                    // ✅ Sanitize column name
+                    $column = $this->sanitizeColumnName($where['column']);
+                    $operator = $where['type'] === 'null' ? 'IS NULL' : 'IS NOT NULL';
+                    $clause = "{$column} {$operator}";
                     break;
+
+                case 'raw':
+                    // ⚠️ Raw clauses are dangerous - validate thoroughly
+                    $clause = $this->sanitizeRawSql($where['sql']);
+                    break;
+
                 case 'nested':
-                    $clause = $where['query']($this)->buildWhereClause();
+                    $clause = '(' . $where['query']->buildWhereClause() . ')';
                     break;
             }
 
             if ($index > 0 && $where['type'] !== 'nested') {
                 $clause = "{$where['boolean']} {$clause}";
             }
+
             $clauses[] = $clause;
         }
+
         return implode(' ', $clauses);
+    }
+
+    protected function sanitizeRawSql(string $sql): string
+    {
+        // Only allow safe patterns in raw SQL
+        $dangerousPatterns = [
+            '/;\s*DROP/i',
+            '/;\s*DELETE/i',
+            '/;\s*UPDATE/i',
+            '/;\s*INSERT/i',
+            '/;\s*CREATE/i',
+            '/;\s*ALTER/i',
+            '/UNION/i',
+            '/--/',
+            '/\/\*/',
+            '/\*\//',
+        ];
+
+        foreach ($dangerousPatterns as $pattern) {
+            if (preg_match($pattern, $sql)) {
+                throw new \InvalidArgumentException("Potentially dangerous SQL pattern detected");
+            }
+        }
+
+        return $sql;
     }
 
     protected function getBindings(): array
@@ -2685,24 +2857,29 @@ abstract class PlugModel
 
     public function save(): bool
     {
-        if ($this->fireModelEvent('saving') === false) {
-            return false;
+        try {
+            if ($this->fireModelEvent('saving') === false) {
+                return false;
+            }
+
+            $this->fireObserverEvent('saving');
+
+            if ($this->exists) {
+                $saved = $this->performUpdate();
+            } else {
+                $saved = $this->performInsert();
+            }
+
+            if ($saved) {
+                $this->fireModelEvent('saved');
+                $this->fireObserverEvent('saved');
+            }
+
+            return $saved;
+        } catch (PDOException $e) {
+            $this->fireModelEvent('saveFailed');
+            throw new PDOException("Failed to save model: " . $e->getMessage(), 0, $e);
         }
-
-        $this->fireObserverEvent('saving');
-
-        if ($this->exists) {
-            $saved = $this->performUpdate();
-        } else {
-            $saved = $this->performInsert();
-        }
-
-        if ($saved) {
-            $this->fireModelEvent('saved');
-            $this->fireObserverEvent('saved');
-        }
-
-        return $saved;
     }
 
     protected function performInsert(): bool
@@ -2842,13 +3019,6 @@ abstract class PlugModel
     {
         return $this->getDirty();
     }
-
-    // public static function create(array $attributes)
-    // {
-    //     $instance = new static($attributes);
-    //     $instance->save();
-    //     return $instance;
-    // }
 
     public static function create(array $attributes)
     {
@@ -3271,39 +3441,6 @@ abstract class PlugModel
         return $instance->instanceWhere($ownerKey, $this->getAttribute($foreignKey))->first();
     }
 
-    // protected function belongsToMany($related, $pivotTable = null, $foreignPivotKey = null, $relatedPivotKey = null, $parentKey = null, $relatedKey = null): Collection
-    // {
-    //     $foreignPivotKey = $foreignPivotKey ?? strtolower(class_basename(static::class)) . '_id';
-    //     $relatedPivotKey = $relatedPivotKey ?? strtolower(class_basename($related)) . '_id';
-    //     $parentKey = $parentKey ?? $this->primaryKey;
-    //     $relatedKey = $relatedKey ?? 'id';
-
-    //     if (!$pivotTable) {
-    //         $tables = [
-    //             strtolower(class_basename(static::class)),
-    //             strtolower(class_basename($related)),
-    //         ];
-    //         sort($tables);
-    //         $pivotTable = implode('_', $tables);
-    //     }
-
-    //     $relatedInstance = new $related();
-    //     $relatedTable = $relatedInstance->table;
-
-    //     $sql = "SELECT r.* FROM {$pivotTable} p
-    //             JOIN {$relatedTable} r ON r.{$relatedKey} = p.{$relatedPivotKey}
-    //             WHERE p.{$foreignPivotKey} = ?";
-
-    //     $stmt = $this->executeQuery($sql, [$this->getAttribute($parentKey)]);
-    //     $results = $stmt->fetchAll(PDO::FETCH_ASSOC);
-
-    //     $models = array_map(function ($result) use ($relatedInstance) {
-    //         return $relatedInstance->newFromBuilder($result);
-    //     }, $results);
-
-    //     return new Collection($models);
-    // }
-
     protected function belongsToMany($related, $pivotTable = null, $foreignPivotKey = null, $relatedPivotKey = null, $parentKey = null, $relatedKey = null): Collection
     {
         $foreignPivotKey = $foreignPivotKey ?? strtolower(class_basename(static::class)) . '_id';
@@ -3393,10 +3530,9 @@ abstract class PlugModel
         foreach ($this->eagerLoad as $relation => $constraints) {
             // Handle nested relations
             if (strpos($relation, '.') !== false) {
-                $models = $this->eagerLoadNestedRelations($models, $relation, $constraints);
-            } else {
-                $models = $this->eagerLoadRelation($models, $relation, $constraints);
+                return $this->eagerLoadNestedRelations($models, $relation, $constraints);
             }
+            $models = $this->eagerLoadRelation($models, $relation, $constraints);
         }
 
         return $models;
@@ -3729,326 +3865,6 @@ abstract class PlugModel
     }
 
     /**
-     * Sync pivot table relationships
-     * Replaces all existing relationships with the provided IDs
-     * 
-     * @param string $relation The relation method name
-     * @param array|int $ids Array of IDs or single ID to sync
-     * @param bool $detaching Whether to detach records not in the list
-     * @return array Returns ['attached' => [], 'detached' => [], 'updated' => []]
-     */
-    public function sync(string $relation, $ids, bool $detaching = true): array
-    {
-        // Normalize IDs to array
-        if (!is_array($ids)) {
-            $ids = [$ids];
-        }
-
-        // Get relation configuration
-        $config = $this->getPivotRelationConfig($relation);
-
-        if (!$config) {
-            throw new Exception("Relation {$relation} is not a belongsToMany relationship");
-        }
-
-        extract($config); // $pivotTable, $foreignPivotKey, $relatedPivotKey, $parentKey
-
-        $parentId = $this->getAttribute($parentKey);
-
-        if (!$parentId) {
-            throw new Exception("Parent model must exist before syncing relationships");
-        }
-
-        // Get current relationship IDs
-        $currentIds = $this->getCurrentPivotIds($pivotTable, $foreignPivotKey, $relatedPivotKey, $parentId);
-
-        // Determine what to attach and detach
-        $idsToAttach = array_diff($ids, $currentIds);
-        $idsToDetach = $detaching ? array_diff($currentIds, $ids) : [];
-        $idsToUpdate = array_intersect($ids, $currentIds);
-
-        $changes = [
-            'attached' => [],
-            'detached' => [],
-            'updated' => []
-        ];
-
-        // Begin transaction
-        static::beginTransaction();
-
-        try {
-            // Detach removed relationships
-            if (!empty($idsToDetach)) {
-                $this->detachPivot($pivotTable, $foreignPivotKey, $relatedPivotKey, $parentId, $idsToDetach);
-                $changes['detached'] = $idsToDetach;
-            }
-
-            // Attach new relationships
-            if (!empty($idsToAttach)) {
-                $this->attachPivot($pivotTable, $foreignPivotKey, $relatedPivotKey, $parentId, $idsToAttach);
-                $changes['attached'] = $idsToAttach;
-            }
-
-            // Record updated (existing) relationships
-            $changes['updated'] = $idsToUpdate;
-
-            static::commit();
-
-            // Clear cache if enabled
-            if (static::$cacheEnabled) {
-                static::flushCache();
-            }
-
-            return $changes;
-        } catch (Exception $e) {
-            static::rollBack();
-            throw $e;
-        }
-    }
-
-    /**
-     * Attach relationships to pivot table
-     * Adds new relationships without removing existing ones
-     * 
-     * @param string $relation The relation method name
-     * @param array|int $ids Array of IDs or single ID to attach
-     * @param array $attributes Additional pivot attributes
-     * @param bool $touch Whether to update timestamps
-     * @return void
-     */
-    public function attach(string $relation, $ids, array $attributes = [], bool $touch = true): void
-    {
-        // Normalize IDs to array
-        if (!is_array($ids)) {
-            $ids = [$ids];
-        }
-
-        // Get relation configuration
-        $config = $this->getPivotRelationConfig($relation);
-
-        if (!$config) {
-            throw new Exception("Relation {$relation} is not a belongsToMany relationship");
-        }
-
-        extract($config); // $pivotTable, $foreignPivotKey, $relatedPivotKey, $parentKey
-
-        $parentId = $this->getAttribute($parentKey);
-
-        if (!$parentId) {
-            throw new Exception("Parent model must exist before attaching relationships");
-        }
-
-        // Get existing relationship IDs to avoid duplicates
-        $existingIds = $this->getCurrentPivotIds($pivotTable, $foreignPivotKey, $relatedPivotKey, $parentId);
-
-        // Only attach IDs that don't already exist
-        $idsToAttach = array_diff($ids, $existingIds);
-
-        if (empty($idsToAttach)) {
-            return; // Nothing to attach
-        }
-
-        static::beginTransaction();
-
-        try {
-            $this->attachPivot($pivotTable, $foreignPivotKey, $relatedPivotKey, $parentId, $idsToAttach, $attributes, $touch);
-
-            static::commit();
-
-            // Clear cache if enabled
-            if (static::$cacheEnabled) {
-                static::flushCache();
-            }
-        } catch (Exception $e) {
-            static::rollBack();
-            throw $e;
-        }
-    }
-
-    /**
-     * Detach relationships from pivot table
-     * Removes relationships without affecting others
-     * 
-     * @param string $relation The relation method name
-     * @param array|int|null $ids Array of IDs, single ID, or null to detach all
-     * @return int Number of relationships detached
-     */
-    public function detach(string $relation, $ids = null): int
-    {
-        // Get relation configuration
-        $config = $this->getPivotRelationConfig($relation);
-
-        if (!$config) {
-            throw new Exception("Relation {$relation} is not a belongsToMany relationship");
-        }
-
-        extract($config); // $pivotTable, $foreignPivotKey, $relatedPivotKey, $parentKey
-
-        $parentId = $this->getAttribute($parentKey);
-
-        if (!$parentId) {
-            return 0;
-        }
-
-        // Normalize IDs to array
-        if ($ids !== null && !is_array($ids)) {
-            $ids = [$ids];
-        }
-
-        static::beginTransaction();
-
-        try {
-            $count = $this->detachPivot($pivotTable, $foreignPivotKey, $relatedPivotKey, $parentId, $ids);
-
-            static::commit();
-
-            // Clear cache if enabled
-            if (static::$cacheEnabled) {
-                static::flushCache();
-            }
-
-            return $count;
-        } catch (Exception $e) {
-            static::rollBack();
-            throw $e;
-        }
-    }
-
-    /**
-     * Toggle relationships in pivot table
-     * Attaches if not present, detaches if present
-     * 
-     * @param string $relation The relation method name
-     * @param array|int $ids Array of IDs or single ID to toggle
-     * @return array Returns ['attached' => [], 'detached' => []]
-     */
-    public function toggle(string $relation, $ids): array
-    {
-        // Normalize IDs to array
-        if (!is_array($ids)) {
-            $ids = [$ids];
-        }
-
-        // Get relation configuration
-        $config = $this->getPivotRelationConfig($relation);
-
-        if (!$config) {
-            throw new Exception("Relation {$relation} is not a belongsToMany relationship");
-        }
-
-        extract($config); // $pivotTable, $foreignPivotKey, $relatedPivotKey, $parentKey
-
-        $parentId = $this->getAttribute($parentKey);
-
-        if (!$parentId) {
-            throw new Exception("Parent model must exist before toggling relationships");
-        }
-
-        // Get current relationship IDs
-        $currentIds = $this->getCurrentPivotIds($pivotTable, $foreignPivotKey, $relatedPivotKey, $parentId);
-
-        // Determine what to attach and detach
-        $idsToAttach = array_diff($ids, $currentIds);
-        $idsToDetach = array_intersect($ids, $currentIds);
-
-        $changes = [
-            'attached' => [],
-            'detached' => []
-        ];
-
-        static::beginTransaction();
-
-        try {
-            // Detach existing
-            if (!empty($idsToDetach)) {
-                $this->detachPivot($pivotTable, $foreignPivotKey, $relatedPivotKey, $parentId, $idsToDetach);
-                $changes['detached'] = $idsToDetach;
-            }
-
-            // Attach new
-            if (!empty($idsToAttach)) {
-                $this->attachPivot($pivotTable, $foreignPivotKey, $relatedPivotKey, $parentId, $idsToAttach);
-                $changes['attached'] = $idsToAttach;
-            }
-
-            static::commit();
-
-            // Clear cache if enabled
-            if (static::$cacheEnabled) {
-                static::flushCache();
-            }
-
-            return $changes;
-        } catch (Exception $e) {
-            static::rollBack();
-            throw $e;
-        }
-    }
-
-    /**
-     * Update existing pivot record attributes
-     * 
-     * @param string $relation The relation method name
-     * @param int $id The related model ID
-     * @param array $attributes Attributes to update
-     * @return bool
-     */
-    public function updatePivot(string $relation, int $id, array $attributes): bool
-    {
-        $config = $this->getPivotRelationConfig($relation);
-
-        if (!$config) {
-            throw new Exception("Relation {$relation} is not a belongsToMany relationship");
-        }
-
-        extract($config); // $pivotTable, $foreignPivotKey, $relatedPivotKey, $parentKey
-
-        $parentId = $this->getAttribute($parentKey);
-
-        if (!$parentId) {
-            return false;
-        }
-
-        if (empty($attributes)) {
-            return false;
-        }
-
-        $setClauses = [];
-        $bindings = [];
-
-        foreach ($attributes as $key => $value) {
-            $setClauses[] = "{$key} = ?";
-            $bindings[] = $value;
-        }
-
-        // Add updated_at if timestamps enabled
-        if (in_array('updated_at', array_keys($attributes)) === false) {
-            $setClauses[] = "updated_at = ?";
-            $bindings[] = date('Y-m-d H:i:s');
-        }
-
-        $bindings[] = $parentId;
-        $bindings[] = $id;
-
-        $sql = "UPDATE {$pivotTable} SET " . implode(', ', $setClauses) .
-            " WHERE {$foreignPivotKey} = ? AND {$relatedPivotKey} = ?";
-
-        try {
-            $this->executeQuery($sql, $bindings);
-
-            // Clear cache if enabled
-            if (static::$cacheEnabled) {
-                static::flushCache();
-            }
-
-            return true;
-        } catch (Exception $e) {
-            error_log("Failed to update pivot: " . $e->getMessage());
-            return false;
-        }
-    }
-
-    /**
      * Eager load morphTo relation (polymorphic belongsTo)
      */
     protected function eagerLoadMorphTo(Collection $models, string $relation, $constraints = null): Collection
@@ -4201,176 +4017,10 @@ abstract class PlugModel
     }
 
     /**
-     * Extract relation configuration from relation method
-     * This parses the relation method to get its parameters
-     * FIXED VERSION - more robust extraction
-     */
-    protected function getRelationConfig($model, string $relation, string $type): array
-    {
-        $reflection = new \ReflectionMethod($model, $relation);
-        $code = $this->getMethodCode($reflection);
-
-        $config = [];
-
-        // Try multiple patterns to extract the related class
-        $classPatterns = [
-            // Pattern 1: $related = ClassName::class or 'ClassName'
-            '/\$related\s*=\s*([A-Za-z0-9_\\\\]+)::class/',
-            '/\$related\s*=\s*[\'"]([A-Za-z0-9_\\\\]+)[\'"]/',
-
-            // Pattern 2: new ClassName()
-            '/new\s+([A-Za-z0-9_\\\\]+)\s*\(/',
-
-            // Pattern 3: ->hasMany(ClassName::class)
-            '/->' . $type . '\s*\(\s*([A-Za-z0-9_\\\\]+)::class/',
-
-            // Pattern 4: ->hasMany('ClassName')
-            '/->' . $type . '\s*\(\s*[\'"]([A-Za-z0-9_\\\\]+)[\'"]/',
-
-            // Pattern 5: return $this->hasMany(ClassName::class)
-            '/return\s+\$this->' . $type . '\s*\(\s*([A-Za-z0-9_\\\\]+)::class/',
-
-            // Pattern 6: Direct call with variable
-            '/\$this->' . $type . '\s*\(\s*\$([a-zA-Z_]+)/',
-        ];
-
-        $relatedClass = null;
-        foreach ($classPatterns as $pattern) {
-            if (preg_match($pattern, $code, $matches)) {
-                $relatedClass = $matches[1];
-
-                // If it's a variable name, try to find its value
-                if (ctype_lower($relatedClass[0])) {
-                    // It's a variable, look for its assignment
-                    $varPattern = '/\$' . $relatedClass . '\s*=\s*([A-Za-z0-9_\\\\]+)::class/';
-                    if (preg_match($varPattern, $code, $varMatches)) {
-                        $relatedClass = $varMatches[1];
-                    }
-                }
-                break;
-            }
-        }
-
-        if (!$relatedClass) {
-            throw new Exception("Could not extract related class for relation: {$relation} in " . get_class($model));
-        }
-
-        // Handle relative class names (without namespace)
-        if (strpos($relatedClass, '\\') === false) {
-            // Try to resolve using the model's namespace
-            $modelNamespace = (new \ReflectionClass($model))->getNamespaceName();
-            $fullClassName = $modelNamespace . '\\' . $relatedClass;
-
-            // Check if the class exists
-            if (class_exists($fullClassName)) {
-                $relatedClass = $fullClassName;
-            } elseif (!class_exists($relatedClass)) {
-                // Try common namespaces
-                $commonNamespaces = [
-                    'App\\Models\\',
-                    'App\\Model\\',
-                    'Models\\',
-                ];
-
-                foreach ($commonNamespaces as $namespace) {
-                    $testClass = $namespace . $relatedClass;
-                    if (class_exists($testClass)) {
-                        $relatedClass = $testClass;
-                        break;
-                    }
-                }
-            }
-        }
-
-        $config['related'] = $relatedClass;
-
-        // Extract parameters based on relation type
-        switch ($type) {
-            case 'hasOne':
-            case 'hasMany':
-                $config['foreignKey'] = $this->extractParameter($code, 'foreignKey') ?? strtolower(class_basename(get_class($model))) . '_id';
-                $config['localKey'] = $this->extractParameter($code, 'localKey') ?? $model->getKeyName();
-                break;
-
-            case 'belongsTo':
-                $config['foreignKey'] = $this->extractParameter($code, 'foreignKey') ?? strtolower($relation) . '_id';
-                $config['ownerKey'] = $this->extractParameter($code, 'ownerKey') ?? 'id';
-                break;
-
-            case 'belongsToMany':
-                $config['pivotTable'] = $this->extractParameter($code, 'pivotTable') ?? $this->getPivotTableName($model, $relatedClass);
-                $config['foreignPivotKey'] = $this->extractParameter($code, 'foreignPivotKey') ?? strtolower(class_basename(get_class($model))) . '_id';
-                $config['relatedPivotKey'] = $this->extractParameter($code, 'relatedPivotKey') ?? strtolower(class_basename($relatedClass)) . '_id';
-                $config['parentKey'] = $this->extractParameter($code, 'parentKey') ?? $model->getKeyName();
-                $config['relatedKey'] = $this->extractParameter($code, 'relatedKey') ?? 'id';
-                break;
-
-            case 'morphTo':
-                $config['typeColumn'] = $this->extractParameter($code, 'type') ?? $relation . '_type';
-                $config['idColumn'] = $this->extractParameter($code, 'id') ?? $relation . '_id';
-                break;
-
-            case 'morphMany':
-                $config['morphType'] = $this->extractParameter($code, 'type') ?? $relation . '_type';
-                $config['morphId'] = $this->extractParameter($code, 'id') ?? $relation . '_id';
-                $config['localKey'] = $this->extractParameter($code, 'localKey') ?? $model->getKeyName();
-                break;
-        }
-
-        return $config;
-    }
-
-    /**
-     * Alternative: Direct method parameter extraction
-     * This is more reliable than regex parsing
-     */
-    protected function getRelationConfigDirect($model, string $relation, string $type): array
-    {
-        // Call the relation method and inspect the result
-        try {
-            // Temporarily disable query execution to inspect the relation setup
-            $result = $model->$relation();
-
-            $config = [];
-
-            // For hasOne/hasMany/belongsTo, the result is usually a query builder or model
-            if ($result instanceof Collection) {
-                // hasMany returned a collection
-                $config['related'] = get_class($result->first() ?? new \stdClass());
-            } elseif ($result instanceof PlugModel) {
-                // hasOne/belongsTo returned a model
-                $config['related'] = get_class($result);
-            } elseif ($result === null) {
-                // Relation returned null, we need to parse the method
-                return $this->getRelationConfig($model, $relation, $type);
-            }
-
-            // Set defaults based on type
-            switch ($type) {
-                case 'hasOne':
-                case 'hasMany':
-                    $config['foreignKey'] = strtolower(class_basename(get_class($model))) . '_id';
-                    $config['localKey'] = $model->getKeyName();
-                    break;
-
-                case 'belongsTo':
-                    $config['foreignKey'] = strtolower($relation) . '_id';
-                    $config['ownerKey'] = 'id';
-                    break;
-            }
-
-            return $config;
-        } catch (Exception $e) {
-            // Fall back to code parsing
-            return $this->getRelationConfig($model, $relation, $type);
-        }
-    }
-
-    /**
      * BEST APPROACH: Use PHP Reflection to get method parameters
      * This is the most reliable method
      */
-    protected function getRelationConfigReflection($model, string $relation, string $type): array
+    protected function getRelationConfig($model, string $relation, string $type): array
     {
         $reflection = new \ReflectionMethod($model, $relation);
 
@@ -4495,66 +4145,6 @@ abstract class PlugModel
         return implode('_', $tables);
     }
 
-    /**
-     * Get pivot relation configuration
-     */
-    // private function getPivotRelationConfig(string $relation): ?array
-    // {
-    //     if (!method_exists($this, $relation)) {
-    //         return null;
-    //     }
-
-    //     // Get the relation method code to extract configuration
-    //     $reflection = new \ReflectionMethod($this, $relation);
-    //     $code = $this->getMethodCode($reflection);
-
-    //     // Check if it's a belongsToMany relation
-    //     if (strpos($code, 'belongsToMany') === false) {
-    //         return null;
-    //     }
-
-    //     // Try to detect the related class
-    //     $relatedClass = null;
-    //     $patterns = [
-    //         '/belongsToMany\s*\(\s*([A-Za-z0-9_\\\\]+)::class/',
-    //         '/belongsToMany\s*\(\s*[\'"]([A-Za-z0-9_\\\\]+)[\'"]/',
-    //     ];
-
-    //     foreach ($patterns as $pattern) {
-    //         if (preg_match($pattern, $code, $matches)) {
-    //             $relatedClass = $matches[1];
-    //             break;
-    //         }
-    //     }
-
-    //     if (!$relatedClass) {
-    //         return null;
-    //     }
-
-    //     // Generate default pivot configuration
-    //     $foreignPivotKey = strtolower(class_basename(static::class)) . '_id';
-    //     $relatedPivotKey = strtolower(class_basename($relatedClass)) . '_id';
-    //     $parentKey = $this->primaryKey;
-
-    //     // Generate pivot table name
-    //     $tables = [
-    //         strtolower(class_basename(static::class)),
-    //         strtolower(class_basename($relatedClass)),
-    //     ];
-    //     sort($tables);
-    //     $pivotTable = implode('_', $tables);
-
-    //     // Try to extract custom parameters from code if provided
-    //     // This is a basic implementation - you might want to enhance it
-
-    //     return [
-    //         'pivotTable' => $pivotTable,
-    //         'foreignPivotKey' => $foreignPivotKey,
-    //         'relatedPivotKey' => $relatedPivotKey,
-    //         'parentKey' => $parentKey,
-    //         'relatedClass' => $relatedClass,
-    //     ];
-    // }
 
     /**
      * Get pivot relation configuration
@@ -4802,28 +4392,30 @@ abstract class PlugModel
 
     // ==================== MAGIC METHODS ====================
 
-    // public function __call($method, $parameters)
-    // {
-    //     // Handle instance method calls that should use instance variants
-    //     $instanceMethod = 'instance' . ucfirst($method);
-    //     if (method_exists($this, $instanceMethod)) {
-    //         return call_user_func_array([$this, $instanceMethod], $parameters);
-    //     }
-
-    //     $scopeMethod = 'scope' . ucfirst($method);
-    //     if (method_exists($this, $scopeMethod)) {
-    //         array_unshift($parameters, $this);
-    //         return call_user_func_array([$this, $scopeMethod], $parameters);
-    //     }
-
-    //     throw new BadMethodCallException("Method {$method} does not exist.");
-    // }
-
     /**
      * Override __call to return relationship proxy for belongsToMany relations
      */
     public function __call($method, $parameters)
     {
+        $class = static::class;
+
+        if (!isset(self::$relationTypes[$class][$method])) {
+            if (method_exists($this, $method)) {
+                $reflection = new \ReflectionMethod($this, $method);
+                $code = $this->getMethodCode($reflection);
+
+                self::$relationTypes[$class][$method] = strpos($code, 'belongsToMany') !== false
+                    ? 'belongsToMany'
+                    : 'other';
+            } else {
+                self::$relationTypes[$class][$method] = null;
+            }
+        }
+
+        if (self::$relationTypes[$class][$method] === 'belongsToMany') {
+            return $this->getBelongsToManyRelation($method);
+        }
+
         // Check if it's a belongsToMany relationship
         if (method_exists($this, $method)) {
             $reflection = new \ReflectionMethod($this, $method);

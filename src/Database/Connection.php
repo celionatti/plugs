@@ -19,19 +19,43 @@ use PDOException;
 class Connection
 {
     private static $instances = [];
-    private static $statementCache = [];
     private static $config = [];
+
+    // Connection Pool Management
+    private static $connectionPools = [];
+    private static $poolConfig = [
+        'min_connections' => 2,      // Minimum connections to keep alive
+        'max_connections' => 10,     // Maximum connections allowed
+        'connection_timeout' => 30,  // Timeout for acquiring connection (seconds)
+        'idle_timeout' => 300,       // How long a connection can be idle (seconds)
+        'validate_on_checkout' => true, // Validate connection before returning
+    ];
+
+    // Prepared Statement Pool
+    private static $statementPool = [];
+    private static $statementPoolSize = 100; // Max cached statements per connection
+
+    // Query Analysis
+    private static $queryStats = [];
+    private static $enableQueryAnalysis = false;
+    private static $queryAnalysisThresholds = [
+        'slow_query_time' => 1.0,    // Seconds
+        'n_plus_one_threshold' => 10, // Similar queries in a row
+    ];
 
     private $pdo;
     private $connectionName;
     private $lastActivityTime;
+    private $isHealthy = true;
+    private $isInPool = false;
+    private $poolId;
     private $connectionAttempts = 0;
     private $maxRetries = 3;
-    private $isHealthy = true;
 
     private function __construct(array $config, string $name = 'default')
     {
         $this->connectionName = $name;
+        $this->poolId = uniqid('conn_', true);
         self::$config[$name] = $config;
         $this->connect($config);
     }
@@ -57,9 +81,10 @@ class Connection
                 );
             }
 
+            // CRITICAL: Disable emulated prepares for security
+            $this->pdo->setAttribute(PDO::ATTR_EMULATE_PREPARES, false);
             $this->pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
             $this->pdo->setAttribute(PDO::ATTR_DEFAULT_FETCH_MODE, PDO::FETCH_ASSOC);
-            $this->pdo->setAttribute(PDO::ATTR_EMULATE_PREPARES, false);
 
             $this->lastActivityTime = time();
             $this->isHealthy = true;
@@ -68,7 +93,7 @@ class Connection
             $this->isHealthy = false;
 
             if ($this->connectionAttempts < $this->maxRetries) {
-                usleep(100000 * $this->connectionAttempts); // Exponential backoff
+                usleep(100000 * $this->connectionAttempts);
                 $this->connect($config);
                 return;
             }
@@ -77,16 +102,6 @@ class Connection
                 "Database connection failed after {$this->maxRetries} attempts: " . $e->getMessage()
             );
         }
-    }
-
-    private function buildOptions(array $config): array
-    {
-        $defaults = [
-            PDO::ATTR_TIMEOUT => $config['timeout'] ?? 5,
-            PDO::ATTR_PERSISTENT => $config['persistent'] ?? false,
-        ];
-
-        return array_merge($defaults, $config['options'] ?? []);
     }
 
     private function buildDsn(array $config): string
@@ -109,77 +124,464 @@ class Connection
         throw new \InvalidArgumentException("Unsupported database driver: {$driver}");
     }
 
-    /**
-     * Get a database connection instance (singleton pattern with lazy loading)
-     * 
-     * @param array|null $config Configuration array or null to use default
-     * @param string $connectionName Name of the connection (for multiple connections)
-     * @return self
-     */
-    public static function getInstance(array|null $config = null, string $connectionName = 'default'): self
+    private function buildOptions(array $config): array
     {
-        if (!isset(self::$instances[$connectionName])) {
-            if ($config === null) {
-                $dbConfig = require BASE_PATH . 'config/database.php';
-                $config = $dbConfig['connections'][$dbConfig['default']];
-            }
+        $defaults = [
+            PDO::ATTR_TIMEOUT => $config['timeout'] ?? 5,
+            PDO::ATTR_PERSISTENT => $config['persistent'] ?? false,
+            PDO::ATTR_EMULATE_PREPARES => false, // CRITICAL for security
+        ];
 
-            self::$instances[$connectionName] = new self($config, $connectionName);
-        } else {
-            // Check if connection is stale and reconnect if needed
-            self::$instances[$connectionName]->ensureConnectionHealth();
-        }
+        return array_merge($defaults, $config['options'] ?? []);
+    }
 
-        return self::$instances[$connectionName];
+    // ==================== CONNECTION POOLING ====================
+
+    /**
+     * Configure connection pool settings
+     */
+    public static function configurePool(array $config): void
+    {
+        self::$poolConfig = array_merge(self::$poolConfig, $config);
     }
 
     /**
-     * Get connection by name from config
-     * 
-     * @param string $name Connection name from config (mysql, pgsql, sqlite)
-     * @return self
+     * Get a connection from the pool (with connection pooling)
      */
-    public static function connection(string $name): self
+    public static function getPooledConnection(string $name = 'default'): self
     {
-        if (!isset(self::$instances[$name])) {
-            $dbConfig = require BASE_PATH . 'config/database.php';
-
-            if (!isset($dbConfig['connections'][$name])) {
-                throw new \InvalidArgumentException("Connection [{$name}] not configured.");
-            }
-
-            self::$instances[$name] = new self($dbConfig['connections'][$name], $name);
-        } else {
-            self::$instances[$name]->ensureConnectionHealth();
+        // Initialize pool if it doesn't exist
+        if (!isset(self::$connectionPools[$name])) {
+            self::$connectionPools[$name] = [
+                'available' => [],
+                'in_use' => [],
+                'total' => 0,
+            ];
         }
 
-        return self::$instances[$name];
+        $pool = &self::$connectionPools[$name];
+
+        // Try to get an available connection
+        while (!empty($pool['available'])) {
+            $conn = array_shift($pool['available']);
+
+            // Validate connection if required
+            if (self::$poolConfig['validate_on_checkout']) {
+                if ($conn->ping() && !$conn->isStale()) {
+                    $pool['in_use'][$conn->poolId] = $conn;
+                    return $conn;
+                } else {
+                    // Connection is bad, destroy it
+                    $conn->disconnect();
+                    $pool['total']--;
+                }
+            } else {
+                $pool['in_use'][$conn->poolId] = $conn;
+                return $conn;
+            }
+        }
+
+        // No available connections, check if we can create a new one
+        if ($pool['total'] < self::$poolConfig['max_connections']) {
+            $config = self::$config[$name] ?? self::loadConfigFromFile($name);
+            $conn = new self($config, $name);
+            $conn->isInPool = true;
+            $pool['in_use'][$conn->poolId] = $conn;
+            $pool['total']++;
+            return $conn;
+        }
+
+        // Pool is full, wait for a connection to become available
+        $startTime = time();
+        $timeout = self::$poolConfig['connection_timeout'];
+
+        while ((time() - $startTime) < $timeout) {
+            usleep(50000); // Wait 50ms
+
+            if (!empty($pool['available'])) {
+                return self::getPooledConnection($name);
+            }
+        }
+
+        throw new \RuntimeException("Connection pool exhausted. Timeout waiting for available connection.");
     }
 
     /**
-     * Ensure connection is healthy and reconnect if needed
+     * Return connection to pool
      */
+    public function release(): void
+    {
+        if (!$this->isInPool) {
+            return; // Not a pooled connection
+        }
+
+        $pool = &self::$connectionPools[$this->connectionName];
+
+        // Remove from in_use
+        if (isset($pool['in_use'][$this->poolId])) {
+            unset($pool['in_use'][$this->poolId]);
+        }
+
+        // Reset connection state
+        $this->resetConnection();
+
+        // Add back to available pool
+        $pool['available'][] = $this;
+        $this->lastActivityTime = time();
+    }
+
+    /**
+     * Reset connection state (rollback transactions, etc.)
+     */
+    private function resetConnection(): void
+    {
+        try {
+            // Rollback any open transactions
+            if ($this->pdo->inTransaction()) {
+                $this->pdo->rollBack();
+            }
+
+            // Clear any temporary tables or session variables if needed
+            // This depends on your application needs
+        } catch (PDOException $e) {
+            // If reset fails, mark connection as unhealthy
+            $this->isHealthy = false;
+        }
+    }
+
+    /**
+     * Check if connection is stale
+     */
+    private function isStale(): bool
+    {
+        $idleTime = time() - $this->lastActivityTime;
+        return $idleTime > self::$poolConfig['idle_timeout'];
+    }
+
+    /**
+     * Close idle connections in pool
+     */
+    public static function pruneIdleConnections(string $name = 'default'): int
+    {
+        if (!isset(self::$connectionPools[$name])) {
+            return 0;
+        }
+
+        $pool = &self::$connectionPools[$name];
+        $pruned = 0;
+        $minConnections = self::$poolConfig['min_connections'];
+
+        // Keep at least min_connections alive
+        while (count($pool['available']) > $minConnections) {
+            $conn = array_shift($pool['available']);
+
+            if ($conn->isStale()) {
+                $conn->disconnect();
+                $pool['total']--;
+                $pruned++;
+            } else {
+                // Put it back if not stale
+                array_unshift($pool['available'], $conn);
+                break;
+            }
+        }
+
+        return $pruned;
+    }
+
+    // ==================== PREPARED STATEMENT POOL ====================
+
+    /**
+     * Get or create a prepared statement (with caching)
+     */
+    public function preparePooled(string $sql): \PDOStatement
+    {
+        $cacheKey = md5($sql);
+
+        if (!isset(self::$statementPool[$this->connectionName])) {
+            self::$statementPool[$this->connectionName] = [];
+        }
+
+        $pool = &self::$statementPool[$this->connectionName];
+
+        // Return cached statement if exists
+        if (isset($pool[$cacheKey])) {
+            return $pool[$cacheKey];
+        }
+
+        // Enforce pool size limit
+        if (count($pool) >= self::$statementPoolSize) {
+            // Remove oldest entry (FIFO)
+            array_shift($pool);
+        }
+
+        // Create and cache new statement
+        $stmt = $this->pdo->prepare($sql);
+        $pool[$cacheKey] = $stmt;
+
+        return $stmt;
+    }
+
+    /**
+     * Clear statement pool
+     */
+    public static function clearStatementPool(?string $name = null): void
+    {
+        if ($name === null) {
+            self::$statementPool = [];
+        } else {
+            unset(self::$statementPool[$name]);
+        }
+    }
+
+    // ==================== QUERY ANALYSIS ====================
+
+    /**
+     * Enable query analysis for detecting N+1 queries
+     */
+    public static function enableQueryAnalysis(bool $enable = true): void
+    {
+        self::$enableQueryAnalysis = $enable;
+    }
+
+    /**
+     * Configure query analysis thresholds
+     */
+    public static function configureQueryAnalysis(array $config): void
+    {
+        self::$queryAnalysisThresholds = array_merge(self::$queryAnalysisThresholds, $config);
+    }
+
+    /**
+     * Execute query with analysis
+     */
+    public function query(string $sql, array $params = []): \PDOStatement
+    {
+        $this->ensureConnectionHealth();
+        $this->lastActivityTime = time();
+
+        $startTime = microtime(true);
+        $backtrace = null;
+
+        if (self::$enableQueryAnalysis) {
+            $backtrace = $this->captureBacktrace();
+        }
+
+        try {
+            $stmt = $this->preparePooled($sql);
+            $stmt->execute($params);
+
+            $executionTime = microtime(true) - $startTime;
+
+            if (self::$enableQueryAnalysis) {
+                $this->analyzeQuery($sql, $params, $executionTime, $backtrace);
+            }
+
+            return $stmt;
+        } catch (PDOException $e) {
+            // Try to reconnect once on connection errors
+            if ($this->isConnectionError($e)) {
+                $this->reconnect();
+                $stmt = $this->preparePooled($sql);
+                $stmt->execute($params);
+                return $stmt;
+            }
+
+            throw $e;
+        }
+    }
+
+    /**
+     * Analyze query for potential issues
+     */
+    private function analyzeQuery(string $sql, array $params, float $executionTime, ?array $backtrace): void
+    {
+        // Normalize SQL for pattern matching
+        $normalizedSql = $this->normalizeSql($sql);
+
+        // Initialize stats for this query pattern
+        if (!isset(self::$queryStats[$normalizedSql])) {
+            self::$queryStats[$normalizedSql] = [
+                'count' => 0,
+                'total_time' => 0,
+                'max_time' => 0,
+                'min_time' => PHP_FLOAT_MAX,
+                'locations' => [],
+                'consecutive_count' => 0,
+                'last_seen' => null,
+            ];
+        }
+
+        $stats = &self::$queryStats[$normalizedSql];
+        $stats['count']++;
+        $stats['total_time'] += $executionTime;
+        $stats['max_time'] = max($stats['max_time'], $executionTime);
+        $stats['min_time'] = min($stats['min_time'], $executionTime);
+
+        // Track query location
+        if ($backtrace) {
+            $location = $this->formatBacktrace($backtrace);
+            if (!in_array($location, $stats['locations'])) {
+                $stats['locations'][] = $location;
+            }
+        }
+
+        // Detect N+1 queries (similar queries executed in quick succession)
+        $currentTime = microtime(true);
+        if ($stats['last_seen'] && ($currentTime - $stats['last_seen']) < 0.1) {
+            $stats['consecutive_count']++;
+
+            if ($stats['consecutive_count'] >= self::$queryAnalysisThresholds['n_plus_one_threshold']) {
+                $this->logWarning("Potential N+1 query detected", [
+                    'query' => $normalizedSql,
+                    'consecutive_count' => $stats['consecutive_count'],
+                    'location' => $location ?? 'unknown',
+                ]);
+            }
+        } else {
+            $stats['consecutive_count'] = 0;
+        }
+        $stats['last_seen'] = $currentTime;
+
+        // Detect slow queries
+        if ($executionTime > self::$queryAnalysisThresholds['slow_query_time']) {
+            $this->logWarning("Slow query detected", [
+                'query' => $normalizedSql,
+                'execution_time' => $executionTime,
+                'location' => $location ?? 'unknown',
+            ]);
+        }
+    }
+
+    /**
+     * Normalize SQL for pattern matching
+     */
+    private function normalizeSql(string $sql): string
+    {
+        // Remove extra whitespace
+        $sql = preg_replace('/\s+/', ' ', $sql);
+
+        // Replace parameter placeholders with generic marker
+        $sql = preg_replace('/\?/', '?', $sql);
+        $sql = preg_replace('/:[a-zA-Z0-9_]+/', ':param', $sql);
+
+        return trim($sql);
+    }
+
+    /**
+     * Capture backtrace for query location
+     */
+    private function captureBacktrace(): array
+    {
+        $trace = debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS, 10);
+
+        // Find the first frame outside this class
+        foreach ($trace as $frame) {
+            if (!isset($frame['class']) || $frame['class'] !== self::class) {
+                return $frame;
+            }
+        }
+
+        return $trace[0] ?? [];
+    }
+
+    /**
+     * Format backtrace for logging
+     */
+    private function formatBacktrace(array $frame): string
+    {
+        $file = $frame['file'] ?? 'unknown';
+        $line = $frame['line'] ?? 0;
+        $function = $frame['function'] ?? 'unknown';
+
+        return "{$file}:{$line} ({$function})";
+    }
+
+    /**
+     * Get query analysis report
+     */
+    public static function getQueryAnalysisReport(): array
+    {
+        $report = [
+            'total_queries' => 0,
+            'unique_queries' => count(self::$queryStats),
+            'slow_queries' => [],
+            'n_plus_one_suspects' => [],
+            'most_frequent' => [],
+        ];
+
+        foreach (self::$queryStats as $sql => $stats) {
+            $report['total_queries'] += $stats['count'];
+
+            $avgTime = $stats['total_time'] / $stats['count'];
+
+            // Identify slow queries
+            if ($stats['max_time'] > self::$queryAnalysisThresholds['slow_query_time']) {
+                $report['slow_queries'][] = [
+                    'query' => $sql,
+                    'max_time' => $stats['max_time'],
+                    'avg_time' => $avgTime,
+                    'count' => $stats['count'],
+                ];
+            }
+
+            // Identify potential N+1 queries
+            if ($stats['count'] > self::$queryAnalysisThresholds['n_plus_one_threshold']) {
+                $report['n_plus_one_suspects'][] = [
+                    'query' => $sql,
+                    'count' => $stats['count'],
+                    'locations' => $stats['locations'],
+                ];
+            }
+        }
+
+        // Sort by frequency
+        $sortedStats = self::$queryStats;
+        uasort($sortedStats, function ($a, $b) {
+            return $b['count'] <=> $a['count'];
+        });
+
+        $report['most_frequent'] = array_slice($sortedStats, 0, 10, true);
+
+        return $report;
+    }
+
+    /**
+     * Reset query statistics
+     */
+    public static function resetQueryStats(): void
+    {
+        self::$queryStats = [];
+    }
+
+    /**
+     * Log warning (extend this to use your logging system)
+     */
+    private function logWarning(string $message, array $context): void
+    {
+        error_log(sprintf(
+            "[DB Warning] %s: %s",
+            $message,
+            json_encode($context, JSON_UNESCAPED_SLASHES)
+        ));
+    }
+
+    // ==================== EXISTING METHODS (Enhanced) ====================
+
     private function ensureConnectionHealth(): void
     {
         $maxIdleTime = self::$config[$this->connectionName]['max_idle_time'] ?? 3600;
 
-        // Check if connection is stale
         if ((time() - $this->lastActivityTime) > $maxIdleTime) {
             $this->reconnect();
             return;
         }
 
-        // Ping database to check if connection is alive
         if (!$this->ping()) {
             $this->reconnect();
         }
     }
 
-    /**
-     * Ping the database to check connection health
-     * 
-     * @return bool
-     */
     public function ping(): bool
     {
         try {
@@ -192,82 +594,56 @@ class Connection
         }
     }
 
-    /**
-     * Reconnect to the database
-     */
     public function reconnect(): void
     {
         $this->disconnect();
         $this->connect(self::$config[$this->connectionName]);
 
         // Clear statement cache for this connection
-        self::$statementCache[$this->connectionName] = [];
+        unset(self::$statementPool[$this->connectionName]);
     }
 
-    /**
-     * Disconnect from database
-     */
     public function disconnect(): void
     {
         $this->pdo = null;
         $this->isHealthy = false;
     }
 
-    /**
-     * Get the current connection name
-     * 
-     * @return string
-     */
-    public function getConnectionName(): string
+    private function isConnectionError(PDOException $e): bool
     {
-        return $this->connectionName;
+        $connectionErrors = ['HY000', '2006', '2013', '08S01'];
+        return in_array($e->getCode(), $connectionErrors, true);
     }
 
-    /**
-     * Check if connection is healthy
-     * 
-     * @return bool
-     */
-    public function isHealthy(): bool
+    // Standard connection method (without pooling)
+    public static function getInstance(array|null $config = null, string $connectionName = 'default'): self
     {
-        return $this->isHealthy && $this->ping();
-    }
-
-    /**
-     * Get all active connections
-     * 
-     * @return array
-     */
-    public static function getActiveConnections(): array
-    {
-        return array_keys(self::$instances);
-    }
-
-    /**
-     * Close all active connections
-     */
-    public static function closeAll(): void
-    {
-        foreach (self::$instances as $instance) {
-            $instance->disconnect();
+        if (!isset(self::$instances[$connectionName])) {
+            if ($config === null) {
+                $config = self::loadConfigFromFile($connectionName);
+            }
+            self::$instances[$connectionName] = new self($config, $connectionName);
+        } else {
+            self::$instances[$connectionName]->ensureConnectionHealth();
         }
 
-        self::$instances = [];
-        self::$statementCache = [];
+        return self::$instances[$connectionName];
     }
 
-    /**
-     * Close specific connection
-     * 
-     * @param string $name Connection name
-     */
-    public static function close(string $name): void
+    private static function loadConfigFromFile(string $name): array
     {
-        if (isset(self::$instances[$name])) {
-            self::$instances[$name]->disconnect();
-            unset(self::$instances[$name]);
-            unset(self::$statementCache[$name]);
+        $dbConfig = require BASE_PATH . 'config/database.php';
+
+        if (!isset($dbConfig['connections'][$name])) {
+            throw new \InvalidArgumentException("Connection [{$name}] not configured.");
         }
+
+        return $dbConfig['connections'][$name];
+    }
+
+    public static function connection(string $name): self
+    {
+        return self::getInstance(null, $name);
     }
 
     public function getPdo(): PDO
@@ -275,70 +651,6 @@ class Connection
         $this->ensureConnectionHealth();
         $this->lastActivityTime = time();
         return $this->pdo;
-    }
-
-    /**
-     * Prepare a statement with caching
-     * 
-     * @param string $sql SQL query
-     * @return \PDOStatement
-     */
-    private function prepareStatement(string $sql): \PDOStatement
-    {
-        $cacheKey = md5($sql);
-
-        if (!isset(self::$statementCache[$this->connectionName][$cacheKey])) {
-            self::$statementCache[$this->connectionName][$cacheKey] = $this->pdo->prepare($sql);
-        }
-
-        return self::$statementCache[$this->connectionName][$cacheKey];
-    }
-
-    /**
-     * Execute a query with parameters
-     * 
-     * @param string $sql SQL query
-     * @param array $params Query parameters
-     * @return \PDOStatement
-     */
-    public function query(string $sql, array $params = []): \PDOStatement
-    {
-        $this->ensureConnectionHealth();
-        $this->lastActivityTime = time();
-
-        try {
-            $stmt = $this->prepareStatement($sql);
-            $stmt->execute($params);
-            return $stmt;
-        } catch (PDOException $e) {
-            // Try to reconnect once on connection errors
-            if ($this->isConnectionError($e)) {
-                $this->reconnect();
-                $stmt = $this->prepareStatement($sql);
-                $stmt->execute($params);
-                return $stmt;
-            }
-
-            throw $e;
-        }
-    }
-
-    /**
-     * Check if exception is a connection error
-     * 
-     * @param PDOException $e
-     * @return bool
-     */
-    private function isConnectionError(PDOException $e): bool
-    {
-        $connectionErrors = [
-            'HY000', // General error
-            '2006',  // MySQL server has gone away
-            '2013',  // Lost connection to MySQL server
-            '08S01', // Communication link failure
-        ];
-
-        return in_array($e->getCode(), $connectionErrors, true);
     }
 
     public function fetch(string $sql, array $params = []): ?array
@@ -386,11 +698,6 @@ class Connection
         return $this->pdo->inTransaction();
     }
 
-    /**
-     * Get connection statistics
-     * 
-     * @return array
-     */
     public function getStats(): array
     {
         return [
@@ -399,23 +706,46 @@ class Connection
             'last_activity' => $this->lastActivityTime,
             'idle_time' => time() - $this->lastActivityTime,
             'in_transaction' => $this->inTransaction(),
-            'cached_statements' => count(self::$statementCache[$this->connectionName] ?? []),
+            'cached_statements' => count(self::$statementPool[$this->connectionName] ?? []),
+            'is_pooled' => $this->isInPool,
         ];
     }
 
-    /**
-     * Clear statement cache for this connection
-     */
-    public function clearStatementCache(): void
+    public static function getPoolStats(string $name = 'default'): array
     {
-        self::$statementCache[$this->connectionName] = [];
+        if (!isset(self::$connectionPools[$name])) {
+            return ['pool_exists' => false];
+        }
+
+        $pool = self::$connectionPools[$name];
+
+        return [
+            'pool_exists' => true,
+            'total_connections' => $pool['total'],
+            'available_connections' => count($pool['available']),
+            'in_use_connections' => count($pool['in_use']),
+            'pool_config' => self::$poolConfig,
+        ];
     }
 
-    /**
-     * Clear all statement caches
-     */
-    public static function clearAllStatementCaches(): void
+    public static function closeAll(): void
     {
-        self::$statementCache = [];
+        foreach (self::$instances as $instance) {
+            $instance->disconnect();
+        }
+
+        // Close all pooled connections
+        foreach (self::$connectionPools as $name => $pool) {
+            foreach ($pool['available'] as $conn) {
+                $conn->disconnect();
+            }
+            foreach ($pool['in_use'] as $conn) {
+                $conn->disconnect();
+            }
+        }
+
+        self::$instances = [];
+        self::$connectionPools = [];
+        self::$statementPool = [];
     }
 }
