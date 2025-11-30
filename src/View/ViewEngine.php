@@ -23,11 +23,16 @@ class ViewEngine
     private bool $cacheEnabled;
     private array $sharedData = [];
     private string $componentPath;
-    private ViewCompiler $viewCompiler;
+    private ?ViewCompiler $viewCompiler = null;
     private array $customDirectives = [];
 
     private const VIEW_EXTENSIONS = ['.plug.php', '.php', '.html'];
     private const PRODUCTION_ERROR_LEVEL = E_ERROR | E_PARSE | E_CORE_ERROR | E_COMPILE_ERROR;
+
+    private ?string $cspNonce = null;
+    private array $compilationAttempts = [];
+    private const MAX_COMPILATIONS_PER_MINUTE = 100;
+    private array $composers = [];
 
     public function __construct(string $viewPath, string $cachePath, bool $cacheEnabled = false)
     {
@@ -39,14 +44,74 @@ class ViewEngine
         $this->ensureDirectoryExists($this->cachePath);
         $this->ensureDirectoryExists($this->componentPath);
 
-        $this->viewCompiler = new ViewCompiler($this);
-        $this->registerDefaultDirectives();
+        // $this->viewCompiler = new ViewCompiler($this);
+        // $this->registerDefaultDirectives();
+    }
+
+    public function setCspNonce(string $nonce): void
+    {
+        $this->cspNonce = $nonce;
+    }
+    public function getCspNonce(): ?string
+    {
+        return $this->cspNonce;
+    }
+
+    private function checkCompilationRateLimit(): void
+    {
+        $minute = floor(time() / 60);
+
+        if (!isset($this->compilationAttempts[$minute])) {
+            // Clean old entries
+            $this->compilationAttempts = [$minute => 0];
+        }
+
+        $this->compilationAttempts[$minute]++;
+
+        if ($this->compilationAttempts[$minute] > self::MAX_COMPILATIONS_PER_MINUTE) {
+            throw new RuntimeException('View compilation rate limit exceeded');
+        }
+    }
+
+    public function composer(string|array $views, callable $callback): void
+    {
+        $views = (array) $views;
+        foreach ($views as $view) {
+            if (!isset($this->composers[$view])) {
+                $this->composers[$view] = [];
+            }
+            $this->composers[$view][] = $callback;
+        }
+    }
+
+    private function applyComposers(string $view, array $data): array
+    {
+        if (isset($this->composers[$view])) {
+            foreach ($this->composers[$view] as $composer) {
+                $result = $composer($data);
+                if (is_array($result)) {
+                    $data = array_merge($data, $result);
+                }
+            }
+        }
+
+        // Also check for wildcard composers
+        if (isset($this->composers['*'])) {
+            foreach ($this->composers['*'] as $composer) {
+                $result = $composer($data);
+                if (is_array($result)) {
+                    $data = array_merge($data, $result);
+                }
+            }
+        }
+
+        return $data;
     }
 
     public function directive(string $name, callable $handler): void
     {
         $this->customDirectives[$name] = $handler;
-        $this->viewCompiler->registerCustomDirective($name, $handler);
+        $this->getCompiler()->registerCustomDirective($name, $handler);
     }
 
     public function hasDirective(string $name): bool
@@ -140,7 +205,7 @@ class ViewEngine
 
             $slot = '';
             if ($slotId) {
-                $compiledSlot = $this->viewCompiler->getCompiledSlot($slotId);
+                $compiledSlot = $this->getCompiler()->getCompiledSlot($slotId);
                 if (!empty($compiledSlot)) {
                     $slot = $this->executeCompiledContent($compiledSlot, $data);
                 }
@@ -196,7 +261,7 @@ class ViewEngine
 
     public function clearCache(): void
     {
-        $this->viewCompiler->clearCache();
+        $this->getCompiler()->clearCache();
 
         if ($this->cacheEnabled && is_dir($this->cachePath)) {
             $pattern = $this->cachePath . DIRECTORY_SEPARATOR . '*.php';
@@ -296,7 +361,7 @@ class ViewEngine
     private function renderDirect(string $viewFile, array $data): string
     {
         $content = file_get_contents($viewFile);
-        $compiledContent = $this->viewCompiler->compile($content);
+        $compiledContent = $this->getCompiler()->compile($content);
         $compiledContent = $this->stripStrictTypesDeclaration($compiledContent);
 
         extract($data, EXTR_SKIP);
@@ -376,7 +441,7 @@ class ViewEngine
         }
 
         $parentContent = file_get_contents($parentFile);
-        $compiledParent = $this->viewCompiler->compile($parentContent);
+        $compiledParent = $this->getCompiler()->compile($parentContent);
         $compiledParent = $this->stripStrictTypesDeclaration($compiledParent);
 
         // FIX: Pass both sections and stacks to parent
@@ -413,11 +478,22 @@ class ViewEngine
 
     private function compile(string $viewFile, string $compiled): void
     {
+        $this->checkCompilationRateLimit();
+
         $content = file_get_contents($viewFile);
-        $content = $this->viewCompiler->compile($content);
+        $content = $this->getCompiler()->compile($content);
         $content = $this->stripStrictTypesDeclaration($content);
 
         file_put_contents($compiled, $content, LOCK_EX);
+    }
+
+    private function getCompiler(): ViewCompiler
+    {
+        if ($this->viewCompiler === null) {
+            $this->viewCompiler = new ViewCompiler($this);
+            $this->registerDefaultDirectives();
+        }
+        return $this->viewCompiler;
     }
 
     private function getViewPath(string $view): string

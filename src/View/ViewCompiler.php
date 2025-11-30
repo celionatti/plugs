@@ -29,6 +29,8 @@ class ViewCompiler
     private ?ViewEngine $viewEngine;
     private array $compilationCache = [];
     private array $customDirectives = [];
+    private array $verbatimBlocks = [];
+    private array $forElseVars = [];
     private const MAX_CACHE_SIZE = 1000;
 
     public function __construct(?ViewEngine $viewEngine = null)
@@ -113,21 +115,20 @@ class ViewCompiler
     {
         $attributesArray = $this->parseAttributes($attributes);
         $dataPhp = $this->buildDataArray($attributesArray);
-
+        // NEW: Create attributes bag for unhandled attributes
+        $attributesBag = sprintf(
+            "'__attributes' => new \\Plugs\\View\\ComponentAttributes([%s])",
+            $dataPhp
+        );
         if (!empty(trim($slotContent))) {
             $slotId = uniqid('slot_', true);
             $this->componentData[$slotId] = $slotContent;
-
-            if (!empty($dataPhp)) {
-                $dataPhp .= ', ';
-            }
-            $dataPhp .= sprintf("'__slot_id' => '%s'", $slotId);
+            $attributesBag .= sprintf(", '__slot_id' => '%s'", $slotId);
         }
-
         return sprintf(
             '<?php echo $view->renderComponent(\'%s\', [%s]); ?>',
             addslashes($componentName),
-            $dataPhp
+            $attributesBag
         );
     }
 
@@ -172,6 +173,14 @@ class ViewCompiler
         // 10. Echo statements LAST (after all directives)
         $content = $this->compileRawEchos($content);
         $content = $this->compileEscapedEchos($content);
+
+        // Restore verbatim blocks LAST
+        if (!empty($this->verbatimBlocks)) {
+            foreach ($this->verbatimBlocks as $placeholder => $original) {
+                $content = str_replace($placeholder, $original, $content);
+            }
+            $this->verbatimBlocks = [];
+        }
 
         return $content;
     }
@@ -282,10 +291,9 @@ class ViewCompiler
 
     private function compileVerbatim(string $content): string
     {
-        // Store verbatim blocks and replace them with placeholders
-        static $verbatimBlocks = [];
-
-        return preg_replace_callback(
+        // Store verbatim blocks
+        $verbatimBlocks = [];
+        $content = preg_replace_callback(
             '/@verbatim(.*?)@endverbatim/s',
             function ($matches) use (&$verbatimBlocks) {
                 $placeholder = '___VERBATIM_' . md5($matches[1]) . '___';
@@ -294,6 +302,10 @@ class ViewCompiler
             },
             $content
         );
+
+        // Store for later restoration
+        $this->verbatimBlocks = $verbatimBlocks;
+        return $content;
     }
 
     private function compilePhp(string $content): string
@@ -371,6 +383,43 @@ class ViewCompiler
 
     private function compileLoops(string $content): string
     {
+        // Reset forelse tracking
+        $this->forElseVars = [];
+
+        // @forelse...@empty...@endforelse (Process FIRST before @foreach to avoid conflicts)
+        $content = preg_replace_callback(
+            '/@forelse\s*\((.+?)\s+as\s+(.+?)\)(.*?)@empty(.*?)@endforelse/s',
+            function ($matches) {
+                $array = trim($matches[1]);
+                $iteration = trim($matches[2]);
+                $loopContent = $matches[3];
+                $emptyContent = $matches[4];
+                $emptyVar = '__empty_' . md5($array . uniqid());
+
+                // Extract variable name for safety check
+                if (preg_match('/^(\$[\w]+)/', $array, $varMatch)) {
+                    $varName = $varMatch[1];
+                } else {
+                    $varName = $array;
+                }
+
+                return sprintf(
+                    '<?php $%s = true; if(isset(%s) && is_iterable(%s) && count((array)%s) > 0): foreach (%s as %s): $%s = false; ?>%s<?php endforeach; endif; if($%s): ?>%s<?php endif; ?>',
+                    $emptyVar,
+                    $varName,
+                    $array,
+                    $array,
+                    $array,
+                    $iteration,
+                    $emptyVar,
+                    $loopContent,
+                    $emptyVar,
+                    $emptyContent
+                );
+            },
+            $content
+        );
+
         // @foreach with safety checks
         $content = preg_replace_callback(
             '/@foreach\s*\((.+?)\s+as\s+(.+?)\)/s',
@@ -378,6 +427,7 @@ class ViewCompiler
                 $array = trim($matches[1]);
                 $iteration = trim($matches[2]);
 
+                // Extract variable name for safety check
                 if (preg_match('/^(\$[\w]+)/', $array, $varMatch)) {
                     $varName = $varMatch[1];
                 } else {
@@ -404,30 +454,7 @@ class ViewCompiler
         $content = preg_replace('/@while\s*\((.+?)\)/s', '<?php while ($1): ?>', $content);
         $content = preg_replace('/@endwhile\s*(?:\r?\n)?/', '<?php endwhile; ?>', $content);
 
-        // @forelse
-        $content = preg_replace_callback(
-            '/@forelse\s*\((.+?)\s+as\s+(.+?)\)/s',
-            function ($matches) {
-                $array = trim($matches[1]);
-                $iteration = trim($matches[2]);
-                $emptyVar = '__empty_' . md5($array);
-
-                return sprintf(
-                    '<?php $%s = true; if(isset(%s) && is_iterable(%s)): foreach (%s as %s): $%s = false; ?>',
-                    $emptyVar,
-                    $array,
-                    $array,
-                    $array,
-                    $iteration,
-                    $emptyVar
-                );
-            },
-            $content
-        );
-        $content = preg_replace('/@empty\s*(?:\r?\n)?/', '<?php endforeach; endif; if($__empty_' . '[^:]+' . '): ?>', $content);
-        $content = preg_replace('/@endforelse\s*(?:\r?\n)?/', '<?php endif; ?>', $content);
-
-        // @continue
+        // @continue with optional condition
         $content = preg_replace_callback(
             '/@continue(?:\s*\((.+?)\))?/s',
             function ($matches) {
@@ -439,7 +466,7 @@ class ViewCompiler
             $content
         );
 
-        // @break
+        // @break with optional condition
         $content = preg_replace_callback(
             '/@break(?:\s*\((.+?)\))?/s',
             function ($matches) {
@@ -461,7 +488,9 @@ class ViewCompiler
             function ($matches) {
                 $view = $matches[1];
 
-                if (strpos($view, '..') !== false || strpos($view, DIRECTORY_SEPARATOR) === 0) {
+                // Normalize and validate path
+                $view = str_replace(['\\', '/'], '.', $view);
+                if (preg_match('/[^a-zA-Z0-9._-]/', $view) || strpos($view, '..') !== false) {
                     return sprintf('<?php /* Invalid include path: %s */ ?>', htmlspecialchars($view));
                 }
 
@@ -555,8 +584,8 @@ class ViewCompiler
         $content = preg_replace(
             '/@endpush\s*(?:\r?\n)?/',
             '<?php if (isset($__currentStack)) { ' .
-                'if (!isset($__stacks[$__currentStack])) { $__stacks[$__currentStack] = []; } ' .
-                '$__stacks[$__currentStack][] = ob_get_clean(); unset($__currentStack); } ?>',
+            'if (!isset($__stacks[$__currentStack])) { $__stacks[$__currentStack] = []; } ' .
+            '$__stacks[$__currentStack][] = ob_get_clean(); unset($__currentStack); } ?>',
             $content
         );
 
@@ -573,8 +602,8 @@ class ViewCompiler
         $content = preg_replace(
             '/@endprepend\s*(?:\r?\n)?/',
             '<?php if (isset($__currentStack)) { ' .
-                'if (!isset($__stacks[$__currentStack])) { $__stacks[$__currentStack] = []; } ' .
-                'array_unshift($__stacks[$__currentStack], ob_get_clean()); unset($__currentStack, $__isPrepend); } ?>',
+            'if (!isset($__stacks[$__currentStack])) { $__stacks[$__currentStack] = []; } ' .
+            'array_unshift($__stacks[$__currentStack], ob_get_clean()); unset($__currentStack, $__isPrepend); } ?>',
             $content
         );
 
@@ -596,7 +625,7 @@ class ViewCompiler
         return preg_replace(
             '/@csrf\s*(?:\r?\n)?/',
             '<?php echo function_exists(\'csrf_field\') ? csrf_field() : ' .
-                '\'<input type="hidden" name="_token" value="\' . ($_SESSION[\'_csrf_token\'] ?? \'\') . \'">\'; ?>',
+            '\'<input type="hidden" name="_token" value="\' . ($_SESSION[\'_csrf_token\'] ?? \'\') . \'">\'; ?>',
             $content
         );
     }
@@ -636,7 +665,7 @@ class ViewCompiler
                 $field = $matches[1];
                 return sprintf(
                     '<?php if (isset($errors) && $errors->has(\'%s\')): ' .
-                        '$message = $errors->first(\'%s\'); ?>',
+                    '$message = $errors->first(\'%s\'); ?>',
                     addslashes($field),
                     addslashes($field)
                 );
@@ -654,6 +683,51 @@ class ViewCompiler
         return preg_replace(
             '/@json\s*\((.+?)\)/',
             '<?php echo json_encode($1, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT); ?>',
+            $content
+        );
+    }
+
+    /**
+     * @jsonScript($data, 'variableName')
+     * Output JSON in a script tag with CSP nonce support
+     */
+    private function compileJsonScript(string $content): string
+    {
+        return preg_replace_callback(
+            '/@jsonScript\s*\(\s*(.+?)\s*,\s*[\'"](.+?)[\'"]\s*\)/',
+            function ($matches) {
+                $data = $matches[1];
+                $varName = $matches[2];
+                return sprintf(
+                    '<?php $__nonce = isset($view) ? $view->getCspNonce() : null; ' .
+                    'echo "<script" . ($__nonce ? " nonce=\"{$__nonce}\"" : "") . ">" . ' .
+                    '"var %s = " . json_encode(%s, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT) . ";" . ' .
+                    '"</script>"; ?>',
+                    addslashes($varName),
+                    $data
+                );
+            },
+            $content
+        );
+    }
+
+    /**
+     * @class(['btn', 'btn-primary' => $isPrimary, 'disabled' => !$isActive])
+     * Compile conditional class attributes
+     */
+    private function compileClass(string $content): string
+    {
+        return preg_replace_callback(
+            '/@class\s*\((\[.+?\])\)/s',
+            function ($matches) {
+                return sprintf(
+                    '<?php echo \'class="\' . implode(\' \', array_filter(array_map(function($k, $v) {
+                    return is_int($k) ? $v : ($v ? $k : null);
+                }, array_keys(%s), array_values(%s)))) . \'"\'; ?>',
+                    $matches[1],
+                    $matches[1]
+                );
+            },
             $content
         );
     }
