@@ -6,7 +6,7 @@ namespace Plugs\Http;
 
 /*
 |--------------------------------------------------------------------------
-| HTTP Class
+| HTTPClient Class
 |--------------------------------------------------------------------------
 |
 | This class provides a fluent interface for making HTTP requests using
@@ -19,7 +19,7 @@ use GuzzleHttp\Exception\RequestException;
 use GuzzleHttp\Promise\PromiseInterface;
 use Psr\Http\Message\ResponseInterface;
 
-class HTTP
+class HTTPClient
 {
     private $client;
     private $options = [];
@@ -201,25 +201,25 @@ class HTTP
     {
         $options = $this->buildOptions();
         $fullUrl = $this->buildUrl($url);
-        
+
         $attempts = 0;
         $maxAttempts = $this->retries + 1;
-        
+
         while ($attempts < $maxAttempts) {
             try {
                 $response = $this->client->request($method, $fullUrl, $options);
                 return new HTTPResponse($response);
             } catch (RequestException $e) {
                 $attempts++;
-                
+
                 if ($attempts >= $maxAttempts) {
                     return new HTTPResponse($e->getResponse(), $e);
                 }
-                
+
                 usleep($this->retryDelay * 1000);
             }
         }
-        
+
         throw new \RuntimeException('Failed to send request');
     }
 
@@ -227,7 +227,7 @@ class HTTP
     {
         $options = $this->buildOptions();
         $fullUrl = $this->buildUrl($url);
-        
+
         return $this->client->requestAsync($method, $fullUrl, $options);
     }
 
@@ -236,38 +236,38 @@ class HTTP
         if (filter_var($url, FILTER_VALIDATE_URL)) {
             return $url;
         }
-        
+
         return $this->baseUri . '/' . ltrim($url, '/');
     }
 
     private function buildOptions(): array
     {
         $options = $this->options;
-        
+
         if (!empty($this->headers)) {
             $options['headers'] = $this->headers;
         }
-        
+
         if (!empty($this->queryParams)) {
             $options['query'] = $this->queryParams;
         }
-        
+
         if ($this->jsonData !== null) {
             $options['json'] = $this->jsonData;
         } elseif (!empty($this->formParams)) {
             $options['form_params'] = $this->formParams;
         }
-        
+
         $options['timeout'] = $this->timeout;
         $options['connect_timeout'] = $this->connectTimeout;
         $options['verify'] = $this->verify;
-        
+
         $options['allow_redirects'] = $this->allowRedirects ? [
             'max' => $this->maxRedirects,
             'strict' => true,
             'referer' => true,
         ] : false;
-        
+
         return $options;
     }
 
@@ -285,7 +285,7 @@ class HTTP
         $this->retries = 0;
         $this->retryDelay = 1000;
         $this->options = [];
-        
+
         return $this;
     }
 }

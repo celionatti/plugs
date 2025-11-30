@@ -55,7 +55,8 @@ class Connection
     private function __construct(array $config, string $name = 'default')
     {
         $this->connectionName = $name;
-        $this->poolId = uniqid('conn_', true);
+        // $this->poolId = uniqid('conn_', true);
+        $this->poolId = bin2hex(random_bytes(16));
         self::$config[$name] = $config;
         $this->connect($config);
     }

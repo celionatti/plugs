@@ -33,6 +33,8 @@ class ServerRequest implements ServerRequestInterface
     private $parsedBody = null;
     private array $attributes = [];
     private array $headerNames = [];
+    private static array $trustedProxies = [];
+    private static array $trustedHosts = [];
 
     private const MAX_JSON_BODY_SIZE = 10485760;
 
@@ -175,10 +177,14 @@ class ServerRequest implements ServerRequestInterface
         return new Uri($uriString);
     }
 
+    public static function setTrustedHosts(array $hosts): void
+    {
+        self::$trustedHosts = $hosts;
+    }
+
     private static function getHost(): string
     {
         $host = '';
-
         if (!empty($_SERVER['HTTP_HOST'])) {
             $host = $_SERVER['HTTP_HOST'];
         } elseif (!empty($_SERVER['SERVER_NAME'])) {
@@ -188,16 +194,32 @@ class ServerRequest implements ServerRequestInterface
         } else {
             $host = 'localhost';
         }
-
         if (strpos($host, ':') !== false) {
             $host = preg_replace('/:\d+$/', '', $host);
         }
+        $host = strtolower($host);
+        // Validate against trusted hosts if configured
+        if (!empty(self::$trustedHosts)) {
+            $isTrusted = false;
+            foreach (self::$trustedHosts as $trustedHost) {
+                // Support wildcard subdomains like ".example.com"
+                if (
+                    $trustedHost === $host ||
+                    (str_starts_with($trustedHost, '.') && str_ends_with($host, $trustedHost))
+                ) {
+                    $isTrusted = true;
+                    break;
+                }
+            }
 
+            if (!$isTrusted) {
+                return 'localhost'; // or throw exception in strict mode
+            }
+        }
         if (!preg_match('/^[a-zA-Z0-9.-]+$/', $host)) {
             return 'localhost';
         }
-
-        return strtolower($host);
+        return $host;
     }
 
     private static function getPort(string $scheme): ?int
@@ -536,6 +558,11 @@ class ServerRequest implements ServerRequestInterface
         return $this->isJson() || $this->isAjax();
     }
 
+    public static function setTrustedProxies(array $proxies): void
+    {
+        self::$trustedProxies = $proxies;
+    }
+
     /**
      * Get client IP address
      * 
@@ -543,21 +570,27 @@ class ServerRequest implements ServerRequestInterface
      */
     public function getClientIp(): ?string
     {
-        // Check proxy headers first
+        $remoteAddr = $this->serverParams['REMOTE_ADDR'] ?? null;
+        // Only trust proxy headers if REMOTE_ADDR is in trusted proxies list
+        if (empty(self::$trustedProxies)) {
+            return $remoteAddr;
+        }
+        $isTrusted = false;
+        foreach (self::$trustedProxies as $proxy) {
+            if ($proxy === '*' || $proxy === $remoteAddr) {
+                $isTrusted = true;
+                break;
+            }
+        }
+        if (!$isTrusted) {
+            return $remoteAddr;
+        }
+        // Now safe to check proxy headers
         if (!empty($this->serverParams['HTTP_X_FORWARDED_FOR'])) {
             $ips = explode(',', $this->serverParams['HTTP_X_FORWARDED_FOR']);
             return trim($ips[0]);
         }
-
-        if (!empty($this->serverParams['HTTP_X_REAL_IP'])) {
-            return $this->serverParams['HTTP_X_REAL_IP'];
-        }
-
-        if (!empty($this->serverParams['HTTP_CLIENT_IP'])) {
-            return $this->serverParams['HTTP_CLIENT_IP'];
-        }
-
-        return $this->serverParams['REMOTE_ADDR'] ?? null;
+        return $remoteAddr;
     }
 
     /**
