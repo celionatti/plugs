@@ -302,13 +302,24 @@ class UploadedFile
             return null;
         }
 
+        // Try width/height attributes first
         if (
-            preg_match('/width=["\'](\d+)["\']/', $content, $width) &&
-            preg_match('/height=["\'](\d+)["\']/', $content, $height)
+            preg_match('/width=["\']?(\d+(?:\.\d+)?)["\']?/', $content, $width) &&
+            preg_match('/height=["\']?(\d+(?:\.\d+)?)["\']?/', $content, $height)
         ) {
             return [
-                'width' => (int) $width[1],
-                'height' => (int) $height[1],
+                'width' => (int) round((float) $width[1]),
+                'height' => (int) round((float) $height[1]),
+                'type' => 0,
+                'mime' => 'image/svg+xml'
+            ];
+        }
+
+        // Try viewBox as fallback
+        if (preg_match('/viewBox=["\'][\d\s]+\s+(\d+(?:\.\d+)?)\s+(\d+(?:\.\d+)?)["\']/', $content, $viewBox)) {
+            return [
+                'width' => (int) round((float) $viewBox[1]),
+                'height' => (int) round((float) $viewBox[2]),
                 'type' => 0,
                 'mime' => 'image/svg+xml'
             ];

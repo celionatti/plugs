@@ -45,6 +45,8 @@ class FileUploader
     private LoggerInterface $logger;
     private int $maxRetries = 10;
     private array $uploadCounts = [];
+    private ?int $maxFilesPerUpload = null;
+    private ?int $maxUploadSize = null;
     private int $maxUploadsPerMinute = 10;
     private bool $createSecurityFiles = true;
     private bool $securityFilesCreated = false;
@@ -57,6 +59,8 @@ class FileUploader
         'webp_quality' => 85
     ];
     private string $baseUrl = '/uploads';
+    private bool $preserveOriginalName = false;
+    private array $thumbnailSizes = [];
 
     public function __construct(?string $uploadPath = null, ?LoggerInterface $logger = null)
     {
@@ -143,6 +147,8 @@ class FileUploader
 
     private function ensureDirectoryExists(string $path): void
     {
+        clearstatcache(true, $path);
+
         if (!is_dir($path)) {
             if (!@mkdir($path, 0755, true) && !is_dir($path)) {
                 throw new RuntimeException("Failed to create upload directory: {$path}");
@@ -307,6 +313,24 @@ class FileUploader
         return $this;
     }
 
+    public function setMaxUploadSize(int $bytes): self
+    {
+        if ($bytes <= 0) {
+            throw new InvalidArgumentException('Max upload size must be positive');
+        }
+        $this->maxUploadSize = $bytes;
+        return $this;
+    }
+
+    public function setMaxFilesPerUpload(int $max): self
+    {
+        if ($max < 1) {
+            throw new InvalidArgumentException('Max files must be at least 1');
+        }
+        $this->maxFilesPerUpload = $max;
+        return $this;
+    }
+
     public function setMinSize(int $bytes): self
     {
         if ($bytes < 0) {
@@ -371,13 +395,33 @@ class FileUploader
 
     public function documentsOnly(int $maxSize = 10485760): self
     {
-        $this->setAllowedExtensions(['pdf', 'doc', 'docx', 'xls', 'xlsx', 'txt', 'csv']);
+        $this->setAllowedExtensions([
+            'pdf',
+            'doc',
+            'docx',
+            'xls',
+            'xlsx',
+            'txt',
+            'csv',
+            'ppt',
+            'pptx',
+            'odt',
+            'ods',
+            'odp',
+            'rtf'
+        ]);
         $this->setAllowedMimeTypes([
             'application/pdf',
             'application/msword',
             'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
             'application/vnd.ms-excel',
             'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            'application/vnd.ms-powerpoint',
+            'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+            'application/vnd.oasis.opendocument.text',
+            'application/vnd.oasis.opendocument.spreadsheet',
+            'application/vnd.oasis.opendocument.presentation',
+            'application/rtf',
             'text/plain',
             'text/csv'
         ]);
@@ -386,8 +430,339 @@ class FileUploader
         return $this;
     }
 
+    /**
+     * Configure uploader for audio files only
+     * 
+     * @param int $maxSize Maximum file size in bytes (default: 50MB)
+     * @return self
+     */
+    public function audiosOnly(int $maxSize = 52428800): self
+    {
+        $this->setAllowedExtensions([
+            'mp3',  // MPEG Audio
+            'wav',  // Waveform Audio
+            'flac', // Free Lossless Audio Codec
+            'm4a',  // MPEG-4 Audio
+            'aac',  // Advanced Audio Coding
+            'ogg',  // Ogg Vorbis
+            'oga',  // Ogg Audio
+            'wma',  // Windows Media Audio
+            'opus', // Opus Audio
+            'aiff', // Audio Interchange File Format
+            'aif',  // AIFF short form
+            'ape',  // Monkey's Audio
+            'alac', // Apple Lossless
+            'wv',   // WavPack
+            'mid',  // MIDI
+            'midi', // MIDI
+            'ra',   // RealAudio
+            'mp2',  // MPEG Audio Layer 2
+            'mpa'   // MPEG Audio
+        ]);
+
+        $this->setAllowedMimeTypes([
+            // MP3
+            'audio/mpeg',
+            'audio/mp3',
+            'audio/mpeg3',
+            'audio/x-mpeg-3',
+
+            // WAV
+            'audio/wav',
+            'audio/x-wav',
+            'audio/wave',
+            'audio/x-pn-wav',
+
+            // FLAC
+            'audio/flac',
+            'audio/x-flac',
+
+            // M4A/AAC
+            'audio/mp4',
+            'audio/x-m4a',
+            'audio/aac',
+            'audio/aacp',
+            'audio/x-aac',
+
+            // OGG
+            'audio/ogg',
+            'audio/x-ogg',
+            'application/ogg',
+
+            // WMA
+            'audio/x-ms-wma',
+            'audio/wma',
+
+            // OPUS
+            'audio/opus',
+            'audio/x-opus+ogg',
+
+            // AIFF
+            'audio/aiff',
+            'audio/x-aiff',
+
+            // APE
+            'audio/ape',
+            'audio/x-ape',
+
+            // ALAC
+            'audio/alac',
+            'audio/x-alac',
+
+            // WavPack
+            'audio/x-wavpack',
+
+            // MIDI
+            'audio/midi',
+            'audio/x-midi',
+            'audio/mid',
+
+            // RealAudio
+            'audio/x-pn-realaudio',
+            'audio/x-realaudio',
+
+            // MP2
+            'audio/mp2',
+            'audio/x-mp2'
+        ]);
+
+        $this->setMaxSize($maxSize);
+        $this->validateImageContent = false;
+        $this->checkActualMimeType = true;
+
+        // Audio-specific security checks
+        $this->blockDangerousExtensions = true;
+        $this->blockDoubleExtensions = true;
+
+        return $this;
+    }
+
+    /**
+     * Configure uploader for video files only
+     * 
+     * @param int $maxSize Maximum file size in bytes (default: 500MB)
+     * @return self
+     */
+    public function videosOnly(int $maxSize = 524288000): self
+    {
+        $this->setAllowedExtensions([
+            'mp4',  // MPEG-4 Video
+            'avi',  // Audio Video Interleave
+            'mov',  // QuickTime Movie
+            'wmv',  // Windows Media Video
+            'flv',  // Flash Video
+            'webm', // WebM Video
+            'mkv',  // Matroska Video
+            'mpeg', // MPEG Video
+            'mpg',  // MPEG short form
+            'm4v',  // iTunes Video
+            '3gp',  // 3GPP Video
+            '3g2',  // 3GPP2 Video
+            'ogv',  // Ogg Video
+            'mxf',  // Material Exchange Format
+            'vob',  // DVD Video Object
+            'ts',   // MPEG Transport Stream
+            'm2ts', // Blu-ray BDAV Video
+            'mts',  // AVCHD Video
+            'divx', // DivX Video
+            'xvid', // Xvid Video
+            'rm',   // RealMedia
+            'rmvb', // RealMedia Variable Bitrate
+            'asf',  // Advanced Systems Format
+            'f4v',  // Flash MP4 Video
+            'swf'   // Shockwave Flash (if needed)
+        ]);
+
+        $this->setAllowedMimeTypes([
+            // MP4
+            'video/mp4',
+            'video/mpeg4',
+            'application/mp4',
+
+            // AVI
+            'video/avi',
+            'video/x-msvideo',
+            'video/msvideo',
+
+            // MOV
+            'video/quicktime',
+            'video/x-quicktime',
+
+            // WMV
+            'video/x-ms-wmv',
+            'video/x-ms-asf',
+            'video/x-ms-asf-plugin',
+
+            // FLV
+            'video/x-flv',
+            'video/flv',
+            'application/x-shockwave-flash',
+
+            // WebM
+            'video/webm',
+
+            // MKV
+            'video/x-matroska',
+            'video/matroska',
+
+            // MPEG
+            'video/mpeg',
+            'video/mpg',
+            'video/x-mpeg',
+
+            // M4V
+            'video/x-m4v',
+
+            // 3GP/3G2
+            'video/3gpp',
+            'video/3gpp2',
+            'video/3gp',
+            'video/3g2',
+
+            // OGG
+            'video/ogg',
+            'video/x-ogg',
+            'application/ogg',
+
+            // MXF
+            'application/mxf',
+
+            // VOB
+            'video/dvd',
+            'video/x-ms-vob',
+
+            // TS
+            'video/mp2t',
+            'video/mpeg2',
+
+            // DivX/Xvid
+            'video/divx',
+            'video/x-divx',
+            'video/xvid',
+            'video/x-xvid',
+
+            // RealMedia
+            'video/vnd.rn-realvideo',
+            'application/vnd.rn-realmedia',
+
+            // ASF
+            'video/x-ms-asf',
+            'application/vnd.ms-asf',
+
+            // F4V
+            'video/x-f4v'
+        ]);
+
+        $this->setMaxSize($maxSize);
+        $this->validateImageContent = false;
+        $this->checkActualMimeType = true;
+
+        // Video-specific security checks
+        $this->blockDangerousExtensions = true;
+        $this->blockDoubleExtensions = true;
+
+        return $this;
+    }
+
+    /**
+     * Configure uploader for streaming video formats (web-optimized)
+     * 
+     * @param int $maxSize Maximum file size in bytes (default: 200MB)
+     * @return self
+     */
+    public function streamingVideosOnly(int $maxSize = 209715200): self
+    {
+        $this->setAllowedExtensions(['mp4', 'webm', 'm3u8', 'mpd']);
+
+        $this->setAllowedMimeTypes([
+            'video/mp4',
+            'video/webm',
+            'application/x-mpegURL',
+            'application/vnd.apple.mpegurl',
+            'application/dash+xml'
+        ]);
+
+        $this->setMaxSize($maxSize);
+        $this->validateImageContent = false;
+        $this->checkActualMimeType = true;
+
+        return $this;
+    }
+
+    /**
+     * Configure uploader for lossless audio formats (high quality)
+     * 
+     * @param int $maxSize Maximum file size in bytes (default: 100MB)
+     * @return self
+     */
+    public function losslessAudiosOnly(int $maxSize = 104857600): self
+    {
+        $this->setAllowedExtensions(['flac', 'wav', 'aiff', 'aif', 'alac', 'ape', 'wv']);
+
+        $this->setAllowedMimeTypes([
+            'audio/flac',
+            'audio/x-flac',
+            'audio/wav',
+            'audio/x-wav',
+            'audio/aiff',
+            'audio/x-aiff',
+            'audio/alac',
+            'audio/x-alac',
+            'audio/ape',
+            'audio/x-ape',
+            'audio/x-wavpack'
+        ]);
+
+        $this->setMaxSize($maxSize);
+        $this->validateImageContent = false;
+        $this->checkActualMimeType = true;
+
+        return $this;
+    }
+
+    /**
+     * Configure uploader for compressed/streaming audio formats
+     * 
+     * @param int $maxSize Maximum file size in bytes (default: 20MB)
+     * @return self
+     */
+    public function compressedAudiosOnly(int $maxSize = 20971520): self
+    {
+        $this->setAllowedExtensions(['mp3', 'm4a', 'aac', 'ogg', 'opus', 'wma']);
+
+        $this->setAllowedMimeTypes([
+            'audio/mpeg',
+            'audio/mp3',
+            'audio/mp4',
+            'audio/x-m4a',
+            'audio/aac',
+            'audio/ogg',
+            'audio/opus',
+            'audio/x-ms-wma'
+        ]);
+
+        $this->setMaxSize($maxSize);
+        $this->validateImageContent = false;
+        $this->checkActualMimeType = true;
+
+        return $this;
+    }
+
+    private function cleanupRateLimitCache(): void
+    {
+        $currentMinute = '_' . (int) (time() / 60);
+
+        foreach (array_keys($this->uploadCounts) as $key) {
+            if (!str_ends_with($key, $currentMinute)) {
+                unset($this->uploadCounts[$key]);
+            }
+        }
+    }
+
     private function checkRateLimit(string $identifier): void
     {
+        $this->cleanupRateLimitCache();
+
         $minute = (int) (time() / 60);
         $key = $identifier . '_' . $minute;
 
@@ -555,6 +930,12 @@ class FileUploader
 
     public function uploadMultiple(array $files, ?string $userIdentifier = null): array
     {
+        if (isset($this->maxFilesPerUpload) && count($files) > $this->maxFilesPerUpload) {
+            throw new RuntimeException(
+                "Cannot upload more than {$this->maxFilesPerUpload} files at once"
+            );
+        }
+
         $uploaded = [];
         $errors = [];
 
@@ -1089,10 +1470,10 @@ class FileUploader
         switch ($unit) {
             case 'g':
                 $value *= 1024;
-                // fall through
+            // fall through
             case 'm':
                 $value *= 1024;
-                // fall through
+            // fall through
             case 'k':
                 $value *= 1024;
         }
