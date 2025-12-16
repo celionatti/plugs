@@ -337,8 +337,13 @@ class ViewEngine
             error_reporting($previousErrorLevel);
 
             if (isset($__extends) && $__extends) {
-                // FIX: Pass stacks to parent layout
-                return $this->renderParent($__extends, $data, $__sections, $__stacks);
+                // FIX: Pass stacks and childContent to parent layout
+                return $this->renderParent(
+                    $__extends,
+                    array_merge($data, ['childContent' => $childContent]),
+                    $__sections,
+                    $__stacks
+                );
             }
 
             return $childContent;
@@ -382,8 +387,13 @@ class ViewEngine
             error_reporting($previousErrorLevel);
 
             if (isset($__extends) && $__extends) {
-                // FIX: Pass stacks to parent layout
-                return $this->renderParentDirect($__extends, $data, $__sections, $__stacks);
+                // FIX: Pass stacks and childContent to parent layout
+                return $this->renderParentDirect(
+                    $__extends,
+                    array_merge($data, ['childContent' => $childContent]),
+                    $__sections,
+                    $__stacks
+                );
             }
 
             return $childContent;
