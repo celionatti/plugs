@@ -527,7 +527,7 @@ class Auth
                     </div>
                     <div class="footer">
                         <p><strong>NattiNation</strong></p>
-                        <p>© {{year}} NattiNation. All rights reserved.</p>
+                        <p>© {{year}} {{site_name}}. All rights reserved.</p>
                     </div>
                 </div>
             </body>
@@ -1024,24 +1024,24 @@ class Auth
         try {
             $table = $this->config['password_reset']['table'];
             $hashedToken = hash('sha256', $token);
-            
+
             $sql = "SELECT * FROM {$table} 
                     WHERE token = ? 
                     AND email = ? 
                     AND expires_at > NOW() 
                     AND used_at IS NULL 
                     LIMIT 1";
-            
+
             $result = $this->connection->fetch($sql, [$hashedToken, $email]);
-            
+
             if ($result) {
                 $this->log('info', "Valid reset token verified", ['email' => $email]);
                 return true;
             }
-            
+
             $this->log('warning', "Invalid or expired reset token", ['email' => $email]);
             return false;
-            
+
         } catch (Exception $e) {
             $this->log('error', "Token verification error: {$e->getMessage()}");
             return false;
@@ -1081,7 +1081,7 @@ class Auth
             ]);
 
             $user->setAttribute($this->config['password_column'], $hashedPassword);
-            
+
             // Update password_reset_at if column exists
             if (in_array('password_reset_at', $this->tableSchema['all_columns'])) {
                 $user->setAttribute('password_reset_at', date('Y-m-d H:i:s'));
@@ -1090,15 +1090,15 @@ class Auth
             if ($user->save()) {
                 // Mark token as used
                 $this->markResetTokenAsUsed($token);
-                
+
                 // Invalidate all remember tokens for security
                 $this->invalidateAllRememberTokens($user->getKey());
-                
+
                 $this->log('info', "Password reset successful", ['email' => $email]);
-                
+
                 // Send confirmation email
                 $this->sendPasswordChangedEmail($user);
-                
+
                 return [
                     'success' => true,
                     'message' => 'Password has been reset successfully. You can now login with your new password.'
@@ -1127,10 +1127,10 @@ class Auth
         try {
             $table = $this->config['password_reset']['table'];
             $hashedToken = hash('sha256', $token);
-            
+
             $sql = "UPDATE {$table} SET used_at = NOW() WHERE token = ?";
             $this->connection->execute($sql, [$hashedToken]);
-            
+
         } catch (Exception $e) {
             $this->log('error', "Failed to mark token as used: {$e->getMessage()}");
         }
@@ -1144,7 +1144,7 @@ class Auth
         try {
             $sql = "DELETE FROM {$this->config['remember_tokens_table']} WHERE user_id = ?";
             $this->connection->execute($sql, [$userId]);
-            
+
             $this->log('info', "All remember tokens invalidated", ['user_id' => $userId]);
         } catch (Exception $e) {
             $this->log('error', "Failed to invalidate tokens: {$e->getMessage()}");
@@ -1161,7 +1161,7 @@ class Auth
             $name = $user->getAttribute('name') ?? 'User';
             $baseUrl = rtrim(env('APP_URL', 'http://localhost'), '/');
             $siteName = trim(env('APP_NAME', 'Natti Nation'));
-            
+
             $emailBody = <<<'HTML'
                 <!DOCTYPE html>
                 <html>
@@ -1205,7 +1205,7 @@ class Auth
                 HTML;
 
             return Mail::send($email, 'Password Changed - NattiNation', $emailBody, true);
-            
+
         } catch (Exception $e) {
             $this->log('error', "Failed to send password changed email: {$e->getMessage()}");
             return false;
@@ -1544,7 +1544,7 @@ class Auth
             ]);
 
             $this->user->setAttribute($this->config['password_column'], $hashedPassword);
-            
+
             if (in_array('password_reset_at', $this->tableSchema['all_columns'])) {
                 $this->user->setAttribute('password_reset_at', date('Y-m-d H:i:s'));
             }
@@ -1552,12 +1552,12 @@ class Auth
             if ($this->user->save()) {
                 // Invalidate other sessions
                 $this->invalidateAllRememberTokens($this->user->getKey());
-                
+
                 $this->log('info', "Password changed by user", ['user_id' => $this->user->getKey()]);
-                
+
                 // Send confirmation email
                 $this->sendPasswordChangedEmail($this->user);
-                
+
                 return [
                     'success' => true,
                     'message' => 'Password changed successfully.'
@@ -1593,10 +1593,12 @@ class Auth
 
             // Only update allowed fields that exist in table
             $allowedFields = ['name', 'username', 'phone', 'bio', 'avatar'];
-            
+
             foreach ($data as $field => $value) {
-                if (in_array($field, $allowedFields) && 
-                    in_array($field, $this->tableSchema['all_columns'])) {
+                if (
+                    in_array($field, $allowedFields) &&
+                    in_array($field, $this->tableSchema['all_columns'])
+                ) {
                     $this->user->setAttribute($field, $value);
                 }
             }
@@ -1652,12 +1654,12 @@ class Auth
             if ($this->user->delete()) {
                 // Clean up related data
                 $this->invalidateAllRememberTokens($userId);
-                
+
                 // Logout
                 $this->logout();
-                
+
                 $this->log('info', "Account deleted", ['email' => $email]);
-                
+
                 return [
                     'success' => true,
                     'message' => 'Account deleted successfully.'
@@ -1729,7 +1731,7 @@ class Auth
 
         try {
             $fresh = $this->getUserById($this->user->getKey());
-            
+
             if ($fresh) {
                 $this->user = $fresh;
                 if ($this->config['password_column']) {
@@ -1752,13 +1754,13 @@ class Auth
     {
         try {
             $table = $this->config['password_reset']['table'];
-            
+
             $sql = "DELETE FROM {$table} WHERE expires_at < NOW()";
             $stmt = $this->connection->query($sql);
-            
+
             $deleted = $stmt->rowCount();
             $this->log('info', "Cleaned expired reset tokens", ['count' => $deleted]);
-            
+
             return $deleted;
         } catch (Exception $e) {
             $this->log('error', "Token cleanup error: {$e->getMessage()}");
