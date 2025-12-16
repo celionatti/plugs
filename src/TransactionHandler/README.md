@@ -17,9 +17,9 @@ A universal payment gateway integration system for PHP applications supporting m
 |----------|--------|---------------|
 | **Paystack** | ✅ Fully Implemented | Payments, Transfers, Subscriptions, Refunds |
 | **Flutterwave** | ✅ Fully Implemented | Payments, Transfers, Subscriptions, Refunds |
-| **Stripe** | ⚠️ Partial | Basic payment support |
+| **Stripe** | ✅ Fully Implemented | Payment Intents, Subscriptions, Payouts, Refunds |
+| **BTCPay Server** | ✅ Fully Implemented | Crypto payments, Invoices, Pull Payments |
 | **PayPal** | ⚠️ Partial | Basic payment support |
-| **BTCPay Server** | ✅ Fully Implemented | Crypto payments |
 | **Payoneer** | ⚠️ Partial | Basic payment support |
 
 ## Installation
