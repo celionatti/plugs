@@ -7,7 +7,7 @@ node_modules/
 *.log
 *.cache
 /public/
-/bootstrap/
+# /bootstrap/
 /storage/
 /tests/
 /app/
