@@ -48,6 +48,8 @@ class Router
     private array $globalMiddleware = [];
     private ?Route $currentRoute = null;
     private array $patterns = [];
+    private ?PageRouter $pageRouter = null;
+    private bool $pagesRoutingEnabled = false;
 
     /**
      * Register route methods
@@ -626,7 +628,7 @@ class Router
 
             throw new RuntimeException(
                 "Cannot resolve parameter [{$parameter->getName()}] at position {$parameter->getPosition()} for handler. " .
-                    "Debug info: " . json_encode($debugInfo)
+                "Debug info: " . json_encode($debugInfo)
             );
         }
 
@@ -887,7 +889,7 @@ class Router
 
         throw new RuntimeException(
             'Route handler must return ResponseInterface, string, array, or null. Got: '
-                . gettype($response)
+            . gettype($response)
         );
     }
 
@@ -1075,6 +1077,57 @@ class Router
     public function isMethodSpoofingSupported(): bool
     {
         return true;
+    }
+
+    /**
+     * Pages Routing Support
+     */
+
+    /**
+     * Enable file-based pages routing
+     */
+    public function enablePagesRouting(string $pagesDirectory, array $options = []): void
+    {
+        $this->pageRouter = new PageRouter($this, $pagesDirectory, $options);
+        $this->pagesRoutingEnabled = true;
+    }
+
+    /**
+     * Load and register page routes
+     */
+    public function loadPagesRoutes(): void
+    {
+        if (!$this->pagesRoutingEnabled || !$this->pageRouter) {
+            return;
+        }
+
+        $this->pageRouter->registerRoutes();
+    }
+
+    /**
+     * Get the page router instance
+     */
+    public function getPageRouter(): ?PageRouter
+    {
+        return $this->pageRouter;
+    }
+
+    /**
+     * Check if pages routing is enabled
+     */
+    public function isPagesRoutingEnabled(): bool
+    {
+        return $this->pagesRoutingEnabled;
+    }
+
+    /**
+     * Clear pages routing cache
+     */
+    public function clearPagesCache(): void
+    {
+        if ($this->pageRouter) {
+            $this->pageRouter->clearCache();
+        }
     }
 
     /**
