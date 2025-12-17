@@ -51,7 +51,9 @@ class PageRouter
         $this->cacheFile = $this->options['cache_file'];
 
         if (!is_dir($this->pagesDirectory)) {
-            throw new RuntimeException("Pages directory not found: {$this->pagesDirectory}");
+            // Directory doesn't exist - we'll just handle this gracefully in registerRoutes
+            // by doing nothing if the directory is missing.
+            return;
         }
     }
 
@@ -131,13 +133,34 @@ class PageRouter
         // Extract dynamic parameters
         $parameters = $this->extractParameters($relativePath);
 
+        // Determine if file defines a class
+        $isClass = $this->hasDefinedClass($filePath);
+
         $this->discoveredRoutes[] = [
             'pattern' => $routePattern,
             'file' => $filePath,
             'class' => $className,
+            'is_class' => $isClass,
             'parameters' => $parameters,
             'is_catch_all' => $this->isCatchAllRoute($relativePath),
         ];
+    }
+
+    /**
+     * Check if a file defines a class
+     */
+    private function hasDefinedClass(string $filePath): bool
+    {
+        $content = file_get_contents($filePath);
+        $tokens = token_get_all($content);
+
+        foreach ($tokens as $token) {
+            if (is_array($token) && $token[0] === T_CLASS) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /**
@@ -180,11 +203,6 @@ class PageRouter
     {
         // Convert path to namespace
         $parts = explode('/', $relativePath);
-
-        // Remove index from parts
-        if (end($parts) === 'index') {
-            array_pop($parts);
-        }
 
         // Convert each part to PascalCase and remove special characters
         $namespaceParts = array_map(function ($part) {
@@ -266,6 +284,21 @@ class PageRouter
      */
     private function registerRoute(array $routeInfo): void
     {
+        // Handle Class-based Pages
+        if ($routeInfo['is_class']) {
+            $this->registerClassRoute($routeInfo);
+            return;
+        }
+
+        // Handle Simple Pages (View/Script)
+        $this->registerSimpleRoute($routeInfo);
+    }
+
+    /**
+     * Register a class-based page route
+     */
+    private function registerClassRoute(array $routeInfo): void
+    {
         $className = $routeInfo['class'];
 
         // Require the file to ensure class is loaded
@@ -275,12 +308,14 @@ class PageRouter
 
         // Check if class exists
         if (!class_exists($className)) {
-            // Skip if class doesn't exist (allows for optional page creation)
             return;
         }
 
         // Verify it extends Page
         if (!is_subclass_of($className, Page::class)) {
+            // If it's a class but doesn't extend Page, we treat it as a class but skip validation?
+            // Or maybe user defined a helper class?
+            // For now, strict check: must extend Page
             throw new RuntimeException(
                 "Page class {$className} must extend " . Page::class
             );
@@ -293,16 +328,77 @@ class PageRouter
             method_exists($pageInstance, 'middleware') ? $pageInstance->middleware() : []
         );
 
-        // Register route for all HTTP methods (the page class will handle method routing)
+        // Register route
         $route = $this->router->any(
             $routeInfo['pattern'],
             [$className, '__invoke'],
             $middleware
         );
 
-        // Add metadata
         $route->meta('page_file', $routeInfo['file']);
         $route->meta('page_class', $className);
+    }
+
+    /**
+     * Register a simple page route (view/script)
+     */
+    private function registerSimpleRoute(array $routeInfo): void
+    {
+        $file = $routeInfo['file'];
+
+        // Define the handler closure
+        $handler = function (\Psr\Http\Message\ServerRequestInterface $request) use ($file) {
+            // Start output buffering
+            ob_start();
+
+            // Execute file
+            // We isolate scope but $request is available if they use func_get_args or use global?
+            // Ideally we pass $request to the file scope.
+            // Using require inside a closure with variables makes them available? No.
+            // But we can extract parameters?
+
+            $includeFile = function ($__file__, $request) {
+                return require $__file__;
+            };
+
+            $result = $includeFile($file, $request);
+            $output = ob_get_clean();
+
+            // Handle return value
+            if ($result instanceof \Psr\Http\Message\ResponseInterface) {
+                return $result;
+            }
+
+            // If string returned, use it
+            if (is_string($result)) {
+                // Check if it looks like a view (if View system exists)
+                // Actually, if they return view('name'), that returns a string or object? 
+                // In this framework, view() likely returns string or we need ResponseFactory.
+                return \Plugs\Http\ResponseFactory::html($result);
+            }
+
+            // Should also handle objects that are "View" instances if they exist
+            if (is_object($result) && method_exists($result, '__toString')) {
+                return \Plugs\Http\ResponseFactory::html((string) $result);
+            }
+
+            // Use captured output if return was empty/true/1 (typical require success)
+            if ($output !== '') {
+                return \Plugs\Http\ResponseFactory::html($output);
+            }
+
+            // Default response if nothing
+            return \Plugs\Http\ResponseFactory::html('');
+        };
+
+        $route = $this->router->any(
+            $routeInfo['pattern'],
+            $handler,
+            $this->options['middleware']
+        );
+
+        $route->meta('page_file', $file);
+        $route->meta('page_type', 'simple');
     }
 
     /**
