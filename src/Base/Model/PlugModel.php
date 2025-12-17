@@ -13,10 +13,11 @@ use Plugs\Database\Collection;
 use Plugs\Database\Connection;
 use Plugs\Base\Model\Debuggable;
 use Plugs\Database\BelongsToManyProxy;
+use Plugs\Database\Traits\Searchable;
 
 abstract class PlugModel
 {
-    use Debuggable;
+    use Debuggable, Searchable;
     protected static $connection;
     protected static $connectionName = 'default';
     protected $table;
@@ -756,33 +757,7 @@ abstract class PlugModel
         return $this->instanceOrWhere($column, 'LIKE', $value);
     }
 
-    public function search(string $column, string $term, bool $exact = false)
-    {
-        $pattern = $exact ? $term : "%{$term}%";
-        return $this->whereLike($column, $pattern);
-    }
 
-    public function searchMultiple(array $columns, string $term)
-    {
-        $clone = $this->cloneQuery();
-        $pattern = "%{$term}%";
-
-        $clone->query['where'][] = [
-            'type' => 'nested',
-            'boolean' => 'AND',
-            'query' => function ($query) use ($columns, $pattern) {
-                foreach ($columns as $index => $column) {
-                    if ($index === 0) {
-                        $query->instanceWhere($column, 'LIKE', $pattern);
-                    } else {
-                        $query->instanceOrWhere($column, 'LIKE', $pattern);
-                    }
-                }
-            },
-        ];
-
-        return $clone;
-    }
 
     public function inRandomOrder()
     {
@@ -1965,7 +1940,8 @@ abstract class PlugModel
 
         // ✅ Validate each column
         $validatedColumns = array_map(function ($col) {
-            if ($col === '*') return '*';
+            if ($col === '*')
+                return '*';
 
             // Check if it's a function
             if (strpos($col, '(') !== false) {
@@ -2607,7 +2583,8 @@ abstract class PlugModel
 
         // Sanitize SELECT columns
         $selectColumns = array_map(function ($col) {
-            if ($col === '*') return '*';
+            if ($col === '*')
+                return '*';
 
             // Handle functions like COUNT(*) as count, MAX(id) AS max_id
             if (preg_match('/\(/', $col)) {
@@ -4377,18 +4354,42 @@ abstract class PlugModel
         return true;
     }
 
-    protected function retrieving() {}
-    protected function retrieved() {}
-    protected function creating() {}
-    protected function created() {}
-    protected function updating() {}
-    protected function updated() {}
-    protected function saving() {}
-    protected function saved() {}
-    protected function deleting() {}
-    protected function deleted() {}
-    protected function restoring() {}
-    protected function restored() {}
+    protected function retrieving()
+    {
+    }
+    protected function retrieved()
+    {
+    }
+    protected function creating()
+    {
+    }
+    protected function created()
+    {
+    }
+    protected function updating()
+    {
+    }
+    protected function updated()
+    {
+    }
+    protected function saving()
+    {
+    }
+    protected function saved()
+    {
+    }
+    protected function deleting()
+    {
+    }
+    protected function deleted()
+    {
+    }
+    protected function restoring()
+    {
+    }
+    protected function restored()
+    {
+    }
 
     // ==================== MAGIC METHODS ====================
 
