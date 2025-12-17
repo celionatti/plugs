@@ -13,7 +13,7 @@ namespace Plugs\Console\Commands;
 
 use Plugs\Console\Command;
 use Plugs\Console\ConsoleKernel;
-
+use Plugs\Console\Support\Str;
 
 class HelpCommand extends Command
 {
@@ -48,32 +48,60 @@ class HelpCommand extends Command
 
     private function displayCommandList(ConsoleKernel $kernel): int
     {
-        $this->info('Usage:');
-        $this->line('  command [options] [arguments]');
-        $this->line();
+        $this->output->thePlugsCleanLogo();
 
-        $this->info('Options:');
+        //$this->output->section(strtoupper('Version') . " " . \Plugs\Plugs::VERSION);
+        //$this->line("  " . \Plugs\Plugs::VERSION);
+
+        $this->output->section('USAGE');
+        $this->line('  command [options] [arguments]');
+
+        $this->output->section('OPTIONS');
         $globalOptions = [
-            '--help'           => 'Display help for the command',
-            '--quiet'          => 'Do not output any message',
-            '--version'        => 'Display this application version',
-            '--ansi'           => 'Force ANSI output',
-            '--no-ansi'        => 'Disable ANSI output',
+            '--help' => 'Display help for the command',
+            '--quiet' => 'Do not output any message',
+            '--version' => 'Display this application version',
+            '--ansi' => 'Force ANSI output',
+            '--no-ansi' => 'Disable ANSI output',
             '--no-interaction' => 'Do not ask any interactive question',
-            '--verbose'        => 'Increase the verbosity of messages'
+            '--verbose' => 'Increase the verbosity of messages'
         ];
 
         foreach ($globalOptions as $option => $description) {
-            $this->line("  " . str_pad($option, 20) . $description);
+            $this->line("  " . "\033[32m" . str_pad($option, 20) . "\033[0m" . $description);
+        }
+
+        $this->output->section('AVAILABLE COMMANDS');
+
+        $commands = $kernel->commands();
+        $grouped = [];
+        foreach ($commands as $name => $command) {
+            $category = 'General';
+            if (str_contains($name, ':')) {
+                $category = ucfirst(explode(':', $name)[0]);
+            }
+            $grouped[$category][$name] = $command;
+        }
+
+        ksort($grouped);
+
+        foreach ($grouped as $category => $categoryCommands) {
+            $this->line();
+            $this->line("  " . "\033[33m" . $category . "\033[0m");
+
+            foreach ($categoryCommands as $name => $commandClass) {
+                try {
+                    $command = new $commandClass($name);
+                    $description = $command->description();
+                } catch (\Throwable $e) {
+                    $description = 'No description';
+                }
+
+                $this->line("  " . "\033[32m" . str_pad($name, 25) . "\033[0m" . $description);
+            }
         }
 
         $this->line();
-
-        // Display commands in Laravel-style grouped table
-        $this->output->commandTable($kernel->commands());
-
-        $this->line();
-        $this->note('To see help for a specific command, use: php theplugs help <command>');
 
         return 0;
     }
@@ -92,33 +120,28 @@ class HelpCommand extends Command
 
         // Description
         if ($description = $command->description()) {
-            $this->line();
-            $this->box($description, 'Description', 'info');
+            $this->line("  " . $description);
         }
 
         // Usage
-        $this->line();
-        $this->output->sectionTitle('Usage:');
+        $this->output->section('USAGE');
         $this->line("  php theplugs {$commandName} [options] [arguments]");
 
         // Arguments
         $arguments = $command->getArguments();
         if (!empty($arguments)) {
-            $this->line();
-            $this->output->sectionTitle('Arguments:');
+            $this->output->section('ARGUMENTS');
             foreach ($arguments as $argument => $description) {
-                $this->line("  " . \Plugs\Console\Support\Str::studly($argument));
-                $this->line("    " . $description);
-                $this->line();
+                $this->line("  " . "\033[32m" . str_pad($argument, 20) . "\033[0m" . $description);
             }
         }
 
         // Options
         $options = $command->getOptions();
         if (!empty($options)) {
-            $this->output->sectionTitle('Options:');
+            $this->output->section('OPTIONS');
             foreach ($options as $option => $description) {
-                $this->line("  " . str_pad($option, 25) . $description);
+                $this->line("  " . "\033[32m" . str_pad($option, 25) . "\033[0m" . $description);
             }
         }
 
@@ -129,14 +152,15 @@ class HelpCommand extends Command
         }
 
         if (!empty($examples)) {
-            $this->line();
-            $this->output->sectionTitle('Examples:');
+            $this->output->section('EXAMPLES');
             foreach ($examples as $example => $description) {
-                $this->line("  # " . $description);
+                $this->line("  " . "\033[90m# " . $description . "\033[0m");
                 $this->line("  php theplugs {$commandName} {$example}");
                 $this->line();
             }
         }
+
+        $this->line();
 
         return 0;
     }
@@ -158,7 +182,7 @@ class HelpCommand extends Command
             $this->line();
             $this->info("Did you mean one of these?");
             foreach (array_slice($suggestions, 0, 5) as $suggestion) {
-                $this->line("  • {$suggestion}");
+                $this->line("  ➜ {$suggestion}");
             }
         }
     }

@@ -112,41 +112,14 @@ class Output
 
     public function commandHeader(string $command): void
     {
-        // Display centered logo
-        $this->thePlugsCompactCentered();
-
-        // Create full-width header box
-        $maxWidth = $this->consoleWidth - 4;
-
-        $commandText = "Command: " . $command;
-        $timeText = "Started: " . date('Y-m-d H:i:s');
-
-        // Center the text within the full width
-        $cmdPadding = (int)(($maxWidth - mb_strwidth($commandText)) / 2);
-        $timePadding = (int)(($maxWidth - mb_strwidth($timeText)) / 2);
-
-        $this->line(self::BRIGHT_BLUE . "╭" . str_repeat("─", $maxWidth) . "╮" . self::RESET);
-
-        $cmdRightPadding = $maxWidth - mb_strwidth($commandText) - $cmdPadding;
-        $this->line(
-            self::BRIGHT_BLUE . "│" . self::RESET .
-                str_repeat(" ", $cmdPadding) .
-                self::BRIGHT_WHITE . self::BOLD . $commandText . self::RESET .
-                str_repeat(" ", $cmdRightPadding) .
-                self::BRIGHT_BLUE . "│" . self::RESET
-        );
-
-        $timeRightPadding = $maxWidth - mb_strwidth($timeText) - $timePadding;
-        $this->line(
-            self::BRIGHT_BLUE . "│" . self::RESET .
-                str_repeat(" ", $timePadding) .
-                self::DIM . $timeText . self::RESET .
-                str_repeat(" ", $timeRightPadding) .
-                self::BRIGHT_BLUE . "│" . self::RESET
-        );
-
-        $this->line(self::BRIGHT_BLUE . "╰" . str_repeat("─", $maxWidth) . "╯" . self::RESET);
-        $this->line();
+        // Minimal Modern Header
+        $width = $this->consoleWidth;
+        $time = date('H:i:s');
+        
+        $this->newLine();
+        $this->line(self::BRIGHT_BLUE . "  ➜ " . self::BOLD . self::BRIGHT_WHITE . "Command" . self::RESET . self::DIM . " running " . self::RESET . self::BRIGHT_CYAN . $command . self::RESET);
+        $this->line(self::DIM . "    Started at " . $time . self::RESET);
+        $this->newLine();
     }
 
     public function migrationResult(string $migration, string $status, float $time): void
@@ -175,22 +148,22 @@ class Output
 
     public function info(string $text): void
     {
-        $this->line(self::BRIGHT_BLUE . "  INFO: " . self::RESET . $text);
+        $this->line("  " . self::BRIGHT_BLUE . "ℹ" . self::RESET . "  " . $text);
     }
 
     public function success(string $text): void
     {
-        $this->line(self::BRIGHT_GREEN . "  SUCCESS: " . self::RESET . $text);
+        $this->line("  " . self::BRIGHT_GREEN . "✔" . self::RESET . "  " . $text);
     }
 
     public function warning(string $text): void
     {
-        $this->line(self::BRIGHT_YELLOW . "  WARNING: " . self::RESET . $text);
+        $this->line("  " . self::BRIGHT_YELLOW . "⚠" . self::RESET . "  " . $text);
     }
 
     public function error(string $text): void
     {
-        $this->line(self::BRIGHT_RED . "  ERROR: " . self::RESET . $text);
+        $this->line("  " . self::BRIGHT_RED . "✖" . self::RESET . "  " . $text);
     }
 
     public function note(string $text): void
@@ -223,9 +196,9 @@ class Output
 
     public function section(string $title): void
     {
+        $this->newLine();
+        $this->line(self::BRIGHT_BLUE . "  :: " . self::BOLD . self::BRIGHT_WHITE . strtoupper($title) . self::RESET);
         $this->line();
-        $this->line(self::BRIGHT_CYAN . "▶ " . self::BOLD . $title . self::RESET);
-        $this->line(self::DIM . str_repeat("─", mb_strwidth($title) + 2) . self::RESET);
     }
 
     public function loading(string $message, callable $callback): mixed
@@ -549,104 +522,54 @@ class Output
         }
 
         $cols = count($headers);
+        $availableWidth = $this->consoleWidth - 2;
 
-        // Calculate available width (full console width minus borders)
-        $availableWidth = $this->consoleWidth - ($cols * 3) - 1; // 3 chars per column (borders + padding), +1 for final border
-
-        // Distribute width evenly or based on content
+        // Calculate column widths
         $widths = [];
-
-        // First pass: calculate minimum widths
         foreach ($headers as $i => $header) {
-            $widths[$i] = mb_strwidth((string)$header);
+            $widths[$i] = mb_strwidth((string)$header) + 2; 
         }
 
         foreach ($rows as $row) {
             for ($i = 0; $i < $cols; $i++) {
-                $widths[$i] = max($widths[$i], mb_strwidth((string)($row[$i] ?? '')));
+                $cell = (string)($row[$i] ?? '');
+                $widths[$i] = max($widths[$i], mb_strwidth($this->stripAnsiCodes($cell)) + 2);
             }
         }
 
-        $totalMinWidth = array_sum($widths);
+        $this->newLine();
 
-        // If we have extra space, distribute it proportionally
-        if ($totalMinWidth < $availableWidth) {
-            $extraSpace = $availableWidth - $totalMinWidth;
-            $perColumn = (int)($extraSpace / $cols);
-
-            for ($i = 0; $i < $cols; $i++) {
-                $widths[$i] += $perColumn;
-            }
-
-            // Add any remaining space to the last column
-            $remaining = $availableWidth - array_sum($widths);
-            $widths[$cols - 1] += $remaining;
-        }
-
-        $pad = fn($s, $w) => str_pad((string)$s, $w + (strlen($s) - mb_strwidth($s)));
-
-        // Top border
-        echo self::BRIGHT_CYAN . "╭";
-        for ($i = 0; $i < $cols; $i++) {
-            echo str_repeat("─", $widths[$i] + 2);
-            if ($i < $cols - 1) {
-                echo "┬";
-            }
-        }
-        echo "╮" . self::RESET . "\n";
-
-        // Headers
-        echo self::BRIGHT_CYAN . "│" . self::RESET;
+        // Header
+        echo "  "; 
         foreach ($headers as $i => $header) {
-            echo " " . self::BOLD . self::BRIGHT_WHITE . $pad($header, $widths[$i]) . self::RESET . " " . self::BRIGHT_CYAN . "│" . self::RESET;
+            echo self::BOLD . self::BRIGHT_WHITE . str_pad($header, $widths[$i]) . self::RESET;
+        }
+        echo "\n";
+        
+        // Separator (minimal)
+        echo "  ";
+        foreach ($widths as $w) {
+            echo self::DIM . str_repeat("─", $w - 2) . "  " . self::RESET;
         }
         echo "\n";
 
-        // Middle border
-        echo self::BRIGHT_CYAN . "├";
-        for ($i = 0; $i < $cols; $i++) {
-            echo str_repeat("─", $widths[$i] + 2);
-            if ($i < $cols - 1) {
-                echo "┼";
-            }
-        }
-        echo "┤" . self::RESET . "\n";
-
         // Rows
-        foreach ($rows as $rowIndex => $row) {
-            $rowColor = $rowIndex % 2 === 0 ? self::RESET : self::DIM;
-            echo self::BRIGHT_CYAN . "│" . self::RESET;
-
+        foreach ($rows as $row) {
+            echo "  ";
             for ($i = 0; $i < $cols; $i++) {
-                $cellValue = $row[$i] ?? '';
-
-                // Truncate if too long
-                $cleanCell = $this->stripAnsiCodes($cellValue);
-                if (mb_strwidth($cleanCell) > $widths[$i]) {
-                    $cellValue = mb_substr($cleanCell, 0, $widths[$i] - 3) . '...';
-                }
-
-                echo " " . $rowColor . $pad($cellValue, $widths[$i]) . self::RESET . " " . self::BRIGHT_CYAN . "│" . self::RESET;
+                $cell = (string)($row[$i] ?? '');
+                $cleanCell = $this->stripAnsiCodes($cell);
+                $padding = $widths[$i] - mb_strwidth($cleanCell);
+                echo $cell . str_repeat(" ", max(0, $padding));
             }
             echo "\n";
         }
-
-        // Bottom border
-        echo self::BRIGHT_CYAN . "╰";
-        for ($i = 0; $i < $cols; $i++) {
-            echo str_repeat("─", $widths[$i] + 2);
-            if ($i < $cols - 1) {
-                echo "┴";
-            }
-        }
-        echo "╯" . self::RESET . "\n\n";
+        
+        $this->newLine();
     }
 
     public function box(string $content, string $title = '', string $type = 'info'): void
     {
-        $lines = explode("\n", $content);
-
-        // Use full console width minus borders (2 characters for borders + 2 for padding)
         $maxWidth = $this->consoleWidth - 4;
 
         $colors = [
@@ -654,92 +577,37 @@ class Output
             'success' => self::BRIGHT_GREEN,
             'warning' => self::BRIGHT_YELLOW,
             'error' => self::BRIGHT_RED,
+            'default' => self::BRIGHT_WHITE,
         ];
-
-        $color = $colors[$type] ?? self::BRIGHT_BLUE;
-
+        
+        $color = $colors[$type] ?? $colors['default'];
+        
         $this->line();
-        $this->line($color . "╭" . str_repeat("─", $maxWidth) . "╮" . self::RESET);
-
+        
         if ($title) {
-            // Center the title
-            $titleLen = mb_strwidth($title);
-            $titlePadding = (int)(($maxWidth - $titleLen - 2) / 2);
-            $titlePaddingRight = $maxWidth - $titleLen - $titlePadding - 2;
-
-            $titleLine = $color . "│" . self::RESET .
-                str_repeat(" ", $titlePadding) .
-                self::BOLD . $title . self::RESET .
-                str_repeat(" ", $titlePaddingRight) .
-                $color . "│" . self::RESET;
-            $this->line($titleLine);
-            $this->line($color . "├" . str_repeat("─", $maxWidth) . "┤" . self::RESET);
+            $this->line("  " . $color . self::BOLD . strtoupper($title) . self::RESET);
         }
-
-        // Process each line to fit full width
+        
+        $lines = explode("\n", $content);
         foreach ($lines as $line) {
-            $cleanLine = $this->stripAnsiCodes($line);
-            $lineLen = mb_strwidth($cleanLine);
-
-            // If line is too long, wrap it
-            if ($lineLen > $maxWidth - 2) {
-                $wrappedLines = $this->wrapText($line, $maxWidth - 2);
-                foreach ($wrappedLines as $wrappedLine) {
-                    $cleanWrapped = $this->stripAnsiCodes($wrappedLine);
-                    $padding = $maxWidth - mb_strwidth($cleanWrapped) - 2;
-                    $this->line($color . "│" . self::RESET . " " . $wrappedLine . str_repeat(" ", max(0, $padding)) . " " . $color . "│" . self::RESET);
-                }
-            } else {
-                $padding = $maxWidth - $lineLen - 2;
-                $this->line($color . "│" . self::RESET . " " . $line . str_repeat(" ", max(0, $padding)) . " " . $color . "│" . self::RESET);
-            }
+            $this->line("  " . $color . "│" . self::RESET . " " . $line);
         }
-
-        $this->line($color . "╰" . str_repeat("─", $maxWidth) . "╯" . self::RESET);
+        
         $this->line();
     }
 
     public function panel(string $content, string $title = ''): void
     {
-        $lines = explode("\n", $content);
-
-        // Use full console width minus borders
-        $maxWidth = $this->consoleWidth - 4;
-
-        $this->line();
-
+        $this->newLine();
         if ($title) {
-            // Center the title in the top border
-            $titleLen = mb_strwidth($title);
-            $leftDashes = (int)(($maxWidth - $titleLen - 2) / 2);
-            $rightDashes = $maxWidth - $titleLen - $leftDashes - 2;
-
-            $this->line(self::BRIGHT_BLUE . "┌" . str_repeat("─", $leftDashes) . " " . $title . " " . str_repeat("─", $rightDashes) . "┐" . self::RESET);
-        } else {
-            $this->line(self::BRIGHT_BLUE . "┌" . str_repeat("─", $maxWidth) . "┐" . self::RESET);
+            $this->line("  " . self::BRIGHT_CYAN . "│ " . self::BOLD . $title . self::RESET);
         }
-
-        // Process each line
+        
+        $lines = explode("\n", $content);
         foreach ($lines as $line) {
-            $cleanLine = $this->stripAnsiCodes($line);
-            $lineLen = mb_strwidth($cleanLine);
-
-            // If line is too long, wrap it
-            if ($lineLen > $maxWidth - 2) {
-                $wrappedLines = $this->wrapText($line, $maxWidth - 2);
-                foreach ($wrappedLines as $wrappedLine) {
-                    $cleanWrapped = $this->stripAnsiCodes($wrappedLine);
-                    $padding = $maxWidth - mb_strwidth($cleanWrapped) - 2;
-                    $this->line(self::BRIGHT_BLUE . "│" . self::RESET . " " . $wrappedLine . str_repeat(" ", max(0, $padding)) . " " . self::BRIGHT_BLUE . "│" . self::RESET);
-                }
-            } else {
-                $padding = $maxWidth - $lineLen - 2;
-                $this->line(self::BRIGHT_BLUE . "│" . self::RESET . " " . $line . str_repeat(" ", max(0, $padding)) . " " . self::BRIGHT_BLUE . "│" . self::RESET);
-            }
+            $this->line("  " . self::BRIGHT_CYAN . "│ " . self::RESET . $line);
         }
-
-        $this->line(self::BRIGHT_BLUE . "└" . str_repeat("─", $maxWidth) . "┘" . self::RESET);
-        $this->line();
+        $this->newLine();
     }
 
     public function title(string $text): void
