@@ -11,10 +11,11 @@ trait Searchable
     /**
      * Search the model for a given term.
      *
+     * @param \Plugs\Database\QueryBuilder $query
      * @param string $term
      * @return \Plugs\Database\QueryBuilder
      */
-    public function search(string $term)
+    public function scopeSearch($query, string $term)
     {
         $columns = $this->getSearchableColumns();
 
@@ -24,12 +25,12 @@ trait Searchable
 
         $term = "%{$term}%";
 
-        return $this->where(function ($query) use ($columns, $term) {
+        return $query->where(function ($q) use ($columns, $term) {
             foreach ($columns as $index => $column) {
                 if ($index === 0) {
-                    $query->where($column, 'LIKE', $term);
+                    $q->where($column, 'LIKE', $term);
                 } else {
-                    $query->orWhere($column, 'LIKE', $term);
+                    $q->orWhere($column, 'LIKE', $term);
                 }
             }
         });
@@ -42,6 +43,7 @@ trait Searchable
      */
     public function getSearchableColumns(): array
     {
-        return property_exists($this, 'searchable') ? $this->searchable : [];
+        return property_exists($this, 'searchableColumns') ? $this->searchableColumns :
+            (property_exists($this, 'searchable') ? $this->searchable : []);
     }
 }
