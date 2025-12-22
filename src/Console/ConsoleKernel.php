@@ -19,6 +19,12 @@ use Plugs\Console\Commands\MakeCommandCommand;
 use Plugs\Console\Commands\MakeMigrationCommand;
 use Plugs\Console\Commands\MakeControllerCommand;
 use Plugs\Console\Commands\MakeMiddlewareCommand;
+use Plugs\Console\Commands\MakeRequestCommand;
+use Plugs\Console\Commands\MakeServiceCommand;
+use Plugs\Console\Commands\MakeActionCommand;
+use Plugs\Console\Commands\MakeDTOCommand;
+use Plugs\Console\Commands\MakeResourceCommand;
+use Plugs\Console\Commands\MakeRepositoryCommand;
 
 /*
 |--------------------------------------------------------------------------
@@ -30,41 +36,66 @@ use Plugs\Console\Commands\MakeMiddlewareCommand;
 class ConsoleKernel
 {
     protected array $commands = [
-        'help'              => HelpCommand::class,
-        'demo'              => DemoCommand::class,
-        'inspire'           => InspireCommand::class,
+        'help' => HelpCommand::class,
+        'demo' => DemoCommand::class,
+        'inspire' => InspireCommand::class,
 
-        'make:controller'   => MakeControllerCommand::class,
-        'make:model'        => MakeModelCommand::class,
-        'make:command'      => MakeCommandCommand::class,
-        'make:middleware'   => MakeMiddlewareCommand::class,
-        'make:migration'    => MakeMigrationCommand::class,
+        'make:controller' => MakeControllerCommand::class,
+        'make:model' => MakeModelCommand::class,
+        'make:command' => MakeCommandCommand::class,
+        'make:middleware' => MakeMiddlewareCommand::class,
+        'make:migration' => MakeMigrationCommand::class,
+        'make:request' => MakeRequestCommand::class,
+        'make:service' => MakeServiceCommand::class,
+        'make:action' => MakeActionCommand::class,
+        'make:dto' => MakeDTOCommand::class,
+        'make:resource' => MakeResourceCommand::class,
+        'make:repository' => MakeRepositoryCommand::class,
 
-        'route:list'   => RouteListCommand::class,
-        'route:cache'  => RouteCacheCommand::class,
-        'route:clear'  => RouteClearCommand::class,
-        'route:test'   => RouteTestCommand::class,
+        'route:list' => RouteListCommand::class,
+        'route:cache' => RouteCacheCommand::class,
+        'route:clear' => RouteClearCommand::class,
+        'route:test' => RouteTestCommand::class,
 
-        'serve'             => ServeCommand::class,
-        'cache:clear'       => CacheClearCommand::class,
+        'serve' => ServeCommand::class,
+        'cache:clear' => CacheClearCommand::class,
     ];
 
     protected array $aliases = [
-        'g:c'      => 'make:controller',
-        'g:m'      => 'make:model',
-        'g:cmd'    => 'make:command',
-        'g:mid'    => 'make:middleware',
-        'g:mig'    => 'make:migration',
-        'routes'       => 'route:list',
-        'route:show'   => 'route:list',
-        's'        => 'serve',
-        'cc'       => 'cache:clear',
-        'i'        => 'inspire',
+        'g:c' => 'make:controller',
+        'g:m' => 'make:model',
+        'g:cmd' => 'make:command',
+        'g:mid' => 'make:middleware',
+        'g:mig' => 'make:migration',
+        'g:req' => 'make:request',
+        'g:srv' => 'make:service',
+        'g:act' => 'make:action',
+        'g:dto' => 'make:dto',
+        'g:res' => 'make:resource',
+        'g:repo' => 'make:repository',
+        'routes' => 'route:list',
+        'route:show' => 'route:list',
+        's' => 'serve',
+        'cc' => 'cache:clear',
+        'i' => 'inspire',
     ];
 
     protected array $commandGroups = [
         'General' => ['help', 'demo', 'inspire'],
-        'Make' => ['make:controller', 'make:model', 'make:command', 'make:middleware', 'make:migration'],
+        'Make' => [
+            'make:controller',
+            'make:model',
+            'make:command',
+            'make:middleware',
+            'make:migration',
+            'make:request',
+            'make:service',
+            'make:action',
+            'make:dto',
+            'make:resource',
+            'make:repository'
+        ],
+        'Routes' => ['route:list', 'route:cache', 'route:clear', 'route:test'],
         'Utility' => ['serve', 'cache:clear'],
     ];
 

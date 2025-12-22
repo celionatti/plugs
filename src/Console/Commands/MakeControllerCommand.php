@@ -343,7 +343,7 @@ class MakeControllerCommand extends Command
             return $options['namespace'];
         }
         
-        $base = 'App\\Controllers';
+        $base = 'App\\Http\\Controllers';
         
         if ($options['type'] === 'api') {
             return $base . '\\Api';
@@ -591,7 +591,7 @@ class MakeControllerCommand extends Command
     private function getControllerPath(string $name, array $options): string
     {
         $namespace = $this->buildNamespace($options);
-        $path = str_replace('App\\Controllers', 'app/Controllers', $namespace);
+        $path = str_replace('App\\Http\\Controllers', 'app/Http/Controllers', $namespace);
         $path = str_replace('\\', '/', $path);
         
         return getcwd() . '/' . $path . '/' . $name . '.php';

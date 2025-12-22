@@ -1,0 +1,322 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Plugs\Console\Commands;
+
+/*
+|--------------------------------------------------------------------------
+| Make: Repository Command
+|--------------------------------------------------------------------------
+|
+| Creates repository classes for data access abstraction.
+*/
+
+use Plugs\Console\Command;
+use Plugs\Console\Support\Str;
+use Plugs\Console\Support\Filesystem;
+
+class MakeRepositoryCommand extends Command
+{
+    protected string $description = 'Create a new repository class';
+
+    protected function defineArguments(): array
+    {
+        return [
+            'name' => 'The name of the repository class'
+        ];
+    }
+
+    protected function defineOptions(): array
+    {
+        return [
+            '--model=MODEL' => 'Associated model for the repository',
+            '--interface' => 'Generate interface alongside repository',
+            '--force' => 'Overwrite existing files',
+            '--strict' => 'Add strict type declarations',
+        ];
+    }
+
+    public function handle(): int
+    {
+        $this->title('Repository Generator');
+
+        $name = $this->argument('0');
+
+        if (!$name) {
+            $name = $this->ask('Repository name', 'UserRepository');
+        }
+
+        // Ensure it ends with Repository
+        if (!str_ends_with($name, 'Repository')) {
+            $name .= 'Repository';
+        }
+
+        $name = Str::studly($name);
+
+        $options = [
+            'model' => $this->option('model'),
+            'interface' => $this->hasOption('interface'),
+            'force' => $this->isForce(),
+            'strict' => $this->hasOption('strict'),
+        ];
+
+        // Interactive mode
+        if (!$options['model'] && !$this->hasOption('force')) {
+            $this->section('Configuration');
+
+            if ($this->confirm('Associate with a model?', true)) {
+                $modelName = $this->ask('Model name', str_replace('Repository', '', $name));
+                $options['model'] = Str::studly($modelName);
+            }
+
+            $options['interface'] = $this->confirm('Generate interface?', true);
+        }
+
+        $path = $this->getRepositoryPath($name);
+
+        if (Filesystem::exists($path) && !$options['force']) {
+            if (!$this->confirm("Repository {$name} already exists. Overwrite?", false)) {
+                $this->warning('Repository generation cancelled.');
+                return 0;
+            }
+        }
+
+        $this->section('Generating Files');
+        $filesCreated = [];
+
+        // Generate interface if requested
+        if ($options['interface']) {
+            $interfaceName = str_replace('Repository', 'RepositoryInterface', $name);
+            $interfacePath = $this->getRepositoryPath($interfaceName);
+
+            $this->task('Creating repository interface', function () use ($interfaceName, $options, $interfacePath) {
+                $content = $this->generateInterface($interfaceName, $options);
+                Filesystem::put($interfacePath, $content);
+                usleep(150000);
+            });
+
+            $filesCreated[] = $interfacePath;
+            $this->success("Interface created: {$interfacePath}");
+        }
+
+        // Generate repository
+        $this->task('Creating repository class', function () use ($name, $options, $path) {
+            $content = $this->generateRepositoryClass($name, $options);
+            Filesystem::put($path, $content);
+            usleep(200000);
+        });
+
+        $filesCreated[] = $path;
+        $this->success("Repository created: {$path}");
+
+        $this->newLine(2);
+        $this->box(
+            "Repository '{$name}' generated successfully!\n\n" .
+            "Files created: " . count($filesCreated),
+            "✅ Success",
+            "success"
+        );
+
+        $this->newLine();
+        $this->section('Next Steps');
+        $this->numberedList([
+            "Implement data access methods in {$name}",
+            "Bind interface to implementation in service container",
+            $options['model'] ? "Ensure {$options['model']} model exists" : null,
+        ]);
+
+        return 0;
+    }
+
+    private function getRepositoryPath(string $name): string
+    {
+        return getcwd() . '/app/Repositories/' . $name . '.php';
+    }
+
+    private function generateRepositoryClass(string $name, array $options): string
+    {
+        $strict = $options['strict'] ? "declare(strict_types=1);\n\n" : '';
+        $model = $options['model'] ?? 'Model';
+        $modelVar = Str::camel($model);
+        $imports = $this->buildImports($options);
+        $implements = $options['interface']
+            ? ' implements ' . str_replace('Repository', 'RepositoryInterface', $name)
+            : '';
+
+        return <<<PHP
+<?php
+
+{$strict}namespace App\Repositories;
+
+{$imports}
+
+/**
+ * {$name}
+ *
+ * Repository class for {$model} data access.
+ * Abstracts database operations from business logic.
+ * 
+ * Generated by ThePlugs Console
+ */
+class {$name}{$implements}
+{
+    /**
+     * Get all records
+     */
+    public function all(): array
+    {
+        // TODO: Implement all() method
+        // Example with Eloquent: return {$model}::all()->toArray();
+        return [];
+    }
+
+    /**
+     * Find a record by ID
+     */
+    public function find(int \$id): ?array
+    {
+        // TODO: Implement find() method
+        // Example with Eloquent: return {$model}::find(\$id)?->toArray();
+        return null;
+    }
+
+    /**
+     * Find a record by specific field
+     */
+    public function findBy(string \$field, mixed \$value): ?array
+    {
+        // TODO: Implement findBy() method
+        return null;
+    }
+
+    /**
+     * Create a new record
+     */
+    public function create(array \$data): ?array
+    {
+        // TODO: Implement create() method
+        // Example with Eloquent: return {$model}::create(\$data)->toArray();
+        return null;
+    }
+
+    /**
+     * Update an existing record
+     */
+    public function update(int \$id, array \$data): bool
+    {
+        // TODO: Implement update() method
+        // Example with Eloquent: return {$model}::where('id', \$id)->update(\$data) > 0;
+        return false;
+    }
+
+    /**
+     * Delete a record
+     */
+    public function delete(int \$id): bool
+    {
+        // TODO: Implement delete() method
+        // Example with Eloquent: return {$model}::destroy(\$id) > 0;
+        return false;
+    }
+
+    /**
+     * Get paginated records
+     */
+    public function paginate(int \$perPage = 15, int \$page = 1): array
+    {
+        // TODO: Implement paginate() method
+        return [
+            'data' => [],
+            'total' => 0,
+            'per_page' => \$perPage,
+            'current_page' => \$page,
+            'last_page' => 1,
+        ];
+    }
+
+    /**
+     * Count all records
+     */
+    public function count(): int
+    {
+        // TODO: Implement count() method
+        return 0;
+    }
+}
+
+PHP;
+    }
+
+    private function generateInterface(string $name, array $options): string
+    {
+        $strict = $options['strict'] ? "declare(strict_types=1);\n\n" : '';
+
+        return <<<PHP
+<?php
+
+{$strict}namespace App\Repositories;
+
+/**
+ * {$name}
+ *
+ * Interface for repository implementation.
+ * Generated by ThePlugs Console
+ */
+interface {$name}
+{
+    /**
+     * Get all records
+     */
+    public function all(): array;
+    
+    /**
+     * Find a record by ID
+     */
+    public function find(int \$id): ?array;
+    
+    /**
+     * Find a record by specific field
+     */
+    public function findBy(string \$field, mixed \$value): ?array;
+    
+    /**
+     * Create a new record
+     */
+    public function create(array \$data): ?array;
+    
+    /**
+     * Update an existing record
+     */
+    public function update(int \$id, array \$data): bool;
+    
+    /**
+     * Delete a record
+     */
+    public function delete(int \$id): bool;
+
+    /**
+     * Get paginated records
+     */
+    public function paginate(int \$perPage = 15, int \$page = 1): array;
+
+    /**
+     * Count all records
+     */
+    public function count(): int;
+}
+
+PHP;
+    }
+
+    private function buildImports(array $options): string
+    {
+        $imports = [];
+
+        if ($options['model']) {
+            $imports[] = "use App\\Models\\{$options['model']};";
+        }
+
+        return implode("\n", $imports);
+    }
+}
