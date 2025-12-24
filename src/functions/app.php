@@ -129,6 +129,23 @@ if (!function_exists('view')) {
     }
 }
 
+if (!function_exists('inertia')) {
+    /**
+     * Render an Inertia response
+     * 
+     * Returns an InertiaResponse that can render as JSON (for XHR requests)
+     * or as a full HTML page with embedded page data.
+     *
+     * @param string $component Component name (e.g., 'Users/Index')
+     * @param array $props Data to pass to the component
+     * @return \Plugs\Inertia\InertiaResponse
+     */
+    function inertia(string $component, array $props = []): \Plugs\Inertia\InertiaResponse
+    {
+        return \Plugs\Inertia\Inertia::render($component, $props);
+    }
+}
+
 if (!function_exists('csrf_token')) {
     function csrf_token(): string
     {
@@ -304,9 +321,10 @@ function extractFilesFromArray(array $fileArray): array
 /**
  * Quick pagination helper
  */
-function paginate($data, $perPage = 15, $page = null) {
+function paginate($data, $perPage = 15, $page = null)
+{
     $page = $page ?? $_GET['page'] ?? 1;
-    
+
     if (is_array($data)) {
         return \Plugs\Paginator\Pagination::fromArray([
             'data' => array_slice($data, ($page - 1) * $perPage, $perPage),
@@ -315,7 +333,7 @@ function paginate($data, $perPage = 15, $page = null) {
             'total' => count($data)
         ]);
     }
-    
+
     // Assume it's PlugModel pagination array
     return \Plugs\Paginator\Pagination::fromArray($data);
 }

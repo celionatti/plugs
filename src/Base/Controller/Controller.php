@@ -41,10 +41,10 @@ abstract class Controller
 
         // Share common data with views
         $this->view->share('app_name', config('app.name', 'Plugs Framework'));
-        
+
         // Share global errors (always available, empty if no errors)
         $this->shareGlobalErrors();
-        
+
         // Make old() helper available globally
         $this->shareOldInputHelper();
 
@@ -98,12 +98,12 @@ abstract class Controller
     {
         try {
             $html = $this->view->render($view, $data);
-            
+
             // Clear old input after successful render (only if no errors)
             if (!isset($_SESSION['_errors'])) {
                 $this->clearOldInput();
             }
-            
+
             return ResponseFactory::html($html);
         } catch (\Throwable $e) {
             if (config('app.debug', false)) {
@@ -111,6 +111,21 @@ abstract class Controller
             }
             return $this->renderErrorPage();
         }
+    }
+
+    /**
+     * Render an Inertia page
+     * 
+     * Use this for SPA-style rendering with React, Vue, or other frontend frameworks.
+     * Returns JSON for XHR requests (navigation) or full HTML for initial page loads.
+     *
+     * @param string $component Component name (e.g., 'Users/Index')
+     * @param array $props Data to pass to the component
+     * @return \Plugs\Inertia\InertiaResponse
+     */
+    protected function inertia(string $component, array $props = []): \Plugs\Inertia\InertiaResponse
+    {
+        return \Plugs\Inertia\Inertia::render($component, $props);
     }
 
     /**
@@ -140,7 +155,7 @@ abstract class Controller
 
         // Get referer or fallback to home
         $referer = $_SERVER['HTTP_REFERER'] ?? '/';
-        
+
         return $this->redirect($referer);
     }
 
@@ -161,7 +176,7 @@ abstract class Controller
         $errors = new ErrorMessage();
         $errors->add('general', $message);
         $_SESSION['_errors'] = $errors;
-        
+
         return $this->redirect($url);
     }
 
@@ -248,7 +263,7 @@ abstract class Controller
         if (!$validator->validate()) {
             // Convert validator errors to ErrorBag
             $errorBag = new ErrorMessage($validator->errors());
-            
+
             // Flash errors and old input, then redirect back
             return $this->back($errorBag);
         }
@@ -293,13 +308,13 @@ abstract class Controller
         // Fall back to IP address
         if ($this->currentRequest) {
             $serverParams = $this->currentRequest->getServerParams();
-            
+
             // Check for proxy headers
             if (!empty($serverParams['HTTP_X_FORWARDED_FOR'])) {
                 $ips = explode(',', $serverParams['HTTP_X_FORWARDED_FOR']);
                 return 'ip_' . trim($ips[0]);
             }
-            
+
             if (!empty($serverParams['REMOTE_ADDR'])) {
                 return 'ip_' . $serverParams['REMOTE_ADDR'];
             }
