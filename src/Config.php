@@ -17,7 +17,7 @@ class Config
 {
     private static $config = [];
     private static $loaded = [];
-    
+
     /**
      * Get configuration value using dot notation
      */
@@ -25,15 +25,15 @@ class Config
     {
         $parts = explode('.', $key);
         $file = array_shift($parts);
-        
+
         // Load config file if not already loaded
         if (!isset(self::$loaded[$file])) {
             self::load($file);
         }
-        
+
         // Navigate through the array using dot notation
         $value = self::$config[$file] ?? null;
-        
+
         foreach ($parts as $part) {
             if (is_array($value) && isset($value[$part])) {
                 $value = $value[$part];
@@ -41,10 +41,10 @@ class Config
                 return $default;
             }
         }
-        
+
         return $value ?? $default;
     }
-    
+
     /**
      * Set configuration value
      */
@@ -52,15 +52,15 @@ class Config
     {
         $parts = explode('.', $key);
         $file = array_shift($parts);
-        
+
         // Ensure file config exists
         if (!isset(self::$config[$file])) {
             self::$config[$file] = [];
         }
-        
+
         // Navigate and set the value
         $config = &self::$config[$file];
-        
+
         foreach ($parts as $i => $part) {
             if ($i === count($parts) - 1) {
                 $config[$part] = $value;
@@ -71,10 +71,10 @@ class Config
                 $config = &$config[$part];
             }
         }
-        
+
         self::$loaded[$file] = true;
     }
-    
+
     /**
      * Check if configuration key exists
      */
@@ -82,13 +82,13 @@ class Config
     {
         $parts = explode('.', $key);
         $file = array_shift($parts);
-        
+
         if (!isset(self::$loaded[$file])) {
             self::load($file);
         }
-        
+
         $value = self::$config[$file] ?? null;
-        
+
         foreach ($parts as $part) {
             if (is_array($value) && isset($value[$part])) {
                 $value = $value[$part];
@@ -96,10 +96,10 @@ class Config
                 return false;
             }
         }
-        
+
         return true;
     }
-    
+
     /**
      * Load configuration file
      */
@@ -108,9 +108,9 @@ class Config
         if (isset(self::$loaded[$file])) {
             return;
         }
-        
+
         $configPath = self::getConfigPath($file);
-        
+
         if (file_exists($configPath)) {
             self::$config[$file] = require $configPath;
             self::$loaded[$file] = true;
@@ -119,7 +119,7 @@ class Config
             self::$loaded[$file] = true;
         }
     }
-    
+
     /**
      * Get all configuration
      */
@@ -131,10 +131,10 @@ class Config
             }
             return self::$config[$file] ?? [];
         }
-        
+
         return self::$config;
     }
-    
+
     /**
      * Clear configuration cache
      */
@@ -147,12 +147,31 @@ class Config
             self::$loaded = [];
         }
     }
-    
+
+    private static $path = null;
+
+    /**
+     * Set the configuration path.
+     */
+    public static function setPath(string $path): void
+    {
+        self::$path = rtrim($path, '/\\') . DIRECTORY_SEPARATOR;
+    }
+
     /**
      * Get configuration file path
      */
     private static function getConfigPath(string $file): string
     {
-        return BASE_PATH . 'config/' . $file . '.php';
+        if (self::$path === null) {
+            if (defined('BASE_PATH')) {
+                self::setPath(BASE_PATH . 'config/');
+            } else {
+                // Fallback for when used as a standalone package without BASE_PATH
+                // Assuming standard structure if not defined
+                self::setPath(__DIR__ . '/../config/');
+            }
+        }
+        return self::$path . $file . '.php';
     }
 }

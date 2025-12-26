@@ -9,10 +9,17 @@
             "App\\": "app/"
         }
     },
+    "keywords": ["framework", "php", "plugs", "mvc", "fast"],
+    "homepage": "https://github.com/celionatti/plugs",
+    "support": {
+        "issues": "https://github.com/celionatti/plugs/issues",
+        "source": "https://github.com/celionatti/plugs"
+    },
     "authors": [
         {
-            "name": "celionatti",
-            "email": "celionatti@gmail.com"
+            "name": "Celio Natti",
+            "email": "celionatti@gmail.com",
+            "role": "Developer"
         }
     ],
     "minimum-stability": "stable",
@@ -27,5 +34,23 @@
         "illuminate/events": "^12.34",
         "guzzlehttp/guzzle": "^7.10",
         "symfony/mailer": "^7.3"
+    },
+    "require-dev": {
+        "phpunit/phpunit": "^10.0",
+        "fakerphp/faker": "^1.23",
+        "mockery/mockery": "^1.6"
+    },
+    "bin": [
+        "theplugs"
+    ],
+    "scripts": {
+        "post-root-package-install": [
+            "@php -r \"file_exists('.env') || copy('.env.example', '.env');\""
+        ]
+    },
+    "config": {
+        "optimize-autoloader": true,
+        "preferred-install": "dist",
+        "sort-packages": true
     }
 }
