@@ -37,6 +37,26 @@ composer require plugs/plugs
     php -S localhost:8000 -t public
     ```
 
+## Development via Docker
+
+If you prefer to develop using Docker, we have included a setup for you.
+
+1.  **Build and Start**:
+    ```bash
+    docker-compose up -d --build
+    ```
+
+2.  **Access Container**:
+    ```bash
+    docker-compose exec app bash
+    ```
+
+3.  **Run Tests**:
+    Inside the container, you can run your tests:
+    ```bash
+    ./vendor/bin/phpunit
+    ```
+
 ## Documentation
 
 For full documentation, please visit [our website](https://github.com/celionatti/plugs).
