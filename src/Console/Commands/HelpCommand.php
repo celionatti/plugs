@@ -48,23 +48,17 @@ class HelpCommand extends Command
 
     private function displayCommandList(ConsoleKernel $kernel): int
     {
-        $this->output->thePlugsCleanLogo();
-
-        //$this->output->section(strtoupper('Version') . " " . \Plugs\Plugs::VERSION);
-        //$this->line("  " . \Plugs\Plugs::VERSION);
-
         $this->output->section('USAGE');
         $this->line('  command [options] [arguments]');
 
         $this->output->section('OPTIONS');
         $globalOptions = [
-            '--help' => 'Display help for the command',
-            '--quiet' => 'Do not output any message',
-            '--version' => 'Display this application version',
-            '--ansi' => 'Force ANSI output',
-            '--no-ansi' => 'Disable ANSI output',
-            '--no-interaction' => 'Do not ask any interactive question',
-            '--verbose' => 'Increase the verbosity of messages'
+            '--help' => 'Display help',
+            '--quiet' => 'No output',
+            '--version' => 'Display version',
+            '--ansi' => 'Force ANSI',
+            '--no-ansi' => 'Disable ANSI',
+            '--verbose' => 'Increase verbosity'
         ];
 
         foreach ($globalOptions as $option => $description) {
@@ -94,7 +88,11 @@ class HelpCommand extends Command
                     $command = new $commandClass($name);
                     $description = $command->description();
                 } catch (\Throwable $e) {
-                    $description = 'No description';
+                    $description = '';
+                }
+
+                if (strlen($description) > 50) {
+                    $description = substr($description, 0, 47) . '...';
                 }
 
                 $this->line("  " . "\033[32m" . str_pad($name, 25) . "\033[0m" . $description);
