@@ -124,9 +124,8 @@ if (!function_exists('dm')) {
  */
 function plugs_dump(array $vars, bool $die = false, string $mode = 'default'): void
 {
-    if (!headers_sent()) {
+    if (!headers_sent())
         header('Content-Type: text/html; charset=UTF-8');
-    }
 
     $backtrace = debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS, 2);
     $caller = $backtrace[1] ?? $backtrace[0] ?? [];
@@ -136,8 +135,6 @@ function plugs_dump(array $vars, bool $die = false, string $mode = 'default'): v
     $memoryUsage = memory_get_usage(true);
     $peakMemory = memory_get_peak_usage(true);
     $executionTime = microtime(true) - ($_SERVER['REQUEST_TIME_FLOAT'] ?? microtime(true));
-
-    // Get query statistics if model is available
     $queryStats = plugs_get_query_stats();
 
     echo plugs_render_styles();
@@ -156,9 +153,98 @@ function plugs_dump(array $vars, bool $die = false, string $mode = 'default'): v
     echo '</div>';
     echo '</div>';
 
-    if ($die) {
-        exit(1);
+    echo <<<'JS'
+<script>
+    // Toggle collapsible variable view
+    function toggleVar(header) {
+        const body = header.nextElementSibling;
+        const isCollapsed = body.style.display === 'none';
+        body.style.display = isCollapsed ? 'block' : 'none';
+        header.style.opacity = isCollapsed ? '1' : '0.7';
     }
+
+    // Global toggle (Expand/Collapse All)
+    function toggleAll(expand) {
+        document.querySelectorAll('.var-body').forEach(body => {
+            body.style.display = expand ? 'block' : 'none';
+            body.previousElementSibling.style.opacity = expand ? '1' : '0.7';
+        });
+    }
+
+    // Search & Filter
+    document.getElementById('debug-search').addEventListener('input', (e) => {
+        const query = e.target.value.toLowerCase();
+        document.querySelectorAll('.var-item').forEach(item => {
+            const text = item.innerText.toLowerCase();
+            item.classList.toggle('hidden', !text.includes(query));
+        });
+    });
+
+    // Copy to Clipboard
+    function copyValue(icon) {
+        const container = icon.parentElement;
+        // Try to get data-full-value from string spans, otherwise use textContent
+        const stringSpan = container.querySelector('.syntax-string');
+        const textToCopy = stringSpan ? stringSpan.getAttribute('data-full-value') : container.innerText.trim();
+        
+        navigator.clipboard.writeText(textToCopy).then(() => {
+            const originalIcon = icon.innerText;
+            icon.innerText = '✅';
+            icon.style.color = '#10b981';
+            setTimeout(() => {
+                icon.innerText = originalIcon;
+                icon.style.color = '';
+            }, 1500);
+        }).catch(err => {
+            console.error('Failed to copy: ', err);
+            icon.innerText = '❌';
+            setTimeout(() => icon.innerText = originalIcon, 1500);
+        });
+    }
+
+    // Secret Masking
+    function revealSecret(el) {
+        const secret = el.getAttribute('data-secret');
+        el.innerText = secret;
+        el.classList.remove('masked-secret');
+        el.style.color = '#10b981';
+        el.style.fontStyle = 'normal';
+        el.style.background = 'rgba(16, 185, 129, 0.1)';
+    }
+
+    // Breadcrumbs on hover
+    const breadcrumbBar = document.getElementById('breadcrumb-bar');
+    document.addEventListener('mouseover', (e) => {
+        const keySpan = e.target.closest('.syntax-key');
+        if (keySpan) {
+            const path = keySpan.getAttribute('data-path');
+            if (path) {
+                breadcrumbBar.innerHTML = 'Current Path: <span class="breadcrumb-item">' + path + '</span>';
+                breadcrumbBar.style.display = 'block';
+            }
+        } else if (!e.target.closest('.breadcrumbs')) {
+            breadcrumbBar.style.display = 'none';
+        }
+    });
+
+    // Handle string truncation toggle (optional improvement)
+    document.querySelectorAll('.syntax-string').forEach(span => {
+        if (span.innerText.endsWith('..."')) {
+            span.style.cursor = 'pointer';
+            span.title = 'Click to show full string';
+            span.onclick = function() {
+                const full = this.getAttribute('data-full-value');
+                this.innerText = '"' + full + '"';
+                this.style.cursor = 'default';
+                this.title = '';
+            };
+        }
+    });
+</script>
+JS;
+
+    if ($die)
+        exit(1);
 }
 
 /**
@@ -187,42 +273,64 @@ function plugs_get_query_stats(): array
 }
 
 /**
- * Render CSS styles (Laravel 12 inspired)
+ * Render CSS styles (Plugs Dark Premium)
  */
 function plugs_render_styles(): string
 {
     return <<<'HTML'
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <style>
+    @import url("https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Dancing+Script:wght@700&display=swap");
+
+    :root {
+        --bg-body: #0f172a;
+        --bg-card: #1e293b;
+        --border-color: #334155;
+        --text-primary: #f8fafc;
+        --text-secondary: #94a3b8;
+        --text-muted: #64748b;
+        --accent-primary: #8b5cf6;
+        --accent-secondary: #3b82f6;
+        --danger: #ef4444;
+        --warning: #f59e0b;
+        --success: #10b981;
+        --code-bg: #0d1117;
+    }
+
     * { box-sizing: border-box; margin: 0; padding: 0; }
     
     body {
-        background: #f8fafc;
-        font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-        color: #1e293b;
+        background: var(--bg-body);
+        font-family: 'Outfit', sans-serif;
+        color: var(--text-primary);
         line-height: 1.6;
+        font-size: 15px;
     }
     
     .plugs-debug-wrapper {
         min-height: 100vh;
-        padding: 20px;
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        padding: 40px 20px 100px 20px;
+        max-width: 1200px;
+        margin: 0 auto;
     }
     
     .plugs-debug-header {
-        background: white;
-        border-radius: 12px;
-        padding: 24px 32px;
-        margin-bottom: 20px;
-        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        background: var(--bg-card);
+        border: 1px solid var(--border-color);
+        border-radius: 16px;
+        padding: 32px;
+        margin-bottom: 24px;
+        box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3);
     }
     
     .header-top {
         display: flex;
         justify-content: space-between;
         align-items: center;
-        margin-bottom: 24px;
-        padding-bottom: 20px;
-        border-bottom: 2px solid #e2e8f0;
+        margin-bottom: 32px;
+        padding-bottom: 24px;
+        border-bottom: 1px solid var(--border-color);
     }
     
     .logo-section {
@@ -231,114 +339,152 @@ function plugs_render_styles(): string
         gap: 16px;
     }
     
-    .logo {
-        width: 48px;
-        height: 48px;
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        border-radius: 12px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 24px;
-        box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
-    }
-    
-    .logo-text h1 {
-        font-size: 24px;
+    .brand {
+        font-family: "Dancing Script", cursive;
+        font-size: 2.25rem;
         font-weight: 700;
-        color: #1e293b;
-        margin-bottom: 2px;
+        color: var(--text-primary);
+        text-decoration: none;
+        background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
     }
     
     .logo-text p {
-        font-size: 13px;
-        color: #64748b;
+        font-size: 14px;
+        color: var(--text-muted);
         font-weight: 500;
+        margin-top: -8px;
+    }
+
+    .header-controls {
+        display: flex;
+        align-items: center;
+        gap: 16px;
+    }
+
+    .search-input {
+        background: rgba(15, 23, 42, 0.5);
+        border: 1px solid var(--border-color);
+        border-radius: 8px;
+        padding: 8px 16px;
+        color: var(--text-primary);
+        font-family: inherit;
+        font-size: 13px;
+        width: 250px;
+        outline: none;
+        transition: all 0.2s;
+    }
+
+    .search-input:focus {
+        border-color: var(--accent-primary);
+        box-shadow: 0 0 0 2px rgba(139, 92, 246, 0.2);
+    }
+
+    .global-actions {
+        display: flex;
+        gap: 8px;
+    }
+
+    .action-btn {
+        background: rgba(255, 255, 255, 0.05);
+        border: 1px solid var(--border-color);
+        color: var(--text-secondary);
+        padding: 8px 12px;
+        border-radius: 8px;
+        cursor: pointer;
+        font-size: 12px;
+        font-weight: 600;
+        transition: all 0.2s;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+    }
+
+    .action-btn:hover {
+        background: rgba(255, 255, 255, 0.1);
+        color: var(--text-primary);
     }
     
     .status-badge {
-        background: linear-gradient(135deg, #10b981 0%, #059669 100%);
-        color: white;
-        padding: 8px 20px;
-        border-radius: 20px;
+        background: rgba(16, 185, 129, 0.1);
+        color: var(--success);
+        padding: 8px 16px;
+        border-radius: 99px;
         font-size: 12px;
-        font-weight: 700;
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
-        box-shadow: 0 2px 8px rgba(16, 185, 129, 0.3);
+        font-weight: 600;
+        border: 1px solid rgba(16, 185, 129, 0.2);
     }
     
     .stats-grid {
         display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-        gap: 16px;
+        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+        gap: 20px;
     }
     
     .stat-card {
-        background: #f8fafc;
-        border: 1px solid #e2e8f0;
-        border-radius: 8px;
-        padding: 16px;
-        transition: all 0.2s ease;
+        background: rgba(15, 23, 42, 0.3);
+        border: 1px solid var(--border-color);
+        border-radius: 12px;
+        padding: 20px;
+        transition: all 0.3s ease;
     }
     
     .stat-card:hover {
-        background: #f1f5f9;
-        border-color: #cbd5e1;
-        transform: translateY(-2px);
+        border-color: var(--accent-primary);
+        background: rgba(15, 23, 42, 0.5);
     }
     
     .stat-label {
         font-size: 11px;
-        font-weight: 600;
+        font-weight: 700;
         text-transform: uppercase;
-        color: #64748b;
-        margin-bottom: 8px;
-        letter-spacing: 0.5px;
+        color: var(--text-muted);
+        margin-bottom: 12px;
+        letter-spacing: 0.05em;
+        display: flex;
+        align-items: center;
+        gap: 8px;
     }
     
     .stat-value {
-        font-size: 20px;
-        font-weight: 700;
-        color: #1e293b;
-        font-family: 'Monaco', 'Menlo', monospace;
-    }
-    
-    .stat-icon {
-        font-size: 14px;
-        margin-right: 6px;
+        font-size: 18px;
+        font-weight: 600;
+        color: var(--text-primary);
+        font-family: 'JetBrains Mono', monospace;
     }
     
     .plugs-debug-content {
-        background: white;
-        border-radius: 12px;
+        background: var(--bg-card);
+        border: 1px solid var(--border-color);
+        border-radius: 16px;
         overflow: hidden;
-        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3);
     }
     
     .variables-grid {
         display: grid;
-        gap: 20px;
-        padding: 24px;
+        gap: 24px;
+        padding: 32px;
     }
     
     .var-item {
-        background: #f8fafc;
-        border: 2px solid #e2e8f0;
-        border-radius: 10px;
+        background: rgba(15, 23, 42, 0.2);
+        border: 1px solid var(--border-color);
+        border-radius: 12px;
         overflow: hidden;
-        transition: all 0.2s ease;
+        transition: opacity 0.3s;
     }
-    
-    .var-item:hover {
-        border-color: #667eea;
-        box-shadow: 0 4px 12px rgba(102, 126, 234, 0.1);
+
+    .var-item.hidden {
+        display: none;
     }
     
     .var-header {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        color: white;
-        padding: 16px 20px;
+        padding: 16px 24px;
+        background: rgba(255, 255, 255, 0.03);
+        border-bottom: 1px solid var(--border-color);
         display: flex;
         justify-content: space-between;
         align-items: center;
@@ -348,9 +494,10 @@ function plugs_render_styles(): string
     .var-title {
         font-size: 15px;
         font-weight: 600;
+        color: var(--text-secondary);
         display: flex;
         align-items: center;
-        gap: 10px;
+        gap: 8px;
     }
     
     .var-badges {
@@ -359,13 +506,13 @@ function plugs_render_styles(): string
     }
     
     .badge {
-        background: rgba(255, 255, 255, 0.2);
+        background: rgba(139, 92, 246, 0.1);
+        color: var(--accent-primary);
         padding: 4px 12px;
-        border-radius: 12px;
+        border-radius: 8px;
         font-size: 11px;
         font-weight: 600;
-        text-transform: uppercase;
-        backdrop-filter: blur(10px);
+        border: 1px solid rgba(139, 92, 246, 0.2);
     }
     
     .var-body {
@@ -376,202 +523,150 @@ function plugs_render_styles(): string
         font-size: 12px;
         font-weight: 700;
         text-transform: uppercase;
-        color: #667eea;
-        margin-bottom: 12px;
+        color: var(--accent-secondary);
+        margin-bottom: 16px;
         display: flex;
         align-items: center;
         gap: 8px;
-        letter-spacing: 0.5px;
+        letter-spacing: 0.1em;
     }
     
     .code-block {
-        background: #1e293b;
-        color: #e2e8f0;
-        border-radius: 8px;
-        padding: 20px;
+        background: var(--code-bg);
+        border: 1px solid var(--border-color);
+        color: var(--text-primary);
+        border-radius: 12px;
+        padding: 24px;
         overflow-x: auto;
-        font-family: 'Monaco', 'Menlo', 'Consolas', monospace;
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 14px;
+        line-height: 1.7;
+        position: relative;
+    }
+    
+    .syntax-key { color: var(--accent-primary); font-weight: 500; cursor: help; }
+    .syntax-key:hover { text-decoration: underline; }
+    .syntax-string { color: var(--success); }
+    .syntax-number { color: var(--accent-secondary); }
+    .syntax-bool { color: var(--warning); }
+    .syntax-null { color: var(--danger); }
+    .syntax-array { color: var(--text-secondary); opacity: 0.8; }
+    .syntax-object { color: var(--accent-secondary); font-weight: 600; }
+    
+    .copy-icon {
+        position: absolute;
+        right: 12px;
+        top: 12px;
+        color: var(--text-muted);
+        cursor: pointer;
+        opacity: 0;
+        transition: all 0.2s;
+        padding: 4px;
+        border-radius: 4px;
+    }
+
+    .code-block:hover .copy-icon {
+        opacity: 1;
+    }
+
+    .copy-icon:hover {
+        color: var(--text-primary);
+        background: rgba(255, 255, 255, 0.05);
+    }
+
+    .masked-secret {
+        background: rgba(239, 68, 68, 0.1);
+        color: var(--danger);
+        padding: 2px 6px;
+        border-radius: 4px;
+        cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        font-style: italic;
+    }
+
+    .breadcrumbs {
+        position: fixed;
+        bottom: 24px;
+        left: 50%;
+        transform: translateX(-50%);
+        background: rgba(30, 41, 59, 0.9);
+        backdrop-filter: blur(12px);
+        border: 1px solid var(--border-color);
+        padding: 10px 24px;
+        border-radius: 99px;
         font-size: 13px;
-        line-height: 1.8;
-        max-height: 600px;
-        overflow-y: auto;
+        color: var(--text-secondary);
+        z-index: 1000;
+        display: none;
+        box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5);
     }
     
-    .code-block::-webkit-scrollbar {
-        width: 10px;
-        height: 10px;
+    .breadcrumb-item {
+        color: var(--accent-secondary);
+        font-weight: 600;
+    }
+
+    .alert {
+        padding: 16px 20px;
+        margin-top: 20px;
+        border-radius: 12px;
+        font-size: 14px;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
     }
     
-    .code-block::-webkit-scrollbar-track {
-        background: #0f172a;
-        border-radius: 5px;
-    }
+    .alert-warning { background: rgba(245, 158, 11, 0.1); border: 1px solid rgba(245, 158, 11, 0.2); color: #fbbf24; }
+    .alert-danger { background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.2); color: #f87171; }
+    .alert-success { background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.2); color: #34d399; }
     
-    .code-block::-webkit-scrollbar-thumb {
-        background: #667eea;
-        border-radius: 5px;
+    .alert-title {
+        font-weight: 700;
+        text-transform: uppercase;
+        font-size: 12px;
+        letter-spacing: 0.05em;
     }
-    
-    .code-line {
-        display: block;
-        padding: 2px 0;
-        white-space: pre-wrap;
-        word-break: break-word;
-    }
-    
-    .code-indent {
-        display: inline-block;
-        width: 20px;
-    }
-    
-    .syntax-key { color: #8b5cf6; font-weight: 600; }
-    .syntax-string { color: #34d399; }
-    .syntax-number { color: #60a5fa; }
-    .syntax-bool { color: #f59e0b; }
-    .syntax-null { color: #ef4444; }
-    .syntax-array { color: #ec4899; }
-    .syntax-object { color: #14b8a6; }
     
     .info-grid {
         display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+        grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
         gap: 16px;
-        margin-top: 20px;
-        padding-top: 20px;
-        border-top: 2px solid #e2e8f0;
+        margin-top: 24px;
+        padding-top: 24px;
+        border-top: 1px solid var(--border-color);
     }
     
     .info-card {
-        background: white;
-        border: 1px solid #e2e8f0;
-        border-radius: 8px;
+        background: rgba(15, 23, 42, 0.2);
+        border: 1px solid var(--border-color);
+        border-radius: 10px;
         padding: 16px;
     }
     
     .info-label {
-        font-size: 11px;
-        font-weight: 600;
+        font-size: 10px;
+        font-weight: 700;
         text-transform: uppercase;
-        color: #64748b;
-        margin-bottom: 6px;
+        color: var(--text-muted);
+        letter-spacing: 0.05em;
     }
     
     .info-value {
-        font-size: 15px;
-        font-weight: 600;
-        color: #1e293b;
-        font-family: 'Monaco', 'Menlo', monospace;
-    }
-    
-    .alert {
-        border-left: 4px solid;
-        padding: 16px 20px;
-        margin-top: 16px;
-        border-radius: 8px;
         font-size: 14px;
+        font-weight: 500;
+        color: var(--text-secondary);
+        font-family: 'JetBrains Mono', monospace;
     }
-    
-    .alert-warning {
-        background: #fef3c7;
-        border-color: #f59e0b;
-        color: #92400e;
-    }
-    
-    .alert-danger {
-        background: #fee2e2;
-        border-color: #ef4444;
-        color: #991b1b;
-    }
-    
-    .alert-success {
-        background: #d1fae5;
-        border-color: #10b981;
-        color: #065f46;
-    }
-    
-    .alert-info {
-        background: #dbeafe;
-        border-color: #3b82f6;
-        color: #1e40af;
-    }
-    
-    .alert-title {
-        font-weight: 700;
-        margin-bottom: 8px;
-        display: flex;
-        align-items: center;
-        gap: 8px;
-    }
-    
-    .query-table {
-        width: 100%;
-        border-collapse: collapse;
-        margin-top: 16px;
-    }
-    
-    .query-table th {
-        background: #f8fafc;
-        padding: 12px;
-        text-align: left;
-        font-size: 11px;
-        font-weight: 700;
-        text-transform: uppercase;
-        color: #64748b;
-        border-bottom: 2px solid #e2e8f0;
-    }
-    
-    .query-table td {
-        padding: 12px;
-        border-bottom: 1px solid #e2e8f0;
-        font-size: 13px;
-    }
-    
-    .query-table tr:hover {
-        background: #f8fafc;
-    }
-    
-    .query-sql {
-        font-family: 'Monaco', 'Menlo', monospace;
-        color: #667eea;
-        font-size: 12px;
-        max-width: 600px;
-        overflow: hidden;
-        text-overflow: ellipsis;
-        white-space: nowrap;
-    }
-    
-    .query-time {
-        font-weight: 600;
-        font-family: 'Monaco', 'Menlo', monospace;
-    }
-    
-    .time-fast { color: #10b981; }
-    .time-normal { color: #f59e0b; }
-    .time-slow { color: #ef4444; }
-    
-    .trace-info {
-        background: #f8fafc;
-        border: 1px solid #e2e8f0;
-        border-radius: 8px;
-        padding: 16px;
-        margin-top: 16px;
-        font-size: 12px;
-        color: #64748b;
-        font-family: 'Monaco', 'Menlo', monospace;
-    }
-    
-    .trace-path {
-        color: #667eea;
-        font-weight: 600;
-    }
-    
-    @keyframes slideIn {
-        from { opacity: 0; transform: translateY(-20px); }
+
+    @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(10px); }
         to { opacity: 1; transform: translateY(0); }
     }
     
     .plugs-debug-wrapper {
-        animation: slideIn 0.3s ease-out;
+        animation: fadeIn 0.4s ease-out;
     }
 </style>
 HTML;
@@ -588,61 +683,28 @@ function plugs_render_header(string $file, $line, int $memoryUsage, int $peakMem
     $html = '<div class="plugs-debug-header">';
     $html .= '<div class="header-top">';
     $html .= '<div class="logo-section">';
-    $html .= '<div class="logo">🔌</div>';
-    $html .= '<div class="logo-text">';
-    $html .= '<h1>Plugs Framework</h1>';
-    $html .= '<p>Debug Console</p>';
+    $html .= '<div class="brand">Plugs</div>';
+    $html .= '<div class="logo-text"><p>Debug Console</p></div>';
     $html .= '</div>';
+
+    $html .= '<div class="header-controls">';
+    $html .= '<input type="text" class="search-input" id="debug-search" placeholder="Search variables, keys, values...">';
+    $html .= '<div class="global-actions">';
+    $html .= '<button class="action-btn" onclick="toggleAll(true)"><span>Expand</span> ⊞</button>';
+    $html .= '<button class="action-btn" onclick="toggleAll(false)"><span>Collapse</span> ⊟</button>';
     $html .= '</div>';
-    $html .= '<div class="status-badge">● Active</div>';
+    $html .= '<div class="status-badge">Live Debugging</div>';
+    $html .= '</div>';
     $html .= '</div>';
 
     $html .= '<div class="stats-grid">';
-
-    // File & Line
-    $html .= '<div class="stat-card">';
-    $html .= '<div class="stat-label"><span class="stat-icon">📁</span>Location</div>';
-    $html .= '<div class="stat-value" style="font-size: 13px;">' . htmlspecialchars(basename($file)) . ':' . $line . '</div>';
-    $html .= '</div>';
-
-    // Memory Usage
-    $html .= '<div class="stat-card">';
-    $html .= '<div class="stat-label"><span class="stat-icon">💾</span>Memory Usage</div>';
-    $html .= '<div class="stat-value">' . plugs_format_bytes($memoryUsage) . '</div>';
-    $html .= '</div>';
-
-    // Peak Memory
-    $html .= '<div class="stat-card">';
-    $html .= '<div class="stat-label"><span class="stat-icon">📊</span>Peak Memory</div>';
-    $html .= '<div class="stat-value">' . plugs_format_bytes($peakMemory) . '</div>';
-    $html .= '</div>';
-
-    // Execution Time
-    $html .= '<div class="stat-card">';
-    $html .= '<div class="stat-label"><span class="stat-icon">⏱️</span>Execution Time</div>';
-    $html .= '<div class="stat-value">' . number_format($executionTime * 1000, 2) . ' ms</div>';
-    $html .= '</div>';
-
-    // Query Count
+    $html .= '<div class="stat-card"><div class="stat-label">Location</div><div class="stat-value" style="font-size: 13px;">' . htmlspecialchars(basename($file)) . ':' . $line . '</div></div>';
+    $html .= '<div class="stat-card"><div class="stat-label">Memory</div><div class="stat-value">' . plugs_format_bytes($memoryUsage) . '</div></div>';
+    $html .= '<div class="stat-card"><div class="stat-label">Execution</div><div class="stat-value">' . number_format($executionTime * 1000, 2) . ' ms</div></div>';
     if ($queryCount > 0) {
-        $html .= '<div class="stat-card">';
-        $html .= '<div class="stat-label"><span class="stat-icon">🔍</span>Queries</div>';
-        $html .= '<div class="stat-value">' . $queryCount . '</div>';
-        $html .= '</div>';
-
-        // Query Time
-        $html .= '<div class="stat-card">';
-        $html .= '<div class="stat-label"><span class="stat-icon">⚡</span>Query Time</div>';
-        $html .= '<div class="stat-value">' . number_format($queryTime * 1000, 2) . ' ms</div>';
-        $html .= '</div>';
+        $html .= '<div class="stat-card"><div class="stat-label">Queries</div><div class="stat-value">' . $queryCount . ' (' . number_format($queryTime * 1000, 1) . 'ms)</div></div>';
     }
-
-    // Timestamp
-    $html .= '<div class="stat-card">';
-    $html .= '<div class="stat-label"><span class="stat-icon">🕐</span>Timestamp</div>';
-    $html .= '<div class="stat-value" style="font-size: 16px;">' . date('H:i:s') . '</div>';
-    $html .= '</div>';
-
+    $html .= '<div class="stat-card"><div class="stat-label">Time</div><div class="stat-value">' . date('H:i:s') . '</div></div>';
     $html .= '</div>';
     $html .= '</div>';
 
@@ -654,7 +716,7 @@ function plugs_render_header(string $file, $line, int $memoryUsage, int $peakMem
  */
 function plugs_render_variables(array $vars): string
 {
-    $html = '<div class="variables-grid">';
+    $html = '<div class="variables-grid" id="vars-container">';
 
     if (empty($vars)) {
         $html .= '<div style="text-align: center; padding: 60px; color: #64748b;">';
@@ -668,7 +730,7 @@ function plugs_render_variables(array $vars): string
         }
     }
 
-    $html .= '</div>';
+    $html .= '</div><div id="breadcrumb-bar" class="breadcrumbs"></div>';
     return $html;
 }
 
@@ -681,7 +743,7 @@ function plugs_render_variable($var, int $index): string
     $size = plugs_get_variable_size($var);
 
     $html = '<div class="var-item">';
-    $html .= '<div class="var-header">';
+    $html .= '<div class="var-header" onclick="toggleVar(this)">';
     $html .= '<div class="var-title">';
     $html .= '<span>📦</span>';
     $html .= '<span>Variable #' . ($index + 1) . '</span>';
@@ -695,6 +757,7 @@ function plugs_render_variable($var, int $index): string
     $html .= '<div class="var-body">';
     $html .= '<div class="section-title">📄 Value</div>';
     $html .= '<div class="code-block">';
+    $html .= '<div class="copy-icon" title="Copy to clipboard" onclick="copyValue(this)">📋</div>';
     $html .= plugs_format_value($var, 0);
     $html .= '</div>';
 
@@ -899,64 +962,45 @@ function plugs_render_model(array $data): string
 /**
  * Format value for display with proper indentation and syntax highlighting
  */
-function plugs_format_value($value, int $depth = 0, int $maxDepth = 10): string
+function plugs_format_value($value, int $depth = 0, array $path = []): string
 {
-    if ($depth > $maxDepth) {
-        return '<span class="syntax-null">... (max depth)</span>';
-    }
-
+    if ($depth > 12)
+        return '<span class="syntax-null">... (depth limit)</span>';
     $indent = str_repeat('  ', $depth);
 
-    if (is_null($value)) {
+    if (is_null($value))
         return '<span class="syntax-null">null</span>';
-    }
-
-    if (is_bool($value)) {
+    if (is_bool($value))
         return '<span class="syntax-bool">' . ($value ? 'true' : 'false') . '</span>';
-    }
-
-    if (is_int($value) || is_float($value)) {
+    if (is_int($value) || is_float($value))
         return '<span class="syntax-number">' . $value . '</span>';
-    }
-
     if (is_string($value)) {
         $escaped = htmlspecialchars($value);
-        if (strlen($value) > 100) {
-            return '<span class="syntax-string">"' . substr($escaped, 0, 100) . '..."</span>';
-        }
-        return '<span class="syntax-string">"' . $escaped . '"</span>';
+        return '<span class="syntax-string" data-full-value="' . $escaped . '">"' . (strlen($value) > 200 ? substr($escaped, 0, 200) . '...' : $escaped) . '"</span>';
     }
 
     if (is_array($value)) {
-        if (empty($value)) {
+        if (empty($value))
             return '<span class="syntax-array">[]</span>';
-        }
-
         $html = '<span class="syntax-array">Array(' . count($value) . ')</span> [<br>';
         $isAssoc = array_keys($value) !== range(0, count($value) - 1);
 
-        $count = 0;
         foreach ($value as $key => $val) {
-            if ($count > 50) {
-                $html .= $indent . '  <span class="syntax-null">... (' . (count($value) - 50) . ' more items)</span><br>';
-                break;
-            }
+            $currentPath = array_merge($path, [$key]);
+            $isSecret = is_string($key) && preg_match('/(password|secret|key|token|auth|pass|cred)/i', $key);
 
             $html .= $indent . '  ';
-
             if ($isAssoc) {
-                if (is_string($key)) {
-                    $html .= '<span class="syntax-key">"' . htmlspecialchars($key) . '"</span> => ';
-                } else {
-                    $html .= '<span class="syntax-number">' . $key . '</span> => ';
-                }
+                $html .= '<span class="syntax-key" data-path="' . implode(' → ', $currentPath) . '">' . (is_string($key) ? '"' . htmlspecialchars($key) . '"' : $key) . '</span> => ';
             }
 
-            $html .= plugs_format_value($val, $depth + 1, $maxDepth);
+            if ($isSecret && !empty($val)) {
+                $html .= '<span class="masked-secret" onclick="revealSecret(this)" data-secret="' . htmlspecialchars(is_string($val) ? (string) $val : json_encode($val)) . '">🔒 [masked secret]</span>';
+            } else {
+                $html .= plugs_format_value($val, $depth + 1, $currentPath);
+            }
             $html .= '<br>';
-            $count++;
         }
-
         $html .= $indent . ']';
         return $html;
     }
@@ -964,32 +1008,19 @@ function plugs_format_value($value, int $depth = 0, int $maxDepth = 10): string
     if (is_object($value)) {
         $className = get_class($value);
         $html = '<span class="syntax-object">Object(' . $className . ')</span> {<br>';
-
         try {
             $reflection = new \ReflectionClass($value);
             $properties = $reflection->getProperties();
-
-            $count = 0;
             foreach ($properties as $property) {
-                if ($count > 50) {
-                    $html .= $indent . '  <span class="syntax-null">... (' . (count($properties) - 50) . ' more properties)</span><br>';
-                    break;
-                }
-
                 $property->setAccessible(true);
-                $propName = $property->getName();
-                $propValue = $property->getValue($value);
-
-                $html .= $indent . '  ';
-                $html .= '<span class="syntax-key">' . htmlspecialchars($propName) . '</span> => ';
-                $html .= plugs_format_value($propValue, $depth + 1, $maxDepth);
-                $html .= '<br>';
-                $count++;
+                $name = $property->getName();
+                $val = $property->getValue($value);
+                $currentPath = array_merge($path, [$name]);
+                $html .= $indent . '  <span class="syntax-key" data-path="' . implode(' → ', $currentPath) . '">' . htmlspecialchars($name) . '</span> => ' . plugs_format_value($val, $depth + 1, $currentPath) . '<br>';
             }
         } catch (\Exception $e) {
-            $html .= $indent . '  <span class="syntax-null">Unable to reflect object</span><br>';
+            $html .= $indent . '  <span class="syntax-null">Unable to reflect</span><br>';
         }
-
         $html .= $indent . '}';
         return $html;
     }
