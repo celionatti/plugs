@@ -292,11 +292,13 @@ class Validator
             'uuid' => 'The :attribute must be a valid UUID.',
             'timezone' => 'The :attribute must be a valid timezone.',
             'active_url' => 'The :attribute is not a valid URL.',
+            'password' => 'The :attribute must meet the complexity requirements: :requirements.',
+            'strong_password' => 'The :attribute must be at least 8 characters and contain at least one uppercase letter, one lowercase letter, one number, and one special character.',
         ];
 
         return $messages[$rule] ?? "The :attribute is invalid.";
     }
-    
+
     // =====================================================
     // VALIDATION RULES
     // =====================================================
@@ -961,6 +963,70 @@ class Validator
     {
         if ($value !== null && $value !== '' && $value !== strtoupper($value)) {
             $this->addError($field, 'uppercase');
+        }
+    }
+
+    /**
+     * Password complexity validation
+     * Usage: password:min_8,letters,symbols,numbers
+     */
+    private function validatePassword(string $field, $value, array $params): void
+    {
+        if ($value === null || $value === '') {
+            return;
+        }
+
+        $failed = [];
+        $requirements = [];
+
+        foreach ($params as $param) {
+            if (strpos($param, 'min_') === 0) {
+                $min = (int) substr($param, 4);
+                if (strlen($value) < $min) {
+                    $failed[] = "at least $min characters";
+                }
+                $requirements[] = "at least $min characters";
+            } elseif ($param === 'letters') {
+                if (!preg_match('/[a-zA-Z]/', $value)) {
+                    $failed[] = 'at least one letter';
+                }
+                $requirements[] = 'at least one letter';
+            } elseif ($param === 'numbers') {
+                if (!preg_match('/[0-9]/', $value)) {
+                    $failed[] = 'at least one number';
+                }
+                $requirements[] = 'at least one number';
+            } elseif ($param === 'symbols') {
+                if (!preg_match('/[^a-zA-Z0-9]/', $value)) {
+                    $failed[] = 'at least one special character';
+                }
+                $requirements[] = 'at least one special character';
+            } elseif ($param === 'mixed') {
+                if (!preg_match('/[a-z]/', $value) || !preg_match('/[A-Z]/', $value)) {
+                    $failed[] = 'both uppercase and lowercase letters';
+                }
+                $requirements[] = 'both uppercase and lowercase letters';
+            }
+        }
+
+        if (!empty($failed)) {
+            $this->addError($field, 'password', ['requirements' => implode(', ', $requirements)]);
+        }
+    }
+
+    /**
+     * Strong password validation
+     */
+    private function validateStrongPassword(string $field, $value): void
+    {
+        if ($value === null || $value === '') {
+            return;
+        }
+
+        $pattern = '/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^a-zA-Z0-9]).{8,}$/';
+
+        if (!preg_match($pattern, $value)) {
+            $this->addError($field, 'strong_password');
         }
     }
 }
