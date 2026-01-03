@@ -5,7 +5,7 @@ declare(strict_types=1);
 /**
  * Render debug error page with detailed information
  */
-function renderDebugErrorPage(Exception $e): void
+function renderDebugErrorPage(Throwable $e): void
 {
     error_log($e->getMessage() . "\n" . $e->getTraceAsString());
     http_response_code(500);
@@ -13,462 +13,497 @@ function renderDebugErrorPage(Exception $e): void
     $trace = $e->getTrace();
     $file = $e->getFile();
     $line = $e->getLine();
-    
-    // Get code snippet around the error line
-    $codeSnippet = getCodeSnippet($file, $line);
-    
+
+    // Prepare frames including the main exception location
+    $frames = [];
+    $frames[] = [
+        'file' => $file,
+        'line' => $line,
+        'function' => '{main}',
+        'class' => '',
+        'type' => '',
+        'args' => []
+    ];
+    foreach ($trace as $t) {
+        $frames[] = $t;
+    }
+
+    $className = get_class($e);
+    $shortClass = basename(str_replace('\\', '/', $className));
+
     $html = '<!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="dark">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>' . htmlspecialchars(get_class($e)) . '</title>
+    <title>Plugs &middot; ' . htmlspecialchars($shortClass) . '</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
+        @import url("https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Dancing+Script:wght@700&display=swap");
+
+        :root {
+            --bg-body: #0f172a;
+            --bg-sidebar: #1e293b;
+            --bg-card: #1e293b;
+            --bg-header: #0f172a;
+            --border-color: #334155;
+            --text-primary: #f8fafc;
+            --text-secondary: #94a3b8;
+            --text-muted: #64748b;
+            --accent-primary: #8b5cf6;
+            --accent-secondary: #3b82f6;
+            --danger: #ef4444;
+            --warning: #f59e0b;
+            --success: #10b981;
+            --code-bg: #0d1117;
+            --highlight-bg: rgba(239, 68, 68, 0.15);
+            --highlight-border: #ef4444;
         }
-        
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
         body {
-            font-family: "Nunito", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-            background: #f7f8fa;
-            color: #2d3748;
-            line-height: 1.6;
-            font-size: 14px;
-        }
-        
-        .error-header {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            padding: 2.5rem 2rem;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-        }
-        
-        .error-header-content {
-            max-width: 1400px;
-            margin: 0 auto;
-        }
-        
-        .error-title {
-            font-size: 1.1rem;
-            font-weight: 600;
-            opacity: 0.9;
-            margin-bottom: 0.5rem;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-        }
-        
-        .error-message {
-            font-size: 1.75rem;
-            font-weight: 700;
-            margin-bottom: 1rem;
-            line-height: 1.3;
-        }
-        
-        .error-location {
-            font-size: 0.95rem;
-            opacity: 0.9;
-            font-family: "Fira Code", Consolas, Monaco, monospace;
-        }
-        
-        .main-content {
-            max-width: 1400px;
-            margin: 0 auto;
-            padding: 2rem;
-        }
-        
-        .error-card {
-            background: white;
-            border-radius: 8px;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-            margin-bottom: 1.5rem;
+            font-family: "Outfit", sans-serif;
+            background-color: var(--bg-body);
+            color: var(--text-primary);
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
             overflow: hidden;
+            font-size: 15px;
+            line-height: 1.5;
         }
-        
-        .card-header {
-            padding: 1.25rem 1.5rem;
-            background: #f7fafc;
-            border-bottom: 1px solid #e2e8f0;
-            font-weight: 600;
-            color: #2d3748;
+
+        /* Scrollbar */
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: var(--bg-body); }
+        ::-webkit-scrollbar-thumb { background: var(--border-color); border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: var(--text-muted); }
+
+        /* Header */
+        .header {
+            height: 64px;
+            border-bottom: 1px solid var(--border-color);
             display: flex;
             align-items: center;
-            gap: 0.5rem;
+            padding: 0 2rem;
+            background-color: rgba(15, 23, 42, 0.9);
+            backdrop-filter: blur(8px);
+            z-index: 50;
+            justify-content: space-between;
+        }
+
+        .brand {
+            font-family: "Dancing Script", cursive;
+            font-size: 1.75rem;
+            font-weight: 700;
+            color: var(--text-primary);
+            text-decoration: none;
+            background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
         }
         
-        .card-body {
-            padding: 0;
-        }
-        
-        .code-editor {
-            background: #282c34;
-            color: #abb2bf;
-            font-family: "Fira Code", Consolas, Monaco, monospace;
-            font-size: 13px;
-            overflow-x: auto;
-        }
-        
-        .code-line {
+        .exception-meta {
             display: flex;
-            padding: 0.25rem 0;
-            min-height: 22px;
+            gap: 1rem;
+            align-items: center;
         }
         
-        .code-line:hover {
-            background: #2c313a;
+        .php-version {
+            font-family: "JetBrains Mono", monospace;
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            background: rgba(255,255,255,0.05);
+            padding: 4px 8px;
+            border-radius: 4px;
         }
-        
-        .line-number {
-            color: #5c6370;
-            text-align: right;
-            padding: 0 1rem;
-            min-width: 50px;
-            user-select: none;
+
+        /* Main Layout */
+        .container {
+            display: flex;
+            flex: 1;
+            overflow: hidden;
+        }
+
+        /* Sidebar - Stack Trace */
+        .sidebar {
+            width: 420px;
+            background-color: var(--bg-sidebar);
+            border-right: 1px solid var(--border-color);
+            display: flex;
+            flex-direction: column;
             flex-shrink: 0;
         }
         
-        .line-content {
+        .sidebar-header {
+            padding: 1.5rem;
+            border-bottom: 1px solid var(--border-color);
+        }
+        
+        .sidebar-title {
+            font-size: 0.875rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--text-muted);
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+        }
+
+        .stack-list {
+            overflow-y: auto;
             flex: 1;
-            padding-right: 1rem;
-            white-space: pre;
-        }
-        
-        .error-line {
-            background: #7c2d12;
-            border-left: 3px solid #dc2626;
-        }
-        
-        .error-line .line-number {
-            color: #fca5a5;
-            font-weight: bold;
-        }
-        
-        .error-line .line-content {
-            color: #fecaca;
-        }
-        
-        .stack-trace {
             list-style: none;
         }
         
         .stack-item {
-            border-bottom: 1px solid #e2e8f0;
-        }
-        
-        .stack-header {
+            border-bottom: 1px solid var(--border-color);
             padding: 1rem 1.5rem;
             cursor: pointer;
             transition: background 0.2s;
-            display: flex;
-            align-items: start;
-            gap: 1rem;
+            position: relative;
         }
         
-        .stack-header:hover {
-            background: #f7fafc;
-        }
+        .stack-item:hover { background-color: rgba(255,255,255,0.02); }
+        .stack-item.active { background-color: rgba(139, 92, 246, 0.1); border-left: 3px solid var(--accent-primary); }
         
-        .stack-number {
-            color: #667eea;
-            font-weight: 700;
-            font-size: 0.9rem;
-            min-width: 30px;
-        }
-        
-        .stack-info {
-            flex: 1;
-        }
-        
-        .stack-class {
-            font-weight: 600;
-            color: #2d3748;
-            margin-bottom: 0.25rem;
+        .stack-index {
+            position: absolute;
+            right: 1.5rem;
+            top: 1rem;
+            font-family: "JetBrains Mono", monospace;
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            opacity: 0.5;
         }
         
         .stack-file {
-            font-size: 0.85rem;
-            color: #718096;
-            font-family: "Fira Code", Consolas, Monaco, monospace;
+            font-size: 0.8125rem;
+            color: var(--text-secondary);
+            margin-bottom: 4px;
+            word-break: break-all;
+            line-height: 1.4;
         }
         
-        .stack-toggle {
-            color: #a0aec0;
-            font-size: 1.2rem;
-            transition: transform 0.2s;
+        .stack-method {
+            font-family: "JetBrains Mono", monospace;
+            font-size: 0.8125rem;
+            color: var(--accent-secondary);
+            font-weight: 500;
         }
         
-        .stack-toggle.active {
-            transform: rotate(90deg);
+        .stack-line {
+            display: inline-block;
+            background: rgba(255,255,255,0.1);
+            padding: 0 4px;
+            border-radius: 3px;
+            color: var(--text-primary);
+            font-size: 0.75rem;
+            margin-right: 6px;
+        }
+
+        /* Content Area */
+        .content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow-y: auto;
+            position: relative;
+        }
+
+        .error-banner {
+            background: linear-gradient(to right, rgba(239, 68, 68, 0.1), transparent);
+            border-bottom: 1px solid var(--border-color);
+            padding: 2.5rem;
+            flex-shrink: 0;
+        }
+
+        .exception-type {
+            font-size: 0.875rem;
+            color: var(--danger);
+            font-weight: 600;
+            margin-bottom: 0.75rem;
+            display: flex;
+            align-items: center;
+            gap: 8px;
         }
         
-        .stack-code {
-            display: none;
-            border-top: 1px solid #e2e8f0;
-        }
-        
-        .stack-code.active {
+        .exception-type::before {
+            content: "";
             display: block;
+            width: 8px;
+            height: 8px;
+            background: var(--danger);
+            border-radius: 50%;
+            box-shadow: 0 0 0 4px rgba(239, 68, 68, 0.2);
+        }
+
+        .exception-message {
+            font-size: 1.75rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 1.5rem;
+            line-height: 1.3;
+        }
+        
+        .exception-location {
+            font-family: "JetBrains Mono", monospace;
+            font-size: 0.875rem;
+            background: var(--code-bg);
+            padding: 0.75rem 1rem;
+            border-radius: 6px;
+            border: 1px solid var(--border-color);
+            color: var(--text-secondary);
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        /* Code Viewer */
+        .code-viewer-container {
+            border-bottom: 1px solid var(--border-color);
+            background: var(--code-bg);
+            flex-shrink: 0;
+            min-height: 100px;
+        }
+
+        .code-viewer {
+            padding: 0;
+            overflow-x: auto;
+            display: none;
+        }
+
+        .code-viewer.active {
+            display: block;
+        }
+        
+        .code-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-family: "JetBrains Mono", monospace;
+            font-size: 0.875rem;
+        }
+        
+        .code-row {
+            line-height: 1.6;
+        }
+        
+        .code-line-num {
+            width: 60px;
+            text-align: right;
+            padding: 0 1rem;
+            color: var(--text-muted);
+            user-select: none;
+            border-right: 1px solid var(--border-color);
+            vertical-align: top;
+        }
+        
+        .code-content {
+            padding: 0 1.5rem;
+            color: var(--text-secondary);
+            white-space: pre;
+            position: relative;
+        }
+        
+        .code-row.error-line {
+            background-color: var(--highlight-bg);
+        }
+        
+        .code-row.error-line .code-line-num {
+            color: var(--danger);
+            font-weight: bold;
+            border-right-color: var(--danger);
+        }
+        
+        .code-row.error-line .code-content {
+            color: var(--text-primary);
+        }
+
+        /* Sections */
+        .section-container {
+            padding: 2.5rem;
+        }
+        
+        .tabs {
+            display: flex;
+            gap: 2rem;
+            border-bottom: 1px solid var(--border-color);
+            margin-bottom: 2rem;
+        }
+        
+        .tab {
+            padding-bottom: 1rem;
+            color: var(--text-secondary);
+            cursor: pointer;
+            font-weight: 500;
+            transition: all 0.2s;
+            position: relative;
+        }
+        
+        .tab:hover { color: var(--text-primary); }
+        
+        .tab.active {
+            color: var(--accent-primary);
+        }
+        
+        .tab.active::after {
+            content: "";
+            position: absolute;
+            bottom: -1px;
+            left: 0;
+            width: 100%;
+            height: 2px;
+            background: var(--accent-primary);
         }
         
         .info-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-            gap: 1rem;
-            padding: 1.5rem;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 1.5rem;
         }
         
-        .info-item {
-            display: flex;
-            flex-direction: column;
-            gap: 0.25rem;
+        .info-card {
+            background: rgba(255,255,255,0.02);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 1.25rem;
         }
         
         .info-label {
             font-size: 0.75rem;
             text-transform: uppercase;
-            color: #718096;
+            color: var(--text-muted);
+            margin-bottom: 0.5rem;
             font-weight: 600;
-            letter-spacing: 0.5px;
+            letter-spacing: 0.05em;
         }
         
         .info-value {
-            color: #2d3748;
-            font-size: 0.9rem;
+            font-family: "JetBrains Mono", monospace;
+            font-size: 0.8125rem;
+            color: var(--text-secondary);
             word-break: break-all;
         }
+
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
         
-        .tabs {
-            display: flex;
-            border-bottom: 1px solid #e2e8f0;
-            background: #f7fafc;
-        }
-        
-        .tab {
-            padding: 1rem 1.5rem;
-            cursor: pointer;
-            border-bottom: 2px solid transparent;
-            transition: all 0.2s;
-            font-weight: 600;
-            color: #718096;
-        }
-        
-        .tab:hover {
-            color: #4a5568;
-        }
-        
-        .tab.active {
-            color: #667eea;
-            border-bottom-color: #667eea;
-        }
-        
-        .tab-content {
-            display: none;
-            padding: 1.5rem;
-        }
-        
-        .tab-content.active {
-            display: block;
-        }
-        
-        .request-item {
-            padding: 0.75rem 1.5rem;
-            border-bottom: 1px solid #e2e8f0;
-            display: flex;
-            gap: 1rem;
-        }
-        
-        .request-item:last-child {
-            border-bottom: none;
-        }
-        
-        .request-key {
-            color: #667eea;
-            font-weight: 600;
-            min-width: 120px;
-        }
-        
-        .request-value {
-            color: #2d3748;
-            word-break: break-all;
-            font-family: "Fira Code", Consolas, Monaco, monospace;
-            font-size: 0.85rem;
-        }
-        
-        .actions {
-            display: flex;
-            gap: 1rem;
-            flex-wrap: wrap;
-            margin-top: 2rem;
-        }
-        
-        .btn {
-            padding: 0.75rem 1.5rem;
-            border-radius: 6px;
-            text-decoration: none;
-            font-weight: 600;
-            transition: all 0.2s;
-            border: none;
-            cursor: pointer;
-            font-size: 0.9rem;
-            display: inline-flex;
-            align-items: center;
-            gap: 0.5rem;
-        }
-        
-        .btn-primary {
-            background: #667eea;
-            color: white;
-        }
-        
-        .btn-primary:hover {
-            background: #5a67d8;
-            transform: translateY(-1px);
-            box-shadow: 0 4px 6px rgba(102, 126, 234, 0.3);
-        }
-        
-        .btn-secondary {
-            background: white;
-            color: #4a5568;
-            border: 1px solid #e2e8f0;
-        }
-        
-        .btn-secondary:hover {
-            background: #f7fafc;
-            border-color: #cbd5e0;
-            transform: translateY(-1px);
-        }
-        
-        @media (max-width: 768px) {
-            .error-header {
-                padding: 1.5rem 1rem;
-            }
-            
-            .error-message {
-                font-size: 1.25rem;
-            }
-            
-            .main-content {
-                padding: 1rem;
-            }
-            
-            .info-grid {
-                grid-template-columns: 1fr;
-            }
-            
-            .stack-header {
-                flex-direction: column;
-                gap: 0.5rem;
-            }
-            
-            .tabs {
-                overflow-x: auto;
-            }
+        @media (max-width: 1024px) {
+            .container { flex-direction: column-reverse; overflow: auto; }
+            .sidebar { width: 100%; height: 300px; border-right: none; border-top: 1px solid var(--border-color); }
+            .content { overflow: visible; }
         }
     </style>
 </head>
 <body>
-    <div class="error-header">
-        <div class="error-header-content">
-            <div class="error-title">' . htmlspecialchars(get_class($e)) . '</div>
-            <div class="error-message">' . htmlspecialchars($e->getMessage()) . '</div>
-            <div class="error-location">
-                📁 ' . htmlspecialchars(basename($file)) . ' : ' . htmlspecialchars((string)$line) . '
-            </div>
+    <header class="header">
+        <a href="/" class="brand">Plugs</a>
+        <div class="exception-meta">
+            <span class="php-version">PHP ' . PHP_VERSION . '</span>
         </div>
-    </div>
-    
-    <div class="main-content">
-        <div class="error-card">
-            <div class="card-header">
-                🔍 Error Source
+    </header>
+
+    <div class="container">
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <div class="sidebar-title">Stack Trace</div>
             </div>
-            <div class="card-body">
-                <div class="code-editor">
-                    ' . $codeSnippet . '
+            <ul class="stack-list">
+                ';
+    foreach ($frames as $index => $frame) {
+        $active = $index === 0 ? 'active' : '';
+        $f = $frame['file'] ?? '{internal}';
+        $l = $frame['line'] ?? '-';
+        $method = $frame['class'] ? $frame['class'] . ($frame['type'] ?? '::') . $frame['function'] : $frame['function'];
+
+        $html .= '
+                    <li class="stack-item ' . $active . '" onclick="switchFrame(' . $index . ', this)" data-file="' . htmlspecialchars(basename($f)) . '" data-line="' . $l . '">
+                        <span class="stack-index">' . $index . '</span>
+                        <div class="stack-file"><span class="stack-line">' . $l . '</span>' . htmlspecialchars(basename($f)) . '</div>
+                        <div class="stack-method">' . htmlspecialchars($method) . '</div>
+                    </li>';
+    }
+    $html .= '
+            </ul>
+        </aside>
+
+        <main class="content">
+            <div class="error-banner">
+                <div class="exception-type">' . htmlspecialchars($className) . '</div>
+                <h1 class="exception-message">' . htmlspecialchars($e->getMessage()) . '</h1>
+                <div class="exception-location" id="active-location">
+                    <span class="loc-file">' . htmlspecialchars(basename($file)) . '</span>
+                    <span style="color: var(--border-color)">|</span>
+                    <span class="loc-line">Line ' . $line . '</span>
                 </div>
             </div>
-        </div>
-        
-        <div class="error-card">
-            <div class="card-header">
-                📚 Stack Trace
+
+            <div class="code-viewer-container">
+                ';
+    foreach ($frames as $index => $frame) {
+        $active = $index === 0 ? 'active' : '';
+        $f = $frame['file'] ?? '';
+        $l = $frame['line'] ?? 0;
+        $snippet = ($f && file_exists($f)) ? getCodeSnippet($f, $l) : '<div style="padding: 2rem; color: var(--text-muted)">No code preview available</div>';
+
+        $html .= '<div id="code-' . $index . '" class="code-viewer ' . $active . '">' . $snippet . '</div>';
+    }
+    $html .= '
             </div>
-            <div class="card-body">
-                <ul class="stack-trace">
-                    ' . renderStackTrace($trace) . '
-                </ul>
-            </div>
-        </div>
-        
-        <div class="error-card">
-            <div class="tabs">
-                <div class="tab active" onclick="switchTab(event, \'request\')">Request</div>
-                <div class="tab" onclick="switchTab(event, \'server\')">Server</div>
-                <div class="tab" onclick="switchTab(event, \'details\')">Details</div>
-            </div>
-            <div class="tab-content active" id="request">
-                ' . renderRequestInfo() . '
-            </div>
-            <div class="tab-content" id="server">
-                ' . renderServerInfo() . '
-            </div>
-            <div class="tab-content" id="details">
-                <div class="info-grid">
-                    <div class="info-item">
-                        <div class="info-label">Exception</div>
-                        <div class="info-value">' . htmlspecialchars(get_class($e)) . '</div>
+
+            <div class="section-container">
+                <div class="tabs">
+                    <div class="tab active" onclick="switchTab(event, \'request\')">Request</div>
+                    <div class="tab" onclick="switchTab(event, \'environment\')">Environment</div>
+                    <div class="tab" onclick="switchTab(event, \'headers\')">Headers</div>
+                </div>
+                
+                <div id="request" class="tab-content active">
+                    <div class="info-grid">
+                        ' . renderRequestGrid() . '
                     </div>
-                    <div class="info-item">
-                        <div class="info-label">Code</div>
-                        <div class="info-value">' . htmlspecialchars((string)$e->getCode()) . '</div>
+                </div>
+
+                <div id="environment" class="tab-content">
+                    <div class="info-grid">
+                         ' . renderEnvGrid() . '
                     </div>
-                    <div class="info-item">
-                        <div class="info-label">File</div>
-                        <div class="info-value">' . htmlspecialchars($file) . '</div>
-                    </div>
-                    <div class="info-item">
-                        <div class="info-label">Line</div>
-                        <div class="info-value">' . htmlspecialchars((string)$line) . '</div>
+                </div>
+                
+                 <div id="headers" class="tab-content">
+                    <div class="info-grid">
+                         ' . renderHeadersGrid() . '
                     </div>
                 </div>
             </div>
-        </div>
-        
-        <div class="actions">
-            <a href="/" class="btn btn-primary">
-                <span>🏠</span>
-                <span>Go to Homepage</span>
-            </a>
-            <button onclick="location.reload()" class="btn btn-secondary">
-                <span>🔄</span>
-                <span>Reload Page</span>
-            </button>
-            <button onclick="history.back()" class="btn btn-secondary">
-                <span>↩️</span>
-                <span>Go Back</span>
-            </button>
-        </div>
+        </main>
     </div>
-    
+
     <script>
-        function toggleStack(element) {
-            const codeBlock = element.nextElementSibling;
-            const toggle = element.querySelector(".stack-toggle");
-            
-            codeBlock.classList.toggle("active");
-            toggle.classList.toggle("active");
-        }
-        
-        function switchTab(event, tabName) {
-            const tabs = document.querySelectorAll(".tab");
-            const contents = document.querySelectorAll(".tab-content");
-            
-            tabs.forEach(tab => tab.classList.remove("active"));
-            contents.forEach(content => content.classList.remove("active"));
+        function switchTab(event, tabId) {
+            document.querySelectorAll(".tab").forEach(t => t.classList.remove("active"));
+            document.querySelectorAll(".tab-content").forEach(c => c.classList.remove("active"));
             
             event.target.classList.add("active");
-            document.getElementById(tabName).classList.add("active");
+            document.getElementById(tabId).classList.add("active");
+        }
+        
+        function switchFrame(index, element) {
+            document.querySelectorAll(".stack-item").forEach(i => i.classList.remove("active"));
+            element.classList.add("active");
+            
+            document.querySelectorAll(".code-viewer").forEach(v => v.classList.remove("active"));
+            const targetCode = document.getElementById("code-" + index);
+            if (targetCode) targetCode.classList.add("active");
+
+            const locFile = document.querySelector("#active-location .loc-file");
+            const locLine = document.querySelector("#active-location .loc-line");
+            if (locFile && locLine) {
+                locFile.textContent = element.getAttribute("data-file");
+                locLine.textContent = "Line " + element.getAttribute("data-line");
+            }
         }
     </script>
 </body>
@@ -477,111 +512,81 @@ function renderDebugErrorPage(Exception $e): void
     echo $html;
 }
 
-function getCodeSnippet(string $file, int $line, int $context = 10): string
+function getCodeSnippet(string $file, int $line, int $context = 15): string
 {
     if (!file_exists($file)) {
-        return '<div class="code-line"><div class="line-number">-</div><div class="line-content">File not found</div></div>';
+        return '<div style="padding: 2rem; color: var(--text-muted)">File not found</div>';
     }
-    
+
     $lines = file($file);
     $start = max(0, $line - $context - 1);
     $end = min(count($lines), $line + $context);
-    
-    $output = '';
+
+    $output = '<table class="code-table">';
     for ($i = $start; $i < $end; $i++) {
         $currentLine = $i + 1;
-        $isErrorLine = $currentLine === $line;
-        $class = $isErrorLine ? ' error-line' : '';
-        
-        $output .= '<div class="code-line' . $class . '">';
-        $output .= '<div class="line-number">' . $currentLine . '</div>';
-        $output .= '<div class="line-content">' . htmlspecialchars($lines[$i]) . '</div>';
-        $output .= '</div>';
+        $isErrorLine = $currentLine === (int) $line;
+        $class = $isErrorLine ? 'error-line' : '';
+
+        $output .= '<tr class="code-row ' . $class . '">';
+        $output .= '<td class="code-line-num">' . $currentLine . '</td>';
+        $output .= '<td class="code-content">' . htmlspecialchars($lines[$i]) . '</td>';
+        $output .= '</tr>';
     }
-    
+    $output .= '</table>';
+
     return $output;
 }
 
 function renderStackTrace(array $trace): string
 {
-    $output = '';
-    
-    foreach ($trace as $index => $item) {
-        $class = $item['class'] ?? '';
-        $function = $item['function'] ?? '';
-        $file = $item['file'] ?? 'unknown';
-        $line = $item['line'] ?? 0;
-        
-        $callSignature = $class ? "$class::$function()" : "$function()";
-        
-        $output .= '<li class="stack-item">';
-        $output .= '<div class="stack-header" onclick="toggleStack(this)">';
-        $output .= '<div class="stack-number">#' . $index . '</div>';
-        $output .= '<div class="stack-info">';
-        $output .= '<div class="stack-class">' . htmlspecialchars($callSignature) . '</div>';
-        $output .= '<div class="stack-file">' . htmlspecialchars($file) . ':' . $line . '</div>';
-        $output .= '</div>';
-        $output .= '<div class="stack-toggle">▶</div>';
-        $output .= '</div>';
-        
-        if ($file !== 'unknown' && file_exists($file)) {
-            $output .= '<div class="stack-code">';
-            $output .= '<div class="code-editor">' . getCodeSnippet($file, $line, 5) . '</div>';
-            $output .= '</div>';
-        }
-        
-        $output .= '</li>';
-    }
-    
-    return $output;
+    // Integrated into main function for interactive view
+    return '';
 }
 
-function renderRequestInfo(): string
+function renderRequestGrid(): string
 {
-    $output = '<div>';
-    
-    $items = [
-        'Method' => $_SERVER['REQUEST_METHOD'] ?? 'Unknown',
-        'URI' => $_SERVER['REQUEST_URI'] ?? 'Unknown',
-        'Query String' => $_SERVER['QUERY_STRING'] ?? 'None',
-        'IP Address' => $_SERVER['REMOTE_ADDR'] ?? 'Unknown',
-        'Referrer' => $_SERVER['HTTP_REFERER'] ?? 'None',
-        'User Agent' => $_SERVER['HTTP_USER_AGENT'] ?? 'Unknown',
+    $data = [
+        'Method' => $_SERVER['REQUEST_METHOD'] ?? '-',
+        'URL' => $_SERVER['REQUEST_URI'] ?? '-',
+        'Protocol' => $_SERVER['SERVER_PROTOCOL'] ?? '-',
+        'IP Address' => $_SERVER['REMOTE_ADDR'] ?? '-',
     ];
-    
-    foreach ($items as $key => $value) {
-        $output .= '<div class="request-item">';
-        $output .= '<div class="request-key">' . htmlspecialchars($key) . '</div>';
-        $output .= '<div class="request-value">' . htmlspecialchars($value) . '</div>';
-        $output .= '</div>';
-    }
-    
-    $output .= '</div>';
-    return $output;
+    return renderGridItems($data);
 }
 
-function renderServerInfo(): string
+function renderEnvGrid(): string
 {
-    $output = '<div>';
-    
-    $items = [
+    $data = [
         'PHP Version' => PHP_VERSION,
-        'Server Software' => $_SERVER['SERVER_SOFTWARE'] ?? 'Unknown',
-        'Server Name' => $_SERVER['SERVER_NAME'] ?? 'Unknown',
-        'Server IP' => $_SERVER['SERVER_ADDR'] ?? 'Unknown',
-        'Document Root' => $_SERVER['DOCUMENT_ROOT'] ?? 'Unknown',
-        'Script Filename' => $_SERVER['SCRIPT_FILENAME'] ?? 'Unknown',
+        'Server Software' => $_SERVER['SERVER_SOFTWARE'] ?? '-',
+        'Interface' => $_SERVER['GATEWAY_INTERFACE'] ?? '-',
     ];
-    
-    foreach ($items as $key => $value) {
-        $output .= '<div class="request-item">';
-        $output .= '<div class="request-key">' . htmlspecialchars($key) . '</div>';
-        $output .= '<div class="request-value">' . htmlspecialchars($value) . '</div>';
-        $output .= '</div>';
+    return renderGridItems($data);
+}
+
+function renderHeadersGrid(): string
+{
+    $headers = [];
+    foreach ($_SERVER as $key => $value) {
+        if (strpos($key, 'HTTP_') === 0) {
+            $name = str_replace(' ', '-', ucwords(str_replace('_', ' ', strtolower(substr($key, 5)))));
+            $headers[$name] = $value;
+        }
     }
-    
-    $output .= '</div>';
-    return $output;
+    return renderGridItems($headers);
+}
+
+function renderGridItems(array $items): string
+{
+    $html = '';
+    foreach ($items as $label => $value) {
+        $html .= '<div class="info-card">';
+        $html .= '<div class="info-label">' . htmlspecialchars($label) . '</div>';
+        $html .= '<div class="info-value">' . htmlspecialchars((string) $value) . '</div>';
+        $html .= '</div>';
+    }
+    return $html;
 }
 
 /**
@@ -604,7 +609,7 @@ function renderProductionErrorPage(Exception $e, int $statusCode = 500): void
     ];
 
     $error = $errorMessages[$statusCode] ?? $errorMessages[500];
-    
+
     $html = '<!DOCTYPE html>
 <html lang="en">
 <head>
