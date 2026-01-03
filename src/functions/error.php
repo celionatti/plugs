@@ -598,14 +598,14 @@ function renderProductionErrorPage(Exception $e, int $statusCode = 500): void
     http_response_code($statusCode);
 
     $errorMessages = [
-        400 => ['title' => 'Bad Request', 'message' => 'The request could not be understood by the server.', 'icon' => '⚠️'],
+        400 => ['title' => 'Bad Request', 'message' => 'The request could not be understood by the server.', 'icon' => '🛰️'],
         401 => ['title' => 'Unauthorized', 'message' => 'You need to be authenticated to access this resource.', 'icon' => '🔒'],
         403 => ['title' => 'Forbidden', 'message' => 'You don\'t have permission to access this resource.', 'icon' => '🚫'],
-        404 => ['title' => 'Not Found', 'message' => 'The page you are looking for could not be found.', 'icon' => '🔍'],
+        404 => ['title' => 'Not Found', 'message' => 'The page you are looking for could not be found.', 'icon' => '🌌'],
         419 => ['title' => 'Page Expired', 'message' => 'Your session has expired. Please refresh and try again.', 'icon' => '⏱️'],
-        429 => ['title' => 'Too Many Requests', 'message' => 'You have made too many requests. Please slow down and try again later.', 'icon' => '🚦'],
-        500 => ['title' => 'Server Error', 'message' => 'Something went wrong on our end. We\'ve been notified and are working to fix the issue.', 'icon' => '🚧'],
-        503 => ['title' => 'Service Unavailable', 'message' => 'We\'re temporarily offline for maintenance. Please try again shortly.', 'icon' => '🔧'],
+        429 => ['title' => 'Too Many Requests', 'message' => 'You have made too many requests. Please slow down.', 'icon' => '🚦'],
+        500 => ['title' => 'Server Error', 'message' => 'Something went wrong on our end. We are working to fix it.', 'icon' => '🚧'],
+        503 => ['title' => 'Service Unavailable', 'message' => 'We\'re temporarily offline for maintenance.', 'icon' => '🔧'],
     ];
 
     $error = $errorMessages[$statusCode] ?? $errorMessages[500];
@@ -619,263 +619,179 @@ function renderProductionErrorPage(Exception $e, int $statusCode = 500): void
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <style>
-        @import url("https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700&display=swap");
+        @import url("https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&family=JetBrains+Mono:wght@700&family=Dancing+Script:wght@700&display=swap");
         
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
+        :root {
+            --bg-body: #080b12;
+            --bg-card: rgba(30, 41, 59, 0.5);
+            --border-color: rgba(255, 255, 255, 0.08);
+            --text-primary: #f8fafc;
+            --text-secondary: #94a3b8;
+            --accent-primary: #8b5cf6;
+            --accent-secondary: #3b82f6;
         }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
         
         body {
-            font-family: "Nunito", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            font-family: "Outfit", sans-serif;
+            background-color: var(--bg-body);
+            background-image: 
+                radial-gradient(circle at 20% 20%, rgba(139, 92, 246, 0.05) 0%, transparent 40%),
+                radial-gradient(circle at 80% 80%, rgba(59, 130, 246, 0.05) 0%, transparent 40%);
+            color: var(--text-primary);
             min-height: 100vh;
             display: flex;
             align-items: center;
             justify-content: center;
+            flex-direction: column;
             padding: 20px;
-            position: relative;
             overflow: hidden;
         }
-        
-        body::before {
-            content: "";
+
+        .brand-container {
             position: absolute;
-            top: -50%;
-            left: -50%;
-            width: 200%;
-            height: 200%;
-            background: radial-gradient(circle, rgba(255,255,255,0.1) 1px, transparent 1px);
-            background-size: 50px 50px;
-            animation: moveBackground 20s linear infinite;
-            pointer-events: none;
-        }
-        
-        @keyframes moveBackground {
-            0% { transform: translate(0, 0); }
-            100% { transform: translate(50px, 50px); }
-        }
-        
-        .error-container {
+            top: 40px;
             text-align: center;
-            max-width: 600px;
-            width: 100%;
-            background: rgba(255, 255, 255, 0.98);
-            backdrop-filter: blur(10px);
-            border-radius: 20px;
-            padding: 3.5rem 2.5rem;
-            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
-            position: relative;
-            z-index: 1;
-            animation: fadeInUp 0.6s ease-out;
         }
-        
-        @keyframes fadeInUp {
-            from {
-                opacity: 0;
-                transform: translateY(30px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
-        }
-        
-        .error-icon {
-            font-size: 5rem;
-            margin-bottom: 1.5rem;
-            display: inline-block;
-            animation: float 3s ease-in-out infinite;
-        }
-        
-        @keyframes float {
-            0%, 100% { transform: translateY(0px); }
-            50% { transform: translateY(-20px); }
-        }
-        
-        .error-code {
-            font-size: clamp(4rem, 10vw, 6rem);
-            font-weight: 800;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+
+        .brand {
+            font-family: "Dancing Script", cursive;
+            font-size: 2.5rem;
+            font-weight: 700;
+            color: var(--text-primary);
+            text-decoration: none;
+            background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
             background-clip: text;
+        }
+
+        .error-card {
+            background: var(--bg-card);
+            backdrop-filter: blur(20px);
+            border: 1px solid var(--border-color);
+            border-radius: 24px;
+            padding: 60px 40px;
+            max-width: 500px;
+            width: 100%;
+            text-align: center;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+            animation: fadeIn 0.8s ease-out;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .error-icon {
+            font-size: 4rem;
+            margin-bottom: 24px;
+            display: block;
+        }
+
+        .error-code {
+            font-family: "JetBrains Mono", monospace;
+            font-size: 6rem;
             line-height: 1;
-            margin-bottom: 1rem;
-            text-shadow: 0 4px 20px rgba(102, 126, 234, 0.3);
-        }
-        
-        h1 {
-            font-size: clamp(1.75rem, 4vw, 2.25rem);
-            margin-bottom: 1rem;
-            color: #2d3748;
             font-weight: 700;
+            margin-bottom: 16px;
+            opacity: 0.2;
+            letter-spacing: -2px;
         }
-        
-        .divider {
-            width: 60px;
-            height: 4px;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            margin: 1.5rem auto;
-            border-radius: 2px;
+
+        h1 {
+            font-size: 2rem;
+            font-weight: 700;
+            margin-bottom: 16px;
+            color: var(--text-primary);
         }
-        
+
         .message {
-            font-size: clamp(1rem, 2.5vw, 1.15rem);
-            line-height: 1.7;
-            margin: 1.5rem 0 2rem;
-            color: #4a5568;
+            color: var(--text-secondary);
+            font-size: 1.1rem;
+            line-height: 1.6;
+            margin-bottom: 40px;
         }
-        
+
         .actions {
             display: flex;
-            gap: 1rem;
+            gap: 16px;
             justify-content: center;
-            flex-wrap: wrap;
-            margin-top: 2.5rem;
         }
-        
+
         .btn {
-            padding: 14px 32px;
+            padding: 12px 28px;
             border-radius: 12px;
             text-decoration: none;
-            font-weight: 700;
-            transition: all 0.3s ease;
-            border: none;
-            cursor: pointer;
-            font-size: 1rem;
+            font-weight: 600;
+            font-size: 0.95rem;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
             display: inline-flex;
             align-items: center;
-            gap: 10px;
-            font-family: inherit;
-            position: relative;
-            overflow: hidden;
+            gap: 8px;
+            cursor: pointer;
         }
-        
-        .btn::before {
-            content: "";
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            width: 0;
-            height: 0;
-            border-radius: 50%;
-            background: rgba(255, 255, 255, 0.3);
-            transform: translate(-50%, -50%);
-            transition: width 0.6s, height 0.6s;
-        }
-        
-        .btn:hover::before {
-            width: 300px;
-            height: 300px;
-        }
-        
-        .btn > span {
-            position: relative;
-            z-index: 1;
-        }
-        
+
         .btn-primary {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
             color: white;
-            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+            box-shadow: 0 10px 15px -3px rgba(139, 92, 246, 0.3);
         }
-        
+
         .btn-primary:hover {
-            transform: translateY(-3px);
-            box-shadow: 0 8px 25px rgba(102, 126, 234, 0.5);
+            transform: translateY(-2px);
+            box-shadow: 0 20px 25px -5px rgba(139, 92, 246, 0.4);
         }
-        
-        .btn-primary:active {
-            transform: translateY(-1px);
-        }
-        
+
         .btn-secondary {
-            background: #f7fafc;
-            color: #4a5568;
-            border: 2px solid #e2e8f0;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid var(--border-color);
+            color: var(--text-primary);
         }
-        
+
         .btn-secondary:hover {
-            background: #edf2f7;
-            border-color: #cbd5e0;
-            transform: translateY(-3px);
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            background: rgba(255, 255, 255, 0.1);
+            transform: translateY(-2px);
         }
-        
-        .btn-secondary:active {
-            transform: translateY(-1px);
+
+        .dots {
+            position: absolute;
+            z-index: -1;
+            opacity: 0.3;
         }
-        
-        .footer {
-            margin-top: 2.5rem;
-            padding-top: 2rem;
-            border-top: 1px solid #e2e8f0;
-            color: #718096;
-            font-size: 0.9rem;
-        }
-        
-        .footer a {
-            color: #667eea;
-            text-decoration: none;
-            font-weight: 600;
-            transition: color 0.2s;
-        }
-        
-        .footer a:hover {
-            color: #764ba2;
-        }
-        
+
         @media (max-width: 640px) {
-            .error-container { 
-                padding: 2.5rem 1.5rem; 
-                border-radius: 16px;
-            }
-            .actions { 
-                flex-direction: column; 
-                width: 100%;
-            }
-            .btn { 
-                width: 100%; 
-                justify-content: center; 
-            }
-            .error-icon {
-                font-size: 4rem;
-            }
-        }
-        
-        @media (prefers-reduced-motion: reduce) {
-            *,
-            *::before,
-            *::after {
-                animation-duration: 0.01ms !important;
-                animation-iteration-count: 1 !important;
-                transition-duration: 0.01ms !important;
-            }
+            .error-card { padding: 40px 20px; }
+            .error-code { font-size: 4.5rem; }
+            .actions { flex-direction: column; }
+            .btn { width: 100%; justify-content: center; }
         }
     </style>
 </head>
 <body>
-    <div class="error-container">
-        <div class="error-icon">' . $error['icon'] . '</div>
+    <div class="brand-container">
+        <a href="/" class="brand">Plugs</a>
+    </div>
+
+    <div class="error-card">
+        <span class="error-icon">' . $error['icon'] . '</span>
         <div class="error-code">' . $statusCode . '</div>
         <h1>' . htmlspecialchars($error['title']) . '</h1>
-        <div class="divider"></div>
-        <div class="message">' . htmlspecialchars($error['message']) . '</div>
+        <p class="message">' . htmlspecialchars($error['message']) . '</p>
         <div class="actions">
             <a href="/" class="btn btn-primary">
-                <span>🏠</span>
-                <span>Go to Homepage</span>
+                <span>🏠</span> Return Home
             </a>
-            <button onclick="location.reload()" class="btn btn-secondary">
-                <span>🔄</span>
-                <span>Try Again</span>
+            <button onclick="window.location.reload()" class="btn btn-secondary">
+                <span>🔄</span> Try Again
             </button>
         </div>
-        <div class="footer">
-            Need help? <a href="/contact">Contact Support</a>
-        </div>
+    </div>
+
+    <div class="footer" style="position: absolute; bottom: 40px; color: var(--text-secondary); font-size: 0.85rem; opacity: 0.5;">
+        &copy; ' . date('Y') . ' Plugs Framework &middot; All Rights Reserved
     </div>
 </body>
 </html>';
