@@ -163,6 +163,11 @@ class QueryBuilder
         return $this->where('id', '=', $id)->first();
     }
 
+    public function exists(): bool
+    {
+        return $this->first() !== null;
+    }
+
     public function insert(array $data): bool
     {
         // Check if data is multidimensional numeric array (bulk insert)
