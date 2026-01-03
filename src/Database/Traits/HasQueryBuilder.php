@@ -6,6 +6,7 @@ namespace Plugs\Database\Traits;
 
 use Plugs\Database\Connection;
 use Plugs\Database\QueryBuilder;
+use Plugs\Database\Collection;
 
 trait HasQueryBuilder
 {
@@ -56,6 +57,25 @@ trait HasQueryBuilder
             throw new \Exception("No records found");
         }
         return $result;
+    }
+
+    public static function insert(array $data)
+    {
+        // Check if data is multidimensional numeric array (bulk insert)
+        $isBulk = isset($data[0]) && is_array($data[0]);
+
+        if (!$isBulk) {
+            return static::create($data);
+        }
+
+        // Bulk insert
+        static::query()->insert($data);
+
+        $models = array_map(function ($attributes) {
+            return new static($attributes);
+        }, $data);
+
+        return new Collection($models);
     }
 
     public static function where(string $column, string $operator, $value = null): QueryBuilder

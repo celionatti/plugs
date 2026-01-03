@@ -16,9 +16,12 @@ namespace Plugs\Base\Model;
 
 use Plugs\Database\Connection;
 use Plugs\Database\QueryBuilder;
+use Plugs\Database\Traits\HasQueryBuilder;
 
 abstract class Model
 {
+    use HasQueryBuilder;
+
     protected $table;
     protected $primaryKey = 'id';
     protected $attributes = [];

@@ -165,15 +165,36 @@ class QueryBuilder
 
     public function insert(array $data): bool
     {
-        $columns = array_keys($data);
-        $placeholders = array_map(fn($col) => ":{$col}", $columns);
+        // Check if data is multidimensional numeric array (bulk insert)
+        $isBulk = isset($data[0]) && is_array($data[0]);
 
-        $sql = "INSERT INTO {$this->table} (" . implode(', ', $columns) . ") VALUES (" . implode(', ', $placeholders) . ")";
-
-        $params = [];
-        foreach ($data as $key => $value) {
-            $params[":{$key}"] = $value;
+        if (!$isBulk) {
+            $data = [$data];
         }
+
+        if (empty($data)) {
+            return false;
+        }
+
+        // Assume all rows have same keys as the first row
+        $firstRow = $data[0];
+        $columns = array_keys($firstRow);
+
+        $placeholders = [];
+        $params = [];
+
+        foreach ($data as $rowIndex => $row) {
+            $rowPlaceholders = [];
+            foreach ($columns as $column) {
+                // Use unique parameter names for each row and column
+                $paramName = ":insert_{$rowIndex}_{$column}";
+                $rowPlaceholders[] = $paramName;
+                $params[$paramName] = $row[$column] ?? null;
+            }
+            $placeholders[] = '(' . implode(', ', $rowPlaceholders) . ')';
+        }
+
+        $sql = "INSERT INTO {$this->table} (" . implode(', ', $columns) . ") VALUES " . implode(', ', $placeholders);
 
         return $this->connection->execute($sql, $params);
     }
