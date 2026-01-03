@@ -14,7 +14,12 @@ trait HasQueryBuilder
     {
         $connection = Connection::getInstance();
         $builder = new QueryBuilder($connection);
-        return $builder->table(static::getTable());
+
+        $table = method_exists(static::class, 'getTableName')
+            ? static::getTableName()
+            : static::getTable();
+
+        return $builder->table($table);
     }
 
     public static function all(): array

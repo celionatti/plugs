@@ -84,9 +84,7 @@ abstract class PlugModel
 
     protected function validateModelConfiguration(): void
     {
-        if (!empty($this->fillable) && !empty($this->guarded) && in_array('*', $this->guarded)) {
-            throw new Exception('Cannot use both fillable and guarded with wildcard');
-        }
+        // Validation removed to allow fillable taking precedence over default guarded=['*']
     }
 
     public function enableRawQueries(bool $enable = true)
@@ -138,6 +136,50 @@ abstract class PlugModel
     public function exists(): bool
     {
         return isset($this->attributes[$this->primaryKey]);
+    }
+
+    public static function create(array $attributes): self
+    {
+        $model = new static($attributes);
+        $model->save();
+        return $model;
+    }
+
+    public static function updateOrCreate(array $attributes, array $values = []): self
+    {
+        $query = static::query();
+
+        foreach ($attributes as $key => $value) {
+            $query->where($key, '=', $value);
+        }
+
+        $result = $query->first();
+
+        if ($result) {
+            $model = new static($result);
+            $model->fill($values);
+            $model->save();
+            return $model;
+        }
+
+        return static::create(array_merge($attributes, $values));
+    }
+
+    public static function firstOrCreate(array $attributes): self
+    {
+        $query = static::query();
+
+        foreach ($attributes as $key => $value) {
+            $query->where($key, '=', $value);
+        }
+
+        $result = $query->first();
+
+        if ($result) {
+            return new static($result);
+        }
+
+        return static::create($attributes);
     }
 
     // ==================== QUERY BUILDER ENHANCEMENTS (That use instance state) ====================
@@ -588,35 +630,6 @@ abstract class PlugModel
         return $stmt->rowCount() > 0;
     }
 
-    public static function insert(array $records): bool
-    {
-        if (empty($records)) {
-            return false;
-        }
-
-        $instance = new static();
-        $columns = array_keys($records[0]);
-        $columnList = implode(', ', $columns);
-
-        $placeholders = '(' . implode(', ', array_fill(0, count($columns), '?')) . ')';
-        $values = implode(', ', array_fill(0, count($records), $placeholders));
-
-        $sql = "INSERT INTO {$instance->table} ({$columnList}) VALUES {$values}";
-
-        $bindings = [];
-        foreach ($records as $record) {
-            foreach ($columns as $column) {
-                $bindings[] = $record[$column] ?? null;
-            }
-        }
-
-        try {
-            $instance->executeQuery($sql, $bindings);
-            return true;
-        } catch (PDOException $e) {
-            throw new Exception("Batch insert failed: " . $e->getMessage());
-        }
-    }
 
     // ... (Keep other batch operations or move to trait if desired, but for now keep here as they heavily use static/instance context mix)
 
