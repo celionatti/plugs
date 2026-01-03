@@ -98,3 +98,10 @@ if (!function_exists('http_async')) {
         return $batch->send();
     }
 }
+
+if (!function_exists('browser')) {
+    function browser(): \Plugs\Http\Browser
+    {
+        return \Plugs\Http\Browser::make();
+    }
+}
