@@ -6,7 +6,7 @@ namespace Plugs\Database\Traits;
 
 trait HasTimestamps
 {
-    protected $timestamps = true;
+    public $timestamps = true;
 
     public function touch(): bool
     {
