@@ -18,3 +18,4 @@ composer.lock
 /routes
 /bootstrap/
 settings.json
+/verify_form.php
