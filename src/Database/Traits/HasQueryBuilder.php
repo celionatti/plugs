@@ -64,8 +64,10 @@ trait HasQueryBuilder
         return $result;
     }
 
-    public static function insert(array $data)
+    public static function insert(array|object $data)
     {
+        $data = (new static())->parseAttributes($data);
+
         // Check if data is multidimensional numeric array (bulk insert)
         $isBulk = isset($data[0]) && is_array($data[0]);
 

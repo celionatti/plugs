@@ -21,8 +21,10 @@ trait HasAttributes
     protected $dateFormat = 'Y-m-d H:i:s';
     protected $castNulls = true;
 
-    public function fill(array $attributes)
+    public function fill(array|object $attributes)
     {
+        $attributes = $this->parseAttributes($attributes);
+
         foreach ($attributes as $key => $value) {
             if ($this->isFillable($key)) {
                 $this->attributes[$key] = $value;
@@ -45,8 +47,10 @@ trait HasAttributes
         return !in_array($key, $this->guarded);
     }
 
-    public function forceFill(array $attributes)
+    public function forceFill(array|object $attributes)
     {
+        $attributes = $this->parseAttributes($attributes);
+
         foreach ($attributes as $key => $value) {
             $this->setAttribute($key, $value);
         }
@@ -302,7 +306,23 @@ trait HasAttributes
     public static function createFromJson(string $json)
     {
         $instance = new static();
-        return $instance->fromJson($json);
+        return $instance->fill($instance->fromJson($json));
+    }
+
+    /**
+     * Parse attributes from array or object.
+     */
+    protected function parseAttributes(array|object $attributes): array
+    {
+        if (is_object($attributes)) {
+            if (method_exists($attributes, 'toArray')) {
+                return $attributes->toArray();
+            }
+
+            return (array) $attributes;
+        }
+
+        return $attributes;
     }
 
     protected function encrypt(string $value): string

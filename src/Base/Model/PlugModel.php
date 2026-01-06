@@ -69,7 +69,7 @@ abstract class PlugModel
     protected $allowRawQueries = false; // Default to secure
     protected $exists = false;
 
-    public function __construct(array $attributes = [])
+    public function __construct(array|object $attributes = [])
     {
         $this->bootIfNotBooted();
 
@@ -138,15 +138,18 @@ abstract class PlugModel
         return isset($this->attributes[$this->primaryKey]);
     }
 
-    public static function create(array $attributes): self
+    public static function create(array|object $attributes): self
     {
         $model = new static($attributes);
         $model->save();
         return $model;
     }
 
-    public static function updateOrCreate(array $attributes, array $values = []): self
+    public static function updateOrCreate(array|object $attributes, array|object $values = []): self
     {
+        $attributes = (new static())->parseAttributes($attributes);
+        $values = (new static())->parseAttributes($values);
+
         $query = static::query();
 
         foreach ($attributes as $key => $value) {
@@ -165,8 +168,10 @@ abstract class PlugModel
         return static::create(array_merge($attributes, $values));
     }
 
-    public static function firstOrCreate(array $attributes): self
+    public static function firstOrCreate(array|object $attributes): self
     {
+        $attributes = (new static())->parseAttributes($attributes);
+
         $query = static::query();
 
         foreach ($attributes as $key => $value) {
