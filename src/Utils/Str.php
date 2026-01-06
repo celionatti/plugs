@@ -515,23 +515,24 @@ class Str
      */
     public static function uuid(): string
     {
-        $data = random_bytes(16);
-
-        $data[6] = chr(ord($data[6]) & 0x0f | 0x40); // version 4
-        $data[8] = chr(ord($data[8]) & 0x3f | 0x80); // variant
-
-        return vsprintf('%s%s-%s-%s-%s-%s%s%s', str_split(bin2hex($data), 4));
+        return Uuid::v4();
     }
 
     /**
-     * Generate a ordered UUID (version 4).
+     * Generate a ordered UUID (version 7).
      */
     public static function orderedUuid(): string
     {
-        $timestamp = (int) (microtime(true) * 10000);
-        $uuid = static::uuid();
+        return Uuid::v7();
+    }
 
-        return substr(sprintf('%012x', $timestamp), 0, 8) . '-' . substr($uuid, 9);
+
+    /**
+     * Generate a MongoDB Object ID.
+     */
+    public static function objectId(): string
+    {
+        return Uuid::objectId();
     }
 
     /**
