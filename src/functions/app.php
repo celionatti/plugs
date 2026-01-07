@@ -116,6 +116,13 @@ if (!function_exists('public_path')) {
     }
 }
 
+if (!function_exists('resource_path')) {
+    function resource_path(string $path = ''): string
+    {
+        return base_path('resources/' . ltrim($path, '/'));
+    }
+}
+
 if (!function_exists('view')) {
     function view(string $view, array $data = []): string
     {
