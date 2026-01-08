@@ -238,6 +238,113 @@ if (!function_exists('e')) {
     }
 }
 
+if (!function_exists('mask')) {
+    /**
+     * Mask sensitive data with asterisks or custom character
+     * 
+     * @param string $value The value to mask
+     * @param string $type The type of masking (email, phone, card, custom, full)
+     * @param string $maskChar The character to use for masking (default: *)
+     * @param int $visibleStart Number of visible characters at the start (for custom type)
+     * @param int $visibleEnd Number of visible characters at the end (for custom type)
+     * @return string The masked value
+     */
+    function mask(string $value, string $type = 'custom', string $maskChar = '*', int $visibleStart = 3, int $visibleEnd = 3): string
+    {
+        if (empty($value)) {
+            return $value;
+        }
+
+        $length = strlen($value);
+
+        switch ($type) {
+            case 'email':
+                // Mask email: j***@e******.com
+                if (!filter_var($value, FILTER_VALIDATE_EMAIL)) {
+                    return $value; // Not a valid email, return as is
+                }
+
+                [$username, $domain] = explode('@', $value);
+                $usernameLength = strlen($username);
+                $showChars = min(1, $usernameLength - 1);
+
+                $maskedUsername = $usernameLength > 1
+                    ? substr($username, 0, $showChars) . str_repeat($maskChar, $usernameLength - $showChars)
+                    : $username;
+
+                // Mask domain part (before the dot)
+                $domainParts = explode('.', $domain);
+                $domainName = $domainParts[0];
+                $domainExt = implode('.', array_slice($domainParts, 1));
+
+                $domainLength = strlen($domainName);
+                $showDomainChars = min(1, $domainLength - 1);
+
+                $maskedDomain = $domainLength > 1
+                    ? substr($domainName, 0, $showDomainChars) . str_repeat($maskChar, $domainLength - $showDomainChars)
+                    : $domainName;
+
+                return $maskedUsername . '@' . $maskedDomain . '.' . $domainExt;
+
+            case 'phone':
+                // Mask phone: +234***9876 or 080***1234
+                $cleaned = preg_replace('/[\s\-\(\)]/', '', $value);
+                $cleanedLength = strlen($cleaned);
+
+                if ($cleanedLength < 4) {
+                    return str_repeat($maskChar, $cleanedLength);
+                }
+
+                $visiblePrefix = substr($cleaned, 0, min(3, $cleanedLength - 4));
+                $visibleSuffix = substr($cleaned, -4);
+                $maskedMiddle = str_repeat($maskChar, $cleanedLength - strlen($visiblePrefix) - 4);
+
+                return $visiblePrefix . $maskedMiddle . $visibleSuffix;
+
+            case 'card':
+                // Mask card number: **** **** **** 1234
+                $cleaned = preg_replace('/\s/', '', $value);
+                $cleanedLength = strlen($cleaned);
+
+                if ($cleanedLength < 4) {
+                    return str_repeat($maskChar, $cleanedLength);
+                }
+
+                $visibleDigits = substr($cleaned, -4);
+                $maskedPart = str_repeat($maskChar, $cleanedLength - 4);
+
+                // Format in groups of 4
+                $masked = $maskedPart . $visibleDigits;
+                return implode(' ', str_split($masked, 4));
+
+            case 'full':
+                // Mask entire string
+                return str_repeat($maskChar, $length);
+
+            case 'custom':
+            default:
+                // Custom masking with configurable visible characters
+                if ($length <= ($visibleStart + $visibleEnd)) {
+                    // String too short, mask the middle part only
+                    if ($length <= 2) {
+                        return str_repeat($maskChar, $length);
+                    }
+
+                    $start = substr($value, 0, 1);
+                    $end = substr($value, -1);
+                    $middle = str_repeat($maskChar, $length - 2);
+                    return $start . $middle . $end;
+                }
+
+                $start = substr($value, 0, $visibleStart);
+                $end = substr($value, -$visibleEnd);
+                $middle = str_repeat($maskChar, $length - $visibleStart - $visibleEnd);
+
+                return $start . $middle . $end;
+        }
+    }
+}
+
 if (!function_exists('url')) {
     function url(string $path = ''): string
     {
