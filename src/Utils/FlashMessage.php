@@ -37,22 +37,22 @@ class FlashMessage
 
     protected static array $types = [
         'success' => [
-            'class' => 'alert alert-success',
-            'icon' => 'bi-check-circle-fill',
+            'class' => 'plugs-alert plugs-alert-success',
+            'icon' => 'bi-check2-circle',
             'title' => 'Success',
         ],
         'error' => [
-            'class' => 'alert alert-danger',
-            'icon' => 'bi-x-circle-fill',
+            'class' => 'plugs-alert plugs-alert-error',
+            'icon' => 'bi-exclamation-octagon-fill',
             'title' => 'Error',
         ],
         'warning' => [
-            'class' => 'alert alert-warning',
+            'class' => 'plugs-alert plugs-alert-warning',
             'icon' => 'bi-exclamation-triangle-fill',
             'title' => 'Warning',
         ],
         'info' => [
-            'class' => 'alert alert-info',
+            'class' => 'plugs-alert plugs-alert-info',
             'icon' => 'bi-info-circle-fill',
             'title' => 'Info',
         ],
@@ -62,129 +62,185 @@ class FlashMessage
         'show_icon' => true,
         'show_title' => true,
         'show_close' => true,
-        'auto_dismiss' => false, // Changed default to false
-        'dismiss_delay' => 10000, // Increased to 10 seconds
-        'container_class' => 'flash-messages-container',
+        'auto_dismiss' => true,
+        'dismiss_delay' => 8000,
+        'container_class' => 'plugs-flash-container',
         'position' => 'fixed', // 'fixed' or 'static'
-        'animation' => 'fade',
-        'include_styles' => true, // Set to false to use external CSS
-        'custom_css_path' => null, // Path to custom CSS file
+        'animation' => 'plugs-bounce',
+        'include_styles' => true,
+        'custom_css_path' => null,
     ];
 
     // Embedded CSS styles
     protected static string $defaultStyles = <<<'CSS'
 <style>
-/* ========== FLASH MESSAGES ========== */
-.flash-messages-container {
-    position: fixed;
-    top: 80px;
-    right: 20px;
-    z-index: 9999;
-    max-width: 400px;
-    width: 100%;
+/* ========== PLUGS FLASH MESSAGES ========== */
+:root {
+    /* OKLCH Colors - Modern, perceptually uniform */
+    --plugs-success-l: 65%;
+    --plugs-error-l: 55%;
+    --plugs-warning-l: 75%;
+    --plugs-info-l: 65%;
+
+    --plugs-success: oklch(var(--plugs-success-l) 0.18 145);
+    --plugs-error: oklch(var(--plugs-error-l) 0.22 25);
+    --plugs-warning: oklch(var(--plugs-warning-l) 0.15 85);
+    --plugs-info: oklch(var(--plugs-info-l) 0.15 245);
+
+    --flash-bg-opacity: 0.1;
+    --flash-blur: 15px;
+    --flash-radius: 16px;
+    --flash-padding: clamp(0.75rem, 2vw, 1.25rem);
+    --flash-width: min(calc(100% - 2rem), 420px);
+    --flash-top: clamp(1rem, 5vh, 5rem);
+    --flash-right: clamp(1rem, 5vw, 2rem);
 }
-.flash-messages-container.static {
+
+@media (prefers-color-scheme: dark) {
+    :root {
+        --plugs-success-l: 75%;
+        --plugs-error-l: 65%;
+        --plugs-warning-l: 85%;
+        --plugs-info-l: 75%;
+        --flash-bg-opacity: 0.2;
+    }
+}
+
+.plugs-flash-container {
+    position: fixed;
+    top: var(--flash-top);
+    right: var(--flash-right);
+    z-index: 9999;
+    width: var(--flash-width);
+    display: flex;
+    flex-direction: column;
+    gap: 0.85rem;
+    pointer-events: none;
+}
+
+.plugs-flash-container.static {
     position: relative;
     top: 0;
     right: 0;
-    margin-bottom: 1.5rem;
+    width: 100%;
+    margin-bottom: 2rem;
 }
-.alert {
-    padding: 1rem 1.25rem;
-    margin-bottom: 1rem;
-    border-radius: 8px;
+
+.plugs-alert {
+    pointer-events: auto;
+    padding: var(--flash-padding);
+    border-radius: var(--flash-radius);
     display: flex;
     align-items: flex-start;
-    gap: 0.75rem;
+    gap: 1.15rem;
     position: relative;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-    animation: slideInRight 0.4s ease forwards;
-    opacity: 1;
-    transform: translateX(0);
+    backdrop-filter: blur(var(--flash-blur));
+    -webkit-backdrop-filter: blur(var(--flash-blur));
+    box-shadow: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
+    border: 1px solid transparent;
+    overflow: hidden;
+    animation: plugs-bounce-in 0.7s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
 }
-.alert-success {
-    background-color: rgba(40, 167, 69, 0.1);
-    border-left: 4px solid #28a745;
+
+.plugs-alert::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 6px;
+    height: 100%;
+    transition: width 0.3s ease;
 }
-.alert-success .alert-header {
-    color: #28a745;
+
+.plugs-alert:hover::before {
+    width: 10px;
 }
-.alert-danger {
-    background-color: rgba(220, 53, 69, 0.1);
-    border-left: 4px solid #dc3545;
-}
-.alert-danger .alert-header {
-    color: #dc3545;
-}
-.alert-warning {
-    background-color: rgba(255, 193, 7, 0.1);
-    border-left: 4px solid #ffc107;
-}
-.alert-warning .alert-header {
-    color: #ffc107;
-}
-.alert-info {
-    background-color: rgba(23, 162, 184, 0.1);
-    border-left: 4px solid #17a2b8;
-}
-.alert-info .alert-header {
-    color: #17a2b8;
-}
-.alert-header {
+
+.plugs-alert-success { background: oklch(from var(--plugs-success) l c h / var(--flash-bg-opacity)); border-color: oklch(from var(--plugs-success) l c h / 0.2); color: var(--plugs-success); }
+.plugs-alert-success::before { background: var(--plugs-success); }
+
+.plugs-alert-error { background: oklch(from var(--plugs-error) l c h / var(--flash-bg-opacity)); border-color: oklch(from var(--plugs-error) l c h / 0.2); color: var(--plugs-error); }
+.plugs-alert-error::before { background: var(--plugs-error); }
+
+.plugs-alert-warning { background: oklch(from var(--plugs-warning) l c h / var(--flash-bg-opacity)); border-color: oklch(from var(--plugs-warning) l c h / 0.2); color: var(--plugs-warning); }
+.plugs-alert-warning::before { background: var(--plugs-warning); }
+
+.plugs-alert-info { background: oklch(from var(--plugs-info) l c h / var(--flash-bg-opacity)); border-color: oklch(from var(--plugs-info) l c h / 0.2); color: var(--plugs-info); }
+.plugs-alert-info::before { background: var(--plugs-info); }
+
+.plugs-alert-header {
     display: flex;
     align-items: center;
-    gap: 0.5rem;
-    font-weight: 600;
-    margin-bottom: 0.25rem;
+    gap: 0.6rem;
+    font-weight: 800;
+    margin-bottom: 0.35rem;
+    font-size: 1rem;
+    letter-spacing: -0.02em;
 }
-.alert-header i {
-    font-size: 1.2rem;
+
+.plugs-alert-header i {
+    font-size: 1.35rem;
 }
-.alert-message {
+
+.plugs-alert-message {
     flex: 1;
-    line-height: 1.5;
-    color: #333;
+    line-height: 1.6;
+    font-size: 0.925rem;
+    font-weight: 500;
 }
-.alert-close {
+
+.plugs-alert-close {
     background: none;
     border: none;
     color: inherit;
     cursor: pointer;
-    padding: 0.25rem;
-    border-radius: 4px;
-    transition: all 0.2s ease;
-    opacity: 0.7;
+    padding: 0.5rem;
+    border-radius: 10px;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    opacity: 0.55;
     margin-left: auto;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
-.alert-close:hover {
+
+.plugs-alert-close:hover {
     opacity: 1;
-    background-color: rgba(0, 0, 0, 0.1);
+    background-color: oklch(from currentColor l c h / 0.12);
+    transform: rotate(90deg) scale(1.1);
 }
-@keyframes slideInRight {
+
+@keyframes plugs-bounce-in {
     0% {
-        transform: translateX(100%);
+        transform: translateX(110%) scale(0.9);
         opacity: 0;
     }
+    60% {
+        transform: translateX(-15px) scale(1.02);
+    }
     100% {
-        transform: translateX(0);
+        transform: translateX(0) scale(1);
         opacity: 1;
     }
 }
-@keyframes fadeOut {
+
+@keyframes plugs-bounce-out {
     0% {
+        transform: translateX(0) scale(1);
         opacity: 1;
-        transform: translateX(0);
     }
     100% {
+        transform: translateX(110%) scale(0.9);
         opacity: 0;
-        transform: translateX(50px);
     }
 }
-@media (max-width: 768px) {
-    .flash-messages-container {
-        left: 10px;
-        right: 10px;
-        max-width: none;
+
+@media (max-width: 640px) {
+    .plugs-flash-container {
+        left: 1rem;
+        right: 1rem;
+        width: auto;
+        top: 1rem;
     }
 }
 </style>
@@ -437,25 +493,25 @@ CSS;
 
         // Icon and title
         if ($options['show_icon'] || $options['show_title']) {
-            $html .= '<div class="alert-header">';
+            $html .= '<div class="plugs-alert-header">';
 
             if ($options['show_icon']) {
                 $html .= '<i class="bi ' . $typeConfig['icon'] . '"></i>';
             }
 
             if ($options['show_title'] && $title) {
-                $html .= '<strong>' . htmlspecialchars($title, ENT_QUOTES, 'UTF-8') . '</strong>';
+                $html .= '<span>' . htmlspecialchars($title, ENT_QUOTES, 'UTF-8') . '</span>';
             }
 
             $html .= '</div>';
         }
 
         // Message
-        $html .= '<div class="alert-message">' . $message . '</div>';
+        $html .= '<div class="plugs-alert-message">' . $message . '</div>';
 
         // Close button
         if ($options['show_close']) {
-            $html .= '<button type="button" class="alert-close" onclick="const alert=this.parentElement;alert.style.animation=\'fadeOut 0.5s ease forwards\';setTimeout(()=>alert.remove(),500)" aria-label="Close">';
+            $html .= '<button type="button" class="plugs-alert-close" onclick="const alert=this.parentElement;alert.style.animation=\'plugs-bounce-out 0.5s ease forwards\';setTimeout(()=>alert.remove(),500)" aria-label="Close">';
             $html .= '<i class="bi bi-x-lg"></i>';
             $html .= '</button>';
         }
@@ -473,15 +529,16 @@ CSS;
         return <<<HTML
         <script>
         (function() {
-            const alerts = document.querySelectorAll('.flash-messages-container .alert');
+            const containerSelector = '.plugs-flash-container .plugs-alert';
+            const alerts = document.querySelectorAll(containerSelector);
             alerts.forEach((alert, index) => {
                 // Stagger the dismissal if there are multiple alerts
-                const dismissTime = {$delay} + (index * 500);
+                const dismissTime = {$delay} + (index * 600);
                 setTimeout(() => {
-                    alert.style.animation = 'fadeOut 0.5s ease forwards';
+                    alert.style.animation = 'plugs-bounce-out 0.6s cubic-bezier(0.4, 0, 0.2, 1) forwards';
                     setTimeout(() => {
                         alert.remove();
-                    }, 500);
+                    }, 600);
                 }, dismissTime);
             });
         })();
