@@ -6,166 +6,194 @@ namespace Plugs\Database;
 
 /*
 |--------------------------------------------------------------------------
-| Schema Class
+| Schema Class (Facade)
 |--------------------------------------------------------------------------
 |
-| This class provides a fluent interface for building and managing
-| database schemas. It supports creating tables, adding columns,
-| defining indexes, and setting up foreign key relationships.
+| This class provides a static interface for managing database schemas.
+| It acts as a facade to create, alter, and drop tables using the Blueprint
+| class for fluent table definitions.
 */
 
 class Schema
 {
-    private $connection;
-    private $table;
-    private $columns = [];
-    private $indexes = [];
-    private $foreignKeys = [];
-    
-    public function __construct(Connection $connection, string $table)
+    private static $connection;
+    private static $defaultConnection = 'default';
+
+    /**
+     * Set the database connection to use
+     */
+    public static function setConnection(Connection $connection): void
     {
-        $this->connection = $connection;
-        $this->table = $table;
+        self::$connection = $connection;
     }
-    
-    public function id(string $name = 'id'): self
+
+    /**
+     * Get the database connection
+     */
+    private static function getConnection(): Connection
     {
-        $this->columns[] = "{$name} INT AUTO_INCREMENT PRIMARY KEY";
-        return $this;
-    }
-    
-    public function bigId(string $name = 'id'): self
-    {
-        $this->columns[] = "{$name} BIGINT AUTO_INCREMENT PRIMARY KEY";
-        return $this;
-    }
-    
-    public function string(string $name, int $length = 255): self
-    {
-        $this->columns[] = "{$name} VARCHAR({$length})";
-        return $this;
-    }
-    
-    public function text(string $name): self
-    {
-        $this->columns[] = "{$name} TEXT";
-        return $this;
-    }
-    
-    public function longText(string $name): self
-    {
-        $this->columns[] = "{$name} LONGTEXT";
-        return $this;
-    }
-    
-    public function integer(string $name): self
-    {
-        $this->columns[] = "{$name} INT";
-        return $this;
-    }
-    
-    public function bigInteger(string $name): self
-    {
-        $this->columns[] = "{$name} BIGINT";
-        return $this;
-    }
-    
-    public function decimal(string $name, int $precision = 8, int $scale = 2): self
-    {
-        $this->columns[] = "{$name} DECIMAL({$precision}, {$scale})";
-        return $this;
-    }
-    
-    public function boolean(string $name): self
-    {
-        $this->columns[] = "{$name} TINYINT(1)";
-        return $this;
-    }
-    
-    public function date(string $name): self
-    {
-        $this->columns[] = "{$name} DATE";
-        return $this;
-    }
-    
-    public function datetime(string $name): self
-    {
-        $this->columns[] = "{$name} DATETIME";
-        return $this;
-    }
-    
-    public function timestamp(string $name): self
-    {
-        $this->columns[] = "{$name} TIMESTAMP";
-        return $this;
-    }
-    
-    public function timestamps(): self
-    {
-        $this->columns[] = "created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP";
-        $this->columns[] = "updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP";
-        return $this;
-    }
-    
-    public function nullable(): self
-    {
-        $lastIndex = count($this->columns) - 1;
-        $this->columns[$lastIndex] .= " NULL";
-        return $this;
-    }
-    
-    public function notNullable(): self
-    {
-        $lastIndex = count($this->columns) - 1;
-        $this->columns[$lastIndex] .= " NOT NULL";
-        return $this;
-    }
-    
-    public function default($value): self
-    {
-        $lastIndex = count($this->columns) - 1;
-        if (is_string($value)) {
-            $this->columns[$lastIndex] .= " DEFAULT '{$value}'";
-        } else {
-            $this->columns[$lastIndex] .= " DEFAULT {$value}";
+        if (!self::$connection) {
+            self::$connection = Connection::getInstance(null, self::$defaultConnection);
         }
-        return $this;
+        return self::$connection;
     }
-    
-    public function unique(string|null $column = null): self
+
+    /**
+     * Set the default connection name
+     */
+    public static function setDefaultConnection(string $name): void
     {
-        if ($column) {
-            $this->indexes[] = "UNIQUE KEY unique_{$column} ({$column})";
-        } else {
-            $lastIndex = count($this->columns) - 1;
-            $this->columns[$lastIndex] .= " UNIQUE";
+        self::$defaultConnection = $name;
+    }
+
+    /**
+     * Create a new table
+     */
+    public static function create(string $table, callable $callback): void
+    {
+        $connection = self::getConnection();
+        $blueprint = new Blueprint($connection, $table);
+
+        $callback($blueprint);
+
+        $blueprint->build();
+    }
+
+    /**
+     * Modify an existing table
+     */
+    public static function table(string $table, callable $callback): void
+    {
+        $connection = self::getConnection();
+        $blueprint = new Blueprint($connection, $table);
+
+        $callback($blueprint);
+
+        $blueprint->alter();
+    }
+
+    /**
+     * Drop a table if it exists
+     */
+    public static function dropIfExists(string $table): void
+    {
+        $connection = self::getConnection();
+        $sql = "DROP TABLE IF EXISTS `{$table}`";
+        $connection->execute($sql);
+    }
+
+    /**
+     * Drop a table
+     */
+    public static function drop(string $table): void
+    {
+        $connection = self::getConnection();
+        $sql = "DROP TABLE `{$table}`";
+        $connection->execute($sql);
+    }
+
+    /**
+     * Rename a table
+     */
+    public static function rename(string $from, string $to): void
+    {
+        $connection = self::getConnection();
+        $sql = "RENAME TABLE `{$from}` TO `{$to}`";
+        $connection->execute($sql);
+    }
+
+    /**
+     * Check if a table exists
+     */
+    public static function hasTable(string $table): bool
+    {
+        $connection = self::getConnection();
+        $sql = "SHOW TABLES LIKE ?";
+        $result = $connection->fetch($sql, [$table]);
+        return $result !== null;
+    }
+
+    /**
+     * Check if a column exists in a table
+     */
+    public static function hasColumn(string $table, string $column): bool
+    {
+        $connection = self::getConnection();
+        $sql = "SHOW COLUMNS FROM `{$table}` LIKE ?";
+        $result = $connection->fetch($sql, [$column]);
+        return $result !== null;
+    }
+
+    /**
+     * Get all columns in a table
+     */
+    public static function getColumns(string $table): array
+    {
+        $connection = self::getConnection();
+        $sql = "SHOW COLUMNS FROM `{$table}`";
+        return $connection->fetchAll($sql);
+    }
+
+    /**
+     * Get all tables in the database
+     */
+    public static function getTables(): array
+    {
+        $connection = self::getConnection();
+        $sql = "SHOW TABLES";
+        $results = $connection->fetchAll($sql);
+
+        $tables = [];
+        foreach ($results as $result) {
+            $tables[] = array_values($result)[0];
         }
-        return $this;
+
+        return $tables;
     }
-    
-    public function index(string $column): self
+
+    /**
+     * Truncate a table
+     */
+    public static function truncate(string $table): void
     {
-        $this->indexes[] = "INDEX idx_{$column} ({$column})";
-        return $this;
+        $connection = self::getConnection();
+        $sql = "TRUNCATE TABLE `{$table}`";
+        $connection->execute($sql);
     }
-    
-    public function foreign(string $column): ForeignKey
+
+    /**
+     * Disable foreign key checks
+     */
+    public static function disableForeignKeyConstraints(): void
     {
-        return new ForeignKey($this, $column);
+        $connection = self::getConnection();
+        $connection->execute("SET FOREIGN_KEY_CHECKS=0");
     }
-    
-    public function addForeignKey(string $definition): void
+
+    /**
+     * Enable foreign key checks
+     */
+    public static function enableForeignKeyConstraints(): void
     {
-        $this->foreignKeys[] = $definition;
+        $connection = self::getConnection();
+        $connection->execute("SET FOREIGN_KEY_CHECKS=1");
     }
-    
-    public function create(): void
+
+    /**
+     * Execute a raw SQL statement
+     */
+    public static function raw(string $sql): void
     {
-        $definitions = array_merge($this->columns, $this->indexes, $this->foreignKeys);
-        $sql = "CREATE TABLE IF NOT EXISTS {$this->table} (\n    " 
-            . implode(",\n    ", $definitions) 
-            . "\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci";
-        
-        $this->connection->execute($sql);
+        $connection = self::getConnection();
+        $connection->execute($sql);
+    }
+
+    /**
+     * Get a blueprint instance for testing/inspection
+     */
+    public static function getBlueprint(string $table): Blueprint
+    {
+        $connection = self::getConnection();
+        return new Blueprint($connection, $table);
     }
 }

@@ -25,6 +25,10 @@ use Plugs\Console\Commands\MakeActionCommand;
 use Plugs\Console\Commands\MakeDTOCommand;
 use Plugs\Console\Commands\MakeResourceCommand;
 use Plugs\Console\Commands\MakeRepositoryCommand;
+use Plugs\Console\Commands\MigrateCommand;
+use Plugs\Console\Commands\MigrateRollbackCommand;
+use Plugs\Console\Commands\MigrateStatusCommand;
+use Plugs\Console\Commands\MigrateResetCommand;
 
 /*
 |--------------------------------------------------------------------------
@@ -59,6 +63,11 @@ class ConsoleKernel
 
         'serve' => ServeCommand::class,
         'cache:clear' => CacheClearCommand::class,
+
+        'migrate' => MigrateCommand::class,
+        'migrate:rollback' => MigrateRollbackCommand::class,
+        'migrate:status' => MigrateStatusCommand::class,
+        'migrate:reset' => MigrateResetCommand::class,
     ];
 
     protected array $aliases = [
@@ -78,6 +87,9 @@ class ConsoleKernel
         's' => 'serve',
         'cc' => 'cache:clear',
         'i' => 'inspire',
+        'm' => 'migrate',
+        'm:r' => 'migrate:rollback',
+        'm:s' => 'migrate:status',
     ];
 
     protected array $commandGroups = [
@@ -97,6 +109,7 @@ class ConsoleKernel
         ],
         'Routes' => ['route:list', 'route:cache', 'route:clear', 'route:test'],
         'Utility' => ['serve', 'cache:clear'],
+        'Database' => ['migrate', 'migrate:rollback', 'migrate:status', 'migrate:reset', 'make:migration'],
     ];
 
     public function commands(): array

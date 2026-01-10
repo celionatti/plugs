@@ -21,18 +21,18 @@ class MakeMigrationCommand extends Command
     public function handle(): int
     {
         $name = $this->argument('0') ?? $this->ask('Migration name', 'create_users_table');
-        
-        $timestamp = date('YmdHis');
+
+        $timestamp = date('Y_m_d_His');
         $className = $this->generateClassName($name);
-        
+
         $content = $this->generateMigration($className, $name);
         $filename = $timestamp . '_' . $name . '.php';
         $path = $this->getMigrationPath($filename);
-        
+
         Filesystem::put($path, $content);
-        
+
         $this->success("Migration created: {$filename}");
-        
+
         return 0;
     }
 
@@ -43,36 +43,55 @@ class MakeMigrationCommand extends Command
 
     private function generateMigration(string $className, string $name): string
     {
+        // Try to determine table name from migration name (e.g. create_users_table => users)
+        $tableName = 'table_name';
+        if (strpos($name, 'create_') === 0) {
+            $tableName = str_replace(['create_', '_table'], '', $name);
+        }
+
         return <<<PHP
-        <?php
+<?php
 
-        declare(strict_types=1);
+declare(strict_types=1);
 
-        use Plugs\\Database\\Migration;
-        use Plugs\\Database\\Schema\\Blueprint;
-        use Plugs\\Database\\Schema\\Schema;
+use Plugs\Database\Migration;
+use Plugs\Database\Blueprint;
+use Plugs\Database\Schema;
 
-        return new class extends Migration
-        {
-            public function up(): void
-            {
-                Schema::create('table_name', function (Blueprint \$table) {
-                    \$table->id();
-                    \$table->timestamps();
-                });
-            }
+class {$className} extends Migration
+{
+    /**
+     * Run the migrations.
+     */
+    public function up(): void
+    {
+        Schema::create('{$tableName}', function (Blueprint \$table) {
+            \$table->id();
+            \$table->timestamps();
+        });
+    }
 
-            public function down(): void
-            {
-                Schema::dropIfExists('table_name');
-            }
-        };
-
-        PHP;
+    /**
+     * Reverse the migrations.
+     */
+    public function down(): void
+    {
+        Schema::dropIfExists('{$tableName}');
+    }
+}
+PHP;
     }
 
     private function getMigrationPath(string $filename): string
     {
-        return getcwd() . '/database/migrations/' . $filename;
+        // Base directory for migrations
+        $basePath = getcwd() . '/database/migrations';
+
+        // Ensure directory exists
+        if (!is_dir($basePath)) {
+            mkdir($basePath, 0755, true);
+        }
+
+        return $basePath . '/' . $filename;
     }
 }
