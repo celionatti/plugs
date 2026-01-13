@@ -21,7 +21,7 @@ class ConsolePlugs
     private array $metrics = [];
     private array $checkpoints = [];
 
-    public function __construct(private ConsoleKernel $kernel) 
+    public function __construct(private ConsoleKernel $kernel)
     {
         $this->loadFunctions();
     }
@@ -30,10 +30,10 @@ class ConsolePlugs
     {
         $this->metrics['start'] = microtime(true);
         $this->metrics['memory_start'] = memory_get_usage(true);
-        
+
         $parser = new ArgvParser($argv);
-        $name   = $parser->commandName() ?? 'help';
-        $input  = $parser->input();
+        $name = $parser->commandName() ?? 'help';
+        $input = $parser->input();
         $output = new Output();
 
         if ($this->shouldShowVersion($input)) {
@@ -47,7 +47,7 @@ class ConsolePlugs
 
         try {
             $command = $this->kernel->resolve($name);
-            
+
             if ($command === null) {
                 $this->displayCommandNotFound($output, $name);
                 return 1;
@@ -65,7 +65,7 @@ class ConsolePlugs
             }
 
             return $exitCode;
-            
+
         } catch (Throwable $e) {
             $this->displayError($output, $e, $input);
             return 1;
@@ -109,17 +109,17 @@ class ConsolePlugs
         $output->line();
         $output->error("Command \"{$name}\" is not defined.");
         $output->line();
-        
+
         $similar = $this->getSimilarCommands($name);
         if (!empty($similar)) {
             $output->box(
-                "Did you mean one of these?\n\n" . 
+                "Did you mean one of these?\n\n" .
                 implode("\n", array_map(fn($cmd) => "  • {$cmd}", $similar)),
                 "💡 Suggestions",
                 "warning"
             );
         }
-        
+
         $output->note("Run 'php theplugs help' to see all available commands");
         $output->line();
     }
@@ -128,7 +128,7 @@ class ConsolePlugs
     {
         $commands = array_keys($this->kernel->commands());
         $similar = [];
-        
+
         foreach ($commands as $cmd) {
             $similarity = 0;
             similar_text($name, $cmd, $similarity);
@@ -136,7 +136,7 @@ class ConsolePlugs
                 $similar[] = $cmd;
             }
         }
-        
+
         return array_slice($similar, 0, 5);
     }
 
@@ -144,23 +144,23 @@ class ConsolePlugs
     {
         $this->metrics['end'] = microtime(true);
         $this->metrics['memory_end'] = memory_get_usage(true);
-        
+
         $totalTime = $this->metrics['end'] - $this->metrics['start'];
         $memoryUsed = $this->metrics['memory_end'] - $this->metrics['memory_start'];
         $memoryPeak = memory_get_peak_usage(true);
-        
+
         $output->line();
         $output->fullWidthLine('─', "\033[90m");
-        
+
         $timeFormatted = $this->formatTime($totalTime);
         $memoryFormatted = $this->formatMemory($memoryUsed);
         $peakFormatted = $this->formatMemory($memoryPeak);
-        
+
         $output->line("  \033[92m✓\033[0m Command completed successfully");
         $output->line("  \033[36m⏱\033[0m  Execution time: \033[1m{$timeFormatted}\033[0m");
         $output->line("  \033[35m📊\033[0m Memory used: \033[1m{$memoryFormatted}\033[0m");
         $output->line("  \033[33m📈\033[0m Peak memory: \033[1m{$peakFormatted}\033[0m");
-        
+
         $output->fullWidthLine('─', "\033[90m");
         $output->line();
     }
@@ -168,34 +168,34 @@ class ConsolePlugs
     private function displayError(Output $output, Throwable $e, $input): void
     {
         $output->line();
-        
+
         $errorContent = "Message: {$e->getMessage()}\n\n";
         $errorContent .= "File: {$e->getFile()}\n";
         $errorContent .= "Line: {$e->getLine()}";
-        
+
         $output->box($errorContent, "❌ Command Failed", "error");
-        
+
         if ($input->options['debug'] ?? $input->options['verbose'] ?? false) {
             $output->line();
             $output->section('Stack Trace');
             $output->line();
-            
+
             foreach ($e->getTrace() as $index => $trace) {
                 $file = $trace['file'] ?? 'unknown';
                 $line = $trace['line'] ?? 0;
                 $function = $trace['function'] ?? 'unknown';
                 $class = $trace['class'] ?? '';
                 $type = $trace['type'] ?? '';
-                
+
                 $output->line("  \033[2m#{$index}\033[0m {$class}{$type}{$function}()");
                 $output->line("      \033[2m{$file}:{$line}\033[0m");
             }
-            
+
             $output->line();
         } else {
             $output->note("Run with --debug or --verbose for detailed stack trace");
         }
-        
+
         $output->line();
     }
 
@@ -217,13 +217,13 @@ class ConsolePlugs
         $pow = floor(($bytes ? log($bytes) : 0) / log(1024));
         $pow = min($pow, count($units) - 1);
         $bytes /= (1 << (10 * $pow));
-        
+
         return round($bytes, 2) . ' ' . $units[$pow];
     }
 
     public function loadFunctions(): void
     {
-        $functionsDir = __DIR__ . '/functions/';
+        $functionsDir = dirname(__DIR__) . '/functions/';
 
         if (!is_dir($functionsDir)) {
             return;

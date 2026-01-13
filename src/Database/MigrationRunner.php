@@ -182,9 +182,13 @@ class MigrationRunner
             $sql = "INSERT INTO {$this->migrationsTable} (migration, batch) VALUES (?, ?)";
             $this->connection->execute($sql, [$migration, $batch]);
 
-            $this->connection->commit();
+            if ($this->connection->inTransaction()) {
+                $this->connection->commit();
+            }
         } catch (\Exception $e) {
-            $this->connection->rollBack();
+            if ($this->connection->inTransaction()) {
+                $this->connection->rollBack();
+            }
             throw new \RuntimeException(
                 "Migration failed: {$migration}\nError: " . $e->getMessage(),
                 0,
@@ -210,9 +214,13 @@ class MigrationRunner
             $sql = "DELETE FROM {$this->migrationsTable} WHERE migration = ?";
             $this->connection->execute($sql, [$migration]);
 
-            $this->connection->commit();
+            if ($this->connection->inTransaction()) {
+                $this->connection->commit();
+            }
         } catch (\Exception $e) {
-            $this->connection->rollBack();
+            if ($this->connection->inTransaction()) {
+                $this->connection->rollBack();
+            }
             throw new \RuntimeException(
                 "Rollback failed: {$migration}\nError: " . $e->getMessage(),
                 0,

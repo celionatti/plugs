@@ -635,6 +635,10 @@ class Connection
     {
         $dbConfig = require BASE_PATH . 'config/database.php';
 
+        if ($name === 'default') {
+            $name = $dbConfig['default'] ?? 'mysql';
+        }
+
         if (!isset($dbConfig['connections'][$name])) {
             throw new \InvalidArgumentException("Connection [{$name}] not configured.");
         }

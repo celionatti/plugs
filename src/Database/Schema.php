@@ -107,10 +107,8 @@ class Schema
      */
     public static function hasTable(string $table): bool
     {
-        $connection = self::getConnection();
-        $sql = "SHOW TABLES LIKE ?";
-        $result = $connection->fetch($sql, [$table]);
-        return $result !== null;
+        $tables = self::getTables();
+        return in_array($table, $tables);
     }
 
     /**
