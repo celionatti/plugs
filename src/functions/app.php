@@ -98,14 +98,16 @@ if (!function_exists('config')) {
 if (!function_exists('base_path')) {
     function base_path(string $path = ''): string
     {
-        return BASE_PATH . '/' . ltrim($path, '/');
+        $base = defined('BASE_PATH') ? BASE_PATH : realpath(__DIR__ . '/../../');
+        return rtrim($base, '/\\') . DIRECTORY_SEPARATOR . ltrim($path, '/\\');
     }
 }
 
 if (!function_exists('storage_path')) {
     function storage_path(string $path = ''): string
     {
-        return base_path('storage/' . ltrim($path, '/'));
+        $storage = defined('STORAGE_PATH') ? STORAGE_PATH : base_path('storage');
+        return rtrim($storage, '/\\') . DIRECTORY_SEPARATOR . ltrim($path, '/\\');
     }
 }
 

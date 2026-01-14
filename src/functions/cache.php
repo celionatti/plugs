@@ -4,17 +4,14 @@ declare(strict_types=1);
 
 if (!function_exists('cache')) {
     /**
-     * Simple file-based cache function for production
+     * Simple file-based cache function
      */
     function cache($key = null, $value = null, int $ttl = 3600)
     {
-        static $cacheDir = null;
+        $cacheDir = storage_path('cache');
 
-        if ($cacheDir === null) {
-            $cacheDir = sys_get_temp_dir() . '/plugs-cache';
-            if (!is_dir($cacheDir)) {
-                mkdir($cacheDir, 0755, true);
-            }
+        if (!is_dir($cacheDir)) {
+            mkdir($cacheDir, 0755, true);
         }
 
         // No arguments - return cache instance info
@@ -43,13 +40,18 @@ if (!function_exists('cache')) {
 if (!function_exists('_cache_get')) {
     function _cache_get(string $cacheDir, string $key)
     {
-        $file = $cacheDir . '/' . md5($key) . '.cache';
+        $file = $cacheDir . DIRECTORY_SEPARATOR . md5($key) . '.cache';
 
         if (!file_exists($file)) {
             return null;
         }
 
-        $data = unserialize(file_get_contents($file));
+        $content = file_get_contents($file);
+        if ($content === false) {
+            return null;
+        }
+
+        $data = unserialize($content);
 
         if ($data['expires'] < time()) {
             unlink($file);
@@ -63,7 +65,7 @@ if (!function_exists('_cache_get')) {
 if (!function_exists('_cache_set')) {
     function _cache_set(string $cacheDir, string $key, $value, int $ttl): bool
     {
-        $file = $cacheDir . '/' . md5($key) . '.cache';
+        $file = $cacheDir . DIRECTORY_SEPARATOR . md5($key) . '.cache';
 
         $data = [
             'value' => $value,
@@ -71,7 +73,7 @@ if (!function_exists('_cache_set')) {
             'created' => time()
         ];
 
-        return file_put_contents($file, serialize($data)) !== false;
+        return file_put_contents($file, serialize($data), LOCK_EX) !== false;
     }
 }
 
@@ -85,8 +87,8 @@ if (!function_exists('cache_has')) {
 if (!function_exists('cache_forget')) {
     function cache_forget(string $key): bool
     {
-        $cacheDir = sys_get_temp_dir() . '/plugs-cache';
-        $file = $cacheDir . '/' . md5($key) . '.cache';
+        $cacheDir = storage_path('cache');
+        $file = $cacheDir . DIRECTORY_SEPARATOR . md5($key) . '.cache';
 
         if (file_exists($file)) {
             return unlink($file);
@@ -99,8 +101,12 @@ if (!function_exists('cache_forget')) {
 if (!function_exists('cache_flush')) {
     function cache_flush(): bool
     {
-        $cacheDir = sys_get_temp_dir() . '/plugs-cache';
-        $files = glob($cacheDir . '/*.cache');
+        $cacheDir = storage_path('cache');
+        if (!is_dir($cacheDir)) {
+            return true;
+        }
+
+        $files = glob($cacheDir . DIRECTORY_SEPARATOR . '*.cache');
 
         $success = true;
         foreach ($files as $file) {

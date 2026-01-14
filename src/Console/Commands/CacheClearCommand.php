@@ -20,26 +20,26 @@ class CacheClearCommand extends Command
     public function handle(): int
     {
         $this->title('Cache Clearing');
-        
-        $cacheDir = getcwd() . '/storage/cache';
-        
+
+        $cacheDir = storage_path('cache');
+
         if (!is_dir($cacheDir)) {
             $this->warning('Cache directory does not exist');
             return 0;
         }
-        
+
         $count = 0;
         $files = Filesystem::files($cacheDir, true);
-        
-        $this->withProgressBar(count($files), function($step) use ($files, &$count) {
+
+        $this->withProgressBar(count($files), function ($step) use ($files, &$count) {
             $file = $files[$step - 1];
             if (Filesystem::delete($file)) {
                 $count++;
             }
         }, 'Clearing cache files');
-        
+
         $this->success("Cleared {$count} cache files");
-        
+
         return 0;
     }
 }
