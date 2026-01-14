@@ -19,45 +19,47 @@ trait HasQueryBuilder
             ? static::getTableName()
             : static::getTable();
 
-        return $builder->table($table);
+        return $builder->table($table)->setModel(static::class);
     }
 
-    public static function all(): array
+    public static function get(array $columns = ['*']): array|Collection
     {
-        $results = static::query()->get();
-        return array_map(fn($item) => new static($item), $results);
+        $results = static::query()->get($columns);
+        return is_array($results) ? new Collection($results) : $results;
     }
 
-    public static function find($id)
+    public static function all(array $columns = ['*']): array|Collection
     {
-        $result = static::query()->find($id);
-        return $result ? new static($result) : null;
+        return static::get($columns);
     }
 
-    public static function findOrFail($id)
+    public static function find($id, array $columns = ['*'])
     {
-        $result = static::find($id);
+        return static::query()->find($id, $columns);
+    }
+
+    public static function findOrFail($id, array $columns = ['*'])
+    {
+        $result = static::find($id, $columns);
         if (!$result) {
             throw new \Exception("Model not found with id: {$id}");
         }
         return $result;
     }
 
-    public static function findMany(array $ids): array
+    public static function findMany(array $ids, array $columns = ['*']): array|Collection
     {
-        $results = static::query()->whereIn('id', $ids)->get();
-        return array_map(fn($item) => new static($item), $results);
+        return static::query()->whereIn('id', $ids)->get($columns);
     }
 
-    public static function first()
+    public static function first(array $columns = ['*'])
     {
-        $result = static::query()->first();
-        return $result ? new static($result) : null;
+        return static::query()->first($columns);
     }
 
-    public static function firstOrFail()
+    public static function firstOrFail(array $columns = ['*'])
     {
-        $result = static::first();
+        $result = static::first($columns);
         if (!$result) {
             throw new \Exception("No records found");
         }

@@ -24,6 +24,7 @@ class QueryBuilder
     private $orderBy = [];
     private $limit = null;
     private $offset = null;
+    protected $model = null;
 
     public function __construct(Connection $connection)
     {
@@ -39,6 +40,12 @@ class QueryBuilder
     public function select(array $columns = ['*']): self
     {
         $this->select = $columns;
+        return $this;
+    }
+
+    public function setModel(string $model): self
+    {
+        $this->model = $model;
         return $this;
     }
 
@@ -145,22 +152,43 @@ class QueryBuilder
         return $this;
     }
 
-    public function get(): array
+    public function get(array $columns = ['*']): array
     {
+        if ($columns !== ['*']) {
+            $this->select($columns);
+        }
+
         $sql = $this->buildSelectSql();
-        return $this->connection->fetchAll($sql, $this->params);
+        $results = $this->connection->fetchAll($sql, $this->params);
+
+        if ($this->model && !empty($results)) {
+            return array_map(fn($item) => new $this->model($item), $results);
+        }
+
+        return $results;
     }
 
-    public function first(): ?array
+    public function first(array $columns = ['*']): mixed
     {
         $this->limit(1);
+
+        if ($columns !== ['*']) {
+            $this->select($columns);
+        }
+
         $sql = $this->buildSelectSql();
-        return $this->connection->fetch($sql, $this->params);
+        $result = $this->connection->fetch($sql, $this->params);
+
+        if ($this->model && $result) {
+            return new $this->model($result);
+        }
+
+        return $result;
     }
 
-    public function find($id): ?array
+    public function find($id, array $columns = ['*']): mixed
     {
-        return $this->where('id', '=', $id)->first();
+        return $this->where('id', '=', $id)->first($columns);
     }
 
     public function exists(): bool

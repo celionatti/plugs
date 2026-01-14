@@ -17,6 +17,7 @@ namespace Plugs\Base\Model;
 use Plugs\Database\Connection;
 use Plugs\Database\QueryBuilder;
 use Plugs\Database\Traits\HasQueryBuilder;
+use Plugs\Database\Collection;
 
 abstract class Model
 {
@@ -45,42 +46,38 @@ abstract class Model
         return $builder->table(static::getTable());
     }
 
-    public static function all(): array
+    public static function all(array $columns = ['*']): array|Collection
     {
-        $results = static::query()->get();
-        return array_map(fn($item) => new static($item), $results);
+        return static::get($columns);
     }
 
-    public static function find($id): ?self
+    public static function find($id, array $columns = ['*'])
     {
-        $result = static::query()->find($id);
-        return $result ? new static($result) : null;
+        return static::query()->find($id, $columns);
     }
 
-    public static function findOrFail($id): self
+    public static function findOrFail($id, array $columns = ['*']): self
     {
-        $result = static::find($id);
+        $result = static::find($id, $columns);
         if (!$result) {
             throw new \Exception("Model not found with id: {$id}");
         }
         return $result;
     }
 
-    public static function findMany(array $ids): array
+    public static function findMany(array $ids, array $columns = ['*']): array|Collection
     {
-        $results = static::query()->whereIn('id', $ids)->get();
-        return array_map(fn($item) => new static($item), $results);
+        return static::query()->whereIn('id', $ids)->get($columns);
     }
 
-    public static function first(): ?self
+    public static function first(array $columns = ['*'])
     {
-        $result = static::query()->first();
-        return $result ? new static($result) : null;
+        return static::query()->first($columns);
     }
 
-    public static function firstOrFail(): self
+    public static function firstOrFail(array $columns = ['*']): self
     {
-        $result = static::first();
+        $result = static::first($columns);
         if (!$result) {
             throw new \Exception("No records found");
         }
@@ -152,16 +149,14 @@ abstract class Model
         $total = static::query()->count();
         $offset = ($page - 1) * $perPage;
 
-        $items = static::query()
+        $results = static::query()
             ->select($columns)
             ->limit($perPage)
             ->offset($offset)
             ->get();
 
-        $data = array_map(fn($item) => new static($item), $items);
-
         return [
-            'data' => $data,
+            'data' => $results,
             'total' => $total,
             'per_page' => $perPage,
             'current_page' => $page,
