@@ -20,6 +20,11 @@ class SPAMiddleware implements MiddlewareInterface
             if ($container->bound(ViewEngine::class)) {
                 $viewEngine = $container->make(ViewEngine::class);
                 $viewEngine->suppressLayout(true);
+
+                // Handle specific section requests
+                if ($request->hasHeader('X-Plugs-Section')) {
+                    $viewEngine->requestSection($request->getHeaderLine('X-Plugs-Section'));
+                }
             }
         }
 

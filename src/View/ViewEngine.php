@@ -26,6 +26,7 @@ class ViewEngine
     private ?ViewCompiler $viewCompiler = null;
     private array $customDirectives = [];
     private bool $suppressLayout = false;
+    private ?string $requestedSection = null;
 
     private const VIEW_EXTENSIONS = ['.plug.php', '.php', '.html'];
     private const PRODUCTION_ERROR_LEVEL = E_ERROR | E_PARSE | E_CORE_ERROR | E_COMPILE_ERROR;
@@ -65,6 +66,14 @@ class ViewEngine
     public function suppressLayout(bool $suppress = true): void
     {
         $this->suppressLayout = $suppress;
+    }
+
+    /**
+     * Set a specific section to render for SPA partials
+     */
+    public function requestSection(?string $section): void
+    {
+        $this->requestedSection = $section;
     }
 
     /**
@@ -365,9 +374,15 @@ class ViewEngine
             }
 
             if ($this->suppressLayout) {
-                $output = $__sections['content'] ?? $childContent;
+                $output = $childContent;
 
-                // Append stacks for SPA to pick up
+                if ($this->requestedSection && isset($__sections[$this->requestedSection])) {
+                    $output = $__sections[$this->requestedSection];
+                } elseif (isset($__sections['content'])) {
+                    $output = $__sections['content'];
+                }
+
+                // Append any stacks for SPA to pick up (relevant for both full-page and fragment)
                 if (!empty($__stacks['styles'])) {
                     $output .= implode("\n", $__stacks['styles']);
                 }
@@ -429,7 +444,13 @@ class ViewEngine
             }
 
             if ($this->suppressLayout) {
-                $output = $__sections['content'] ?? $childContent;
+                $output = $childContent;
+
+                if ($this->requestedSection && isset($__sections[$this->requestedSection])) {
+                    $output = $__sections[$this->requestedSection];
+                } elseif (isset($__sections['content'])) {
+                    $output = $__sections['content'];
+                }
 
                 if (!empty($__stacks['styles'])) {
                     $output .= implode("\n", $__stacks['styles']);
