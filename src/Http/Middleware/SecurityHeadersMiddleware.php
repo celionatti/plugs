@@ -26,22 +26,23 @@ class SecurityHeadersMiddleware implements MiddlewareInterface
         'Referrer-Policy' => 'strict-origin-when-cross-origin',
         'Permissions-Policy' => 'geolocation=(), microphone=(), camera=()',
     ];
-    
+
     public function __construct(array $config = [])
     {
         $this->config = array_merge($this->config, $config);
     }
-    
+
     public function process(ServerRequestInterface $request, RequestHandlerInterface $handler): ResponseInterface
     {
         $response = $handler->handle($request);
-        
+
         foreach ($this->config as $header => $value) {
+            // Only add header if it doesn't already exist and value is not null
             if ($value !== null && !$response->hasHeader($header)) {
                 $response = $response->withHeader($header, $value);
             }
         }
-        
+
         return $response;
     }
 }

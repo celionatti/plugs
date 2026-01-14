@@ -142,10 +142,12 @@ class Plugs
             ($reasonPhrase ? ' ' . $reasonPhrase : '')
         ), true, $statusCode);
 
-        // Send headers
+        // Send headers (replace any existing headers with same name)
         foreach ($response->getHeaders() as $name => $values) {
+            $first = true;
             foreach ($values as $value) {
-                header(sprintf('%s: %s', $name, $value), false);
+                header(sprintf('%s: %s', $name, $value), $first);
+                $first = false; // Subsequent values should be additive
             }
         }
 

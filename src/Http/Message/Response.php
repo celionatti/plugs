@@ -294,6 +294,11 @@ class Response implements ResponseInterface
         $new->headerNames[$normalized] = $name;
         $new->headers[$name] = $value;
 
+        // Debug logging (TEMPORARY - remove after fixing)
+        if (in_array($normalized, ['x-content-type-options', 'x-frame-options', 'x-xss-protection'])) {
+            error_log("Setting header: $name = " . implode(', ', $value) . " - " . debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS, 3)[1]['class'] . '::' . debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS, 3)[1]['function']);
+        }
+
         return $new;
     }
 
