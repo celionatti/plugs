@@ -31,7 +31,7 @@ The Plugs view engine provides several directives for common PHP operations:
 
 ```html
 {{ $variable }}        <!-- Escaped -->
-{!! $rawVariable !!}   <!-- Unescaped -->
+{{{ $rawVariable }}}   <!-- Unescaped -->
 ```
 
 ### Control Structures

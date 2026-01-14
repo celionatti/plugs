@@ -17,5 +17,6 @@ composer.lock
 /test.php
 /routes
 /bootstrap/
+/database/*
 settings.json
 /verify_form.php

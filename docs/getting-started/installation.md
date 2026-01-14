@@ -14,7 +14,7 @@ Getting started with Plugs is easy. Follow these steps to set up your environmen
 To create a new project using Plugs, run:
 
 ```bash
-composer create-project plugs/plugs your-app-name
+composer require plugs/plugs
 ```
 
 ## Directory Permissions

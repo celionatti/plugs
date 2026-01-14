@@ -1,16 +1,32 @@
+<p align="center">
+    <img src="docs/banner.png" alt="Plugs Framework Banner" width="800">
+</p>
+
+<p align="center">
+    <a href="https://packagist.org/packages/plugs/plugs"><img src="https://img.shields.io/packagist/v/plugs/plugs.svg?style=flat-square" alt="Latest Version on Packagist"></a>
+    <a href="https://github.com/celionatti/plugs/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-Apache--2.0-blue.svg?style=flat-square" alt="Software License"></a>
+    <a href="https://github.com/celionatti/plugs/stargazers"><img src="https://img.shields.io/github/stars/celionatti/plugs.svg?style=flat-square" alt="GitHub Stars"></a>
+</p>
+
+---
+
 # Plugs Framework
 
-Plugs is a modern, lightweight PHP framework designed for speed, structure, and freedom. Built by Celio Natti, it offers a modular design and intuitive syntax to make web development faster and cleaner.
+**Plugs** is a high-performance, modular, and developer-friendly PHP framework designed for modern web applications. It strikes the perfect balance between the structure of a full-stack framework and the freedom of a micro-framework.
 
-## Features
+> [!NOTE]
+> Plugs is built for speed, security, and developer happiness, featuring built-in support for Inertia-like SPA features and a robust security shield.
 
-- **Lightweight Core**: Minimal overhead for maximum performance.
-- **Modular Design**: Use what you need, plug in the rest.
-- **Intuitive Routing**: Simple and expressive routing syntax.
-- **Modern PHP**: Built for PHP 8.0+.
-- **Database Support**: Integrated with Illuminate Database (Eloquent).
+## 🚀 Key Features
 
-## Installation
+-   ⚡ **Lightning Fast**: Minimal core overhead for peak performance.
+-   🧩 **Modular Architecture**: Use only what you need, plug in additional features as required.
+-   🛡️ **Security Shield**: Built-in DDoS protection, bot detection, and rate limiting.
+-   🌐 **SPA Ready**: Seamlessly build Single Page Applications with server-side routing.
+-   🛠️ **Powerful CLI**: Automate your workflow with `theplugs` command-line tool.
+-   🗄️ **Fluent DB & ORM**: Clean Query Builder and ActiveRecord models.
+
+## 📦 Installation
 
 You can install Plugs via Composer:
 
@@ -18,53 +34,49 @@ You can install Plugs via Composer:
 composer require plugs/plugs
 ```
 
-## Getting Started
+## 🛠️ Quick Start
 
-1.  **Install Dependencies**:
-    ```bash
-    composer install
-    ```
-
-2.  **Environment Setup**:
-    Copy `.env.example` to `.env` and configure your database and other settings.
+1.  **Environment Setup**:
     ```bash
     cp .env.example .env
+    php theplugs key:generate
     ```
 
-3.  **Serve Application**:
-    You can use the built-in PHP server for development:
+2.  **Serve Your App**:
     ```bash
-    php -S localhost:8000 -t public
+    php theplugs serve
     ```
 
-## Development via Docker
-
-If you prefer to develop using Docker, we have included a setup for you.
-
-1.  **Build and Start**:
-    ```bash
-    docker-compose up -d --build
+3.  **Define a Route**:
+    ```php
+    // routes/web.php
+    $router->get('/', function () {
+        return view('welcome');
+    });
     ```
 
-2.  **Access Container**:
-    ```bash
-    docker-compose exec app bash
-    ```
+## 📖 Documentation
 
-3.  **Run Tests**:
-    Inside the container, you can run your tests:
-    ```bash
-    ./vendor/bin/phpunit
-    ```
+Explore our comprehensive guides to learn more about the Plugs Framework:
 
-## Documentation
+-   [**Getting Started**](file:///docs/getting-started/introduction.md)
+-   [**Routing**](file:///docs/the-basics/routing.md)
+-   [**Views & Components**](file:///docs/the-basics/views.md)
+-   [**Database & ORM**](file:///docs/database/getting-started.md)
+-   [**Security Shield**](file:///docs/security/security-shield.md)
+-   [**Inertia / SPA Mode**](file:///docs/advanced/inertia-spa.md)
+-   [**CLI Tool**](file:///docs/advanced/cli-commands.md)
 
-For full documentation, please visit [our website](https://github.com/celionatti/plugs).
+## 🤝 Contributing
 
-## Contributing
+We welcome contributions from the community! Please review our [Contributing Guide](CONTRIBUTING.md) to get started.
 
-We welcome contributions! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for details.
+## 📄 License
 
-## License
+The Plugs Framework is open-sourced software licensed under the [Apache-2.0 license](LICENSE).
 
-Plugs is open-sourced software licensed under the [Apache-2.0 license](LICENSE).
+---
+
+<p align="center">
+    Built with ❤️ by <a href="https://github.com/celionatti">Celio Natti</a> and contributors.
+</p>
