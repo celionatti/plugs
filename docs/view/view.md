@@ -13,6 +13,7 @@
 9. [Stacks](#stacks)
 10. [Custom Directives](#custom-directives)
 11. [Advanced Features](#advanced-features)
+12. [SPA Bridge & Fragment Loading](spa.md)
 
 ---
 
