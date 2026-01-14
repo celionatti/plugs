@@ -348,11 +348,18 @@ class ViewCompiler
 
     private function compileConditionals(string $content): string
     {
+        // Improved regex to handle nested parentheses (like @if(isset($var)))
+        $balanced = '\((?:[^()]|(?R))*\)';
+
         // @if
-        $content = preg_replace('/@if\s*\((.+?)\)/s', '<?php if ($1): ?>', $content);
+        $content = preg_replace_callback('/@if\s*\(((?:[^()]|\([^()]*\))*)\)/s', function ($matches) {
+            return "<?php if ({$matches[1]}): ?>";
+        }, $content);
 
         // @elseif
-        $content = preg_replace('/@elseif\s*\((.+?)\)/s', '<?php elseif ($1): ?>', $content);
+        $content = preg_replace_callback('/@elseif\s*\(((?:[^()]|\([^()]*\))*)\)/s', function ($matches) {
+            return "<?php elseif ({$matches[1]}): ?>";
+        }, $content);
 
         // @else
         $content = preg_replace('/@else\s*(?:\r?\n)?/', '<?php else: ?>', $content);
@@ -361,20 +368,32 @@ class ViewCompiler
         $content = preg_replace('/@endif\s*(?:\r?\n)?/', '<?php endif; ?>', $content);
 
         // @unless (inverted if)
-        $content = preg_replace('/@unless\s*\((.+?)\)/s', '<?php if (!($1)): ?>', $content);
+        $content = preg_replace_callback('/@unless\s*\(((?:[^()]|\([^()]*\))*)\)/s', function ($matches) {
+            return "<?php if (!({$matches[1]})): ?>";
+        }, $content);
         $content = preg_replace('/@endunless\s*(?:\r?\n)?/', '<?php endif; ?>', $content);
 
         // @isset
-        $content = preg_replace('/@isset\s*\((.+?)\)/s', '<?php if (isset($1)): ?>', $content);
+        $content = preg_replace_callback('/@isset\s*\(((?:[^()]|\([^()]*\))*)\)/s', function ($matches) {
+            return "<?php if (isset({$matches[1]})): ?>";
+        }, $content);
         $content = preg_replace('/@endisset\s*(?:\r?\n)?/', '<?php endif; ?>', $content);
 
         // @empty
-        $content = preg_replace('/@empty\s*\((.+?)\)/s', '<?php if (empty($1)): ?>', $content);
+        $content = preg_replace_callback('/@empty\s*\(((?:[^()]|\([^()]*\))*)\)/s', function ($matches) {
+            return "<?php if (empty({$matches[1]})): ?>";
+        }, $content);
         $content = preg_replace('/@endempty\s*(?:\r?\n)?/', '<?php endif; ?>', $content);
 
         // @switch
-        $content = preg_replace('/@switch\s*\((.+?)\)/', '<?php switch($1): ?>', $content);
-        $content = preg_replace('/@case\s*\((.+?)\)/', '<?php case $1: ?>', $content);
+        $content = preg_replace_callback('/@switch\s*\(((?:[^()]|\([^()]*\))*)\)/s', function ($matches) {
+            return "<?php switch({$matches[1]}): ?>";
+        }, $content);
+
+        $content = preg_replace_callback('/@case\s*\(((?:[^()]|\([^()]*\))*)\)/s', function ($matches) {
+            return "<?php case {$matches[1]}: ?>";
+        }, $content);
+
         $content = preg_replace('/@default\s*/', '<?php default: ?>', $content);
         $content = preg_replace('/@endswitch\s*(?:\r?\n)?/', '<?php endswitch; ?>', $content);
 

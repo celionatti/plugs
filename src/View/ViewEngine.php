@@ -382,6 +382,11 @@ class ViewEngine
                     $output = $__sections['content'];
                 }
 
+                // Include title if set
+                if (isset($__sections['title'])) {
+                    $output = "<title>{$__sections['title']}</title>\n" . $output;
+                }
+
                 // Append any stacks for SPA to pick up (relevant for both full-page and fragment)
                 if (!empty($__stacks['styles'])) {
                     $output .= implode("\n", $__stacks['styles']);
@@ -450,6 +455,10 @@ class ViewEngine
                     $output = $__sections[$this->requestedSection];
                 } elseif (isset($__sections['content'])) {
                     $output = $__sections['content'];
+                }
+
+                if (isset($__sections['title'])) {
+                    $output = "<title>{$__sections['title']}</title>\n" . $output;
                 }
 
                 if (!empty($__stacks['styles'])) {
