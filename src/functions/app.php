@@ -126,11 +126,7 @@ if (!function_exists('resource_path')) {
 if (!function_exists('view')) {
     function view(string $view, array $data = []): string
     {
-        $engine = new \Plugs\View\ViewEngine(
-            base_path('views'),
-            storage_path('views'),
-            !env('APP_DEBUG', false)
-        );
+        $engine = app(\Plugs\View\ViewEngine::class);
 
         return $engine->render($view, $data);
     }

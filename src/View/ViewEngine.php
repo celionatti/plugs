@@ -25,6 +25,7 @@ class ViewEngine
     private string $componentPath;
     private ?ViewCompiler $viewCompiler = null;
     private array $customDirectives = [];
+    private bool $suppressLayout = false;
 
     private const VIEW_EXTENSIONS = ['.plug.php', '.php', '.html'];
     private const PRODUCTION_ERROR_LEVEL = E_ERROR | E_PARSE | E_CORE_ERROR | E_COMPILE_ERROR;
@@ -55,6 +56,23 @@ class ViewEngine
     public function getCspNonce(): ?string
     {
         return $this->cspNonce;
+    }
+
+    /**
+     * Set whether to suppress the parent layout
+     * Used for SPA partial rendering
+     */
+    public function suppressLayout(bool $suppress = true): void
+    {
+        $this->suppressLayout = $suppress;
+    }
+
+    /**
+     * Check if layout is suppressed
+     */
+    public function isLayoutSuppressed(): bool
+    {
+        return $this->suppressLayout;
     }
 
     private function checkCompilationRateLimit(): void
@@ -336,7 +354,7 @@ class ViewEngine
             $childContent = ob_get_clean();
             error_reporting($previousErrorLevel);
 
-            if (isset($__extends) && $__extends) {
+            if (isset($__extends) && $__extends && !$this->suppressLayout) {
                 // FIX: Pass stacks and childContent to parent layout
                 return $this->renderParent(
                     $__extends,
@@ -344,6 +362,20 @@ class ViewEngine
                     $__sections,
                     $__stacks
                 );
+            }
+
+            if ($this->suppressLayout) {
+                $output = $__sections['content'] ?? $childContent;
+
+                // Append stacks for SPA to pick up
+                if (!empty($__stacks['styles'])) {
+                    $output .= implode("\n", $__stacks['styles']);
+                }
+                if (!empty($__stacks['scripts'])) {
+                    $output .= implode("\n", $__stacks['scripts']);
+                }
+
+                return $output;
             }
 
             return $childContent;
@@ -386,7 +418,7 @@ class ViewEngine
             $childContent = ob_get_clean();
             error_reporting($previousErrorLevel);
 
-            if (isset($__extends) && $__extends) {
+            if (isset($__extends) && $__extends && !$this->suppressLayout) {
                 // FIX: Pass stacks and childContent to parent layout
                 return $this->renderParentDirect(
                     $__extends,
@@ -394,6 +426,19 @@ class ViewEngine
                     $__sections,
                     $__stacks
                 );
+            }
+
+            if ($this->suppressLayout) {
+                $output = $__sections['content'] ?? $childContent;
+
+                if (!empty($__stacks['styles'])) {
+                    $output .= implode("\n", $__stacks['styles']);
+                }
+                if (!empty($__stacks['scripts'])) {
+                    $output .= implode("\n", $__stacks['scripts']);
+                }
+
+                return $output;
             }
 
             return $childContent;
