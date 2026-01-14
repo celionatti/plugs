@@ -166,12 +166,22 @@ class Plugs
             return;
         }
 
-        $files = glob($functionsDir . '*.php');
+        // Use a more efficient way to load functions
+        $files = glob($functionsDir . '*.php', GLOB_NOSORT);
 
         foreach ($files as $file) {
-            if (file_exists($file) && is_file($file)) {
+            // Check if it's a file and not an index or something else
+            if (is_file($file)) {
                 require_once $file;
             }
         }
+    }
+
+    /**
+     * Check if the application is in production mode.
+     */
+    public static function isProduction(): bool
+    {
+        return strtolower(getenv('APP_ENV') ?: 'production') === 'production';
     }
 }

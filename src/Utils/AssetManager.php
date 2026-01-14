@@ -24,7 +24,7 @@ class AssetManager
     private bool $combine;
     private bool $versioning;
     private array $registeredAssets = [];
-    
+
     public function __construct(
         ?string $publicPath = null,
         ?string $cachePath = null,
@@ -38,11 +38,11 @@ class AssetManager
         $this->minify = $minify;
         $this->combine = $combine;
         $this->versioning = $versioning;
-        
+
         $this->ensureDirectoryExists($this->cachePath);
         $this->loadManifest();
     }
-    
+
     /**
      * Register a CSS file
      */
@@ -53,10 +53,10 @@ class AssetManager
             'dependencies' => $dependencies,
             'type' => 'css'
         ];
-        
+
         return $this;
     }
-    
+
     /**
      * Register a JavaScript file
      */
@@ -67,124 +67,134 @@ class AssetManager
             'dependencies' => $dependencies,
             'type' => 'js'
         ];
-        
+
         return $this;
     }
-    
+
     /**
      * Compile CSS assets
      */
     public function compileCSS(array $files, ?string $outputName = null): string
     {
         $outputName = $outputName ?? 'compiled';
-        
+
         // Resolve dependencies and get ordered file list
         $orderedFiles = $this->resolveAssetOrder($files, 'css');
-        
+
         if (!$this->combine) {
             return $this->handleSeparateAssets($orderedFiles, 'css');
         }
-        
+
         $content = '';
         $lastModified = 0;
-        
+
         foreach ($orderedFiles as $file) {
             $filePath = $this->resolvePath($file);
-            
+
             if (!file_exists($filePath)) {
                 throw new \RuntimeException("CSS file not found: {$filePath}");
             }
-            
+
             $fileContent = file_get_contents($filePath);
             $content .= $this->processCSS($fileContent, dirname($filePath));
             $lastModified = max($lastModified, filemtime($filePath));
         }
-        
+
         if ($this->minify) {
             $content = $this->minifyCSS($content);
         }
-        
+
         return $this->saveCompiledAsset($content, $outputName, 'css', $lastModified);
     }
-    
+
     /**
      * Compile JavaScript assets
      */
     public function compileJS(array $files, ?string $outputName = null): string
     {
         $outputName = $outputName ?? 'compiled';
-        
+
         // Resolve dependencies and get ordered file list
         $orderedFiles = $this->resolveAssetOrder($files, 'js');
-        
+
         if (!$this->combine) {
             return $this->handleSeparateAssets($orderedFiles, 'js');
         }
-        
+
         $content = '';
         $lastModified = 0;
-        
+
         foreach ($orderedFiles as $file) {
             $filePath = $this->resolvePath($file);
-            
+
             if (!file_exists($filePath)) {
                 throw new \RuntimeException("JS file not found: {$filePath}");
             }
-            
+
             $fileContent = file_get_contents($filePath);
             $content .= $this->processJS($fileContent, $filePath);
             $lastModified = max($lastModified, filemtime($filePath));
         }
-        
+
         if ($this->minify) {
             $content = $this->minifyJS($content);
         }
-        
+
         return $this->saveCompiledAsset($content, $outputName, 'js', $lastModified);
     }
-    
+
     /**
      * Get asset URL with versioning
      */
     public function url(string $asset): string
     {
         $manifestKey = basename($asset);
-        
+
         if (isset($this->manifest[$manifestKey])) {
             return $this->manifest[$manifestKey];
         }
-        
+
         // Generate version hash if file exists
         $fullPath = $this->publicPath . ltrim($asset, '/');
-        
+
         if (file_exists($fullPath)) {
             $version = $this->versioning ? '?v=' . substr(md5_file($fullPath), 0, 8) : '';
             return '/' . ltrim($asset, '/') . $version;
         }
-        
+
         return '/' . ltrim($asset, '/');
     }
-    
+
     /**
      * Generate HTML tags for assets
      */
-    public function tags(array $assets, string $type = 'css'): string
+    public function tags(array $assets, string $type = 'css', array $attributes = []): string
     {
         $tags = [];
-        
-        foreach ($assets as $asset) {
-            $url = $this->url($asset);
-            
-            if ($type === 'css') {
-                $tags[] = sprintf('<link rel="stylesheet" href="%s">', htmlspecialchars($url));
+
+        $attrStr = '';
+        foreach ($attributes as $key => $value) {
+            if (is_bool($value)) {
+                if ($value)
+                    $attrStr .= ' ' . $key;
             } else {
-                $tags[] = sprintf('<script src="%s"></script>', htmlspecialchars($url));
+                $attrStr .= sprintf(' %s="%s"', $key, htmlspecialchars((string) $value));
             }
         }
-        
+
+        foreach ($assets as $asset) {
+            $url = $this->url($asset);
+
+            if ($type === 'css') {
+                $tags[] = sprintf('<link rel="stylesheet" href="%s"%s>', htmlspecialchars($url), $attrStr);
+            } else {
+                $tags[] = sprintf('<script src="%s"%s></script>', htmlspecialchars($url), $attrStr);
+            }
+        }
+
         return implode("\n", $tags);
     }
-    
+
     /**
      * Clear all cached assets
      */
@@ -193,19 +203,19 @@ class AssetManager
         if (!is_dir($this->cachePath)) {
             return;
         }
-        
+
         $files = glob($this->cachePath . '*');
-        
+
         foreach ($files as $file) {
             if (is_file($file) && $file !== $this->manifestPath) {
                 @unlink($file);
             }
         }
-        
+
         $this->manifest = [];
         $this->saveManifest();
     }
-    
+
     /**
      * Process CSS content (resolve URLs, imports, etc.)
      */
@@ -217,21 +227,21 @@ class AssetManager
             function ($matches) use ($basePath) {
                 $relativePath = trim($matches[1]);
                 $absolutePath = realpath($basePath . '/' . $relativePath);
-                
+
                 if ($absolutePath && file_exists($absolutePath)) {
                     $webPath = str_replace($this->publicPath, '/', $absolutePath);
                     return 'url(' . $webPath . ')';
                 }
-                
+
                 return $matches[0];
             },
             $content
         );
-        
+
         // Add separator comment
         return "/* Compiled CSS */\n" . $content . "\n\n";
     }
-    
+
     /**
      * Process JavaScript content
      */
@@ -241,7 +251,7 @@ class AssetManager
         $fileName = basename($filePath);
         return "/* Source: {$fileName} */\n" . $content . "\n\n";
     }
-    
+
     /**
      * Minify CSS content
      */
@@ -249,22 +259,22 @@ class AssetManager
     {
         // Remove comments
         $css = preg_replace('!/\*[^*]*\*+([^/][^*]*\*+)*/!', '', $css);
-        
+
         // Remove whitespace
         $css = preg_replace('/\s+/', ' ', $css);
-        
+
         // Remove spaces around special characters
         $css = preg_replace('/\s*([{}:;,>~+])\s*/', '$1', $css);
-        
+
         // Remove trailing semicolons
         $css = preg_replace('/;}/', '}', $css);
-        
+
         // Remove empty rules
         $css = preg_replace('/[^\}]+\{\s*\}/', '', $css);
-        
+
         return trim($css);
     }
-    
+
     /**
      * Minify JavaScript content
      */
@@ -272,19 +282,19 @@ class AssetManager
     {
         // Remove single-line comments (but preserve URLs)
         $js = preg_replace('~//[^\n]*~', '', $js);
-        
+
         // Remove multi-line comments
         $js = preg_replace('~/\*.*?\*/~s', '', $js);
-        
+
         // Remove whitespace
         $js = preg_replace('/\s+/', ' ', $js);
-        
+
         // Remove spaces around operators
         $js = preg_replace('/\s*([=+\-*\/%&|^!<>?:,;{}()\[\]])\s*/', '$1', $js);
-        
+
         return trim($js);
     }
-    
+
     /**
      * Resolve asset dependencies and return ordered list
      */
@@ -292,14 +302,14 @@ class AssetManager
     {
         $resolved = [];
         $visited = [];
-        
+
         foreach ($assets as $asset) {
             $this->resolveDependencies($asset, $type, $resolved, $visited);
         }
-        
+
         return $resolved;
     }
-    
+
     /**
      * Recursively resolve dependencies
      */
@@ -312,49 +322,49 @@ class AssetManager
         if (in_array($asset, $resolved)) {
             return;
         }
-        
+
         if (in_array($asset, $visited)) {
             throw new \RuntimeException("Circular dependency detected: {$asset}");
         }
-        
+
         $visited[] = $asset;
-        
+
         // Check if asset is registered
         if (isset($this->registeredAssets[$type][$asset])) {
             $assetData = $this->registeredAssets[$type][$asset];
-            
+
             // Resolve dependencies first
             foreach ($assetData['dependencies'] as $dependency) {
                 $this->resolveDependencies($dependency, $type, $resolved, $visited);
             }
-            
+
             $resolved[] = $assetData['path'];
         } else {
             // Direct file path
             $resolved[] = $asset;
         }
     }
-    
+
     /**
      * Handle separate (non-combined) assets
      */
     private function handleSeparateAssets(array $files, string $type): string
     {
         $urls = [];
-        
+
         foreach ($files as $file) {
             $filePath = $this->resolvePath($file);
-            
+
             if (!file_exists($filePath)) {
                 continue;
             }
-            
+
             $content = file_get_contents($filePath);
-            
+
             if ($this->minify) {
                 $content = $type === 'css' ? $this->minifyCSS($content) : $this->minifyJS($content);
             }
-            
+
             $fileName = basename($file, '.' . $type);
             $url = $this->saveCompiledAsset(
                 $content,
@@ -362,13 +372,13 @@ class AssetManager
                 $type,
                 filemtime($filePath)
             );
-            
+
             $urls[] = $url;
         }
-        
+
         return implode(',', $urls);
     }
-    
+
     /**
      * Save compiled asset and return URL
      */
@@ -382,24 +392,24 @@ class AssetManager
         $fileName = "{$name}-{$hash}.{$type}";
         $filePath = $this->cachePath . $fileName;
         $webPath = 'assets/cache/' . $fileName;
-        
+
         // Check if file exists and is up to date
         if (file_exists($filePath) && filemtime($filePath) >= $lastModified) {
             return $webPath;
         }
-        
+
         // Write compiled file
         if (file_put_contents($filePath, $content) === false) {
             throw new \RuntimeException("Failed to write compiled asset: {$filePath}");
         }
-        
+
         // Update manifest
         $this->manifest[$name . '.' . $type] = $webPath;
         $this->saveManifest();
-        
+
         return $webPath;
     }
-    
+
     /**
      * Resolve asset path
      */
@@ -409,22 +419,22 @@ class AssetManager
         if (file_exists($path)) {
             return $path;
         }
-        
+
         // Try relative to public path
         $fullPath = $this->publicPath . ltrim($path, '/');
-        
+
         if (file_exists($fullPath)) {
             return $fullPath;
         }
-        
+
         // Try relative to current directory
         if (file_exists(getcwd() . '/' . $path)) {
             return getcwd() . '/' . $path;
         }
-        
+
         return $path;
     }
-    
+
     /**
      * Load manifest file
      */
@@ -435,7 +445,7 @@ class AssetManager
             $this->manifest = json_decode($content, true) ?? [];
         }
     }
-    
+
     /**
      * Save manifest file
      */
@@ -446,7 +456,7 @@ class AssetManager
             json_encode($this->manifest, JSON_PRETTY_PRINT)
         );
     }
-    
+
     /**
      * Ensure directory exists
      */
@@ -458,7 +468,7 @@ class AssetManager
             }
         }
     }
-    
+
     /**
      * Set minification option
      */
@@ -467,7 +477,7 @@ class AssetManager
         $this->minify = $minify;
         return $this;
     }
-    
+
     /**
      * Set combine option
      */
@@ -476,7 +486,7 @@ class AssetManager
         $this->combine = $combine;
         return $this;
     }
-    
+
     /**
      * Set versioning option
      */
@@ -485,7 +495,7 @@ class AssetManager
         $this->versioning = $versioning;
         return $this;
     }
-    
+
     /**
      * Get all registered assets
      */
@@ -494,23 +504,23 @@ class AssetManager
         if ($type !== null) {
             return $this->registeredAssets[$type] ?? [];
         }
-        
+
         return $this->registeredAssets;
     }
-    
+
     /**
      * Check if asset is cached and up to date
      */
     public function isCached(string $name, string $type): bool
     {
         $manifestKey = $name . '.' . $type;
-        
+
         if (!isset($this->manifest[$manifestKey])) {
             return false;
         }
-        
+
         $cachedFile = $this->publicPath . $this->manifest[$manifestKey];
-        
+
         return file_exists($cachedFile);
     }
 }

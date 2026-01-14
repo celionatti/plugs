@@ -20,7 +20,7 @@ if (!function_exists('asset_manager')) {
     function asset_manager(): AssetManager
     {
         static $manager = null;
-        
+
         if ($manager === null) {
             $manager = new AssetManager(
                 publicPath: PUBLIC_PATH ?? null,
@@ -29,10 +29,10 @@ if (!function_exists('asset_manager')) {
                 combine: config('assets.combine', true),
                 versioning: config('assets.versioning', true)
             );
-            
+
             // Register common assets from config
             $assets = config('assets.register', []);
-            
+
             foreach ($assets['css'] ?? [] as $name => $config) {
                 $manager->css(
                     $name,
@@ -40,7 +40,7 @@ if (!function_exists('asset_manager')) {
                     $config['dependencies'] ?? []
                 );
             }
-            
+
             foreach ($assets['js'] ?? [] as $name => $config) {
                 $manager->js(
                     $name,
@@ -49,7 +49,7 @@ if (!function_exists('asset_manager')) {
                 );
             }
         }
-        
+
         return $manager;
     }
 }
@@ -77,12 +77,12 @@ if (!function_exists('css')) {
 
 if (!function_exists('js')) {
     /**
-     * Generate JavaScript script tags
+     * Generate JavaScript script tags with optional attributes
      */
-    function js(string|array $files): string
+    function js(string|array $files, array $attrs = []): string
     {
         $files = is_array($files) ? $files : [$files];
-        return asset_manager()->tags($files, 'js');
+        return asset_manager()->tags($files, 'js', $attrs);
     }
 }
 

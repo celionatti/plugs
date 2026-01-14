@@ -146,6 +146,61 @@ class Config
             self::$config = [];
             self::$loaded = [];
         }
+
+        // Also clear physical cache file if it exists
+        $cacheFile = self::getCachePath();
+        if (file_exists($cacheFile)) {
+            @unlink($cacheFile);
+        }
+    }
+
+    /**
+     * Cache all loaded configuration to a single file.
+     */
+    public static function cache(): bool
+    {
+        $configPath = self::$path ?? (defined('BASE_PATH') ? BASE_PATH . 'config/' : __DIR__ . '/../config/');
+        $files = glob($configPath . '*.php');
+        $allConfig = [];
+
+        foreach ($files as $file) {
+            $name = basename($file, '.php');
+            $allConfig[$name] = require $file;
+        }
+
+        $cacheFile = self::getCachePath();
+        $content = '<?php return ' . var_export($allConfig, true) . ';';
+
+        return file_put_contents($cacheFile, $content) !== false;
+    }
+
+    /**
+     * Load configuration from cache.
+     */
+    public static function loadFromCache(): bool
+    {
+        $cacheFile = self::getCachePath();
+
+        if (file_exists($cacheFile)) {
+            self::$config = require $cacheFile;
+            foreach (self::$config as $file => $values) {
+                self::$loaded[$file] = true;
+            }
+            return true;
+        }
+
+        return false;
+    }
+
+    /**
+     * Get the path to the configuration cache file.
+     */
+    private static function getCachePath(): string
+    {
+        if (defined('STORAGE_PATH')) {
+            return STORAGE_PATH . 'framework/config.php';
+        }
+        return __DIR__ . '/../storage/framework/config.php';
     }
 
     private static $path = null;
