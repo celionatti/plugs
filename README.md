@@ -6,6 +6,7 @@
     <a href="https://packagist.org/packages/plugs/plugs"><img src="https://img.shields.io/packagist/v/plugs/plugs.svg?style=flat-square" alt="Latest Version on Packagist"></a>
     <a href="https://github.com/celionatti/plugs/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-Apache--2.0-blue.svg?style=flat-square" alt="Software License"></a>
     <a href="https://github.com/celionatti/plugs/stargazers"><img src="https://img.shields.io/github/stars/celionatti/plugs.svg?style=flat-square" alt="GitHub Stars"></a>
+    <a href="https://packagist.org/packages/plugs/plugs"><img src="https://img.shields.io/packagist/dm/plugs/plugs.svg?style=flat-square" alt="Downloads"></a>
 </p>
 
 ---
