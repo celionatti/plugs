@@ -1,0 +1,29 @@
+<?php
+
+declare(strict_types=1);
+
+/*
+|--------------------------------------------------------------------------
+| Routes File - Web Routes
+|--------------------------------------------------------------------------
+|
+| This file is where you can define all of the routes that are handled
+| by your application. Just tell the router the URIs it should respond
+| to and give it the controller to call when that URI is requested.
+| Also - 
+| Using the Route facade for clean, static route definitions.
+*/
+
+use Plugs\Facades\Route;
+use App\Http\Controllers\HomeController;
+
+Route::get('/', [HomeController::class, 'index'])->name('home');
+Route::get('/home', [HomeController::class, 'index']);
+
+// Add your routes here
+// Route::get('/about', [HomeController::class, 'about'])->name('about');
+// Route::get('/contact', [HomeController::class, 'contact'])->name('contact');
+
+// Route::group(['prefix' => 'admin'], function () {
+//     Route::get('/', [AdminController::class, 'dashboard'])->name('admin.dashboard');
+// });

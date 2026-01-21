@@ -1,0 +1,25 @@
+# Plugs Framework Installer - .htaccess
+# Allow access to installer files
+
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    
+    # Allow access to assets
+    RewriteCond %{REQUEST_URI} ^/install/assets/ [NC]
+    RewriteRule ^ - [L]
+    
+    # Route all other requests to index.php
+    RewriteCond %{REQUEST_FILENAME} !-f
+    RewriteCond %{REQUEST_FILENAME} !-d
+    RewriteRule ^(.*)$ index.php?step=$1 [QSA,L]
+</IfModule>
+
+# Prevent access to template files
+<FilesMatch "\.template$">
+    Require all denied
+</FilesMatch>
+
+# Prevent access to PHP files in templates
+<FilesMatch "^templates/.*\.php$">
+    Require all denied
+</FilesMatch>
