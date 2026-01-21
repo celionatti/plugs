@@ -227,10 +227,12 @@ class ViewEngine
                 );
             }
 
+            $slot = $data['slot'] ?? '';
+            unset($data['slot']);
+
             $slotId = $data['__slot_id'] ?? null;
             unset($data['__slot_id']);
 
-            $slot = '';
             if ($slotId) {
                 $compiledSlot = $this->getCompiler()->getCompiledSlot($slotId);
                 if (!empty($compiledSlot)) {
@@ -239,6 +241,25 @@ class ViewEngine
             }
 
             $componentData = array_merge($data, ['slot' => $slot]);
+
+            // Check if there's a reactive class for this component
+            $className = "App\\Components\\" . $this->snakeToPascalCase(str_replace('.', '\\', $componentName));
+
+            if (class_exists($className)) {
+                $component = new $className($componentName, $componentData);
+                if ($component instanceof ReactiveComponent) {
+                    $html = $this->render($componentName, array_merge($componentData, $component->getState()), true);
+
+                    // Wrap in reactive container
+                    return sprintf(
+                        '<div data-plug-component="%s" data-plug-state="%s" id="%s">%s</div>',
+                        $componentName,
+                        $component->serializeState(),
+                        $component->getId(),
+                        $html
+                    );
+                }
+            }
 
             return $this->render($componentName, $componentData, true);
         } catch (Throwable $e) {
@@ -667,13 +688,13 @@ class ViewEngine
         );
     }
 
-    private function pascalToSnakeCase(string $input): string
+    public function pascalToSnakeCase(string $input): string
     {
         $result = preg_replace('/([a-z])([A-Z])/', '$1_$2', $input);
         return strtolower($result);
     }
 
-    private function snakeToPascalCase(string $input): string
+    public function snakeToPascalCase(string $input): string
     {
         return str_replace('_', '', ucwords($input, '_'));
     }

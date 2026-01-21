@@ -115,20 +115,18 @@ class ViewCompiler
     {
         $attributesArray = $this->parseAttributes($attributes);
         $dataPhp = $this->buildDataArray($attributesArray);
-        // NEW: Create attributes bag for unhandled attributes
-        $attributesBag = sprintf(
-            "'__attributes' => new \\Plugs\\View\\ComponentAttributes([%s])",
-            $dataPhp
-        );
+
+        $dataArray = $dataPhp;
+
         if (!empty(trim($slotContent))) {
-            $slotId = uniqid('slot_', true);
-            $this->componentData[$slotId] = $slotContent;
-            $attributesBag .= sprintf(", '__slot_id' => '%s'", $slotId);
+            $compiledSlot = $this->compileNonComponentContent($slotContent);
+            $dataArray .= (empty($dataArray) ? '' : ', ') . sprintf("'slot' => '%s'", addslashes($compiledSlot));
         }
+
         return sprintf(
             '<?php echo $view->renderComponent(\'%s\', [%s]); ?>',
             addslashes($componentName),
-            $attributesBag
+            $dataArray
         );
     }
 
@@ -185,7 +183,7 @@ class ViewCompiler
         return $content;
     }
 
-    private function parseAttributes(string $attributes): array
+    public function parseAttributes(string $attributes): array
     {
         $result = [];
         $attributes = trim($attributes);
@@ -211,7 +209,7 @@ class ViewCompiler
 
         // Quoted attributes
         preg_match_all(
-            '/(\w+)\s*=\s*(["\'])((?:[^\2\\\\]|\\\\.)*)\2/s',
+            '/([\w:.-]+)\s*=\s*(["\'])(.*?)\2/s',
             $attributes,
             $matches,
             PREG_SET_ORDER
@@ -237,7 +235,7 @@ class ViewCompiler
         }
 
         // Unquoted variables
-        preg_match_all('/(\w+)\s*=\s*(\$[\w\[\]\'\"\-\>]+)(?=\s|$|\/)/s', $attributes, $matches, PREG_SET_ORDER);
+        preg_match_all('/([\w:.-]+)\s*=\s*(\$[\w\[\]\'\"\-\>]+)(?=\s|$|\/)/s', $attributes, $matches, PREG_SET_ORDER);
 
         foreach ($matches as $match) {
             if (!isset($result[$match[1]])) {
@@ -249,9 +247,9 @@ class ViewCompiler
             }
         }
 
-        // Boolean attributes
-        $withoutQuoted = preg_replace('/\w+\s*=\s*(["\'].*?\1|\$[\w\[\]\'\"\-\>]+)/s', '', $attributes);
-        preg_match_all('/(\w+)/', $withoutQuoted, $matches);
+        // Boolean attributes (flags)
+        $withoutQuoted = preg_replace('/[\w:.-]+\s*=\s*(["\'].*?\1|\$[\w\[\]\'\"\-\>]+)/s', '', $attributes);
+        preg_match_all('/([\w:.-]+)/', $withoutQuoted, $matches);
 
         foreach ($matches[1] as $attr) {
             if (!isset($result[$attr]) && !empty(trim($attr)) && !preg_match('/^___EXPR_\d+___$/', $attr)) {
@@ -275,9 +273,10 @@ class ViewCompiler
             $isVariable = $info['is_variable'];
 
             if ($isVariable) {
-                $parts[] = sprintf("'%s' => %s", addslashes($key), $value);
+                $parts[] = sprintf("'%s' => %s", addslashes((string) $key), $value);
             } else {
-                $parts[] = sprintf("'%s' => '%s'", addslashes($key), addslashes($value));
+                $val = ($value === 'true' || $value === 'false') ? $value : "'" . addslashes((string) $value) . "'";
+                $parts[] = sprintf("'%s' => %s", addslashes((string) $key), $val);
             }
         }
 
