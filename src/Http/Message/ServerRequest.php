@@ -643,6 +643,108 @@ class ServerRequest implements ServerRequestInterface
         return $this->uri->getPath();
     }
 
+    /**
+     * Check if the request path matches a pattern
+     * 
+     * @param mixed ...$patterns
+     * @return bool
+     */
+    public function is(...$patterns): bool
+    {
+        $path = $this->getPath();
+        $path = rawurldecode($path);
+
+        // Normalize path to ensure it starts with /
+        if (!str_starts_with($path, '/')) {
+            $path = '/' . $path;
+        }
+
+        foreach ($patterns as $pattern) {
+            if (is_array($pattern)) {
+                if ($this->is(...$pattern)) {
+                    return true;
+                }
+                continue;
+            }
+
+            $pattern = (string) $pattern;
+
+            // Normalize pattern
+            if (!str_starts_with($pattern, '/')) {
+                $pattern = '/' . $pattern;
+            }
+
+            // Exact match
+            if ($pattern === $path) {
+                return true;
+            }
+
+            // Convert wildcard pattern to regex
+            $pattern = preg_quote($pattern, '#');
+            $pattern = str_replace('\*', '.*', $pattern);
+
+            if (preg_match('#^' . $pattern . '\z#u', $path)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * Check if the route matches a pattern
+     * 
+     * @param mixed ...$patterns
+     * @return bool
+     */
+    public function routeIs(...$patterns): bool
+    {
+        // Try to get current route name from attributes
+        // This relies on the framework's Router setting the _route attribute
+        // The attribute might be a Route object or array or string
+        $route = $this->getAttribute('_route');
+
+        if (!$route) {
+            return false;
+        }
+
+        // Get route name
+        $routeName = null;
+        if (is_object($route) && method_exists($route, 'getName')) {
+            $routeName = $route->getName();
+        } elseif (is_string($route)) {
+            $routeName = $route; // If stored as string
+        }
+
+        if (!$routeName) {
+            return false;
+        }
+
+        foreach ($patterns as $pattern) {
+            if (is_array($pattern)) {
+                if ($this->routeIs(...$pattern)) {
+                    return true;
+                }
+                continue;
+            }
+
+            $pattern = (string) $pattern;
+
+            if ($pattern === $routeName) {
+                return true;
+            }
+
+            $pattern = preg_quote($pattern, '#');
+            $pattern = str_replace('\*', '.*', $pattern);
+
+            if (preg_match('#^' . $pattern . '\z#u', $routeName)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
     // ============================================
     // PSR-7 ServerRequestInterface Implementation
     // ============================================

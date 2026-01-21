@@ -123,6 +123,11 @@ class ViewCompiler
             $dataArray .= (empty($dataArray) ? '' : ', ') . sprintf("'slot' => '%s'", addslashes($compiledSlot));
         }
 
+        // Inject ComponentAttributes bag
+        // We pass the same data array to the attributes constructor
+        $attributesConstruction = sprintf("new \Plugs\View\ComponentAttributes([%s])", $dataPhp);
+        $dataArray .= (empty($dataArray) ? '' : ', ') . "'attributes' => " . $attributesConstruction;
+
         return sprintf(
             '<?php echo $view->renderComponent(\'%s\', [%s]); ?>',
             addslashes($componentName),

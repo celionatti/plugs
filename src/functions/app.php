@@ -166,7 +166,12 @@ if (!function_exists('csrf_field')) {
 }
 
 if (!function_exists('request')) {
-    function request(): ?ServerRequestInterface
+    /**
+     * Get the current request instance
+     * 
+     * @return \Plugs\Http\Message\ServerRequest|\Psr\Http\Message\ServerRequestInterface|null
+     */
+    function request()
     {
         try {
             $container = app();
