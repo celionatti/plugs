@@ -85,9 +85,12 @@ class ViewCompiler
 
     private function extractComponentsWithSlots(string $content): string
     {
+        // Regex to match attributes while ignoring '>' inside quotes
+        $attrRegex = '((?:\s+(?:[^>"\'\/]+|"[^"]*"|\'[^\']*\')*)*?)';
+
         // Self-closing components: <ComponentName attr="value" />
         $content = preg_replace_callback(
-            '/<([A-Z][a-zA-Z0-9]*)((?:\s+[^>]*?)?)\/>/s',
+            '/<([A-Z][a-zA-Z0-9]*)' . $attrRegex . '\/>/s',
             function ($matches) {
                 $componentName = $matches[1];
                 $attributes = $matches[2] ?? '';
@@ -98,7 +101,7 @@ class ViewCompiler
 
         // Components with content: <ComponentName>...</ComponentName>
         $content = preg_replace_callback(
-            '/<([A-Z][a-zA-Z0-9]*)((?:\s+[^>]*?)?)>(.*?)<\/\1\s*>/s',
+            '/<([A-Z][a-zA-Z0-9]*)' . $attrRegex . '>(.*?)<\/\1\s*>/s',
             function ($matches) {
                 $componentName = $matches[1];
                 $attributes = $matches[2] ?? '';
@@ -225,11 +228,20 @@ class ViewCompiler
             $value = str_replace('\\' . $match[2], $match[2], $match[3]);
             $hasExpression = false;
 
-            foreach ($expressionMap as $placeholder => $expression) {
-                if (strpos($value, $placeholder) !== false) {
-                    $value = str_replace($placeholder, $expression, $value);
-                    $hasExpression = true;
+            if (strpos($value, '___EXPR_') !== false) {
+                $parts = preg_split('/(___EXPR_\d+___)/', $value, -1, PREG_SPLIT_DELIM_CAPTURE | PREG_SPLIT_NO_EMPTY);
+                $exprParts = [];
+
+                foreach ($parts as $part) {
+                    if (isset($expressionMap[$part])) {
+                        $exprParts[] = "(" . $expressionMap[$part] . ")";
+                    } else {
+                        $exprParts[] = "'" . addslashes($part) . "'";
+                    }
                 }
+
+                $value = implode(" . ", $exprParts);
+                $hasExpression = true;
             }
 
             $result[$key] = [
