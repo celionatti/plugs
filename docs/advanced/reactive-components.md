@@ -4,7 +4,7 @@ Reactive Components (also known as **Bolt**) allow you to build interactive UI c
 
 ---
 
-![Reactive Component Lifecycle](file:///C:/Users/celionatti/.gemini/antigravity/brain/a247115d-000b-4e87-b889-f91296d843e5/reactive_component_cycle_1769081142741.png)
+![Reactive Component Lifecycle](../assets/reactive_cycle.png)
 
 ## Overview
 

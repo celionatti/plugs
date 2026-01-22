@@ -4,7 +4,7 @@ The **SPA Bridge** is a progressive enhancement layer that turns your multi-page
 
 ---
 
-![SPA Navigation Flow](file:///C:/Users/celionatti/.gemini/antigravity/brain/a247115d-000b-4e87-b889-f91296d843e5/spa_flow_diagram_1769081120436.png)
+![SPA Navigation Flow](../assets/spa_flow.png)
 
 ## How it Works
 
