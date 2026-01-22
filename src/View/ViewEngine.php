@@ -403,12 +403,10 @@ class ViewEngine
                     $output = $__sections['content'];
                 }
 
-                // Include title if set
                 if (isset($__sections['title'])) {
                     $output = "<title>{$__sections['title']}</title>\n" . $output;
                 }
 
-                // Append any stacks for SPA to pick up (relevant for both full-page and fragment)
                 if (!empty($__stacks['styles'])) {
                     $output .= implode("\n", $__stacks['styles']);
                 }
@@ -416,12 +414,19 @@ class ViewEngine
                     $output .= implode("\n", $__stacks['scripts']);
                 }
 
+                // Include layout information for SPA to detect if a full reload is needed
+                if (isset($__extends) && $__extends) {
+                    $output = "<meta name=\"plugs-layout\" content=\"{$__extends}\">\n" . $output;
+                }
+
                 return $output;
             }
 
             return $childContent;
         } catch (Throwable $e) {
-            ob_end_clean();
+            if (ob_get_level() > 0) {
+                ob_end_clean();
+            }
             error_reporting($previousErrorLevel);
             throw new RuntimeException(
                 sprintf(
@@ -489,12 +494,19 @@ class ViewEngine
                     $output .= implode("\n", $__stacks['scripts']);
                 }
 
+                // Include layout information for SPA to detect if a full reload is needed
+                if (isset($__extends) && $__extends) {
+                    $output = "<meta name=\"plugs-layout\" content=\"{$__extends}\">\n" . $output;
+                }
+
                 return $output;
             }
 
             return $childContent;
         } catch (Throwable $e) {
-            ob_end_clean();
+            if (ob_get_level() > 0) {
+                ob_end_clean();
+            }
             error_reporting($previousErrorLevel);
             throw new RuntimeException(
                 sprintf(
