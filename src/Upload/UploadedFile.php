@@ -20,6 +20,7 @@ namespace Plugs\Upload;
 
 use RuntimeException;
 use InvalidArgumentException;
+use Plugs\Facades\Storage;
 
 class UploadedFile
 {
@@ -516,5 +517,104 @@ class UploadedFile
         }
 
         return @hash_file($algorithm, $this->tmpName) ?: null;
+    }
+
+    /**
+     * Store the uploaded file on a filesystem disk.
+     *
+     * @param string $path
+     * @param array|string $options
+     * @return string|false
+     */
+    public function store(string $path = '', $options = [])
+    {
+        return $this->storeAs($path, $this->hashName(), $this->parseOptions($options));
+    }
+
+    /**
+     * Store the uploaded file on a filesystem disk with public visibility.
+     *
+     * @param string $path
+     * @param array|string $options
+     * @return string|false
+     */
+    public function storePublicly(string $path = '', $options = [])
+    {
+        $options = $this->parseOptions($options);
+        $options['visibility'] = 'public';
+
+        return $this->storeAs($path, $this->hashName(), $options);
+    }
+
+    /**
+     * Store the uploaded file on a filesystem disk with public visibility.
+     *
+     * @param string $path
+     * @param string $name
+     * @param array|string $options
+     * @return string|false
+     */
+    public function storePubliclyAs(string $path, string $name, $options = [])
+    {
+        $options = $this->parseOptions($options);
+        $options['visibility'] = 'public';
+
+        return $this->storeAs($path, $name, $options);
+    }
+
+    /**
+     * Store the uploaded file on a filesystem disk.
+     *
+     * @param string $path
+     * @param string $name
+     * @param array|string $options
+     * @return string|false
+     */
+    public function storeAs(string $path, string $name, $options = [])
+    {
+        $options = $this->parseOptions($options);
+        $disk = $options['disk'] ?? null;
+        unset($options['disk']);
+
+        $storage = Storage::disk($disk);
+        $targetPath = trim($path . '/' . $name, '/');
+
+        if ($storage->put($targetPath, $this->getContents())) {
+            return $targetPath;
+        }
+
+        return false;
+    }
+
+    /**
+     * Get a hash of the file name.
+     *
+     * @param string|null $path
+     * @return string
+     */
+    public function hashName(?string $path = null): string
+    {
+        $hash = $this->getHash('sha256') ?? bin2hex(random_bytes(20));
+
+        if ($path) {
+            $path = rtrim($path, '/') . '/';
+        }
+
+        return $path . $hash . '.' . $this->getClientExtension();
+    }
+
+    /**
+     * Parse and format the given options.
+     *
+     * @param array|string $options
+     * @return array
+     */
+    protected function parseOptions($options): array
+    {
+        if (is_string($options)) {
+            return ['disk' => $options];
+        }
+
+        return $options;
     }
 }

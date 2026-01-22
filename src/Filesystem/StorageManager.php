@@ -113,6 +113,11 @@ class StorageManager
         return $this->disk()->deleteDirectory($path);
     }
 
+    public function download(string $path, ?string $name = null, array $headers = [])
+    {
+        return $this->disk()->download($path, $name, $headers);
+    }
+
     protected function callCustomCreator(array $config): FilesystemDriverInterface
     {
         return $this->customCreators[$config['driver']]($config);

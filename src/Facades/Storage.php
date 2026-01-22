@@ -14,6 +14,7 @@ use Plugs\Facade;
  * @method static int lastModified(string $path)
  * @method static bool makeDirectory(string $path)
  * @method static bool deleteDirectory(string $path)
+ * @method static \Psr\Http\Message\ResponseInterface download(string $path, ?string $name = null, array $headers = [])
  * @method static \Plugs\Filesystem\FilesystemDriverInterface disk(string|null $name = null)
  */
 class Storage extends Facade

@@ -76,4 +76,14 @@ interface FilesystemDriverInterface
      * @return bool
      */
     public function deleteDirectory(string $path): bool;
+
+    /**
+     * Create a streamed response for a file download.
+     *
+     * @param string $path
+     * @param string|null $name
+     * @param array $headers
+     * @return \Psr\Http\Message\ResponseInterface
+     */
+    public function download(string $path, ?string $name = null, array $headers = []);
 }

@@ -7,10 +7,14 @@ use Plugs\Filesystem\FilesystemDriverInterface;
 class LocalFilesystemDriver implements FilesystemDriverInterface
 {
     protected string $root;
+    protected string $url;
+    protected string $visibility;
 
     public function __construct(array $config)
     {
         $this->root = rtrim($config['root'], DIRECTORY_SEPARATOR);
+        $this->url = isset($config['url']) ? rtrim($config['url'], '/') : '';
+        $this->visibility = $config['visibility'] ?? 'public';
     }
 
     public function exists(string $path): bool
@@ -50,8 +54,13 @@ class LocalFilesystemDriver implements FilesystemDriverInterface
 
     public function url(string $path): string
     {
-        // This is a basic implementation. In a real app, you'd map this to a public URL.
-        return '/storage/' . ltrim($path, '/');
+        $path = ltrim($path, '/');
+
+        if ($this->url) {
+            return $this->url . '/' . $path;
+        }
+
+        return '/storage/' . $path;
     }
 
     public function size(string $path): int
@@ -93,8 +102,32 @@ class LocalFilesystemDriver implements FilesystemDriverInterface
         return rmdir($fullPath);
     }
 
-    protected function fullPath(string $path): string
+    public function fullPath(string $path): string
     {
         return $this->root . DIRECTORY_SEPARATOR . ltrim($path, DIRECTORY_SEPARATOR);
+    }
+
+    public function download(string $path, ?string $name = null, array $headers = [])
+    {
+        if (!$this->exists($path)) {
+            throw new \RuntimeException("File not found at path: {$path}");
+        }
+
+        $response = new \Plugs\Http\Message\Response();
+        $stream = new \Plugs\Http\Message\Stream(fopen($this->fullPath($path), 'rb'));
+
+        $filename = $name ?? basename($path);
+
+        $response = $response
+            ->withBody($stream)
+            ->withHeader('Content-Type', mime_content_type($this->fullPath($path)))
+            ->withHeader('Content-Disposition', 'attachment; filename="' . $filename . '"')
+            ->withHeader('Content-Length', (string) $this->size($path));
+
+        foreach ($headers as $key => $value) {
+            $response = $response->withHeader($key, $value);
+        }
+
+        return $response;
     }
 }
