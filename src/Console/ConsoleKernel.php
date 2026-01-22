@@ -51,6 +51,7 @@ class ConsoleKernel
         'make:model' => MakeModelCommand::class,
         'make:command' => MakeCommandCommand::class,
         'make:middleware' => MakeMiddlewareCommand::class,
+        'make:provider' => \Plugs\Console\Commands\MakeProviderCommand::class,
         'make:migration' => MakeMigrationCommand::class,
         'make:request' => MakeRequestCommand::class,
         'make:service' => MakeServiceCommand::class,
@@ -74,6 +75,8 @@ class ConsoleKernel
         'queue:work' => QueueWorkCommand::class,
         'health' => HealthCommand::class,
         'storage:link' => StorageLinkCommand::class,
+        'up' => \Plugs\Console\Commands\UpCommand::class,
+        'down' => \Plugs\Console\Commands\DownCommand::class,
     ];
 
     protected array $aliases = [
@@ -105,6 +108,8 @@ class ConsoleKernel
             'make:model',
             'make:command',
             'make:middleware',
+            'make:provider',
+            'make:migration',
             'make:migration',
             'make:request',
             'make:service',

@@ -35,13 +35,45 @@ class Plugs
         $this->bootstrapAuth();
         $this->bootstrapQueue();
         $this->bootstrapStorage();
+        $this->bootstrapView();
+        $this->bootstrapDatabase();
+        $this->bootstrapSocialite();
+
+        $this->registerConfiguredProviders();
+        $this->bootConfiguredProviders();
+
         $this->dispatcher = new MiddlewareDispatcher();
+        $this->dispatcher->add(new \Plugs\Http\Middleware\PreventRequestsDuringMaintenance()); // Global middleware
+
         $this->fallbackHandler = function (ServerRequestInterface $request) {
             $body = new Stream(fopen('php://temp', 'w+'));
             $body->write('Not Found');
             $body->rewind();
             return new Response(404, $body, ['Content-Type' => 'text/plain']);
         };
+    }
+
+    private function registerConfiguredProviders(): void
+    {
+        $providers = config('app.providers', []);
+
+        foreach ($providers as $provider) {
+            $this->resolveProvider($provider)->register();
+        }
+    }
+
+    private function bootConfiguredProviders(): void
+    {
+        $providers = config('app.providers', []);
+
+        foreach ($providers as $provider) {
+            $this->resolveProvider($provider)->boot();
+        }
+    }
+
+    private function resolveProvider(string $provider): \Plugs\Support\ServiceProvider
+    {
+        return new $provider(\Plugs\Container\Container::getInstance());
     }
 
     private function bootstrapLogger(): void
@@ -89,6 +121,47 @@ class Plugs
         $config = (include base_path('config/filesystems.php'));
         $storage = new \Plugs\Filesystem\StorageManager($config);
         $container->instance('storage', $storage);
+    }
+
+    private function bootstrapView(): void
+    {
+        $container = \Plugs\Container\Container::getInstance();
+
+        $config = config('app.paths');
+
+        $engine = new \Plugs\View\ViewEngine(
+            $config['views'],
+            $config['cache'],
+            !self::isProduction()
+        );
+
+        $container->instance(\Plugs\View\ViewEngine::class, $engine);
+
+        // Also bind the View class alias if it exists or simply the engine as 'view'
+        // Assuming View class uses the engine or is just an alias?
+        // Let's bind 'view' to the engine for now as typical in this framework structure
+        $container->instance('view', $engine);
+    }
+
+    private function bootstrapDatabase(): void
+    {
+        $container = \Plugs\Container\Container::getInstance();
+
+        // Bind the connection class to the instance returned by its factory method
+        $container->bind(\Plugs\Database\Connection::class, function () {
+            return \Plugs\Database\Connection::getInstance();
+        }, true); // Shared instance
+
+        // Also alias 'db' for convenience
+        $container->alias(\Plugs\Database\Connection::class, 'db');
+    }
+
+    private function bootstrapSocialite(): void
+    {
+        $container = \Plugs\Container\Container::getInstance();
+
+        $socialite = new \Plugs\Security\OAuth\SocialiteManager($container);
+        $container->instance('socialite', $socialite);
     }
 
     public function pipe(MiddlewareInterface $middleware): self
