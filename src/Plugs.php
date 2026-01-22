@@ -30,6 +30,8 @@ class Plugs
     public function __construct()
     {
         $this->loadFunctions();
+        $this->bootstrapLogger();
+        $this->bootstrapCache();
         $this->dispatcher = new MiddlewareDispatcher();
         $this->fallbackHandler = function (ServerRequestInterface $request) {
             $body = new Stream(fopen('php://temp', 'w+'));
@@ -37,6 +39,23 @@ class Plugs
             $body->rewind();
             return new Response(404, $body, ['Content-Type' => 'text/plain']);
         };
+    }
+
+    private function bootstrapLogger(): void
+    {
+        $container = \Plugs\Container\Container::getInstance();
+
+        $logger = new \Plugs\Log\Logger();
+        $container->instance('log', $logger);
+        $container->alias('log', \Psr\Log\LoggerInterface::class);
+    }
+
+    private function bootstrapCache(): void
+    {
+        $container = \Plugs\Container\Container::getInstance();
+
+        $cache = new \Plugs\Cache\CacheManager();
+        $container->instance('cache', $cache);
     }
 
     public function pipe(MiddlewareInterface $middleware): self

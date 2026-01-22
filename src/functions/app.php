@@ -364,19 +364,18 @@ if (!function_exists('now')) {
 }
 
 if (!function_exists('logger')) {
-    function logger(string $message, string $level = 'info'): void
+    /**
+     * Log a message or get the logger instance
+     */
+    function logger(string|null $message = null, string $level = 'info', array $context = [])
     {
-        $logFile = storage_path('logs/app.log');
-        $logDir = dirname($logFile);
+        $logger = app('log');
 
-        if (!is_dir($logDir)) {
-            mkdir($logDir, 0755, true);
+        if ($message === null) {
+            return $logger;
         }
 
-        $timestamp = date('Y-m-d H:i:s');
-        $line = "[{$timestamp}] [{$level}] {$message}" . PHP_EOL;
-
-        file_put_contents($logFile, $line, FILE_APPEND | LOCK_EX);
+        $logger->log($level, $message, $context);
     }
 }
 
