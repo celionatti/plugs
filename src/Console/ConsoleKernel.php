@@ -30,6 +30,7 @@ use Plugs\Console\Commands\MigrateRollbackCommand;
 use Plugs\Console\Commands\MigrateStatusCommand;
 use Plugs\Console\Commands\MigrateResetCommand;
 use Plugs\Console\Commands\QueueWorkCommand;
+use Plugs\Console\Commands\HealthCommand;
 
 /*
 |--------------------------------------------------------------------------
@@ -70,6 +71,7 @@ class ConsoleKernel
         'migrate:status' => MigrateStatusCommand::class,
         'migrate:reset' => MigrateResetCommand::class,
         'queue:work' => QueueWorkCommand::class,
+        'health' => HealthCommand::class,
     ];
 
     protected array $aliases = [
@@ -110,7 +112,7 @@ class ConsoleKernel
             'make:repository'
         ],
         'Routes' => ['route:list', 'route:cache', 'route:clear', 'route:test'],
-        'Utility' => ['serve', 'cache:clear', 'queue:work'],
+        'Utility' => ['serve', 'cache:clear', 'queue:work', 'health'],
         'Database' => ['migrate', 'migrate:rollback', 'migrate:status', 'migrate:reset', 'make:migration'],
     ];
 
