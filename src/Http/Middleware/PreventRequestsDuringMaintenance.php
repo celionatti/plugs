@@ -26,7 +26,7 @@ class PreventRequestsDuringMaintenance implements MiddlewareInterface
             }
 
             if (isset($data['secret']) && $request->getUri()->getPath() === '/' . $data['secret']) {
-                return $this->bypassResponse($data['secret']);
+                return $this->bypassResponse((string) $data['secret']);
             }
 
             // Return 503
@@ -43,7 +43,7 @@ class PreventRequestsDuringMaintenance implements MiddlewareInterface
         }
 
         $cookies = $request->getCookieParams();
-        return isset($cookies['plugs_maintenance']) && $cookies['plugs_maintenance'] === $data['secret'];
+        return isset($cookies['plugs_maintenance']) && $cookies['plugs_maintenance'] === (string) $data['secret'];
     }
 
     private function bypassResponse(string $secret): ResponseInterface
