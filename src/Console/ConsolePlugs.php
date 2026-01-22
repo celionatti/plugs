@@ -89,14 +89,7 @@ class ConsolePlugs
 
     private function displayVersion(Output $output): void
     {
-        $output->line();
-        $output->gradient("╔══════════════════════════════════════════╗");
-        $output->line();
-        $output->line("   ThePlugs Console Framework v1.0.0");
-        $output->line("   PHP " . PHP_VERSION);
-        $output->line();
-        $output->gradient("╚══════════════════════════════════════════╝");
-        $output->line();
+        $output->branding('1.0.0');
     }
 
     private function displayCommandHeader(Output $output, string $name): void

@@ -185,28 +185,30 @@ class Output
     private function getPlugLogoLines(): array
     {
         $width = $this->logoWidth;
+        $g = self::BRIGHT_GREEN;
         $c = self::BRIGHT_CYAN;
-        $w = self::BRIGHT_WHITE;
         $b = self::BRIGHT_BLUE;
+        $m = self::BRIGHT_MAGENTA;
+        $y = self::BRIGHT_YELLOW;
         $d = self::DIM;
         $r = self::RESET;
 
-        // Professional, Minimalist Plug Logo
+        // Colorful, Modern Plug Logo
         $logo = [
             "",
-            $w . "      _    " . $r,
-            $w . "    _| |_  " . $r,
-            $w . "   |  _  | " . $r,
-            $w . "   | | | | " . $r,
-            $w . "   | |_| | " . $r,
-            $w . "   |_____| " . $r,
-            $w . "    |___|  " . $r,
+            $g . "    ╔═══╗  " . $r,
+            $c . "    ║   ║  " . $r,
+            $b . "   ╔╩═══╩╗ " . $r,
+            $m . "   ║  P  ║ " . $r,
+            $c . "   ║  L  ║ " . $r,
+            $g . "   ║  U  ║ " . $r,
+            $y . "   ║  G  ║ " . $r,
+            $m . "   ║  S  ║ " . $r,
+            $b . "   ╚═════╝ " . $r,
             "",
-            $c . "    PLUGS  " . $r,
-            $d . "    FRAME  " . $r,
-            $d . "    WORK   " . $r,
-            "",
-            $b . "   v1.0.0  " . $r,
+            $c . self::BOLD . "   PLUGS   " . $r,
+            $d . "  FRAMEWORK" . $r,
+            $g . "   v1.0.0  " . $r,
         ];
 
         return array_map(function ($line) use ($width) {
@@ -1412,4 +1414,71 @@ class Output
         return $formatted;
     }
 
+    public function thePlugsPremiumLogo(): void
+    {
+        $logo = [
+            "   ____     __                                ",
+            "  /\  _`\\  /\ \                               ",
+            "  \ \ \L\ \\\\ \ \   __  __     __     ____     ",
+            "   \ \  __/ \ \ \ /\ \/\ \  /'_ `\  /',__\    ",
+            "    \ \ \/   \ \ \\\\ \ \_\ \/\ \L\ \/\__, `\   ",
+            "     \ \_\    \ \_\\\\ \____/\ \____ \/\____/   ",
+            "      \/_/     \/_/ \/___/  \/___L\ \/___/    ",
+            "                              /\____/         ",
+            "                              \_/__/          "
+        ];
+
+        $colors = [
+            self::BRIGHT_GREEN,
+            self::BRIGHT_CYAN,
+            self::BRIGHT_BLUE,
+            self::BRIGHT_MAGENTA,
+            self::BRIGHT_CYAN,
+            self::BRIGHT_GREEN,
+            self::BRIGHT_YELLOW,
+            self::BRIGHT_YELLOW,
+            self::BRIGHT_YELLOW,
+        ];
+
+        $maxWidth = 0;
+        foreach ($logo as $line) {
+            $maxWidth = max($maxWidth, mb_strwidth($line));
+        }
+
+        $padding = (int) (($this->consoleWidth - $maxWidth) / 2);
+        $padding = max(0, $padding);
+
+        $this->line();
+        foreach ($logo as $index => $line) {
+            $spaces = str_repeat(" ", $padding);
+            $color = $colors[$index] ?? self::BRIGHT_CYAN;
+            $this->line($spaces . $color . self::BOLD . $line . self::RESET);
+        }
+        $this->line();
+    }
+
+    public function branding(string $version = '1.0.0'): void
+    {
+        $this->thePlugsPremiumLogo();
+
+        $info = "Plugs Framework " . self::BRIGHT_GREEN . "v" . $version . self::RESET . " | PHP " . self::BRIGHT_BLUE . PHP_VERSION . self::RESET;
+        $width = mb_strwidth($this->stripAnsiCodes($info));
+        $padding = (int) (($this->consoleWidth - $width) / 2);
+        $padding = max(0, $padding);
+
+        $this->line(str_repeat(" ", $padding) . $info);
+        $this->line();
+        $this->fullWidthLine('─', self::BRIGHT_BLACK);
+        $this->line();
+    }
+
+    public function twoColumnList(array $items, int $leftWidth = 30): void
+    {
+        foreach ($items as $left => $right) {
+            $visibleLeft = mb_strwidth($this->stripAnsiCodes($left));
+            $padding = max(0, $leftWidth - $visibleLeft);
+
+            $this->line("  " . self::BRIGHT_GREEN . $left . self::RESET . str_repeat(' ', $padding) . $right);
+        }
+    }
 }

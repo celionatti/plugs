@@ -48,24 +48,23 @@ class HelpCommand extends Command
 
     private function displayCommandList(ConsoleKernel $kernel): int
     {
-        $this->output->section('USAGE');
-        $this->line('  command [options] [arguments]');
+        $this->output->branding('1.0.0');
 
-        $this->output->section('OPTIONS');
+        $this->output->section('Usage');
+        $this->line('  php theplugs <command> [options] [arguments]');
+        $this->line();
+
+        $this->output->section('Global Options');
         $globalOptions = [
-            '--help' => 'Display help',
-            '--quiet' => 'No output',
-            '--version' => 'Display version',
-            '--ansi' => 'Force ANSI',
-            '--no-ansi' => 'Disable ANSI',
-            '--verbose' => 'Increase verbosity'
+            '--help, -h' => 'Display help for a command',
+            '--quiet, -q' => 'Suppress all output',
+            '--version, -V' => 'Display framework version',
+            '--verbose, -v' => 'Increase output verbosity',
         ];
+        $this->output->twoColumnList($globalOptions, 20);
+        $this->line();
 
-        foreach ($globalOptions as $option => $description) {
-            $this->line("  " . "\033[32m" . str_pad($option, 20) . "\033[0m" . $description);
-        }
-
-        $this->output->section('AVAILABLE COMMANDS');
+        $this->output->section('Available Commands');
 
         $commands = $kernel->commands();
         $grouped = [];
@@ -81,8 +80,9 @@ class HelpCommand extends Command
 
         foreach ($grouped as $category => $categoryCommands) {
             $this->line();
-            $this->line("  " . "\033[33m" . $category . "\033[0m");
+            $this->line("  \033[1;33m" . $category . "\033[0m");
 
+            $items = [];
             foreach ($categoryCommands as $name => $commandClass) {
                 try {
                     $command = new $commandClass($name);
@@ -91,14 +91,16 @@ class HelpCommand extends Command
                     $description = '';
                 }
 
-                if (strlen($description) > 50) {
-                    $description = substr($description, 0, 47) . '...';
+                if (strlen($description) > 45) {
+                    $description = substr($description, 0, 42) . '...';
                 }
-
-                $this->line("  " . "\033[32m" . str_pad($name, 25) . "\033[0m" . $description);
+                $items[$name] = $description;
             }
+            $this->output->twoColumnList($items, 28);
         }
 
+        $this->line();
+        $this->line("  \033[2mRun 'php theplugs help <command>' for more information.\033[0m");
         $this->line();
 
         return 0;
