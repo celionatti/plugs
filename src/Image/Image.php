@@ -12,7 +12,7 @@ use GdImage;
 |--------------------------------------------------------------------------
 |
 | This class provides image manipulation with improved error handling
-| and memory management for production use.
+| and memory management for production use. Also using GDImage extension
 */
 
 class Image
@@ -598,7 +598,7 @@ class Image
         if ($memoryLimit > 0 && $memoryNeeded > $memoryLimit - memory_get_usage()) {
             throw new \RuntimeException(
                 'Insufficient memory to process image. Required: ' .
-                    round($memoryNeeded / 1024 / 1024, 2) . 'MB'
+                round($memoryNeeded / 1024 / 1024, 2) . 'MB'
             );
         }
     }
