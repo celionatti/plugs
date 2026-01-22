@@ -231,6 +231,16 @@ if (!function_exists('user')) {
     }
 }
 
+if (!function_exists('dispatch')) {
+    /**
+     * Dispatch a job to the queue
+     */
+    function dispatch($job, $data = '', $queue = null)
+    {
+        return app('queue')->push($job, $data, $queue);
+    }
+}
+
 if (!function_exists('abort')) {
     function abort(int $code, string $message = ''): void
     {

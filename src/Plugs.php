@@ -33,6 +33,7 @@ class Plugs
         $this->bootstrapLogger();
         $this->bootstrapCache();
         $this->bootstrapAuth();
+        $this->bootstrapQueue();
         $this->dispatcher = new MiddlewareDispatcher();
         $this->fallbackHandler = function (ServerRequestInterface $request) {
             $body = new Stream(fopen('php://temp', 'w+'));
@@ -65,6 +66,14 @@ class Plugs
 
         $auth = new \Plugs\Security\Auth\AuthManager();
         $container->instance('auth', $auth);
+    }
+
+    private function bootstrapQueue(): void
+    {
+        $container = \Plugs\Container\Container::getInstance();
+
+        $queue = new \Plugs\Queue\QueueManager();
+        $container->instance('queue', $queue);
     }
 
     public function pipe(MiddlewareInterface $middleware): self
