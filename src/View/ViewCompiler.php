@@ -769,9 +769,13 @@ class ViewCompiler
 
     private function compileCustomDirectives(string $content): string
     {
-        foreach ($this->customDirectives as $name => $handler) {
+        // Sort directives by length descending to prevent prefix conflicts
+        $directives = $this->customDirectives;
+        uksort($directives, fn($a, $b) => strlen($b) <=> strlen($a));
+
+        foreach ($directives as $name => $handler) {
             $content = preg_replace_callback(
-                '/@' . preg_quote($name, '/') . '(?:\s*\((.*?)\))?/s',
+                '/@' . preg_quote($name, '/') . '(?!\w)(?:\s*\((.*?)\))?/s',
                 function ($matches) use ($handler) {
                     $expression = $matches[1] ?? null;
                     return call_user_func($handler, $expression);

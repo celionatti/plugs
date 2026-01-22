@@ -192,6 +192,17 @@ class ViewEngine
         $this->directive('endguest', function () {
             return "<?php endif; ?>";
         });
+
+        $this->directive('skeletonStyles', function () {
+            return "<?php echo skeleton_styles(); ?>";
+        });
+
+        $this->directive('skeleton', function ($expression) {
+            if ($expression === null || trim($expression) === '') {
+                return '<?php echo skeleton(); ?>';
+            }
+            return "<?php echo skeleton()->$expression; ?>";
+        });
     }
 
     public function render(string $view, array $data = [], bool $isComponent = false): string
