@@ -18,6 +18,7 @@ Welcome to the official documentation for the **Plugs** framework. Plugs is a li
 - [Requests & Responses](file:///docs/the-basics/requests.md)
 - [Views & Components](file:///docs/the-basics/views.md)
 - [Validation](file:///docs/the-basics/validation.md)
+- [Logging](file:///docs/the-basics/logging.md)
 
 ### 🗄️ Database
 - [Getting Started](file:///docs/database/getting-started.md)
@@ -32,6 +33,7 @@ Welcome to the official documentation for the **Plugs** framework. Plugs is a li
 
 ### ⚡ Advanced Features
 - [Cache System](file:///docs/advanced/cache.md)
+- [Queues](file:///docs/advanced/queues.md)
 - [Form Builder](file:///docs/advanced/form-builder.md)
 - [Inertia / SPA Mode](file:///docs/advanced/inertia-spa.md)
 - [CLI Tool (theplugs)](file:///docs/advanced/cli-commands.md)

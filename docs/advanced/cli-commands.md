@@ -53,6 +53,14 @@ php theplugs make:middleware AuthMiddleware
 php theplugs make:migration create_posts_table
 ```
 
+### Queues
+
+Start a worker to process background jobs:
+
+```bash
+php theplugs queue:work
+```
+
 ## Creating Custom Commands
 
 You can create your own custom commands by extending the `Plugs\Console\Command` class and registering it in your `app/Console/Kernel.php`.
