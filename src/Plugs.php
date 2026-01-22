@@ -34,6 +34,7 @@ class Plugs
         $this->bootstrapCache();
         $this->bootstrapAuth();
         $this->bootstrapQueue();
+        $this->bootstrapStorage();
         $this->dispatcher = new MiddlewareDispatcher();
         $this->fallbackHandler = function (ServerRequestInterface $request) {
             $body = new Stream(fopen('php://temp', 'w+'));
@@ -74,6 +75,15 @@ class Plugs
 
         $queue = new \Plugs\Queue\QueueManager();
         $container->instance('queue', $queue);
+    }
+
+    private function bootstrapStorage(): void
+    {
+        $container = \Plugs\Container\Container::getInstance();
+
+        $config = (include base_path('config/filesystems.php'));
+        $storage = new \Plugs\Filesystem\StorageManager($config);
+        $container->instance('storage', $storage);
     }
 
     public function pipe(MiddlewareInterface $middleware): self

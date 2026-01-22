@@ -241,6 +241,20 @@ if (!function_exists('dispatch')) {
     }
 }
 
+if (!function_exists('storage')) {
+    /**
+     * Get the storage manager or a specific disk
+     */
+    function storage(?string $disk = null)
+    {
+        if (is_null($disk)) {
+            return app('storage');
+        }
+
+        return app('storage')->disk($disk);
+    }
+}
+
 if (!function_exists('abort')) {
     function abort(int $code, string $message = ''): void
     {

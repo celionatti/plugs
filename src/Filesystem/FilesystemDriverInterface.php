@@ -1,0 +1,79 @@
+<?php
+
+namespace Plugs\Filesystem;
+
+interface FilesystemDriverInterface
+{
+    /**
+     * Determine if a file exists.
+     *
+     * @param string $path
+     * @return bool
+     */
+    public function exists(string $path): bool;
+
+    /**
+     * Get the contents of a file.
+     *
+     * @param string $path
+     * @return string|null
+     */
+    public function get(string $path): ?string;
+
+    /**
+     * Write the contents of a file.
+     *
+     * @param string $path
+     * @param string $contents
+     * @return bool
+     */
+    public function put(string $path, string $contents): bool;
+
+    /**
+     * Delete the file at a given path.
+     *
+     * @param string $path
+     * @return bool
+     */
+    public function delete(string $path): bool;
+
+    /**
+     * Get the URL for the file at the given path.
+     *
+     * @param string $path
+     * @return string
+     */
+    public function url(string $path): string;
+
+    /**
+     * Get the file size of a given file.
+     *
+     * @param string $path
+     * @return int
+     */
+    public function size(string $path): int;
+
+    /**
+     * Get the last modified time of a given file.
+     *
+     * @param string $path
+     * @return int
+     */
+    public function lastModified(string $path): int;
+
+    /**
+     * Create a directory.
+     *
+     * @param string $path
+     * @return bool
+     */
+    public function makeDirectory(string $path): bool;
+
+    /**
+     * Delete a directory.
+     *
+     * @param string $path
+     * @return bool
+     */
+    public function deleteDirectory(string $path): bool;
+}

@@ -20,4 +20,5 @@ composer.lock
 /database/*
 settings.json
 /verify_form.php
+/verify_storage.php
 plugs.lock

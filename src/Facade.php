@@ -57,12 +57,12 @@ abstract class Facade
         // Try to get from container using make() method
         try {
             $container = \Plugs\Container\Container::getInstance();
-            
+
             // Check if bound in container
             if ($container->bound($name)) {
                 return static::$resolvedInstance[$name] = $container->make($name);
             }
-            
+
             throw new RuntimeException(
                 "Facade accessor [{$name}] is not bound in the container. " .
                 "Make sure to bind it using \$container->singleton('{$name}', \$instance); or " .
@@ -134,7 +134,7 @@ abstract class Facade
             throw new RuntimeException('A facade root has not been set.');
         }
 
-        if (!method_exists($instance, $method)) {
+        if (!is_callable([$instance, $method])) {
             $class = get_class($instance);
             throw new RuntimeException("Method [{$method}] does not exist on [{$class}].");
         }
