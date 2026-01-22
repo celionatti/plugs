@@ -14,6 +14,8 @@ class CacheManager
 
     public function __construct()
     {
+        $this->defaultDriver = config('cache.default', 'file');
+
         // Register default file driver
         $this->extend('file', function () {
             return new FileCacheDriver();

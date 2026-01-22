@@ -48,7 +48,11 @@ class Plugs
     {
         $container = \Plugs\Container\Container::getInstance();
 
-        $logger = new \Plugs\Log\Logger();
+        $config = (include base_path('config/logging.php'));
+        $channel = $config['default'];
+        $path = $config['channels'][$channel]['path'] ?? storage_path('logs/plugs.log');
+
+        $logger = new \Plugs\Log\Logger($path);
         $container->instance('log', $logger);
         $container->alias('log', \Psr\Log\LoggerInterface::class);
     }
@@ -74,6 +78,7 @@ class Plugs
         $container = \Plugs\Container\Container::getInstance();
 
         $queue = new \Plugs\Queue\QueueManager();
+        $queue->setDefaultDriver(config('queue.default', 'sync'));
         $container->instance('queue', $queue);
     }
 

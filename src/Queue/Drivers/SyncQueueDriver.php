@@ -31,6 +31,11 @@ class SyncQueueDriver implements QueueDriverInterface
 
     protected function resolveAndExecute($job, $data)
     {
+        if ($job instanceof \Closure) {
+            $job($data);
+            return;
+        }
+
         if (is_object($job)) {
             $job->handle($data);
             return;
