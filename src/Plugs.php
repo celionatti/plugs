@@ -32,6 +32,7 @@ class Plugs
         $this->loadFunctions();
         $this->bootstrapLogger();
         $this->bootstrapCache();
+        $this->bootstrapAuth();
         $this->dispatcher = new MiddlewareDispatcher();
         $this->fallbackHandler = function (ServerRequestInterface $request) {
             $body = new Stream(fopen('php://temp', 'w+'));
@@ -56,6 +57,14 @@ class Plugs
 
         $cache = new \Plugs\Cache\CacheManager();
         $container->instance('cache', $cache);
+    }
+
+    private function bootstrapAuth(): void
+    {
+        $container = \Plugs\Container\Container::getInstance();
+
+        $auth = new \Plugs\Security\Auth\AuthManager();
+        $container->instance('auth', $auth);
     }
 
     public function pipe(MiddlewareInterface $middleware): self

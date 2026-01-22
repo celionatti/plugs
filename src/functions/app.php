@@ -207,6 +207,30 @@ if (!function_exists('response')) {
     }
 }
 
+if (!function_exists('auth')) {
+    /**
+     * Get the auth manager or a specific guard
+     */
+    function auth(?string $guard = null)
+    {
+        if ($guard === null) {
+            return app('auth');
+        }
+
+        return app('auth')->guard($guard);
+    }
+}
+
+if (!function_exists('user')) {
+    /**
+     * Get the currently authenticated user
+     */
+    function user(?string $guard = null)
+    {
+        return auth($guard)->user();
+    }
+}
+
 if (!function_exists('abort')) {
     function abort(int $code, string $message = ''): void
     {
