@@ -24,6 +24,8 @@ class AssetManager
     private bool $combine;
     private bool $versioning;
     private array $registeredAssets = [];
+    private ?string $cdnUrl = null;
+    private bool $useSri = false;
 
     public function __construct(
         ?string $publicPath = null,
@@ -32,15 +34,28 @@ class AssetManager
         bool $combine = true,
         bool $versioning = true
     ) {
-        $this->publicPath = $publicPath ?? (defined('PUBLIC_PATH') ? PUBLIC_PATH : getcwd() . '/public/');
-        $this->cachePath = $cachePath ?? $this->publicPath . 'assets/cache/';
+        $this->publicPath = rtrim($publicPath ?? (defined('PUBLIC_PATH') ? PUBLIC_PATH : getcwd() . '/public/'), DIRECTORY_SEPARATOR) . DIRECTORY_SEPARATOR;
+        $this->cachePath = rtrim($cachePath ?? $this->publicPath . 'assets' . DIRECTORY_SEPARATOR . 'cache', DIRECTORY_SEPARATOR) . DIRECTORY_SEPARATOR;
         $this->manifestPath = $this->cachePath . 'manifest.json';
         $this->minify = $minify;
         $this->combine = $combine;
         $this->versioning = $versioning;
 
-        $this->ensureDirectoryExists($this->cachePath);
         $this->loadManifest();
+        $this->configureFromEnvironment();
+    }
+
+    /**
+     * Automatically configure settings based on environment constants
+     */
+    private function configureFromEnvironment(): void
+    {
+        if (defined('APP_ENV')) {
+            $isDev = APP_ENV === 'development' || APP_ENV === 'local';
+            $this->minify = !$isDev;
+            $this->combine = !$isDev;
+            $this->versioning = true;
+        }
     }
 
     /**
@@ -144,25 +159,31 @@ class AssetManager
     }
 
     /**
-     * Get asset URL with versioning
+     * Get asset URL with versioning and CDN support
      */
     public function url(string $asset): string
     {
         $manifestKey = basename($asset);
 
         if (isset($this->manifest[$manifestKey])) {
-            return $this->manifest[$manifestKey];
+            $path = $this->manifest[$manifestKey];
+        } else {
+            // Generate version hash if file exists
+            $fullPath = $this->publicPath . ltrim($asset, '/\\');
+
+            if (file_exists($fullPath)) {
+                $version = $this->versioning ? '?v=' . substr(md5_file($fullPath), 0, 8) : '';
+                $path = '/' . ltrim($asset, '/\\') . $version;
+            } else {
+                $path = '/' . ltrim($asset, '/\\');
+            }
         }
 
-        // Generate version hash if file exists
-        $fullPath = $this->publicPath . ltrim($asset, '/');
-
-        if (file_exists($fullPath)) {
-            $version = $this->versioning ? '?v=' . substr(md5_file($fullPath), 0, 8) : '';
-            return '/' . ltrim($asset, '/') . $version;
+        if ($this->cdnUrl && !preg_match('~^(https?:)?//~', $path)) {
+            return rtrim($this->cdnUrl, '/') . '/' . ltrim($path, '/');
         }
 
-        return '/' . ltrim($asset, '/');
+        return $path;
     }
 
     /**
@@ -172,18 +193,19 @@ class AssetManager
     {
         $tags = [];
 
-        $attrStr = '';
-        foreach ($attributes as $key => $value) {
-            if (is_bool($value)) {
-                if ($value)
-                    $attrStr .= ' ' . $key;
-            } else {
-                $attrStr .= sprintf(' %s="%s"', $key, htmlspecialchars((string) $value));
-            }
-        }
-
         foreach ($assets as $asset) {
             $url = $this->url($asset);
+            $currentAttrs = $attributes;
+
+            if ($this->useSri) {
+                $integrity = $this->generateIntegrity($asset);
+                if ($integrity) {
+                    $currentAttrs['integrity'] = $integrity;
+                    $currentAttrs['crossorigin'] = 'anonymous';
+                }
+            }
+
+            $attrStr = $this->buildAttributes($currentAttrs);
 
             if ($type === 'css') {
                 $tags[] = sprintf('<link rel="stylesheet" href="%s"%s>', htmlspecialchars($url), $attrStr);
@@ -193,6 +215,63 @@ class AssetManager
         }
 
         return implode("\n", $tags);
+    }
+
+    /**
+     * Generate resource hints (preload, prefetch, etc.)
+     */
+    public function resourceHint(string $url, string $rel = 'preload', array $extraAttrs = []): string
+    {
+        $type = '';
+        $ext = pathinfo(parse_url($url, PHP_URL_PATH), PATHINFO_EXTENSION);
+
+        if (in_array($ext, ['css'])) {
+            $type = 'style';
+        } elseif (in_array($ext, ['js'])) {
+            $type = 'script';
+        } elseif (in_array($ext, ['woff', 'woff2', 'ttf', 'otf'])) {
+            $type = 'font';
+        } elseif (in_array($ext, ['jpg', 'jpeg', 'png', 'gif', 'svg', 'webp'])) {
+            $type = 'image';
+        }
+
+        $attrs = array_merge(['rel' => $rel, 'href' => $url], $extraAttrs);
+        if ($type) {
+            $attrs['as'] = $type;
+        }
+
+        return sprintf('<link%s>', $this->buildAttributes($attrs));
+    }
+
+    /**
+     * Build attribute string
+     */
+    private function buildAttributes(array $attributes): string
+    {
+        $attrStr = '';
+        foreach ($attributes as $key => $value) {
+            if (is_bool($value)) {
+                if ($value) {
+                    $attrStr .= ' ' . $key;
+                }
+            } else {
+                $attrStr .= sprintf(' %s="%s"', $key, htmlspecialchars((string) $value));
+            }
+        }
+        return $attrStr;
+    }
+
+    /**
+     * Generate SRI hash
+     */
+    private function generateIntegrity(string $asset): ?string
+    {
+        $path = $this->resolvePath($asset);
+        if (file_exists($path)) {
+            $hash = base64_encode(hash('sha384', file_get_contents($path), true));
+            return "sha384-{$hash}";
+        }
+        return null;
     }
 
     /**
@@ -226,10 +305,11 @@ class AssetManager
             '/url\([\'"]?(?!(?:https?:|data:|\/))([^\'"\)]+)[\'"]?\)/i',
             function ($matches) use ($basePath) {
                 $relativePath = trim($matches[1]);
-                $absolutePath = realpath($basePath . '/' . $relativePath);
+                $absolutePath = realpath($basePath . DIRECTORY_SEPARATOR . $relativePath);
 
                 if ($absolutePath && file_exists($absolutePath)) {
                     $webPath = str_replace($this->publicPath, '/', $absolutePath);
+                    $webPath = str_replace('\\', '/', $webPath); // Ensure web path uses forward slashes
                     return 'url(' . $webPath . ')';
                 }
 
@@ -259,18 +339,16 @@ class AssetManager
     {
         // Remove comments
         $css = preg_replace('!/\*[^*]*\*+([^/][^*]*\*+)*/!', '', $css);
-
         // Remove whitespace
         $css = preg_replace('/\s+/', ' ', $css);
-
         // Remove spaces around special characters
         $css = preg_replace('/\s*([{}:;,>~+])\s*/', '$1', $css);
-
         // Remove trailing semicolons
         $css = preg_replace('/;}/', '}', $css);
-
         // Remove empty rules
         $css = preg_replace('/[^\}]+\{\s*\}/', '', $css);
+        // Shorten hexadecimal colors
+        $css = preg_replace('/#([a-f0-9])\\1([a-f0-9])\\2([a-f0-9])\\3/i', '#$1$2$3', $css);
 
         return trim($css);
     }
@@ -280,15 +358,17 @@ class AssetManager
      */
     private function minifyJS(string $js): string
     {
-        // Remove single-line comments (but preserve URLs)
-        $js = preg_replace('~//[^\n]*~', '', $js);
+        // Basic minification: remove comments and extra whitespace
+        // Note: For production use, a specialized library like terser or uglify-js is recommended
 
+        // Remove single-line comments (safer version)
+        $js = preg_replace('/(?<!:)\/\/(?:(?!http:|https:).)*$/m', '', $js);
         // Remove multi-line comments
-        $js = preg_replace('~/\*.*?\*/~s', '', $js);
-
-        // Remove whitespace
+        $js = preg_replace('!/\*[^*]*\*+([^/][^*]*\*+)*/!', '', $js);
+        // Remove leading/trailing whitespace per line
+        $js = preg_replace('/^\s+|\s+$/m', '', $js);
+        // Replace multiple spaces/newlines with a single space
         $js = preg_replace('/\s+/', ' ', $js);
-
         // Remove spaces around operators
         $js = preg_replace('/\s*([=+\-*\/%&|^!<>?:,;{}()\[\]])\s*/', '$1', $js);
 
@@ -398,6 +478,8 @@ class AssetManager
             return $webPath;
         }
 
+        $this->ensureDirectoryExists($this->cachePath);
+
         // Write compiled file
         if (file_put_contents($filePath, $content) === false) {
             throw new \RuntimeException("Failed to write compiled asset: {$filePath}");
@@ -421,15 +503,16 @@ class AssetManager
         }
 
         // Try relative to public path
-        $fullPath = $this->publicPath . ltrim($path, '/');
+        $fullPath = $this->publicPath . ltrim($path, '/\\');
 
         if (file_exists($fullPath)) {
             return $fullPath;
         }
 
         // Try relative to current directory
-        if (file_exists(getcwd() . '/' . $path)) {
-            return getcwd() . '/' . $path;
+        $cwdPath = getcwd() . DIRECTORY_SEPARATOR . ltrim($path, '/\\');
+        if (file_exists($cwdPath)) {
+            return $cwdPath;
         }
 
         return $path;
@@ -493,6 +576,24 @@ class AssetManager
     public function setVersioning(bool $versioning): self
     {
         $this->versioning = $versioning;
+        return $this;
+    }
+
+    /**
+     * Set CDN URL
+     */
+    public function setCdnUrl(?string $url): self
+    {
+        $this->cdnUrl = $url;
+        return $this;
+    }
+
+    /**
+     * Enable/Disable SRI (Subresource Integrity)
+     */
+    public function useSri(bool $use): self
+    {
+        $this->useSri = $use;
         return $this;
     }
 
