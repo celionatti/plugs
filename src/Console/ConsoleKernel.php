@@ -77,6 +77,8 @@ class ConsoleKernel
         'storage:link' => StorageLinkCommand::class,
         'up' => \Plugs\Console\Commands\UpCommand::class,
         'down' => \Plugs\Console\Commands\DownCommand::class,
+        'schedule:run' => \Plugs\Console\Commands\ScheduleRunCommand::class,
+        'schedule:list' => \Plugs\Console\Commands\ScheduleListCommand::class,
     ];
 
     protected array $aliases = [
@@ -120,6 +122,7 @@ class ConsoleKernel
         ],
         'Routes' => ['route:list', 'route:cache', 'route:clear', 'route:test'],
         'Utility' => ['serve', 'cache:clear', 'queue:work', 'health', 'storage:link'],
+        'Scheduling' => ['schedule:run', 'schedule:list'],
         'Database' => ['migrate', 'migrate:rollback', 'migrate:status', 'migrate:reset', 'make:migration'],
     ];
 
