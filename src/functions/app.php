@@ -165,6 +165,22 @@ if (!function_exists('csrf_field')) {
     }
 }
 
+if (!function_exists('db')) {
+    /**
+     * Get the database manager instance or a table query builder
+     */
+    function db(?string $table = null)
+    {
+        $db = app('db');
+
+        if ($table === null) {
+            return $db;
+        }
+
+        return $db->table($table);
+    }
+}
+
 if (!function_exists('request')) {
     /**
      * Get the current request instance

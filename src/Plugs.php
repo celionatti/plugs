@@ -152,8 +152,10 @@ class Plugs
             return \Plugs\Database\Connection::getInstance();
         }, true); // Shared instance
 
-        // Also alias 'db' for convenience
-        $container->alias(\Plugs\Database\Connection::class, 'db');
+        // Bind DatabaseManager as 'db' for the DB facade
+        $container->singleton('db', function ($container) {
+            return new \Plugs\Database\DatabaseManager($container->make(\Plugs\Database\Connection::class));
+        });
     }
 
     private function bootstrapSocialite(): void
