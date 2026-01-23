@@ -59,6 +59,23 @@ trait HasAttributes
 
     public function getAttribute(string $key)
     {
+        // Check for accessor method (getXxxAttribute)
+        $accessor = 'get' . $this->studly($key) . 'Attribute';
+        if (method_exists($this, $accessor)) {
+            $value = $this->attributes[$key] ?? null;
+            return $this->$accessor($value);
+        }
+
+        // Check for relationship
+        if (array_key_exists($key, $this->relations ?? [])) {
+            return $this->relations[$key];
+        }
+
+        // Check if it's a relationship method
+        if (method_exists($this, $key)) {
+            return $this->getRelationValue($key);
+        }
+
         $value = $this->attributes[$key] ?? null;
 
         // Apply casts
@@ -69,9 +86,74 @@ trait HasAttributes
         return $value;
     }
 
+    /**
+     * Get a relationship value from a method.
+     */
+    protected function getRelationValue(string $key)
+    {
+        if (!isset($this->relations[$key])) {
+            $this->relations[$key] = $this->$key();
+        }
+        return $this->relations[$key];
+    }
+
     public function setAttribute(string $key, $value): void
     {
+        // Check for mutator method (setXxxAttribute)
+        $mutator = 'set' . $this->studly($key) . 'Attribute';
+        if (method_exists($this, $mutator)) {
+            $this->$mutator($value);
+            return;
+        }
+
+        // Cast value before storing if cast is defined
+        if (isset($this->casts[$key])) {
+            $value = $this->castForStorage($key, $value);
+        }
+
         $this->attributes[$key] = $value;
+    }
+
+    /**
+     * Cast a value for storage in the database.
+     */
+    protected function castForStorage(string $key, $value)
+    {
+        $castType = $this->casts[$key];
+
+        switch ($castType) {
+            case 'array':
+            case 'json':
+            case 'object':
+            case 'collection':
+                if (is_array($value) || is_object($value)) {
+                    return json_encode($value);
+                }
+                return $value;
+
+            case 'encrypted':
+                return $this->encrypt($value);
+
+            case 'datetime':
+            case 'date':
+                if ($value instanceof \DateTimeInterface) {
+                    return $value->format($this->dateFormat);
+                }
+                return $value;
+
+            default:
+                return $value;
+        }
+    }
+
+    /**
+     * Convert a string to StudlyCase.
+     */
+    protected function studly(string $value): string
+    {
+        $words = explode(' ', str_replace(['-', '_'], ' ', $value));
+        $studly = array_map('ucfirst', $words);
+        return implode('', $studly);
     }
 
     protected function castAttribute($key, $value)

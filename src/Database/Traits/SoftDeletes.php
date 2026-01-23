@@ -21,11 +21,9 @@ trait SoftDeletes
             return false;
         }
 
-        $sql = "UPDATE {$instance->table} SET {$instance->deletedAtColumn} = NULL
-                WHERE {$instance->deletedAtColumn} IS NOT NULL";
-
-        $instance->executeQuery($sql);
-        return true;
+        return static::query()
+            ->whereNotNull($instance->deletedAtColumn)
+            ->update([$instance->deletedAtColumn => null]);
     }
 
     public static function forceDeleteAll(): bool
@@ -35,8 +33,8 @@ trait SoftDeletes
             return false;
         }
 
-        $sql = "DELETE FROM {$instance->table} WHERE {$instance->deletedAtColumn} IS NOT NULL";
-        $instance->executeQuery($sql);
-        return true;
+        return static::query()
+            ->whereNotNull($instance->deletedAtColumn)
+            ->delete();
     }
 }

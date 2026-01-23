@@ -20,6 +20,7 @@ Welcome to the official documentation for the **Plugs** framework. Plugs is a li
 - [Validation](file:///docs/the-basics/validation.md)
 - [Logging](file:///docs/the-basics/logging.md)
 - [Filesystem Storage](file:///docs/the-basics/storage.md)
+- [Testing](file:///docs/testing.md)
 
 ### 🗄️ Database
 - [Getting Started](file:///docs/database/getting-started.md)
@@ -37,4 +38,5 @@ Welcome to the official documentation for the **Plugs** framework. Plugs is a li
 - [Queues](file:///docs/advanced/queues.md)
 - [Form Builder](file:///docs/advanced/form-builder.md)
 - [Inertia / SPA Mode](file:///docs/advanced/inertia-spa.md)
+- [Task Scheduling](file:///docs/advanced/scheduling.md)
 - [CLI Tool (theplugs)](file:///docs/advanced/cli-commands.md)

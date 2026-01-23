@@ -308,4 +308,198 @@ trait HasRelationships
         $lines = file($filename);
         return implode('', array_slice($lines, $startLine - 1, $endLine - $startLine + 1));
     }
+
+    /**
+     * Eager load a relationship on a collection of models.
+     */
+    public function eagerLoadRelation(Collection $models, string $relation): void
+    {
+        // Check if the relation contains nested relations (e.g. 'posts.comments')
+        $nested = [];
+        if (str_contains($relation, '.')) {
+            [$relation, $nested] = explode('.', $relation, 2);
+            $nested = [$nested];
+        }
+
+        if (!method_exists($this, $relation)) {
+            throw new Exception("Relationship method {$relation} not found on " . static::class);
+        }
+
+        // Determine the relationship type and configuration
+        $config = $this->getRelationConfigForEagerLoading($relation);
+        $type = $config['type'];
+
+        if (!isset(static::$relationLoaders[$type])) {
+            throw new Exception("Eager loading not supported for relationship type: {$type}");
+        }
+
+        $loader = static::$relationLoaders[$type];
+        $this->$loader($models, $relation, $config, $nested);
+    }
+
+    protected function getRelationConfigForEagerLoading(string $relation): array
+    {
+        $reflection = new ReflectionMethod($this, $relation);
+        $code = $this->getMethodCode($reflection);
+
+        $type = null;
+        foreach (array_keys(static::$relationLoaders) as $relType) {
+            if (str_contains($code, $relType)) {
+                $type = $relType;
+                break;
+            }
+        }
+
+        if (!$type) {
+            throw new Exception("Could not determine relationship type for: {$relation}");
+        }
+
+        $config = $this->getRelationConfig($this, $relation, $type);
+        $config['type'] = $type;
+
+        return $config;
+    }
+
+    protected function eagerLoadHasOne(Collection $models, string $relation, array $config, array $nested): void
+    {
+        $related = $config['related'];
+        $foreignKey = $config['foreignKey'];
+        $localKey = $config['localKey'];
+
+        $ids = $models->pluck($localKey)->unique()->all();
+
+        $query = $related::query()->whereIn($foreignKey, $ids);
+        if (!empty($nested)) {
+            $query->with($nested);
+        }
+
+        $results = $query->get()->keyBy($foreignKey);
+
+        foreach ($models as $model) {
+            $id = $model->getAttribute($localKey);
+            $model->setRelation($relation, $results[$id] ?? null);
+        }
+    }
+
+    protected function eagerLoadHasMany(Collection $models, string $relation, array $config, array $nested): void
+    {
+        $related = $config['related'];
+        $foreignKey = $config['foreignKey'];
+        $localKey = $config['localKey'];
+
+        $ids = $models->pluck($localKey)->unique()->all();
+
+        $query = $related::query()->whereIn($foreignKey, $ids);
+        if (!empty($nested)) {
+            $query->with($nested);
+        }
+
+        $results = $query->get()->groupBy($foreignKey);
+
+        foreach ($models as $model) {
+            $id = $model->getAttribute($localKey);
+            $model->setRelation($relation, $results[$id] ?? new Collection());
+        }
+    }
+
+    protected function eagerLoadBelongsTo(Collection $models, string $relation, array $config, array $nested): void
+    {
+        $related = $config['related'];
+        $foreignKey = $config['foreignKey'];
+        $ownerKey = $config['ownerKey'];
+
+        $ids = $models->pluck($foreignKey)->unique()->filter()->all();
+
+        if (empty($ids)) {
+            foreach ($models as $model) {
+                $model->setRelation($relation, null);
+            }
+            return;
+        }
+
+        $query = $related::query()->whereIn($ownerKey, $ids);
+        if (!empty($nested)) {
+            $query->with($nested);
+        }
+
+        $results = $query->get()->keyBy($ownerKey);
+
+        foreach ($models as $model) {
+            $id = $model->getAttribute($foreignKey);
+            $model->setRelation($relation, $results[$id] ?? null);
+        }
+    }
+
+    protected function eagerLoadBelongsToMany(Collection $models, string $relation, array $config, array $nested): void
+    {
+        $related = $config['related'];
+        $pivotTable = $config['pivotTable'];
+        $foreignPivotKey = $config['foreignPivotKey'];
+        $relatedPivotKey = $config['relatedPivotKey'];
+        $parentKey = $config['parentKey'];
+
+        $ids = $models->pluck($parentKey)->unique()->all();
+
+        // This is complex. We need to join with the pivot table to get parent context
+        $query = $related::query()
+            ->select(["{$related::getTableName()}.*", "{$pivotTable}.{$foreignPivotKey} as pivot_{$foreignPivotKey}"])
+            ->join($pivotTable, "{$pivotTable}.{$relatedPivotKey}", '=', "{$related::getTableName()}.id")
+            ->whereIn("{$pivotTable}.{$foreignPivotKey}", $ids);
+
+        if (!empty($nested)) {
+            $query->with($nested);
+        }
+
+        $results = $query->get();
+        $grouped = $results->groupBy("pivot_{$foreignPivotKey}");
+
+        foreach ($models as $model) {
+            $id = $model->getAttribute($parentKey);
+            $model->setRelation($relation, $grouped[$id] ?? new Collection());
+        }
+    }
+
+    protected function eagerLoadMorphTo(Collection $models, string $relation, array $config, array $nested): void
+    {
+        $groups = $models->groupBy($relation . '_type');
+
+        foreach ($groups as $type => $groupModels) {
+            $class = static::getMorphedModel($type);
+            if (!class_exists($class))
+                continue;
+
+            $ids = $groupModels->pluck($relation . '_id')->unique()->all();
+            $results = $class::query()->whereIn('id', $ids)->get()->keyBy('id');
+
+            foreach ($groupModels as $model) {
+                $id = $model->getAttribute($relation . '_id');
+                $model->setRelation($relation, $results[$id] ?? null);
+            }
+        }
+    }
+
+    protected function eagerLoadMorphMany(Collection $models, string $relation, array $config, array $nested): void
+    {
+        $related = $config['related'];
+        $type = $config['type'] ?? $relation . '_type';
+        $id = $config['id'] ?? $relation . '_id';
+        $localKey = $this->primaryKey;
+
+        $ids = $models->pluck($localKey)->unique()->all();
+
+        $query = $related::query()
+            ->where($type, '=', static::class)
+            ->whereIn($id, $ids);
+
+        if (!empty($nested)) {
+            $query->with($nested);
+        }
+
+        $results = $query->get()->groupBy($id);
+
+        foreach ($models as $model) {
+            $modelId = $model->getAttribute($localKey);
+            $model->setRelation($relation, $results[$modelId] ?? new Collection());
+        }
+    }
 }

@@ -25,10 +25,24 @@ class QueryBuilder
     private $limit = null;
     private $offset = null;
     protected $model = null;
+    protected $with = [];
+    protected $joins = [];
 
     public function __construct(Connection $connection)
     {
         $this->connection = $connection;
+    }
+
+    /**
+     * Set the relationships that should be eager loaded.
+     *
+     * @param  array|string  $relations
+     * @return $this
+     */
+    public function with($relations): self
+    {
+        $this->with = is_string($relations) ? func_get_args() : $relations;
+        return $this;
     }
 
     public function table(string $table): self
@@ -92,6 +106,42 @@ class QueryBuilder
     public function orWhere($column, $operator = null, $value = null): self
     {
         return $this->where($column, $operator, $value, 'OR');
+    }
+
+    public function join(string $table, string $first, string $operator, string $second, string $type = 'INNER'): self
+    {
+        $this->joins[] = compact('table', 'first', 'operator', 'second', 'type');
+        return $this;
+    }
+
+    public function leftJoin(string $table, string $first, string $operator, string $second): self
+    {
+        return $this->join($table, $first, $operator, $second, 'LEFT');
+    }
+
+    public function rightJoin(string $table, string $first, string $operator, string $second): self
+    {
+        return $this->join($table, $first, $operator, $second, 'RIGHT');
+    }
+
+    public function whereNull(string $column, string $boolean = 'AND'): self
+    {
+        $this->where[] = [
+            'type' => 'Null',
+            'query' => "{$column} IS NULL",
+            'boolean' => $boolean
+        ];
+        return $this;
+    }
+
+    public function whereNotNull(string $column, string $boolean = 'AND'): self
+    {
+        $this->where[] = [
+            'type' => 'NotNull',
+            'query' => "{$column} IS NOT NULL",
+            'boolean' => $boolean
+        ];
+        return $this;
     }
 
     // Helper to get raw where params
@@ -162,7 +212,15 @@ class QueryBuilder
         $results = $this->connection->fetchAll($sql, $this->params);
 
         if ($this->model && !empty($results)) {
-            return array_map(fn($item) => new $this->model($item), $results);
+            $models = array_map(fn($item) => new $this->model($item), $results);
+
+            if (!empty($this->with)) {
+                $collection = new Collection($models);
+                $this->model::loadRelations($collection, $this->with);
+                return $collection->all();
+            }
+
+            return $models;
         }
 
         return $results;
@@ -269,6 +327,13 @@ class QueryBuilder
     private function buildSelectSql(): string
     {
         $sql = "SELECT " . implode(', ', $this->select) . " FROM {$this->table}";
+
+        if (!empty($this->joins)) {
+            foreach ($this->joins as $join) {
+                $sql .= " {$join['type']} JOIN {$join['table']} ON {$join['first']} {$join['operator']} {$join['second']}";
+            }
+        }
+
         $sql .= $this->getWhereClause();
 
         if (!empty($this->orderBy)) {

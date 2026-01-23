@@ -53,12 +53,22 @@ php theplugs make:middleware AuthMiddleware
 php theplugs make:migration create_posts_table
 ```
 
-### Queues
-
-Start a worker to process background jobs:
-
 ```bash
 php theplugs queue:work
+```
+
+### Scheduling
+
+List the scheduled tasks:
+
+```bash
+php theplugs schedule:list
+```
+
+Run the scheduled tasks that are due:
+
+```bash
+php theplugs schedule:run
 ```
 
 ## Creating Custom Commands

@@ -33,6 +33,18 @@ trait HasQueryBuilder
         return static::get($columns);
     }
 
+    /**
+     * Begin querying a model with eager loads.
+     *
+     * @param  array|string  $relations
+     * @return QueryBuilder
+     */
+    public static function with($relations): QueryBuilder
+    {
+        $relations = is_string($relations) ? func_get_args() : $relations;
+        return static::query()->with($relations);
+    }
+
     public static function find($id, array $columns = ['*'])
     {
         return static::query()->find($id, $columns);
