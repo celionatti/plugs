@@ -6,17 +6,32 @@ namespace Plugs\Debug;
 
 use Plugs\Database\Connection;
 
+/**
+ * Performance Profiler
+ * 
+ * Collects and stores performance metrics for debugging and optimization.
+ * Tracks request timing, memory usage, database queries, and custom events.
+ */
 class Profiler
 {
     private static ?Profiler $instance = null;
 
     private float $startTime;
+    private int $startMemory;
     private array $meta = [];
+    private array $timeline = [];
+    private array $views = [];
+    private array $logs = [];
     private bool $enabled = false;
+    private ?array $currentProfile = null;
+
+    private const STORAGE_DIR = 'storage/framework/profiler/';
+    private const MAX_PROFILES = 50;
 
     private function __construct()
     {
         $this->startTime = microtime(true);
+        $this->startMemory = memory_get_usage(true);
     }
 
     public static function getInstance(): self
@@ -27,58 +42,275 @@ class Profiler
         return self::$instance;
     }
 
+    /**
+     * Start profiling
+     */
     public function start(): void
     {
         $this->enabled = true;
         $this->startTime = microtime(true);
+        $this->startMemory = memory_get_usage(true);
+        $this->timeline = [];
+        $this->views = [];
+        $this->logs = [];
 
         // Enable detailed query analysis in Database Connection
-        Connection::enableQueryAnalysis(true);
+        if (class_exists(Connection::class)) {
+            Connection::enableQueryAnalysis(true);
+        }
+
+        $this->startSegment('total', 'Total Request');
     }
 
+    /**
+     * Stop profiling and save results
+     */
     public function stop(array $requestInfo = []): array
     {
         if (!$this->enabled) {
             return [];
         }
 
+        $this->stopSegment('total');
+
         $endTime = microtime(true);
         $duration = ($endTime - $this->startTime) * 1000; // ms
 
         $memoryPeak = memory_get_peak_usage(true);
+        $memoryUsed = memory_get_usage(true) - $this->startMemory;
 
-        $dbReport = Connection::getQueryAnalysisReport();
+        $dbReport = class_exists(Connection::class)
+            ? Connection::getQueryAnalysisReport()
+            : ['queries' => [], 'total_time' => 0, 'query_count' => 0];
 
         $profile = [
             'id' => uniqid('prof_', true),
             'timestamp' => time(),
             'datetime' => date('Y-m-d H:i:s'),
             'duration' => round($duration, 2),
-            'memory_peak' => $memoryPeak,
-            'memory_peak_formatted' => $this->formatBytes($memoryPeak),
-            'request' => $requestInfo,
+            'memory' => [
+                'peak' => $memoryPeak,
+                'peak_formatted' => $this->formatBytes($memoryPeak),
+                'used' => $memoryUsed,
+                'used_formatted' => $this->formatBytes($memoryUsed),
+            ],
+            'request' => array_merge([
+                'method' => $_SERVER['REQUEST_METHOD'] ?? 'CLI',
+                'uri' => $_SERVER['REQUEST_URI'] ?? '',
+                'path' => parse_url($_SERVER['REQUEST_URI'] ?? '', PHP_URL_PATH) ?: '/',
+                'ip' => $_SERVER['REMOTE_ADDR'] ?? 'unknown',
+            ], $requestInfo),
             'database' => $dbReport,
+            'timeline' => $this->timeline,
+            'views' => $this->views,
+            'logs' => $this->logs,
+            'files' => [
+                'count' => count(get_included_files()),
+            ],
+            'php' => [
+                'version' => PHP_VERSION,
+                'sapi' => PHP_SAPI,
+            ],
         ];
 
+        $this->currentProfile = $profile;
         $this->save($profile);
 
         return $profile;
     }
 
+    /**
+     * Start a named timeline segment
+     */
+    public function startSegment(string $name, string $label = ''): void
+    {
+        if (!$this->enabled)
+            return;
+
+        $this->timeline[$name] = [
+            'label' => $label ?: $name,
+            'start' => microtime(true),
+            'end' => null,
+            'duration' => null,
+            'memory_start' => memory_get_usage(true),
+            'memory_end' => null,
+        ];
+    }
+
+    /**
+     * Stop a named timeline segment
+     */
+    public function stopSegment(string $name): void
+    {
+        if (!$this->enabled || !isset($this->timeline[$name]))
+            return;
+
+        $endTime = microtime(true);
+        $this->timeline[$name]['end'] = $endTime;
+        $this->timeline[$name]['duration'] = round(
+            ($endTime - $this->timeline[$name]['start']) * 1000,
+            2
+        );
+        $this->timeline[$name]['memory_end'] = memory_get_usage(true);
+    }
+
+    /**
+     * Add a view render event
+     */
+    public function addView(string $name, float $duration): void
+    {
+        if (!$this->enabled)
+            return;
+
+        $this->views[] = [
+            'name' => $name,
+            'duration' => round($duration, 2),
+            'timestamp' => microtime(true),
+        ];
+    }
+
+    /**
+     * Add a log entry
+     */
+    public function log(string $level, string $message, array $context = []): void
+    {
+        if (!$this->enabled)
+            return;
+
+        $this->logs[] = [
+            'level' => $level,
+            'message' => $message,
+            'context' => $context,
+            'timestamp' => microtime(true),
+            'time_offset' => round((microtime(true) - $this->startTime) * 1000, 2),
+        ];
+    }
+
+    /**
+     * Get the current (or last) profile
+     */
+    public function getCurrentProfile(): ?array
+    {
+        return $this->currentProfile;
+    }
+
+    /**
+     * Get all saved profiles
+     */
+    public static function getProfiles(int $limit = 50): array
+    {
+        $storageDir = self::getStorageDir();
+
+        if (!is_dir($storageDir)) {
+            return [];
+        }
+
+        $files = glob($storageDir . '*.json');
+
+        // Sort by modification time (newest first)
+        usort($files, fn($a, $b) => filemtime($b) <=> filemtime($a));
+
+        $profiles = [];
+        foreach (array_slice($files, 0, $limit) as $file) {
+            $content = file_get_contents($file);
+            if ($content) {
+                $profile = json_decode($content, true);
+                if ($profile) {
+                    $profiles[] = $profile;
+                }
+            }
+        }
+
+        return $profiles;
+    }
+
+    /**
+     * Get a single profile by ID
+     */
+    public static function getProfile(string $id): ?array
+    {
+        $storageDir = self::getStorageDir();
+        $file = $storageDir . $id . '.json';
+
+        if (!file_exists($file)) {
+            return null;
+        }
+
+        $content = file_get_contents($file);
+        return $content ? json_decode($content, true) : null;
+    }
+
+    /**
+     * Delete a profile by ID
+     */
+    public static function deleteProfile(string $id): bool
+    {
+        $storageDir = self::getStorageDir();
+        $file = $storageDir . $id . '.json';
+
+        if (file_exists($file)) {
+            return unlink($file);
+        }
+
+        return false;
+    }
+
+    /**
+     * Clear all profiles
+     */
+    public static function clearProfiles(): int
+    {
+        $storageDir = self::getStorageDir();
+
+        if (!is_dir($storageDir)) {
+            return 0;
+        }
+
+        $files = glob($storageDir . '*.json');
+        $deleted = 0;
+
+        foreach ($files as $file) {
+            if (unlink($file)) {
+                $deleted++;
+            }
+        }
+
+        return $deleted;
+    }
+
+    /**
+     * Check if profiler is enabled
+     */
+    public function isEnabled(): bool
+    {
+        return $this->enabled;
+    }
+
+    /**
+     * Get elapsed time since start
+     */
+    public function getElapsedTime(): float
+    {
+        return round((microtime(true) - $this->startTime) * 1000, 2);
+    }
+
+    /**
+     * Save profile to storage
+     */
     private function save(array $profile): void
     {
-        $storageDir = BASE_PATH . 'storage/framework/profiler/';
+        $storageDir = self::getStorageDir();
 
         if (!is_dir($storageDir)) {
             mkdir($storageDir, 0755, true);
         }
 
-        // Clean up old files (keep last 50)
+        // Clean up old files (keep last MAX_PROFILES)
         $files = glob($storageDir . '*.json');
-        if (count($files) > 50) {
+        if (count($files) > self::MAX_PROFILES) {
             // Sort by modification time
             array_multisort(array_map('filemtime', $files), SORT_ASC, $files);
-            $toDelete = array_slice($files, 0, count($files) - 50);
+            $toDelete = array_slice($files, 0, count($files) - self::MAX_PROFILES);
             foreach ($toDelete as $file) {
                 @unlink($file);
             }
@@ -88,7 +320,19 @@ class Profiler
         file_put_contents($filename, json_encode($profile, JSON_PRETTY_PRINT));
     }
 
-    private function formatBytes(int $bytes, int $precision = 2): string
+    /**
+     * Get storage directory path
+     */
+    private static function getStorageDir(): string
+    {
+        $basePath = defined('BASE_PATH') ? BASE_PATH : dirname(__DIR__, 3) . '/';
+        return $basePath . self::STORAGE_DIR;
+    }
+
+    /**
+     * Format bytes to human readable
+     */
+    private function formatBytes(float|int $bytes, int $precision = 2): string
     {
         $units = ['B', 'KB', 'MB', 'GB', 'TB'];
         $bytes = max($bytes, 0);
