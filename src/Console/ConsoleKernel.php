@@ -25,6 +25,8 @@ use Plugs\Console\Commands\MakeActionCommand;
 use Plugs\Console\Commands\MakeDTOCommand;
 use Plugs\Console\Commands\MakeResourceCommand;
 use Plugs\Console\Commands\MakeRepositoryCommand;
+use Plugs\Console\Commands\MakeConnectorCommand;
+use Plugs\Console\Commands\MakeApiRequestCommand;
 use Plugs\Console\Commands\MigrateCommand;
 use Plugs\Console\Commands\MigrateRollbackCommand;
 use Plugs\Console\Commands\MigrateStatusCommand;
@@ -59,6 +61,8 @@ class ConsoleKernel
         'make:dto' => MakeDTOCommand::class,
         'make:resource' => MakeResourceCommand::class,
         'make:repository' => MakeRepositoryCommand::class,
+        'make:connector' => MakeConnectorCommand::class,
+        'make:api-request' => MakeApiRequestCommand::class,
 
         'route:list' => RouteListCommand::class,
         'route:cache' => RouteCacheCommand::class,
@@ -93,6 +97,8 @@ class ConsoleKernel
         'g:dto' => 'make:dto',
         'g:res' => 'make:resource',
         'g:repo' => 'make:repository',
+        'g:con' => 'make:connector',
+        'g:areq' => 'make:api-request',
         'routes' => 'route:list',
         'route:show' => 'route:list',
         's' => 'serve',
@@ -118,7 +124,9 @@ class ConsoleKernel
             'make:action',
             'make:dto',
             'make:resource',
-            'make:repository'
+            'make:repository',
+            'make:connector',
+            'make:api-request'
         ],
         'Routes' => ['route:list', 'route:cache', 'route:clear', 'route:test'],
         'Utility' => ['serve', 'cache:clear', 'queue:work', 'health', 'storage:link'],

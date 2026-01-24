@@ -170,3 +170,19 @@ While you can still use `HTTPClient` for simple, one-off requests, the Integrati
 -   **Reusability**: Define headers and base URLs in one place.
 -   **Type Safety**: Classes strictly define what an API can do.
 -   **Testability**: Easier to mock entire connectors or specific requests.
+
+---
+
+## Console Commands
+
+You can quickly generate Connectors and Requests using the console.
+
+**Create a Connector:**
+```bash
+php theplugs make:connector GitHub --base-url="https://api.github.com"
+```
+
+**Create a Request:**
+```bash
+php theplugs make:api-request GetUser GitHub --method=GET --endpoint="/user"
+```
