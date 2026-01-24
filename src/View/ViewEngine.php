@@ -207,6 +207,7 @@ class ViewEngine
 
     public function render(string $view, array $data = [], bool $isComponent = false): string
     {
+        $startTime = microtime(true);
         $data = array_merge($this->sharedData, $data);
         $data['view'] = $this;
 
@@ -220,11 +221,17 @@ class ViewEngine
             );
         }
 
-        if ($this->cacheEnabled) {
-            return $this->renderCached($view, $viewFile, $data, $isComponent);
+        $content = $this->cacheEnabled
+            ? $this->renderCached($view, $viewFile, $data, $isComponent)
+            : $this->renderDirect($viewFile, $data);
+
+        // Record in Profiler
+        if (class_exists(\Plugs\Debug\Profiler::class)) {
+            $duration = (microtime(true) - $startTime) * 1000;
+            \Plugs\Debug\Profiler::getInstance()->addView($view, $duration);
         }
 
-        return $this->renderDirect($viewFile, $data);
+        return $content;
     }
 
     public function renderComponent(string $componentName, array $data = []): string

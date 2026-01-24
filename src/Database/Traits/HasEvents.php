@@ -45,6 +45,11 @@ trait HasEvents
 
     protected function fireModelEvent($event)
     {
+        // Record event in Profiler if available
+        if (class_exists(\Plugs\Debug\Profiler::class)) {
+            \Plugs\Debug\Profiler::getInstance()->recordModelEvent(static::class, $event);
+        }
+
         $method = $event;
         if (method_exists($this, $method)) {
             return $this->$method();

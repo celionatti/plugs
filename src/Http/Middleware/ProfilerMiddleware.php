@@ -50,6 +50,7 @@ class ProfilerMiddleware implements MiddlewareInterface
             'uri' => (string) $request->getUri(),
             'path' => $path,
             'params' => $request->getQueryParams(),
+            'body' => $request->getParsedBody(),
             'ip' => $this->getClientIp($request),
             'status_code' => $response->getStatusCode(),
             'route' => $request->getAttribute('_route')?->getName() ?? null,

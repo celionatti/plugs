@@ -22,6 +22,7 @@ class Profiler
     private array $timeline = [];
     private array $views = [];
     private array $logs = [];
+    private array $models = [];
     private bool $enabled = false;
     private ?array $currentProfile = null;
 
@@ -99,11 +100,18 @@ class Profiler
                 'uri' => $_SERVER['REQUEST_URI'] ?? '',
                 'path' => parse_url($_SERVER['REQUEST_URI'] ?? '', PHP_URL_PATH) ?: '/',
                 'ip' => $_SERVER['REMOTE_ADDR'] ?? 'unknown',
+                'headers' => $this->getHeaders(),
+                'cookies' => $_COOKIE,
+                'session' => $_SESSION ?? [],
             ], $requestInfo),
+            'response' => [
+                'headers' => $this->getResponseHeaders(),
+            ],
             'database' => $dbReport,
             'timeline' => $this->timeline,
             'views' => $this->views,
             'logs' => $this->logs,
+            'models' => $this->models,
             'files' => [
                 'count' => count(get_included_files()),
             ],
@@ -159,13 +167,30 @@ class Profiler
      */
     public function addView(string $name, float $duration): void
     {
-        if (!$this->enabled)
-            return;
+        if (!$this->enabled) {
+            // Self-enable if we are in a request context but start() wasn't called
+            // This can happen if ViewEngine is initialized early
+            if (isset($_SERVER['REQUEST_METHOD'])) {
+                $this->enabled = true;
+            } else {
+                return;
+            }
+        }
 
         $this->views[] = [
             'name' => $name,
             'duration' => round($duration, 2),
-            'timestamp' => microtime(true),
+            'time' => microtime(true),
+        ];
+
+        // Also add to timeline for visibility
+        $this->timeline['view_' . uniqid()] = [
+            'label' => 'View: ' . $name,
+            'start' => microtime(true) - ($duration / 1000),
+            'end' => microtime(true),
+            'duration' => round($duration, 2),
+            'memory_start' => memory_get_usage(true),
+            'memory_end' => memory_get_usage(true),
         ];
     }
 
@@ -182,7 +207,23 @@ class Profiler
             'message' => $message,
             'context' => $context,
             'timestamp' => microtime(true),
-            'time_offset' => round((microtime(true) - $this->startTime) * 1000, 2),
+            'time_offset' => $this->getElapsedTime(),
+        ];
+    }
+
+    /**
+     * Track a database model event
+     */
+    public function recordModelEvent(string $model, string $event): void
+    {
+        if (!$this->enabled)
+            return;
+
+        $this->models[] = [
+            'model' => $model,
+            'event' => $event,
+            'time' => microtime(true),
+            'time_offset' => $this->getElapsedTime(),
         ];
     }
 
@@ -327,6 +368,40 @@ class Profiler
     {
         $basePath = defined('BASE_PATH') ? BASE_PATH : dirname(__DIR__, 3) . '/';
         return $basePath . self::STORAGE_DIR;
+    }
+
+    /**
+     * Get request headers
+     */
+    private function getHeaders(): array
+    {
+        if (function_exists('getallheaders')) {
+            return getallheaders();
+        }
+
+        $headers = [];
+        foreach ($_SERVER as $name => $value) {
+            if (str_starts_with($name, 'HTTP_')) {
+                $headers[str_replace(' ', '-', ucwords(strtolower(str_replace('_', ' ', substr($name, 5)))))] = $value;
+            }
+        }
+        return $headers;
+    }
+
+    /**
+     * Get response headers
+     */
+    private function getResponseHeaders(): array
+    {
+        $rawHeaders = headers_list();
+        $headers = [];
+        foreach ($rawHeaders as $header) {
+            $parts = explode(':', $header, 2);
+            if (count($parts) === 2) {
+                $headers[trim($parts[0])] = trim($parts[1]);
+            }
+        }
+        return $headers;
     }
 
     /**
