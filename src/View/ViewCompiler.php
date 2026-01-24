@@ -97,7 +97,7 @@ class ViewCompiler
                 return $this->createComponentPlaceholder($componentName, trim($attributes), '');
             },
             $content
-        );
+        ) ?? $content;
 
         // Components with content: <ComponentName>...</ComponentName>
         $content = preg_replace_callback(
@@ -109,7 +109,7 @@ class ViewCompiler
                 return $this->createComponentPlaceholder($componentName, trim($attributes), $slotContent);
             },
             $content
-        );
+        ) ?? $content;
 
         return $content;
     }
@@ -141,44 +141,47 @@ class ViewCompiler
     private function compileNonComponentContent(string $content): string
     {
         // CRITICAL: Order matters for correct compilation
+        // Helper to safely apply preg-based compilation
+        $safeCompile = fn(callable $method, string $c) => $method($c) ?? $c;
+
         // 1. Comments first (remove them entirely)
-        $content = $this->compileComments($content);
+        $content = $safeCompile([$this, 'compileComments'], $content);
 
         // 2. Verbatim blocks (protect from compilation)
-        $content = $this->compileVerbatim($content);
+        $content = $safeCompile([$this, 'compileVerbatim'], $content);
 
         // 3. PHP blocks (before template syntax to avoid conflicts)
-        $content = $this->compilePhp($content);
+        $content = $safeCompile([$this, 'compilePhp'], $content);
 
         // 4. Control structures (conditionals and loops)
-        $content = $this->compileConditionals($content);
-        $content = $this->compileLoops($content);
+        $content = $safeCompile([$this, 'compileConditionals'], $content);
+        $content = $safeCompile([$this, 'compileLoops'], $content);
 
         // 5. Custom directives (user-defined)
-        $content = $this->compileCustomDirectives($content);
+        $content = $safeCompile([$this, 'compileCustomDirectives'], $content);
 
         // 6. Template inheritance and sections
-        $content = $this->compileSections($content);
-        $content = $this->compileIncludes($content);
+        $content = $safeCompile([$this, 'compileSections'], $content);
+        $content = $safeCompile([$this, 'compileIncludes'], $content);
 
         // 7. Stacks and assets
-        $content = $this->compileStacks($content);
-        $content = $this->compileOnce($content);
+        $content = $safeCompile([$this, 'compileStacks'], $content);
+        $content = $safeCompile([$this, 'compileOnce'], $content);
 
         // 8. Form helpers
-        $content = $this->compileCsrf($content);
-        $content = $this->compileMethod($content);
+        $content = $safeCompile([$this, 'compileCsrf'], $content);
+        $content = $safeCompile([$this, 'compileMethod'], $content);
 
         // 9. Utilities
-        $content = $this->compileJson($content);
-        $content = $this->compileHelperDirectives($content);
-        $content = $this->compileOld($content);
-        $content = $this->compileFlashMessages($content);
-        $content = $this->compileErrorDirectives($content);
+        $content = $safeCompile([$this, 'compileJson'], $content);
+        $content = $safeCompile([$this, 'compileHelperDirectives'], $content);
+        $content = $safeCompile([$this, 'compileOld'], $content);
+        $content = $safeCompile([$this, 'compileFlashMessages'], $content);
+        $content = $safeCompile([$this, 'compileErrorDirectives'], $content);
 
         // 10. Echo statements LAST (after all directives)
-        $content = $this->compileRawEchos($content);
-        $content = $this->compileEscapedEchos($content);
+        $content = $safeCompile([$this, 'compileRawEchos'], $content);
+        $content = $safeCompile([$this, 'compileEscapedEchos'], $content);
 
         // Restore verbatim blocks LAST
         if (!empty($this->verbatimBlocks)) {
@@ -265,7 +268,7 @@ class ViewCompiler
         }
 
         // Boolean attributes (flags)
-        $withoutQuoted = preg_replace('/[\w:.-]+\s*=\s*(["\'].*?\1|\$[\w\[\]\'\"\-\>]+)/s', '', $attributes);
+        $withoutQuoted = preg_replace('/[\w:.-]+\s*=\s*(?:(["\']).*?\1|\$[\w\[\]\'\"\-\>]+)/s', '', $attributes);
         preg_match_all('/([\w:.-]+)/', $withoutQuoted, $matches);
 
         foreach ($matches[1] as $attr) {

@@ -440,7 +440,8 @@ function renderDebugErrorPage(Throwable $e): void
         $active = $index === 0 ? 'active' : '';
         $f = $frame['file'] ?? '{internal}';
         $l = $frame['line'] ?? '-';
-        $method = $frame['class'] ? $frame['class'] . ($frame['type'] ?? '::') . $frame['function'] : $frame['function'];
+        $class = $frame['class'] ?? '';
+        $method = $class ? $class . ($frame['type'] ?? '::') . $frame['function'] : $frame['function'];
 
         $html .= '
                     <li class="stack-item ' . $active . '" onclick="switchFrame(' . $index . ', this)" data-file="' . htmlspecialchars(basename($f)) . '" data-line="' . $l . '">
