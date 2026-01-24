@@ -137,3 +137,19 @@ $router->fallback(function () {
     return view('errors.404');
 });
 ```
+
+## API Routes
+
+Any routes defined in `routes/api.php` are automatically assigned the following behaviors:
+
+*   **Prefix**: All URIs are prefixed with `/api`. For example, a route defined as `/users` becomes `/api/users`.
+*   **Response Enforcement**: All requests are forced to accept `application/json`, and all responses (including errors) will be returned as JSON.
+
+This makes it perfect for building APIs without worrying about manually configuring headers or error handling for API clients.
+
+```php
+// routes/api.php
+
+// This route serves: POST /api/users
+Route::post('/users', [UserController::class, 'store']);
+```
