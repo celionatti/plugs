@@ -306,7 +306,7 @@ class Paginator
      */
     protected function getCurrentQuery(): array
     {
-        $query = $_GET ?? [];
+        $query = $_GET;
         unset($query['page']); // Remove page parameter
 
         return $query;

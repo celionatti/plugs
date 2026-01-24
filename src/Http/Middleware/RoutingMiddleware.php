@@ -22,12 +22,10 @@ use Psr\Http\Server\RequestHandlerInterface;
 class RoutingMiddleware implements MiddlewareInterface
 {
     private $router;
-    private $container;
 
-    public function __construct(Router $router, Container $container)
+    public function __construct(Router $router)
     {
         $this->router = $router;
-        $this->container = $container;
     }
 
     public function process(

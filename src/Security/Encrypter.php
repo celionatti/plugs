@@ -40,7 +40,7 @@ class Encrypter
             $tag
         );
 
-        if ($encrypted === false) {
+        if (!$encrypted) {
             throw new \RuntimeException('Encryption failed');
         }
 
@@ -51,7 +51,7 @@ class Encrypter
     {
         $data = base64_decode($encrypted);
 
-        if ($data === false) {
+        if (!$data) {
             throw new \RuntimeException('Invalid encrypted data');
         }
 
@@ -69,7 +69,7 @@ class Encrypter
             $tag
         );
 
-        if ($decrypted === false) {
+        if (!$decrypted) {
             throw new \RuntimeException('Decryption failed');
         }
 

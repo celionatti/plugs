@@ -317,7 +317,7 @@ class Pagination
      */
     protected function getCurrentQuery(): array
     {
-        $query = $_GET ?? [];
+        $query = $_GET;
         unset($query['page']);
 
         return $query;
@@ -337,11 +337,11 @@ class Pagination
         }
 
         if ($this->total === 1) {
-            $text = str_replace('{total}', (string)$this->total, $this->options['info_format_single']);
+            $text = str_replace('{total}', (string) $this->total, $this->options['info_format_single']);
         } else {
             $text = str_replace(
                 ['{from}', '{to}', '{total}'],
-                [$this->from, $this->to, $this->total],
+                [(string) $this->from, (string) $this->to, (string) $this->total],
                 $this->options['info_format']
             );
         }

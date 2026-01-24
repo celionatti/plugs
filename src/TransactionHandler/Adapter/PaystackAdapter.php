@@ -16,13 +16,11 @@ use Plugs\TransactionHandler\PaymentAdapterInterface;
 class PaystackAdapter implements PaymentAdapterInterface
 {
     private $secretKey;
-    private $publicKey;
     private $baseUrl = 'https://api.paystack.co';
 
     public function __construct(array $config)
     {
         $this->secretKey = $config['secret_key'];
-        $this->publicKey = $config['public_key'];
     }
 
     public function charge(array $data)

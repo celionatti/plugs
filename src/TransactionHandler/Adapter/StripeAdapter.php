@@ -18,14 +18,12 @@ use Plugs\TransactionHandler\PaymentAdapterInterface;
 class StripeAdapter implements PaymentAdapterInterface
 {
     private $secretKey;
-    private $publicKey;
     private $webhookSecret;
     private $baseUrl = 'https://api.stripe.com/v1';
 
     public function __construct(array $config)
     {
         $this->secretKey = $config['secret_key'];
-        $this->publicKey = $config['public_key'] ?? '';
         $this->webhookSecret = $config['webhook_secret'] ?? '';
     }
 

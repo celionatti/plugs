@@ -24,11 +24,8 @@ class MailService
     private Mailer $mailer;
     private string $fromEmail;
     private string $fromName;
-    private array $config;
-
     public function __construct(array $config)
     {
-        $this->config = $config;
 
         // Create DSN (Data Source Name) for transport
         $dsn = $this->buildDsn($config);

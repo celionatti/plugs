@@ -28,15 +28,11 @@ class SanitizationMiddleware implements MiddlewareInterface
         $parsedBody = $request->getParsedBody();
         $queryParams = $request->getQueryParams();
 
-        if (is_array($parsedBody)) {
-            $cleanedBody = $this->cleanArray($parsedBody);
-            $request = $request->withParsedBody($cleanedBody);
-        }
+        $cleanedBody = $this->cleanArray((array) $parsedBody);
+        $request = $request->withParsedBody($cleanedBody);
 
-        if (is_array($queryParams)) {
-            $cleanedParams = $this->cleanArray($queryParams);
-            $request = $request->withQueryParams($cleanedParams);
-        }
+        $cleanedParams = $this->cleanArray($queryParams);
+        $request = $request->withQueryParams($cleanedParams);
 
         return $handler->handle($request);
     }

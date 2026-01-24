@@ -326,7 +326,7 @@ class PageRouter
         $pageInstance = new $className();
         $middleware = array_merge(
             $this->options['middleware'],
-            method_exists($pageInstance, 'middleware') ? $pageInstance->middleware() : []
+            $pageInstance->middleware()
         );
 
         // Register route

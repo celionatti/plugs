@@ -30,9 +30,9 @@ class Stream implements StreamInterface
 
         $this->resource = $resource;
         $meta = stream_get_meta_data($resource);
-        $this->seekable = $meta['seekable'] ?? false;
+        $this->seekable = $meta['seekable'];
 
-        $mode = $meta['mode'] ?? '';
+        $mode = $meta['mode'];
         $this->readable = $this->isReadableMode($mode);
         $this->writable = $this->isWritableMode($mode);
     }

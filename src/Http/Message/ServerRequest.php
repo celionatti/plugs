@@ -50,15 +50,6 @@ class ServerRequest implements ServerRequestInterface
         'CONNECT',
     ];
 
-    private const VALID_PROTOCOL_VERSIONS = [
-        '1.0',
-        '1.1',
-        '2',
-        '2.0',
-        '3',
-        '3.0',
-    ];
-
     public function __construct(
         string $method,
         $uri,
@@ -89,10 +80,14 @@ class ServerRequest implements ServerRequestInterface
 
         $request = new self($method, $uri, $headers, $body, $protocol, $_SERVER);
 
-        $request = $request->withCookieParams($_COOKIE ?? []);
-        $request = $request->withQueryParams($_GET ?? []);
+        /** @var self $request */
+        $request = $request->withCookieParams($_COOKIE);
+        /** @var self $request */
+        $request = $request->withQueryParams($_GET);
+        /** @var self $request */
         $request = self::parseBody($request);
-        $request = $request->withUploadedFiles(self::normalizeUploadedFiles($_FILES ?? []));
+        /** @var self $request */
+        $request = $request->withUploadedFiles(self::normalizeUploadedFiles($_FILES));
 
         return $request;
     }
@@ -288,7 +283,7 @@ class ServerRequest implements ServerRequestInterface
             stripos($contentType, 'application/x-www-form-urlencoded') !== false ||
             stripos($contentType, 'multipart/form-data') !== false
         ) {
-            return $request->withParsedBody($_POST ?? []);
+            return $request->withParsedBody($_POST);
         }
 
         if (stripos($contentType, 'application/json') !== false) {
@@ -806,9 +801,9 @@ class ServerRequest implements ServerRequestInterface
     {
         return $this->parsedBody;
     }
-
     public function withParsedBody($data): ServerRequestInterface
     {
+        // @phpstan-ignore-next-line
         if ($data !== null && !is_array($data) && !is_object($data)) {
             throw new InvalidArgumentException(
                 'Parsed body must be an array, object, or null'
@@ -828,19 +823,11 @@ class ServerRequest implements ServerRequestInterface
 
     public function getAttribute($name, $default = null)
     {
-        if (!is_string($name)) {
-            throw new InvalidArgumentException('Attribute name must be a string');
-        }
-
         return $this->attributes[$name] ?? $default;
     }
 
     public function withAttribute($name, $value): ServerRequestInterface
     {
-        if (!is_string($name)) {
-            throw new InvalidArgumentException('Attribute name must be a string');
-        }
-
         $new = clone $this;
         $new->attributes[$name] = $value;
 
@@ -849,10 +836,6 @@ class ServerRequest implements ServerRequestInterface
 
     public function withoutAttribute($name): ServerRequestInterface
     {
-        if (!is_string($name)) {
-            throw new InvalidArgumentException('Attribute name must be a string');
-        }
-
         $new = clone $this;
         unset($new->attributes[$name]);
 
@@ -866,9 +849,7 @@ class ServerRequest implements ServerRequestInterface
 
     public function withProtocolVersion($version): ServerRequestInterface
     {
-        if (!is_string($version)) {
-            $version = (string) $version;
-        }
+        $normalizedVersion = $this->normalizeProtocolVersion($version);
 
         $normalizedVersion = $this->normalizeProtocolVersion($version);
 
@@ -996,7 +977,7 @@ class ServerRequest implements ServerRequestInterface
 
     public function withRequestTarget($requestTarget): ServerRequestInterface
     {
-        if (!is_string($requestTarget) || preg_match('/\s/', $requestTarget)) {
+        if (preg_match('/\s/', $requestTarget)) {
             throw new InvalidArgumentException(
                 'Invalid request target: must be a string without whitespace'
             );
@@ -1014,9 +995,7 @@ class ServerRequest implements ServerRequestInterface
 
     public function withMethod($method): ServerRequestInterface
     {
-        if (!is_string($method)) {
-            throw new InvalidArgumentException('Method must be a string');
-        }
+        $this->validateMethod($method);
 
         $this->validateMethod($method);
         $method = strtoupper($method);
@@ -1036,19 +1015,20 @@ class ServerRequest implements ServerRequestInterface
         return $this->uri;
     }
 
-    public function withUri(UriInterface $uri, $preserveHost = false): ServerRequestInterface
+    public function withUri(UriInterface $uri, $preserveHost = false): static
     {
         $new = clone $this;
         $new->uri = $uri;
 
         if (!$preserveHost || !$this->hasHeader('Host')) {
+            /** @var static $new */
             $new = $new->updateHostFromUri();
         }
 
         return $new;
     }
 
-    private function updateHostFromUri(): self
+    private function updateHostFromUri(): static
     {
         $host = $this->uri->getHost();
 
@@ -1060,7 +1040,10 @@ class ServerRequest implements ServerRequestInterface
             $host .= ':' . $port;
         }
 
-        return $this->withHeader('Host', $host);
+        /** @var static $new */
+        $new = $this->withHeader('Host', $host);
+
+        return $new;
     }
 
     private function validateHeaderName($name): void

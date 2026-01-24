@@ -14,7 +14,7 @@ use Plugs\TransactionHandler\PaymentAdapterInterface;
 
 class PayPalAdapter implements PaymentAdapterInterface
 {
-    public function __construct(array $config)
+    public function __construct()
     {
     }
 

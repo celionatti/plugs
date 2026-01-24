@@ -42,7 +42,7 @@ class RedirectResponse
     {
         if (empty($input)) {
             // Get from current request
-            $input = $_POST ?? [];
+            $input = $_POST;
         }
 
         $this->flashInput = $input;

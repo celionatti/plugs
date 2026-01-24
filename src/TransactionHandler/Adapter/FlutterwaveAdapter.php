@@ -18,15 +18,11 @@ use Plugs\TransactionHandler\PaymentAdapterInterface;
 class FlutterwaveAdapter implements PaymentAdapterInterface
 {
     private $secretKey;
-    private $publicKey;
-    private $encryptionKey;
     private $baseUrl = 'https://api.flutterwave.com/v3';
 
     public function __construct(array $config)
     {
         $this->secretKey = $config['secret_key'];
-        $this->publicKey = $config['public_key'];
-        $this->encryptionKey = $config['encryption_key'] ?? '';
     }
 
     /**

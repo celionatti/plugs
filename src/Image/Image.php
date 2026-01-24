@@ -22,7 +22,6 @@ class Image
     private $height;
     private $type;
     private $quality = 90;
-    private $sourcePath;
 
     /**
      * Load image from file
@@ -46,7 +45,6 @@ class Image
         $this->width = $info[0];
         $this->height = $info[1];
         $this->type = $info[2];
-        $this->sourcePath = $path;
 
         // Free existing image if any
         if ($this->image !== null) {
@@ -56,30 +54,31 @@ class Image
         // Check memory availability
         $this->checkMemory($info[0], $info[1]);
 
+        $image = null;
         try {
             switch ($this->type) {
                 case IMAGETYPE_JPEG:
-                    $this->image = imagecreatefromjpeg($path);
+                    $image = imagecreatefromjpeg($path);
 
                     break;
                 case IMAGETYPE_PNG:
-                    $this->image = imagecreatefrompng($path);
+                    $image = imagecreatefrompng($path);
 
                     break;
                 case IMAGETYPE_GIF:
-                    $this->image = imagecreatefromgif($path);
+                    $image = imagecreatefromgif($path);
 
                     break;
                 case IMAGETYPE_WEBP:
                     if (!function_exists('imagecreatefromwebp')) {
                         throw new \RuntimeException("WebP support not available");
                     }
-                    $this->image = imagecreatefromwebp($path);
+                    $image = imagecreatefromwebp($path);
 
                     break;
                 case IMAGETYPE_BMP:
                     if (function_exists('imagecreatefrombmp')) {
-                        $this->image = imagecreatefrombmp($path);
+                        $image = imagecreatefrombmp($path);
                     } else {
                         throw new \RuntimeException("BMP support not available");
                     }
@@ -92,9 +91,11 @@ class Image
             throw new \RuntimeException("Failed to load image: " . $e->getMessage());
         }
 
-        if ($this->image === false) {
+        if (!$image) {
             throw new \RuntimeException("Failed to create image resource from: {$path}");
         }
+
+        $this->image = $image;
 
         return $this;
     }
@@ -643,10 +644,10 @@ class Image
         switch ($unit) {
             case 'g':
                 $value *= 1024;
-                // no break
+            // no break
             case 'm':
                 $value *= 1024;
-                // no break
+            // no break
             case 'k':
                 $value *= 1024;
         }
@@ -669,7 +670,7 @@ class Image
      */
     public function __destruct()
     {
-        if ($this->image !== null && $this->image instanceof GdImage) {
+        if ($this->image !== null) {
             imagedestroy($this->image);
         }
     }

@@ -73,7 +73,7 @@ class PaymentTransactionHandler
 
                 break;
             case self::PLATFORM_PAYPAL:
-                $this->adapter = new PayPalAdapter($this->config);
+                $this->adapter = new PayPalAdapter();
 
                 break;
             case self::PLATFORM_FLUTTERWAVE:
@@ -81,7 +81,7 @@ class PaymentTransactionHandler
 
                 break;
             case self::PLATFORM_PAYONEER:
-                $this->adapter = new PayoneerAdapter($this->config);
+                $this->adapter = new PayoneerAdapter();
 
                 break;
             case self::PLATFORM_BTCPAY:
