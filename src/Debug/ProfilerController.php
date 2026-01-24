@@ -147,16 +147,50 @@ class ProfilerController
             </div>
             
             <script>
+                const csrfToken = document.querySelector(\'meta[name="csrf-token"]\')?.getAttribute(\'content\');
+
                 async function deleteProfile(id) {
                     if (!confirm("Delete this profile?")) return;
-                    await fetch("/plugs/profiler/" + id, { method: "DELETE" });
-                    location.reload();
+                    try {
+                        const response = await fetch("/plugs/profiler/" + id, { 
+                            method: "DELETE",
+                            headers: {
+                                "X-CSRF-TOKEN": csrfToken,
+                                "Accept": "application/json"
+                            }
+                        });
+                        
+                        if (response.ok) {
+                            location.reload();
+                        } else {
+                            const data = await response.json();
+                            alert("Error: " + (data.error || "Failed to delete profile"));
+                        }
+                    } catch (e) {
+                        alert("Error: " + e.message);
+                    }
                 }
                 
                 async function clearAllProfiles() {
                     if (!confirm("Delete all profiles?")) return;
-                    await fetch("/plugs/profiler/clear", { method: "POST" });
-                    location.reload();
+                    try {
+                        const response = await fetch("/plugs/profiler/clear", { 
+                            method: "POST",
+                            headers: {
+                                "X-CSRF-TOKEN": csrfToken,
+                                "Accept": "application/json"
+                            }
+                        });
+                        
+                        if (response.ok) {
+                            location.reload();
+                        } else {
+                            const data = await response.json();
+                            alert("Error: " + (data.error || "Failed to clear profiles"));
+                        }
+                    } catch (e) {
+                        alert("Error: " + e.message);
+                    }
                 }
             </script>',
             count($profiles),
@@ -325,6 +359,7 @@ class ProfilerController
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="csrf-token" content="' . (function_exists('csrf_token') ? csrf_token() : '') . '">
     <title>' . htmlspecialchars($title) . ' | Plugs</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
