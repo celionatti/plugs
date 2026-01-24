@@ -23,7 +23,10 @@ if (!function_exists('route')) {
      */
     function route(string $name, array $parameters = [], bool $absolute = true): string
     {
-        $router = app(Router::class);
+        static $router;
+        if (!$router) {
+            $router = app(Router::class);
+        }
         return $router->route($name, $parameters, $absolute);
     }
 }
@@ -145,8 +148,8 @@ if (!function_exists('currentUrl')) {
         if (!$includeQuery) {
             $parsedUri = parse_url($uri);
             $uri = ($parsedUri['scheme'] ?? 'http') . '://' .
-                   ($parsedUri['host'] ?? 'localhost') .
-                   ($parsedUri['path'] ?? '/');
+                ($parsedUri['host'] ?? 'localhost') .
+                ($parsedUri['path'] ?? '/');
         }
 
         return $uri;
@@ -259,7 +262,7 @@ if (!function_exists('isAjax')) {
 
         if ($request === null) {
             return isset($_SERVER['HTTP_X_REQUESTED_WITH']) &&
-                   strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest';
+                strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest';
         }
 
         return strtolower($request->getHeaderLine('X-Requested-With')) === 'xmlhttprequest';
@@ -281,7 +284,7 @@ if (!function_exists('wantsJson')) {
         }
 
         return str_contains($accept, 'application/json') ||
-               str_contains($accept, 'text/json');
+            str_contains($accept, 'text/json');
     }
 }
 

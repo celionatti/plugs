@@ -34,7 +34,20 @@ use InvalidArgumentException;
 
 class Router
 {
-    private array $routes = [];
+    /**
+     * Routes indexed by HTTP method.
+     * @var array<string, Route[]>
+     */
+    private array $routes = [
+        'GET' => [],
+        'POST' => [],
+        'PUT' => [],
+        'DELETE' => [],
+        'PATCH' => [],
+        'OPTIONS' => [],
+        'HEAD' => [],
+    ];
+
     private string $groupPrefix = '';
     private array $groupMiddleware = [];
     private string $groupNamespace = '';
@@ -112,6 +125,30 @@ class Router
             $handler,
             $middleware
         );
+    }
+
+    /**
+     * Register a route that redirects to another URI.
+     */
+    public function redirect(string $uri, string $destination, int $status = 302): Route
+    {
+        return $this->get($uri, function () use ($destination, $status) {
+            return ResponseFactory::redirect($destination, $status);
+        });
+    }
+
+    /**
+     * Register a route that returns a view.
+     */
+    public function view(string $uri, string $view, array $data = []): Route
+    {
+        return $this->get($uri, function () use ($view, $data) {
+            if (function_exists('view')) {
+                return view($view, $data);
+            }
+            // Fallback if view helper is missing
+            return ResponseFactory::html("View: {$view}");
+        });
     }
 
     /**
@@ -254,7 +291,9 @@ class Router
             $route->where($this->groupWhere);
         }
 
-        $this->routes[] = $route;
+        // Add to indexed array
+        $this->routes[$method][] = $route;
+
         $this->clearCache();
 
         return $route;
@@ -366,8 +405,13 @@ class Router
             return $this->dispatchCachedRoute($this->routeCache[$cacheKey], $request, $method);
         }
 
-        // Find matching route
-        foreach ($this->routes as $route) {
+        // Find matching route - Only iterate routes for the specific method
+        $routes = $this->routes[$method] ?? [];
+
+        // Also check routes that match ANY method if you interpret some methods that way,
+        // but typically Router separates them. If you have 'ANY' routes, add them here.
+
+        foreach ($routes as $route) {
             if (!$route->matches($method, $path)) {
                 continue;
             }
@@ -621,7 +665,7 @@ class Router
             // Better error message showing what was tried
             $debugInfo = [
                 'parameter_name' => $parameter->getName(),
-                'type' => $parameter->getType() ? $parameter->getType()->getName() : 'mixed',
+                'type' => ($parameter->getType() instanceof \ReflectionNamedType) ? $parameter->getType()->getName() : 'mixed',
                 'position' => $parameter->getPosition(),
                 'route_params' => array_keys($routeParams),
                 'request_attributes' => array_keys($request->getAttributes()),
@@ -650,7 +694,7 @@ class Router
         $type = $parameter->getType();
 
         // Handle array type parameters from request body
-        if ($type && $type->getName() === 'array') {
+        if ($type instanceof \ReflectionNamedType && $type->getName() === 'array') {
             $parsedBody = $request->getParsedBody();
             if (is_array($parsedBody) && array_key_exists($paramName, $parsedBody)) {
                 $value = $parsedBody[$paramName];
@@ -689,7 +733,7 @@ class Router
 
         // Handle typed parameters (classes/interfaces) - BEFORE route params
         // This ensures Request/Response injection works even if there's a route param with same name
-        if ($type && !$type->isBuiltin()) {
+        if ($type instanceof \ReflectionNamedType && !$type->isBuiltin()) {
             $typeName = $type->getName();
 
             // PSR-7 Request injection
@@ -765,7 +809,7 @@ class Router
     private function castParameterValue($value, ?\ReflectionType $type)
     {
         // No type hint or not a named type - return as-is
-        if ($type === null || !$type instanceof \ReflectionNamedType) {
+        if (!$type instanceof \ReflectionNamedType) {
             return $value;
         }
 
@@ -986,9 +1030,37 @@ class Router
         return count($this->routes);
     }
 
+    /**
+     * Dump compiled routes for caching
+     */
+    public function dumpRoutes(): array
+    {
+        return [
+            'routes' => $this->routes,
+            'namedRoutes' => $this->namedRoutes,
+        ];
+    }
+
+    /**
+     * Load routes from cache
+     */
+    public function loadCachedRoutes(array $cache): void
+    {
+        $this->routes = $cache['routes'] ?? [];
+        $this->namedRoutes = $cache['namedRoutes'] ?? [];
+    }
+
     public function clear(): void
     {
-        $this->routes = [];
+        $this->routes = [
+            'GET' => [],
+            'POST' => [],
+            'PUT' => [],
+            'DELETE' => [],
+            'PATCH' => [],
+            'OPTIONS' => [],
+            'HEAD' => [],
+        ];
         $this->namedRoutes = [];
         $this->groupPrefix = '';
         $this->groupMiddleware = [];
@@ -999,43 +1071,7 @@ class Router
         $this->clearCache();
     }
 
-    /**
-     * View route helper
-     */
-    public function view(string $path, string $view, array $data = []): Route
-    {
-        return $this->get($path, function () use ($view, $data) {
-            if (function_exists('view')) {
-                return view($view, $data);
-            }
-            return ResponseFactory::html("View: {$view}");
-        });
-    }
 
-    /**
-     * Redirect route helper
-     */
-    public function redirect(string $from, string $to, int $status = 302): Route
-    {
-        return $this->any($from, function () use ($to, $status) {
-            return ResponseFactory::redirect($to, $status);
-        });
-    }
-
-    public function permanentRedirect(string $from, string $to): Route
-    {
-        return $this->redirect($from, $to, 301);
-    }
-
-    /**
-     * Fallback route (404 handler)
-     */
-    public function fallback($handler): Route
-    {
-        return $this->any('{fallback}', $handler)
-            ->where('fallback', '.*')
-            ->name('fallback');
-    }
 
     /**
      * Route list for debugging
@@ -1044,14 +1080,16 @@ class Router
     {
         $list = [];
 
-        foreach ($this->routes as $route) {
-            $list[] = [
-                'method' => $route->getMethod(),
-                'path' => $route->getPath(),
-                'name' => $route->getName(),
-                'middleware' => $route->getMiddleware(),
-                'handler' => $this->formatHandler($route->getHandler()),
-            ];
+        foreach ($this->routes as $method => $routes) {
+            foreach ($routes as $route) {
+                $list[] = [
+                    'method' => $route->getMethod(),
+                    'path' => $route->getPath(),
+                    'name' => $route->getName(),
+                    'middleware' => $route->getMiddleware(),
+                    'handler' => $this->formatHandler($route->getHandler()),
+                ];
+            }
         }
 
         return $list;
