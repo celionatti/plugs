@@ -621,6 +621,14 @@ function renderProductionErrorPage(Throwable $e, int $statusCode = 500): void
     error_log($e->getMessage() . "\n" . $e->getTraceAsString());
     http_response_code($statusCode);
 
+    echo getProductionErrorHtml($statusCode);
+}
+
+/**
+ * Get the HTML content for a production error page.
+ */
+function getProductionErrorHtml(int $statusCode = 500, ?string $title = null, ?string $message = null): string
+{
     $errorMessages = [
         400 => ['title' => 'Bad Request', 'message' => 'The request could not be understood by the server.', 'icon' => '🛰️'],
         401 => ['title' => 'Unauthorized', 'message' => 'You need to be authenticated to access this resource.', 'icon' => '🔒'],
@@ -634,12 +642,16 @@ function renderProductionErrorPage(Throwable $e, int $statusCode = 500): void
 
     $error = $errorMessages[$statusCode] ?? $errorMessages[500];
 
-    $html = '<!DOCTYPE html>
+    // Override if custom title/message provided
+    $displayTitle = $title ?? $error['title'];
+    $displayMessage = $message ?? $error['message'];
+
+    return '<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>' . $statusCode . ' - ' . htmlspecialchars($error['title']) . '</title>
+    <title>' . $statusCode . ' - ' . htmlspecialchars($displayTitle) . '</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <style>
@@ -736,6 +748,7 @@ function renderProductionErrorPage(Throwable $e, int $statusCode = 500): void
             font-weight: 700;
             margin-bottom: 16px;
             position: relative;
+            color: var(--text-primary);
         }
 
         .message {
@@ -803,8 +816,8 @@ function renderProductionErrorPage(Throwable $e, int $statusCode = 500): void
 
     <div class="error-card">
         <span class="error-icon">' . $error['icon'] . '</span>
-        <h1>' . htmlspecialchars($error['title']) . '</h1>
-        <p class="message">' . htmlspecialchars($error['message']) . '</p>
+        <h1>' . htmlspecialchars($displayTitle) . '</h1>
+        <p class="message">' . htmlspecialchars($displayMessage) . '</p>
         <div class="error-code">' . $statusCode . '</div>
         <div class="actions">
             <a href="/" class="btn btn-primary">
@@ -821,6 +834,4 @@ function renderProductionErrorPage(Throwable $e, int $statusCode = 500): void
     </div>
 </body>
 </html>';
-
-    echo $html;
 }
