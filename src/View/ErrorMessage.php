@@ -6,14 +6,14 @@ namespace Plugs\View;
 
 /**
  * ErrorMessage - Manages validation errors for views
- * 
+ *
  * Usage in controller:
- * 
+ *
  * $errors = new ErrorMessage([
  *     'name' => ['Name is required', 'Name must be at least 3 characters'],
  *     'email' => ['Invalid email format']
  * ]);
- * 
+ *
  * return $viewEngine->render('form', ['errors' => $errors]);
  */
 class ErrorMessage
@@ -22,7 +22,7 @@ class ErrorMessage
 
     /**
      * Create a new ErrorMessage instance
-     * 
+     *
      * @param array $errors Associative array of field => error messages
      */
     public function __construct(array $errors = [])
@@ -34,7 +34,7 @@ class ErrorMessage
 
     /**
      * Check if a field has any errors
-     * 
+     *
      * @param string $field Field name
      * @return bool
      */
@@ -45,7 +45,7 @@ class ErrorMessage
 
     /**
      * Get the first error message for a field
-     * 
+     *
      * @param string $field Field name
      * @return string|null
      */
@@ -56,7 +56,7 @@ class ErrorMessage
 
     /**
      * Get all error messages for a field
-     * 
+     *
      * @param string $field Field name
      * @return array
      */
@@ -67,7 +67,7 @@ class ErrorMessage
 
     /**
      * Get all errors
-     * 
+     *
      * @return array
      */
     public function all(): array
@@ -76,12 +76,13 @@ class ErrorMessage
         foreach ($this->errors as $messages) {
             $all = array_merge($all, $messages);
         }
+
         return $all;
     }
 
     /**
      * Check if there are any errors
-     * 
+     *
      * @return bool
      */
     public function any(): bool
@@ -91,7 +92,7 @@ class ErrorMessage
 
     /**
      * Get count of fields with errors
-     * 
+     *
      * @return int
      */
     public function count(): int
@@ -101,7 +102,7 @@ class ErrorMessage
 
     /**
      * Add an error message for a field
-     * 
+     *
      * @param string $field Field name
      * @param string $message Error message
      * @return self
@@ -112,12 +113,13 @@ class ErrorMessage
             $this->errors[$field] = [];
         }
         $this->errors[$field][] = $message;
+
         return $this;
     }
 
     /**
      * Clear all errors or errors for a specific field
-     * 
+     *
      * @param string|null $field Field name (null to clear all)
      * @return self
      */
@@ -128,6 +130,7 @@ class ErrorMessage
         } else {
             unset($this->errors[$field]);
         }
+
         return $this;
     }
 }

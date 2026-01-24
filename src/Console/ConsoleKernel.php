@@ -4,35 +4,34 @@ declare(strict_types=1);
 
 namespace Plugs\Console;
 
-use Plugs\Console\Command;
-use Plugs\Console\Commands\DemoCommand;
-use Plugs\Console\Commands\HelpCommand;
-use Plugs\Console\Commands\ServeCommand;
-use Plugs\Console\Commands\InspireCommand;
-use Plugs\Console\Commands\MakeModelCommand;
-use Plugs\Console\Commands\RouteListCommand;
-use Plugs\Console\Commands\RouteTestCommand;
 use Plugs\Console\Commands\CacheClearCommand;
-use Plugs\Console\Commands\RouteCacheCommand;
-use Plugs\Console\Commands\RouteClearCommand;
-use Plugs\Console\Commands\MakeCommandCommand;
-use Plugs\Console\Commands\MakeMigrationCommand;
-use Plugs\Console\Commands\MakeControllerCommand;
-use Plugs\Console\Commands\MakeMiddlewareCommand;
-use Plugs\Console\Commands\MakeRequestCommand;
-use Plugs\Console\Commands\MakeServiceCommand;
+use Plugs\Console\Commands\DemoCommand;
+use Plugs\Console\Commands\HealthCommand;
+use Plugs\Console\Commands\HelpCommand;
+use Plugs\Console\Commands\InspireCommand;
 use Plugs\Console\Commands\MakeActionCommand;
-use Plugs\Console\Commands\MakeDTOCommand;
-use Plugs\Console\Commands\MakeResourceCommand;
-use Plugs\Console\Commands\MakeRepositoryCommand;
-use Plugs\Console\Commands\MakeConnectorCommand;
 use Plugs\Console\Commands\MakeApiRequestCommand;
+use Plugs\Console\Commands\MakeCommandCommand;
+use Plugs\Console\Commands\MakeConnectorCommand;
+use Plugs\Console\Commands\MakeControllerCommand;
+use Plugs\Console\Commands\MakeDTOCommand;
+use Plugs\Console\Commands\MakeMiddlewareCommand;
+use Plugs\Console\Commands\MakeMigrationCommand;
+use Plugs\Console\Commands\MakeModelCommand;
+use Plugs\Console\Commands\MakeRepositoryCommand;
+use Plugs\Console\Commands\MakeRequestCommand;
+use Plugs\Console\Commands\MakeResourceCommand;
+use Plugs\Console\Commands\MakeServiceCommand;
 use Plugs\Console\Commands\MigrateCommand;
+use Plugs\Console\Commands\MigrateResetCommand;
 use Plugs\Console\Commands\MigrateRollbackCommand;
 use Plugs\Console\Commands\MigrateStatusCommand;
-use Plugs\Console\Commands\MigrateResetCommand;
 use Plugs\Console\Commands\QueueWorkCommand;
-use Plugs\Console\Commands\HealthCommand;
+use Plugs\Console\Commands\RouteCacheCommand;
+use Plugs\Console\Commands\RouteClearCommand;
+use Plugs\Console\Commands\RouteListCommand;
+use Plugs\Console\Commands\RouteTestCommand;
+use Plugs\Console\Commands\ServeCommand;
 use Plugs\Console\Commands\StorageLinkCommand;
 
 /*
@@ -126,7 +125,7 @@ class ConsoleKernel
             'make:resource',
             'make:repository',
             'make:connector',
-            'make:api-request'
+            'make:api-request',
         ],
         'Routes' => ['route:list', 'route:cache', 'route:clear', 'route:test'],
         'Utility' => ['serve', 'cache:clear', 'queue:work', 'health', 'storage:link'],
@@ -193,6 +192,7 @@ class ConsoleKernel
     public function has(string $name): bool
     {
         $lookup = $this->aliases[$name] ?? $name;
+
         return isset($this->commands[$lookup]);
     }
 
@@ -232,6 +232,7 @@ class ConsoleKernel
                 $matches[] = $name;
             }
         }
+
         return $matches;
     }
 }

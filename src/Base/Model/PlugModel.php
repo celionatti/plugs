@@ -4,35 +4,34 @@ declare(strict_types=1);
 
 namespace Plugs\Base\Model;
 
+use BadMethodCallException;
 use Exception;
 use PDO;
 use PDOException;
-use BadMethodCallException;
-use Plugs\Base\Model\Debuggable;
-use Plugs\Database\Traits\Searchable;
-use Plugs\Database\Traits\HasConnection;
-use Plugs\Database\Traits\HasQueryBuilder;
-use Plugs\Database\Traits\HasAttributes;
-use Plugs\Database\Traits\HasRelationships;
-use Plugs\Database\Traits\HasEvents;
-use Plugs\Database\Traits\HasValidation;
-use Plugs\Database\Traits\HasTimestamps;
-use Plugs\Database\Traits\SoftDeletes;
 use Plugs\Database\Collection;
 use Plugs\Database\Connection;
+use Plugs\Database\Traits\HasAttributes;
+use Plugs\Database\Traits\HasConnection;
+use Plugs\Database\Traits\HasEvents;
+use Plugs\Database\Traits\HasQueryBuilder;
+use Plugs\Database\Traits\HasRelationships;
+use Plugs\Database\Traits\HasTimestamps;
+use Plugs\Database\Traits\HasValidation;
+use Plugs\Database\Traits\Searchable;
+use Plugs\Database\Traits\SoftDeletes;
 
 abstract class PlugModel
 {
-    use Debuggable,
-        Searchable,
-        HasConnection,
-        HasQueryBuilder,
-        HasAttributes,
-        HasRelationships,
-        HasEvents,
-        HasValidation,
-        HasTimestamps,
-        SoftDeletes;
+    use Debuggable;
+    use Searchable;
+    use HasConnection;
+    use HasQueryBuilder;
+    use HasAttributes;
+    use HasRelationships;
+    use HasEvents;
+    use HasValidation;
+    use HasTimestamps;
+    use SoftDeletes;
 
     protected $table;
     protected $primaryKey = 'id';
@@ -90,6 +89,7 @@ abstract class PlugModel
     public function enableRawQueries(bool $enable = true)
     {
         $this->allowRawQueries = $enable;
+
         return $this;
     }
 
@@ -130,6 +130,7 @@ abstract class PlugModel
         if (!preg_match('/^[a-zA-Z0-9_\.]+$/', $column)) {
             throw new Exception("Invalid column name: {$column}");
         }
+
         return $column;
     }
 
@@ -142,6 +143,7 @@ abstract class PlugModel
     {
         $model = new static($attributes);
         $model->save();
+
         return $model;
     }
 
@@ -162,6 +164,7 @@ abstract class PlugModel
             $model = new static($result);
             $model->fill($values);
             $model->save();
+
             return $model;
         }
 
@@ -194,6 +197,7 @@ abstract class PlugModel
         $clone = clone $this;
         $clone->query = $this->query;
         $clone->bindings = $this->bindings;
+
         return $clone;
     }
 
@@ -279,6 +283,7 @@ abstract class PlugModel
     {
         $clone = $this->cloneQuery();
         $clone->query['distinct'] = true;
+
         return $clone;
     }
 
@@ -287,6 +292,7 @@ abstract class PlugModel
         if (count($values) !== 2) {
             throw new Exception('whereBetween requires exactly 2 values');
         }
+
         return $this->instanceWhere($column, '>=', $values[0])
             ->instanceWhere($column, '<=', $values[1]);
     }
@@ -296,6 +302,7 @@ abstract class PlugModel
         if (count($values) !== 2) {
             throw new Exception('whereNotBetween requires exactly 2 values');
         }
+
         return $this->instanceWhere($column, '<', $values[0])
             ->instanceOrWhere($column, '>', $values[1]);
     }
@@ -399,6 +406,7 @@ abstract class PlugModel
         $cached = static::$queryCache[$key];
         if (time() > $cached['expires']) {
             unset(static::$queryCache[$key]);
+
             return null;
         }
 
@@ -473,6 +481,7 @@ abstract class PlugModel
             return $stmt;
         } catch (PDOException $e) {
             static::logQuery($sql, $bindings, microtime(true) - $startTime);
+
             throw $e;
         }
     }
@@ -584,6 +593,7 @@ abstract class PlugModel
             static::getConnection()->exec("SAVEPOINT trans_" . static::$transactionDepth);
         }
         static::$transactionDepth++;
+
         return true;
     }
 
@@ -597,6 +607,7 @@ abstract class PlugModel
             return static::getConnection()->commit();
         }
         static::getConnection()->exec("RELEASE SAVEPOINT trans_" . static::$transactionDepth);
+
         return true;
     }
 
@@ -610,6 +621,7 @@ abstract class PlugModel
             return static::getConnection()->rollBack();
         }
         static::getConnection()->exec("ROLLBACK TO SAVEPOINT trans_" . static::$transactionDepth);
+
         return true;
     }
 
@@ -632,6 +644,7 @@ abstract class PlugModel
     {
         $instance = new static();
         $stmt = $instance->executeQuery($sql, $bindings);
+
         return $stmt->rowCount() > 0;
     }
 
@@ -683,6 +696,7 @@ abstract class PlugModel
         $scopeMethod = 'scope' . ucfirst($method);
         if (method_exists($this, $scopeMethod)) {
             array_unshift($parameters, $this);
+
             return call_user_func_array([$this, $scopeMethod], $parameters);
         }
 
@@ -704,6 +718,7 @@ abstract class PlugModel
         $scopeMethod = 'scope' . ucfirst($method);
         if (method_exists($instance, $scopeMethod)) {
             array_unshift($parameters, $instance);
+
             return call_user_func_array([$instance, $scopeMethod], $parameters);
         }
 
@@ -731,6 +746,7 @@ if (!function_exists('class_basename')) {
     function class_basename($class): string
     {
         $class = is_object($class) ? get_class($class) : $class;
+
         return basename(str_replace('\\', '/', $class));
     }
 }

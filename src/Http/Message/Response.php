@@ -13,9 +13,9 @@ namespace Plugs\Http\Message;
 | construct and send HTTP responses to clients.
 */
 
+use InvalidArgumentException;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\StreamInterface;
-use InvalidArgumentException;
 
 class Response implements ResponseInterface
 {
@@ -247,6 +247,7 @@ class Response implements ResponseInterface
 
         $new = clone $this;
         $new->protocol = $version;
+
         return $new;
     }
 
@@ -269,6 +270,7 @@ class Response implements ResponseInterface
         }
 
         $originalName = $this->headerNames[$normalized];
+
         return $this->headers[$originalName];
     }
 
@@ -349,6 +351,7 @@ class Response implements ResponseInterface
 
         $new = clone $this;
         $new->body = $body;
+
         return $new;
     }
 

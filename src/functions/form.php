@@ -2,13 +2,13 @@
 
 declare(strict_types=1);
 
-use Plugs\Forms\FormBuilder;
-use Plugs\Forms\Fields\TextField;
-use Plugs\Forms\Fields\PasswordField;
-use Plugs\Forms\Fields\EmailField;
-use Plugs\Forms\Fields\SelectField;
 use Plugs\Forms\Fields\CheckboxField;
+use Plugs\Forms\Fields\EmailField;
+use Plugs\Forms\Fields\PasswordField;
+use Plugs\Forms\Fields\SelectField;
 use Plugs\Forms\Fields\SubmitField;
+use Plugs\Forms\Fields\TextField;
+use Plugs\Forms\FormBuilder;
 
 if (!function_exists('form')) {
     /**
@@ -48,7 +48,10 @@ if (!function_exists('field_email')) {
 if (!function_exists('field_select')) {
     function field_select(string $name, array $options = [], ?string $label = null): SelectField
     {
-        return (new SelectField($name, $label))->options($options);
+        $field = new SelectField($name, $label);
+        $field->options($options);
+
+        return $field;
     }
 }
 

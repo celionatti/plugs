@@ -13,13 +13,11 @@ namespace Plugs\Mail;
 | It supports simple emails, CC/BCC, attachments, and multipart messages.
 */
 
-use Symfony\Component\Mailer\Mailer;
-use Plugs\Mail\EmailBuilder;
-
-use Symfony\Component\Mailer\Transport;
-use Symfony\Component\Mime\Email;
-use Symfony\Component\Mime\Address;
 use Symfony\Component\Mailer\Exception\TransportExceptionInterface;
+use Symfony\Component\Mailer\Mailer;
+use Symfony\Component\Mailer\Transport;
+use Symfony\Component\Mime\Address;
+use Symfony\Component\Mime\Email;
 
 class MailService
 {
@@ -90,9 +88,11 @@ class MailService
             }
 
             $this->mailer->send($email);
+
             return true;
         } catch (TransportExceptionInterface $e) {
             error_log("Mail sending failed: " . $e->getMessage());
+
             return false;
         }
     }
@@ -118,9 +118,11 @@ class MailService
             }
 
             $this->mailer->send($email);
+
             return true;
         } catch (TransportExceptionInterface $e) {
             error_log("Mail sending failed: " . $e->getMessage());
+
             return false;
         }
     }
@@ -157,9 +159,11 @@ class MailService
             }
 
             $this->mailer->send($email);
+
             return true;
         } catch (TransportExceptionInterface $e) {
             error_log("Mail sending failed: " . $e->getMessage());
+
             return false;
         }
     }
@@ -193,9 +197,11 @@ class MailService
             }
 
             $this->mailer->send($email);
+
             return true;
         } catch (TransportExceptionInterface $e) {
             error_log("Mail sending failed: " . $e->getMessage());
+
             return false;
         }
     }
@@ -223,9 +229,11 @@ class MailService
             }
 
             $this->mailer->send($email);
+
             return true;
         } catch (TransportExceptionInterface $e) {
             error_log("Mail sending failed: " . $e->getMessage());
+
             return false;
         }
     }
@@ -248,9 +256,11 @@ class MailService
                 ->text($textBody);
 
             $this->mailer->send($email);
+
             return true;
         } catch (TransportExceptionInterface $e) {
             error_log("Mail sending failed: " . $e->getMessage());
+
             return false;
         }
     }
@@ -280,9 +290,11 @@ class MailService
             }
 
             $this->mailer->send($email);
+
             return true;
         } catch (TransportExceptionInterface $e) {
             error_log("Mail sending failed: " . $e->getMessage());
+
             return false;
         }
     }

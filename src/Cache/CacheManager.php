@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace Plugs\Cache;
 
-use Plugs\Cache\Drivers\FileCacheDriver;
 use InvalidArgumentException;
+use Plugs\Cache\Drivers\FileCacheDriver;
 
 class CacheManager
 {

@@ -19,6 +19,7 @@ if (!function_exists('class_basename')) {
     function class_basename($class): string
     {
         $class = is_object($class) ? get_class($class) : $class;
+
         return basename(str_replace('\\', '/', $class));
     }
 }
@@ -78,7 +79,7 @@ if (!function_exists('config')) {
     /**
      * Get / set configuration value
      */
-    function config(string|null $key = null, $default = null)
+    function config(string|array|null $key = null, $default = null)
     {
         if ($key === null) {
             return \Plugs\Config::all();
@@ -88,6 +89,7 @@ if (!function_exists('config')) {
             foreach ($key as $k => $v) {
                 \Plugs\Config::set($k, $v);
             }
+
             return null;
         }
 
@@ -99,6 +101,7 @@ if (!function_exists('base_path')) {
     function base_path(string $path = ''): string
     {
         $base = defined('BASE_PATH') ? BASE_PATH : realpath(__DIR__ . '/../../');
+
         return rtrim($base, '/\\') . DIRECTORY_SEPARATOR . ltrim($path, '/\\');
     }
 }
@@ -107,6 +110,7 @@ if (!function_exists('storage_path')) {
     function storage_path(string $path = ''): string
     {
         $storage = defined('STORAGE_PATH') ? STORAGE_PATH : base_path('storage');
+
         return rtrim($storage, '/\\') . DIRECTORY_SEPARATOR . ltrim($path, '/\\');
     }
 }
@@ -137,7 +141,7 @@ if (!function_exists('view')) {
 if (!function_exists('inertia')) {
     /**
      * Render an Inertia response
-     * 
+     *
      * Returns an InertiaResponse that can render as JSON (for XHR requests)
      * or as a full HTML page with embedded page data.
      *
@@ -184,7 +188,7 @@ if (!function_exists('db')) {
 if (!function_exists('request')) {
     /**
      * Get the current request instance
-     * 
+     *
      * @return \Plugs\Http\Message\ServerRequest|\Psr\Http\Message\ServerRequestInterface|null
      */
     function request()
@@ -308,7 +312,7 @@ if (!function_exists('e')) {
 if (!function_exists('mask')) {
     /**
      * Mask sensitive data with asterisks or custom character
-     * 
+     *
      * @param string $value The value to mask
      * @param string $type The type of masking (email, phone, card, custom, full)
      * @param string $maskChar The character to use for masking (default: *)
@@ -382,6 +386,7 @@ if (!function_exists('mask')) {
 
                 // Format in groups of 4
                 $masked = $maskedPart . $visibleDigits;
+
                 return implode(' ', str_split($masked, 4));
 
             case 'full':
@@ -400,6 +405,7 @@ if (!function_exists('mask')) {
                     $start = substr($value, 0, 1);
                     $end = substr($value, -1);
                     $middle = str_repeat($maskChar, $length - 2);
+
                     return $start . $middle . $end;
                 }
 
@@ -416,6 +422,7 @@ if (!function_exists('url')) {
     function url(string $path = ''): string
     {
         $base = rtrim(env('APP_URL', 'http://localhost'), '/');
+
         return $base . '/' . ltrim($path, '/');
     }
 }
@@ -454,6 +461,7 @@ function loadFunctions(string|array|null $source): void
     if (is_string($source) && is_dir($source)) {
         $files = glob($source . '*.php');
         requireFiles($files);
+
         return;
     }
 
@@ -461,12 +469,14 @@ function loadFunctions(string|array|null $source): void
     if (is_array($source)) {
         $files = extractFilesFromArray($source);
         requireFiles($files);
+
         return;
     }
 
     // Handle single file path
-    if (is_string($source) && file_exists($source)) {
+    if (file_exists($source)) {
         requireFiles([$source]);
+
         return;
     }
 }
@@ -510,10 +520,10 @@ function paginate($data, $perPage = 15, $page = null)
             'data' => array_slice($data, ($page - 1) * $perPage, $perPage),
             'per_page' => $perPage,
             'current_page' => $page,
-            'total' => count($data)
+            'total' => count($data),
         ]);
     }
 
     // Assume it's PlugModel pagination array
-    return \Plugs\Paginator\Pagination::fromArray($data);
+    return \Plugs\Paginator\Pagination::fromArray((array) $data);
 }

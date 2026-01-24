@@ -49,6 +49,7 @@ class Blueprint
         $def = new ColumnDefinition($column, 'BIGINT');
         $def->unsigned()->autoIncrement()->primary();
         $this->columns[] = $def;
+
         return $def;
     }
 
@@ -60,6 +61,7 @@ class Blueprint
         $def = new ColumnDefinition($column, 'INT');
         $def->unsigned()->autoIncrement()->primary();
         $this->columns[] = $def;
+
         return $def;
     }
 
@@ -70,6 +72,7 @@ class Blueprint
     {
         $def = new ColumnDefinition($column, "VARCHAR({$length})");
         $this->columns[] = $def;
+
         return $def;
     }
 
@@ -80,6 +83,7 @@ class Blueprint
     {
         $def = new ColumnDefinition($column, "CHAR({$length})");
         $this->columns[] = $def;
+
         return $def;
     }
 
@@ -90,6 +94,7 @@ class Blueprint
     {
         $def = new ColumnDefinition($column, 'TEXT');
         $this->columns[] = $def;
+
         return $def;
     }
 
@@ -100,6 +105,7 @@ class Blueprint
     {
         $def = new ColumnDefinition($column, 'MEDIUMTEXT');
         $this->columns[] = $def;
+
         return $def;
     }
 
@@ -110,6 +116,7 @@ class Blueprint
     {
         $def = new ColumnDefinition($column, 'LONGTEXT');
         $this->columns[] = $def;
+
         return $def;
     }
 
@@ -120,6 +127,7 @@ class Blueprint
     {
         $def = new ColumnDefinition($column, 'INT');
         $this->columns[] = $def;
+
         return $def;
     }
 
@@ -130,6 +138,7 @@ class Blueprint
     {
         $def = new ColumnDefinition($column, 'TINYINT');
         $this->columns[] = $def;
+
         return $def;
     }
 
@@ -140,6 +149,7 @@ class Blueprint
     {
         $def = new ColumnDefinition($column, 'SMALLINT');
         $this->columns[] = $def;
+
         return $def;
     }
 
@@ -150,6 +160,7 @@ class Blueprint
     {
         $def = new ColumnDefinition($column, 'MEDIUMINT');
         $this->columns[] = $def;
+
         return $def;
     }
 
@@ -160,6 +171,7 @@ class Blueprint
     {
         $def = new ColumnDefinition($column, 'BIGINT');
         $this->columns[] = $def;
+
         return $def;
     }
 
@@ -171,6 +183,7 @@ class Blueprint
         $def = new ColumnDefinition($column, 'BIGINT');
         $def->unsigned();
         $this->columns[] = $def;
+
         return $def;
     }
 
@@ -182,6 +195,7 @@ class Blueprint
         $def = new ColumnDefinition($column, 'INT');
         $def->unsigned();
         $this->columns[] = $def;
+
         return $def;
     }
 
@@ -192,6 +206,7 @@ class Blueprint
     {
         $def = new ColumnDefinition($column, "FLOAT({$precision}, {$scale})");
         $this->columns[] = $def;
+
         return $def;
     }
 
@@ -202,6 +217,7 @@ class Blueprint
     {
         $def = new ColumnDefinition($column, "DOUBLE({$precision}, {$scale})");
         $this->columns[] = $def;
+
         return $def;
     }
 
@@ -212,6 +228,7 @@ class Blueprint
     {
         $def = new ColumnDefinition($column, "DECIMAL({$precision}, {$scale})");
         $this->columns[] = $def;
+
         return $def;
     }
 
@@ -223,6 +240,7 @@ class Blueprint
         $def = new ColumnDefinition($column, 'TINYINT(1)');
         $def->default(0);
         $this->columns[] = $def;
+
         return $def;
     }
 
@@ -234,6 +252,7 @@ class Blueprint
         $values = implode("','", $allowed);
         $def = new ColumnDefinition($column, "ENUM('{$values}')");
         $this->columns[] = $def;
+
         return $def;
     }
 
@@ -245,6 +264,7 @@ class Blueprint
         $values = implode("','", $allowed);
         $def = new ColumnDefinition($column, "SET('{$values}')");
         $this->columns[] = $def;
+
         return $def;
     }
 
@@ -255,6 +275,7 @@ class Blueprint
     {
         $def = new ColumnDefinition($column, 'JSON');
         $this->columns[] = $def;
+
         return $def;
     }
 
@@ -273,6 +294,7 @@ class Blueprint
     {
         $def = new ColumnDefinition($column, 'DATE');
         $this->columns[] = $def;
+
         return $def;
     }
 
@@ -284,6 +306,7 @@ class Blueprint
         $type = $precision > 0 ? "DATETIME({$precision})" : 'DATETIME';
         $def = new ColumnDefinition($column, $type);
         $this->columns[] = $def;
+
         return $def;
     }
 
@@ -303,6 +326,7 @@ class Blueprint
         $type = $precision > 0 ? "TIME({$precision})" : 'TIME';
         $def = new ColumnDefinition($column, $type);
         $this->columns[] = $def;
+
         return $def;
     }
 
@@ -314,6 +338,7 @@ class Blueprint
         $type = $precision > 0 ? "TIMESTAMP({$precision})" : 'TIMESTAMP';
         $def = new ColumnDefinition($column, $type);
         $this->columns[] = $def;
+
         return $def;
     }
 
@@ -358,6 +383,7 @@ class Blueprint
     {
         $def = new ColumnDefinition($column, 'BLOB');
         $this->columns[] = $def;
+
         return $def;
     }
 
@@ -368,6 +394,7 @@ class Blueprint
     {
         $def = new ColumnDefinition($column, 'CHAR(36)');
         $this->columns[] = $def;
+
         return $def;
     }
 
@@ -378,6 +405,7 @@ class Blueprint
     {
         $def = new ColumnDefinition($column, 'VARCHAR(45)');
         $this->columns[] = $def;
+
         return $def;
     }
 
@@ -388,6 +416,7 @@ class Blueprint
     {
         $def = new ColumnDefinition($column, 'VARCHAR(17)');
         $this->columns[] = $def;
+
         return $def;
     }
 
@@ -398,6 +427,7 @@ class Blueprint
     {
         $def = new ColumnDefinition($column, 'YEAR');
         $this->columns[] = $def;
+
         return $def;
     }
 
@@ -409,6 +439,7 @@ class Blueprint
     public function comment(string $comment): self
     {
         $this->commands[] = ['type' => 'tableComment', 'comment' => $comment];
+
         return $this;
     }
 
@@ -418,6 +449,7 @@ class Blueprint
     public function engine(string $engine): self
     {
         $this->engine = $engine;
+
         return $this;
     }
 
@@ -427,6 +459,7 @@ class Blueprint
     public function charset(string $charset): self
     {
         $this->charset = $charset;
+
         return $this;
     }
 
@@ -436,6 +469,7 @@ class Blueprint
     public function collation(string $collation): self
     {
         $this->collation = $collation;
+
         return $this;
     }
 
@@ -445,6 +479,7 @@ class Blueprint
     public function temporary(): self
     {
         $this->temporary = true;
+
         return $this;
     }
 
@@ -460,8 +495,9 @@ class Blueprint
         $this->commands[] = [
             'type' => 'primary',
             'columns' => $columns,
-            'name' => $name
+            'name' => $name,
         ];
+
         return $this;
     }
 
@@ -475,8 +511,9 @@ class Blueprint
         $this->commands[] = [
             'type' => 'unique',
             'columns' => $columns,
-            'name' => $name
+            'name' => $name,
         ];
+
         return $this;
     }
 
@@ -490,8 +527,9 @@ class Blueprint
         $this->commands[] = [
             'type' => 'index',
             'columns' => $columns,
-            'name' => $name
+            'name' => $name,
         ];
+
         return $this;
     }
 
@@ -505,8 +543,9 @@ class Blueprint
         $this->commands[] = [
             'type' => 'fulltext',
             'columns' => $columns,
-            'name' => $name
+            'name' => $name,
         ];
+
         return $this;
     }
 
@@ -520,8 +559,9 @@ class Blueprint
         $this->commands[] = [
             'type' => 'spatial',
             'columns' => $columns,
-            'name' => $name
+            'name' => $name,
         ];
+
         return $this;
     }
 
@@ -531,6 +571,7 @@ class Blueprint
     private function createIndexName(string $type, array $columns): string
     {
         $index = strtolower($this->table . '_' . implode('_', $columns) . '_' . $type);
+
         return str_replace(['-', '.'], '_', $index);
     }
 
@@ -543,10 +584,10 @@ class Blueprint
     {
         $columns = is_array($columns) ? $columns : [$columns];
         $name = $name ?? $this->createIndexName('foreign', $columns);
-        
+
         $foreign = new ForeignKeyDefinition($columns, $name);
         $this->commands[] = ['type' => 'foreign', 'definition' => $foreign];
-        
+
         return $foreign;
     }
 
@@ -557,6 +598,7 @@ class Blueprint
     {
         $index = is_array($index) ? $index : [$index];
         $this->commands[] = ['type' => 'dropForeign', 'index' => $index];
+
         return $this;
     }
 
@@ -569,6 +611,7 @@ class Blueprint
     {
         $columns = is_array($columns) ? $columns : [$columns];
         $this->commands[] = ['type' => 'dropColumn', 'columns' => $columns];
+
         return $this;
     }
 
@@ -578,6 +621,7 @@ class Blueprint
     public function renameColumn(string $from, string $to): self
     {
         $this->commands[] = ['type' => 'renameColumn', 'from' => $from, 'to' => $to];
+
         return $this;
     }
 
@@ -587,6 +631,7 @@ class Blueprint
     public function dropPrimary(?string $index = null): self
     {
         $this->commands[] = ['type' => 'dropPrimary', 'index' => $index];
+
         return $this;
     }
 
@@ -597,6 +642,7 @@ class Blueprint
     {
         $index = is_array($index) ? $index : [$index];
         $this->commands[] = ['type' => 'dropUnique', 'index' => $index];
+
         return $this;
     }
 
@@ -607,6 +653,7 @@ class Blueprint
     {
         $index = is_array($index) ? $index : [$index];
         $this->commands[] = ['type' => 'dropIndex', 'index' => $index];
+
         return $this;
     }
 
@@ -617,6 +664,7 @@ class Blueprint
     {
         $index = is_array($index) ? $index : [$index];
         $this->commands[] = ['type' => 'dropSpatialIndex', 'index' => $index];
+
         return $this;
     }
 
@@ -628,7 +676,7 @@ class Blueprint
     public function toSql(): array
     {
         $sql = [];
-        
+
         // Build column definitions
         $columnDefinitions = [];
         foreach ($this->columns as $column) {
@@ -646,8 +694,8 @@ class Blueprint
 
         // Build CREATE TABLE statement
         $temp = $this->temporary ? 'TEMPORARY ' : '';
-        $createSql = "CREATE {$temp}TABLE IF NOT EXISTS `{$this->table}` (\n  " 
-            . implode(",\n  ", $definitions) 
+        $createSql = "CREATE {$temp}TABLE IF NOT EXISTS `{$this->table}` (\n  "
+            . implode(",\n  ", $definitions)
             . "\n) ENGINE={$this->engine} DEFAULT CHARSET={$this->charset} COLLATE={$this->collation}";
 
         $sql[] = $createSql;
@@ -674,14 +722,17 @@ class Blueprint
                     foreach ($command['columns'] as $col) {
                         $sql[] = "ALTER TABLE `{$this->table}` DROP COLUMN `{$col}`";
                     }
+
                     break;
 
                 case 'renameColumn':
                     $sql[] = "ALTER TABLE `{$this->table}` CHANGE `{$command['from']}` `{$command['to']}`";
+
                     break;
 
                 case 'dropPrimary':
                     $sql[] = "ALTER TABLE `{$this->table}` DROP PRIMARY KEY";
+
                     break;
 
                 case 'dropUnique':
@@ -690,12 +741,14 @@ class Blueprint
                     foreach ($command['index'] as $index) {
                         $sql[] = "ALTER TABLE `{$this->table}` DROP INDEX `{$index}`";
                     }
+
                     break;
 
                 case 'dropForeign':
                     foreach ($command['index'] as $index) {
                         $sql[] = "ALTER TABLE `{$this->table}` DROP FOREIGN KEY `{$index}`";
                     }
+
                     break;
 
                 default:
@@ -703,6 +756,7 @@ class Blueprint
                     if ($commandSql) {
                         $sql[] = "ALTER TABLE `{$this->table}` ADD " . $commandSql;
                     }
+
                     break;
             }
         }
@@ -718,22 +772,27 @@ class Blueprint
         switch ($command['type']) {
             case 'primary':
                 $cols = implode('`, `', $command['columns']);
+
                 return "PRIMARY KEY (`{$cols}`)";
 
             case 'unique':
                 $cols = implode('`, `', $command['columns']);
+
                 return "UNIQUE KEY `{$command['name']}` (`{$cols}`)";
 
             case 'index':
                 $cols = implode('`, `', $command['columns']);
+
                 return "INDEX `{$command['name']}` (`{$cols}`)";
 
             case 'fulltext':
                 $cols = implode('`, `', $command['columns']);
+
                 return "FULLTEXT KEY `{$command['name']}` (`{$cols}`)";
 
             case 'spatial':
                 $cols = implode('`, `', $command['columns']);
+
                 return "SPATIAL KEY `{$command['name']}` (`{$cols}`)";
 
             case 'foreign':

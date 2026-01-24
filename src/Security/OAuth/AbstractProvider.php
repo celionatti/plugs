@@ -25,15 +25,18 @@ abstract class AbstractProvider
     }
 
     abstract protected function getAuthUrl(string $state): string;
+
     abstract protected function getTokenUrl(): string;
+
     abstract protected function getUserByToken(string $token): array;
+
     abstract protected function mapUserToObject(array $user): SocialUser;
 
     public function redirect(): void
     {
         $state = bin2hex(random_bytes(16));
         // In a real app, store state in session to verify later
-        // Session::put('oauth_state', $state); 
+        // Session::put('oauth_state', $state);
 
         $url = $this->getAuthUrl($state);
         header('Location: ' . $url);
@@ -88,12 +91,14 @@ abstract class AbstractProvider
     public function scopes(array $scopes): self
     {
         $this->scopes = $scopes;
+
         return $this;
     }
 
     public function with(array $parameters): self
     {
         $this->parameters = $parameters;
+
         return $this;
     }
 

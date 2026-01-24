@@ -8,12 +8,16 @@ function getMethodClass($method)
 
 function getStatusBadge($code)
 {
-    if ($code >= 200 && $code < 300)
+    if ($code >= 200 && $code < 300) {
         return 'badge-success';
-    if ($code >= 300 && $code < 400)
+    }
+    if ($code >= 300 && $code < 400) {
         return 'badge-neutral';
-    if ($code >= 400 && $code < 500)
+    }
+    if ($code >= 400 && $code < 500) {
         return 'badge-warning';
+    }
+
     return 'badge-danger';
 }
 ?>

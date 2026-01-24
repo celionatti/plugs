@@ -129,6 +129,7 @@ class Config
             if (!isset(self::$loaded[$file])) {
                 self::load($file);
             }
+
             return self::$config[$file] ?? [];
         }
 
@@ -186,6 +187,7 @@ class Config
             foreach (self::$config as $file => $values) {
                 self::$loaded[$file] = true;
             }
+
             return true;
         }
 
@@ -200,6 +202,7 @@ class Config
         if (defined('STORAGE_PATH')) {
             return STORAGE_PATH . 'framework/config.php';
         }
+
         return __DIR__ . '/../storage/framework/config.php';
     }
 
@@ -227,6 +230,7 @@ class Config
                 self::setPath(__DIR__ . '/../config/');
             }
         }
+
         return self::$path . $file . '.php';
     }
 }

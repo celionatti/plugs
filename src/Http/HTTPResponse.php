@@ -9,7 +9,7 @@ namespace Plugs\Http;
 | HTTPResponse Class
 |--------------------------------------------------------------------------
 |
-| 
+|
 */
 
 use GuzzleHttp\Exception\RequestException;
@@ -97,7 +97,7 @@ class HTTPResponse
         if (!$this->response) {
             return '';
         }
-        
+
         return (string) $this->response->getBody();
     }
 
@@ -106,11 +106,11 @@ class HTTPResponse
         if ($this->cachedJson === null) {
             $this->cachedJson = json_decode($this->body(), true);
         }
-        
+
         if ($key === null) {
             return $this->cachedJson;
         }
-        
+
         return $this->cachedJson[$key] ?? $default;
     }
 
@@ -124,7 +124,7 @@ class HTTPResponse
         if (!$this->response) {
             return '';
         }
-        
+
         return $this->response->getHeaderLine($name);
     }
 
@@ -133,7 +133,7 @@ class HTTPResponse
         if (!$this->response) {
             return [];
         }
-        
+
         return $this->response->getHeaders();
     }
 
@@ -152,7 +152,7 @@ class HTTPResponse
         if ($this->failed() && $this->exception) {
             throw $this->exception;
         }
-        
+
         return $this;
     }
 
@@ -161,7 +161,7 @@ class HTTPResponse
         if ($this->successful()) {
             $callback($this);
         }
-        
+
         return $this;
     }
 
@@ -170,21 +170,21 @@ class HTTPResponse
         if ($this->failed()) {
             $callback($this);
         }
-        
+
         return $this;
     }
 
     public function collect(?string $key = null)
     {
         $data = $this->json();
-        
+
         if ($key === null) {
             return $data;
         }
-        
+
         $keys = explode('.', $key);
         $value = $data;
-        
+
         foreach ($keys as $segment) {
             if (is_array($value) && isset($value[$segment])) {
                 $value = $value[$segment];
@@ -192,7 +192,7 @@ class HTTPResponse
                 return null;
             }
         }
-        
+
         return $value;
     }
 

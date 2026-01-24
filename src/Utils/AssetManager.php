@@ -66,7 +66,7 @@ class AssetManager
         $this->registeredAssets['css'][$name] = [
             'path' => $path,
             'dependencies' => $dependencies,
-            'type' => 'css'
+            'type' => 'css',
         ];
 
         return $this;
@@ -80,7 +80,7 @@ class AssetManager
         $this->registeredAssets['js'][$name] = [
             'path' => $path,
             'dependencies' => $dependencies,
-            'type' => 'js'
+            'type' => 'js',
         ];
 
         return $this;
@@ -258,6 +258,7 @@ class AssetManager
                 $attrStr .= sprintf(' %s="%s"', $key, htmlspecialchars((string) $value));
             }
         }
+
         return $attrStr;
     }
 
@@ -269,8 +270,10 @@ class AssetManager
         $path = $this->resolvePath($asset);
         if (file_exists($path)) {
             $hash = base64_encode(hash('sha384', file_get_contents($path), true));
+
             return "sha384-{$hash}";
         }
+
         return null;
     }
 
@@ -310,6 +313,7 @@ class AssetManager
                 if ($absolutePath && file_exists($absolutePath)) {
                     $webPath = str_replace($this->publicPath, '/', $absolutePath);
                     $webPath = str_replace('\\', '/', $webPath); // Ensure web path uses forward slashes
+
                     return 'url(' . $webPath . ')';
                 }
 
@@ -329,6 +333,7 @@ class AssetManager
     {
         // Add separator comment with source file
         $fileName = basename($filePath);
+
         return "/* Source: {$fileName} */\n" . $content . "\n\n";
     }
 
@@ -558,6 +563,7 @@ class AssetManager
     public function setMinify(bool $minify): self
     {
         $this->minify = $minify;
+
         return $this;
     }
 
@@ -567,6 +573,7 @@ class AssetManager
     public function setCombine(bool $combine): self
     {
         $this->combine = $combine;
+
         return $this;
     }
 
@@ -576,6 +583,7 @@ class AssetManager
     public function setVersioning(bool $versioning): self
     {
         $this->versioning = $versioning;
+
         return $this;
     }
 
@@ -585,6 +593,7 @@ class AssetManager
     public function setCdnUrl(?string $url): self
     {
         $this->cdnUrl = $url;
+
         return $this;
     }
 
@@ -594,6 +603,7 @@ class AssetManager
     public function useSri(bool $use): self
     {
         $this->useSri = $use;
+
         return $this;
     }
 

@@ -16,7 +16,7 @@ class Hash
 {
     /**
      * Get the hashing algorithm from config
-     * 
+     *
      * @return string
      */
     private static function getAlgorithm(): string
@@ -33,7 +33,7 @@ class Hash
 
     /**
      * Get the hashing options from config based on algorithm
-     * 
+     *
      * @return array
      */
     private static function getOptions(): array
@@ -64,7 +64,7 @@ class Hash
 
     /**
      * Hash a password
-     * 
+     *
      * @param string $password The password to hash
      * @return string The hashed password
      */
@@ -79,7 +79,7 @@ class Hash
 
     /**
      * Verify a password against a hash
-     * 
+     *
      * @param string $password The plain text password
      * @param string $hash The hashed password
      * @return bool True if password matches hash
@@ -91,7 +91,7 @@ class Hash
 
     /**
      * Check if a hash needs to be rehashed
-     * 
+     *
      * @param string $hash The hashed password
      * @return bool True if hash needs rehashing
      */
@@ -106,7 +106,7 @@ class Hash
 
     /**
      * Verify password and automatically rehash if needed
-     * 
+     *
      * @param string $password The plain text password
      * @param string $hash The hashed password
      * @param callable|null $callback Optional callback to save new hash (receives new hash as parameter)
@@ -144,7 +144,7 @@ class Hash
 
     /**
      * Get information about a hashed password
-     * 
+     *
      * @param string $hash The hashed password
      * @return array Information about the hash
      */
@@ -155,7 +155,7 @@ class Hash
 
     /**
      * Check if the current driver is available
-     * 
+     *
      * @return bool
      */
     public static function isDriverAvailable(): bool
@@ -167,7 +167,7 @@ class Hash
 
     /**
      * Get the current driver name
-     * 
+     *
      * @return string
      */
     public static function getDriver(): string

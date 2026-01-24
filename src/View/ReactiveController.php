@@ -4,10 +4,9 @@ declare(strict_types=1);
 
 namespace Plugs\View;
 
+use Plugs\Http\ResponseFactory;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
-use Plugs\Http\ResponseFactory;
-use RuntimeException;
 
 class ReactiveController
 {
@@ -42,6 +41,7 @@ class ReactiveController
             if (!$data) {
                 $headers = json_encode($request->getHeaders());
                 error_log("Plugs Reactive Error: No data received or invalid JSON. Content-Type: " . $request->getHeaderLine('Content-Type') . " Headers: $headers");
+
                 return ResponseFactory::json(['error' => 'No data received', 'debug_headers' => $request->getHeaders()], 400);
             }
 
@@ -53,6 +53,7 @@ class ReactiveController
 
             if (!$componentName || !$action || !$state) {
                 error_log("Plugs Reactive Error: Missing fields. Component: $componentName, Action: $action, State: " . ($state ? 'Present' : 'Missing'));
+
                 return ResponseFactory::json(['error' => 'Invalid request structure'], 400);
             }
 
@@ -60,6 +61,7 @@ class ReactiveController
 
             if (!class_exists($className)) {
                 error_log("Plugs Reactive Error: Class not found: $className");
+
                 return ResponseFactory::json(['error' => "Component class [{$className}] not found"], 404);
             }
 
@@ -72,6 +74,7 @@ class ReactiveController
 
             if (!method_exists($component, $action)) {
                 error_log("Plugs Reactive Error: Action $action not found in $className");
+
                 return ResponseFactory::json(['error' => "Action [{$action}] not found on component"], 404);
             }
 
@@ -84,10 +87,11 @@ class ReactiveController
             return ResponseFactory::json([
                 'html' => $html,
                 'state' => $component->serializeState(),
-                'id' => $component->getId()
+                'id' => $component->getId(),
             ]);
         } catch (\Throwable $e) {
             error_log("Plugs Reactive Fatal Error: " . $e->getMessage() . "\n" . $e->getTraceAsString());
+
             return ResponseFactory::json(['error' => 'Internal Server Error', 'message' => $e->getMessage()], 500);
         }
     }

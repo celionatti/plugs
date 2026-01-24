@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace Plugs\Console\Commands;
 
 use Plugs\Console\Command;
-use Plugs\Queue\QueueManager;
 use Plugs\Container\Container;
 
 class QueueWorkCommand extends Command

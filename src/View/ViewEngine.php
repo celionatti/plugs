@@ -54,6 +54,7 @@ class ViewEngine
     {
         $this->cspNonce = $nonce;
     }
+
     public function getCspNonce(): ?string
     {
         return $this->cspNonce;
@@ -86,7 +87,7 @@ class ViewEngine
 
     private function checkCompilationRateLimit(): void
     {
-        $minute = floor(time() / 60);
+        $minute = (int) floor(time() / 60);
 
         if (!isset($this->compilationAttempts[$minute])) {
             // Clean old entries
@@ -201,6 +202,7 @@ class ViewEngine
             if ($expression === null || trim($expression) === '') {
                 return '<?php echo skeleton(); ?>';
             }
+
             return "<?php echo skeleton()->$expression; ?>";
         });
     }
@@ -210,6 +212,7 @@ class ViewEngine
         $startTime = microtime(true);
         $data = array_merge($this->sharedData, $data);
         $data['view'] = $this;
+        $data = $this->applyComposers($view, $data);
 
         $viewFile = $isComponent
             ? $this->getComponentPath($view)
@@ -355,14 +358,17 @@ class ViewEngine
         $previousErrorLevel = $this->suppressNonCriticalErrors();
 
         ob_start();
+
         try {
             eval ('?>' . $compiledContent);
             $result = ob_get_clean();
             error_reporting($previousErrorLevel);
+
             return $result;
         } catch (Throwable $e) {
             ob_end_clean();
             error_reporting($previousErrorLevel);
+
             throw new RuntimeException(
                 sprintf('Error executing compiled content: %s', $e->getMessage()),
                 0,
@@ -397,11 +403,13 @@ class ViewEngine
         $previousErrorLevel = $this->suppressNonCriticalErrors();
 
         ob_start();
+
         try {
             include $compiled;
             $childContent = ob_get_clean();
             error_reporting($previousErrorLevel);
 
+            /** @phpstan-ignore-next-line */
             if (isset($__extends) && $__extends && !$this->suppressLayout) {
                 // FIX: Pass stacks and childContent to parent layout
                 return $this->renderParent(
@@ -433,6 +441,7 @@ class ViewEngine
                 }
 
                 // Include layout information for SPA to detect if a full reload is needed
+                /** @phpstan-ignore-next-line */
                 if (isset($__extends) && $__extends) {
                     $output = "<meta name=\"plugs-layout\" content=\"{$__extends}\">\n" . $output;
                 }
@@ -446,6 +455,7 @@ class ViewEngine
                 ob_end_clean();
             }
             error_reporting($previousErrorLevel);
+
             throw new RuntimeException(
                 sprintf(
                     'Error rendering compiled view: %s (File: %s, Line: %d)',
@@ -477,11 +487,13 @@ class ViewEngine
         $previousErrorLevel = $this->suppressNonCriticalErrors();
 
         ob_start();
+
         try {
             eval ('?>' . $compiledContent);
             $childContent = ob_get_clean();
             error_reporting($previousErrorLevel);
 
+            /** @phpstan-ignore-next-line */
             if (isset($__extends) && $__extends && !$this->suppressLayout) {
                 // FIX: Pass stacks and childContent to parent layout
                 return $this->renderParentDirect(
@@ -513,6 +525,7 @@ class ViewEngine
                 }
 
                 // Include layout information for SPA to detect if a full reload is needed
+                /** @phpstan-ignore-next-line */
                 if (isset($__extends) && $__extends) {
                     $output = "<meta name=\"plugs-layout\" content=\"{$__extends}\">\n" . $output;
                 }
@@ -526,6 +539,7 @@ class ViewEngine
                 ob_end_clean();
             }
             error_reporting($previousErrorLevel);
+
             throw new RuntimeException(
                 sprintf(
                     'Error rendering view: %s (File: %s, Line: %d)',
@@ -552,7 +566,7 @@ class ViewEngine
         // FIX: Pass both sections and stacks to parent
         $parentData = array_merge($data, [
             '__sections' => $sections,
-            '__stacks' => $stacks
+            '__stacks' => $stacks,
         ]);
 
         if ($this->cacheEnabled) {
@@ -560,6 +574,7 @@ class ViewEngine
             if (!file_exists($parentCompiled) || filemtime($parentFile) > filemtime($parentCompiled)) {
                 $this->compile($parentFile, $parentCompiled);
             }
+
             return $this->renderCompiled($parentCompiled, $parentData);
         }
 
@@ -583,7 +598,7 @@ class ViewEngine
         // FIX: Pass both sections and stacks to parent
         extract(array_merge($data, [
             '__sections' => $sections,
-            '__stacks' => $stacks
+            '__stacks' => $stacks,
         ]), EXTR_SKIP);
 
         // Don't reinitialize $__stacks - it was just extracted!
@@ -592,14 +607,17 @@ class ViewEngine
         $previousErrorLevel = $this->suppressNonCriticalErrors();
 
         ob_start();
+
         try {
             eval ('?>' . $compiledParent);
             $result = ob_get_clean();
             error_reporting($previousErrorLevel);
+
             return $result;
         } catch (Throwable $e) {
             ob_end_clean();
             error_reporting($previousErrorLevel);
+
             throw new RuntimeException(
                 sprintf(
                     'Error rendering parent view: %s (File: %s)',
@@ -626,9 +644,10 @@ class ViewEngine
     private function getCompiler(): ViewCompiler
     {
         if ($this->viewCompiler === null) {
-            $this->viewCompiler = new ViewCompiler($this);
+            $this->viewCompiler = new ViewCompiler();
             $this->registerDefaultDirectives();
         }
+
         return $this->viewCompiler;
     }
 
@@ -721,6 +740,7 @@ class ViewEngine
     public function pascalToSnakeCase(string $input): string
     {
         $result = preg_replace('/([a-z])([A-Z])/', '$1_$2', $input);
+
         return strtolower($result);
     }
 

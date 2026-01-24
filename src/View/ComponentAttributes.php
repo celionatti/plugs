@@ -5,11 +5,14 @@ declare(strict_types=1);
 namespace Plugs\View;
 
 use ArrayAccess;
-use IteratorAggregate;
-use Countable;
 use ArrayIterator;
+use Countable;
+use IteratorAggregate;
 
-class ComponentAttributes implements ArrayAccess, IteratorAggregate, Countable
+/**
+ * @phpstan-consistent-constructor
+ */
+final class ComponentAttributes implements ArrayAccess, IteratorAggregate, Countable
 {
     protected array $attributes = [];
 

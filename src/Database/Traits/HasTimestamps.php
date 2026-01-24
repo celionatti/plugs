@@ -15,6 +15,7 @@ trait HasTimestamps
         }
 
         $this->setAttribute('updated_at', date('Y-m-d H:i:s'));
+
         return $this->save();
     }
 

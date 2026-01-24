@@ -48,20 +48,24 @@ trait HasValidation
             case 'required':
                 $valid = !empty($value);
                 $message = $message ?? "The {$field} field is required.";
+
                 break;
             case 'email':
                 $valid = filter_var($value, FILTER_VALIDATE_EMAIL) !== false;
                 $message = $message ?? "The {$field} must be a valid email.";
+
                 break;
             case 'min':
                 $min = (int) $params[0];
                 $valid = is_string($value) ? strlen($value) >= $min : $value >= $min;
                 $message = $message ?? "The {$field} must be at least {$min}.";
+
                 break;
             case 'max':
                 $max = (int) $params[0];
                 $valid = is_string($value) ? strlen($value) <= $max : $value <= $max;
                 $message = $message ?? "The {$field} must not exceed {$max}.";
+
                 break;
             case 'unique':
                 $table = $params[0] ?? $this->table;
@@ -72,22 +76,27 @@ trait HasValidation
                 }
                 $valid = $query->count() === 0;
                 $message = $message ?? "The {$field} has already been taken.";
+
                 break;
             case 'in':
                 $valid = in_array($value, $params);
                 $message = $message ?? "The {$field} is invalid.";
+
                 break;
             case 'numeric':
                 $valid = is_numeric($value);
                 $message = $message ?? "The {$field} must be numeric.";
+
                 break;
             case 'integer':
                 $valid = filter_var($value, FILTER_VALIDATE_INT) !== false;
                 $message = $message ?? "The {$field} must be an integer.";
+
                 break;
             case 'date':
                 $valid = strtotime($value) !== false;
                 $message = $message ?? "The {$field} must be a valid date.";
+
                 break;
         }
 

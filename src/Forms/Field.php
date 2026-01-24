@@ -32,6 +32,7 @@ abstract class Field
     public function type(string $type): self
     {
         $this->type = $type;
+
         return $this;
     }
 
@@ -48,6 +49,7 @@ abstract class Field
     public function label(string $label): self
     {
         $this->label = $label;
+
         return $this;
     }
 
@@ -59,6 +61,7 @@ abstract class Field
     public function value($value): self
     {
         $this->value = $value;
+
         return $this;
     }
 
@@ -70,12 +73,14 @@ abstract class Field
     public function attr(string $key, $value): self
     {
         $this->attributes[$key] = $value;
+
         return $this;
     }
 
     public function attributes(array $attributes): self
     {
         $this->attributes = array_merge($this->attributes, $attributes);
+
         return $this;
     }
 
@@ -85,6 +90,7 @@ abstract class Field
         if ($this->required) {
             $attrs['required'] = true;
         }
+
         return $attrs;
     }
 
@@ -96,6 +102,7 @@ abstract class Field
     public function helpText(string $helpText): self
     {
         $this->helpText = $helpText;
+
         return $this;
     }
 
@@ -107,6 +114,7 @@ abstract class Field
     public function required(bool $required = true): self
     {
         $this->required = $required;
+
         return $this;
     }
 
@@ -118,12 +126,14 @@ abstract class Field
     public function error(string $error): self
     {
         $this->errors[] = $error;
+
         return $this;
     }
 
     public function errors(array $errors): self
     {
         $this->errors = array_merge($this->errors, $errors);
+
         return $this;
     }
 
@@ -140,6 +150,7 @@ abstract class Field
     public function options(array $options): self
     {
         $this->options = $options;
+
         return $this;
     }
 

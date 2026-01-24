@@ -46,7 +46,7 @@ class MiddlewareDispatcher implements RequestHandlerInterface
         $fallback = $this->fallbackHandler;
 
         // Create a handler that will process the remaining middleware
-        $runner = new class($stack, $fallback) implements RequestHandlerInterface {
+        $runner = new class ($stack, $fallback) implements RequestHandlerInterface {
             private $stack;
             private $index = 0;
             private $fallbackHandler;
@@ -64,6 +64,7 @@ class MiddlewareDispatcher implements RequestHandlerInterface
                     if ($this->fallbackHandler === null) {
                         throw new \RuntimeException('No middleware returned response and no fallback handler set');
                     }
+
                     return ($this->fallbackHandler)($request);
                 }
 

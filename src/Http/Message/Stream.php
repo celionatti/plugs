@@ -27,11 +27,11 @@ class Stream implements StreamInterface
         if (!is_resource($resource)) {
             throw new \InvalidArgumentException('Stream must be a resource');
         }
-        
+
         $this->resource = $resource;
         $meta = stream_get_meta_data($resource);
         $this->seekable = $meta['seekable'] ?? false;
-        
+
         $mode = $meta['mode'] ?? '';
         $this->readable = $this->isReadableMode($mode);
         $this->writable = $this->isWritableMode($mode);
@@ -58,11 +58,12 @@ class Stream implements StreamInterface
         if (!$this->isReadable()) {
             return '';
         }
-        
+
         try {
             if ($this->isSeekable()) {
                 $this->rewind();
             }
+
             return $this->getContents();
         } catch (\RuntimeException $e) {
             return '';
@@ -84,6 +85,7 @@ class Stream implements StreamInterface
         $this->readable = false;
         $this->writable = false;
         $this->seekable = false;
+
         return $resource;
     }
 
@@ -94,6 +96,7 @@ class Stream implements StreamInterface
         }
 
         $stats = fstat($this->resource);
+
         return $stats['size'] ?? null;
     }
 
@@ -126,7 +129,7 @@ class Stream implements StreamInterface
         if ($this->resource === null) {
             throw new \RuntimeException('Stream is detached');
         }
-        
+
         if (!$this->isSeekable()) {
             throw new \RuntimeException('Stream is not seekable');
         }
@@ -151,7 +154,7 @@ class Stream implements StreamInterface
         if ($this->resource === null) {
             throw new \RuntimeException('Stream is detached');
         }
-        
+
         if (!$this->isWritable()) {
             throw new \RuntimeException('Cannot write to a non-writable stream');
         }
@@ -175,7 +178,7 @@ class Stream implements StreamInterface
         if ($this->resource === null) {
             throw new \RuntimeException('Stream is detached');
         }
-        
+
         if (!$this->isReadable()) {
             throw new \RuntimeException('Cannot read from non-readable stream');
         }
@@ -193,7 +196,7 @@ class Stream implements StreamInterface
         if ($this->resource === null) {
             throw new \RuntimeException('Stream is detached');
         }
-        
+
         if (!$this->isReadable()) {
             throw new \RuntimeException('Cannot read from non-readable stream');
         }

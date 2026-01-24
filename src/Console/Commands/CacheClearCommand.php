@@ -25,6 +25,7 @@ class CacheClearCommand extends Command
 
         if (!is_dir($cacheDir)) {
             $this->warning('Cache directory does not exist');
+
             return 0;
         }
 

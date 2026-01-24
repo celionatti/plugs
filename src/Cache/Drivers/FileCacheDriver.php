@@ -39,6 +39,7 @@ class FileCacheDriver implements CacheDriverInterface
 
         if ($data['expires'] !== 0 && $data['expires'] < time()) {
             $this->delete($key);
+
             return $default;
         }
 
@@ -52,7 +53,7 @@ class FileCacheDriver implements CacheDriverInterface
         $data = [
             'value' => $value,
             'expires' => $ttl === null ? 0 : time() + $ttl,
-            'created' => time()
+            'created' => time(),
         ];
 
         return file_put_contents($file, serialize($data), LOCK_EX) !== false;
@@ -94,6 +95,7 @@ class FileCacheDriver implements CacheDriverInterface
         foreach ($keys as $key) {
             $results[$key] = $this->get($key, $default);
         }
+
         return $results;
     }
 
@@ -103,6 +105,7 @@ class FileCacheDriver implements CacheDriverInterface
         foreach ($values as $key => $value) {
             $success = $success && $this->set($key, $value, $ttl);
         }
+
         return $success;
     }
 
@@ -112,6 +115,7 @@ class FileCacheDriver implements CacheDriverInterface
         foreach ($keys as $key) {
             $success = $success && $this->delete($key);
         }
+
         return $success;
     }
 

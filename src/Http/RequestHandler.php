@@ -41,7 +41,7 @@ class RequestHandler implements RequestHandlerInterface
         }
 
         $middleware = array_shift($this->middleware);
-        
+
         return $middleware->process($request, $this);
     }
 }

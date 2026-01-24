@@ -16,6 +16,7 @@ if (!function_exists('class_basename')) {
     function class_basename($class): string
     {
         $class = is_object($class) ? get_class($class) : $class;
+
         return basename(str_replace('\\', '/', $class));
     }
 }
@@ -85,6 +86,7 @@ if (!function_exists('config')) {
             foreach ($key as $k => $v) {
                 \Plugs\Config::set($k, $v);
             }
+
             return null;
         }
 
@@ -182,6 +184,7 @@ if (!function_exists('route')) {
     function route(string $name, array $parameters = []): string
     {
         $router = app(Plugs\Router\Router::class);
+
         return $router->route($name, $parameters);
     }
 }

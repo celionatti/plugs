@@ -4,12 +4,12 @@ declare(strict_types=1);
 
 namespace Plugs\Http\Middleware;
 
+use Plugs\Container\Container;
+use Plugs\View\ViewEngine;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Server\MiddlewareInterface;
 use Psr\Http\Server\RequestHandlerInterface;
-use Plugs\View\ViewEngine;
-use Plugs\Container\Container;
 
 class SPAMiddleware implements MiddlewareInterface
 {

@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace Plugs\Database\Traits;
 
-use Exception;
 use DateTime;
+use Exception;
 use Plugs\Database\Collection;
 
 trait HasAttributes
@@ -54,6 +54,7 @@ trait HasAttributes
         foreach ($attributes as $key => $value) {
             $this->setAttribute($key, $value);
         }
+
         return $this;
     }
 
@@ -63,6 +64,7 @@ trait HasAttributes
         $accessor = 'get' . $this->studly($key) . 'Attribute';
         if (method_exists($this, $accessor)) {
             $value = $this->attributes[$key] ?? null;
+
             return $this->$accessor($value);
         }
 
@@ -94,6 +96,7 @@ trait HasAttributes
         if (!isset($this->relations[$key])) {
             $this->relations[$key] = $this->$key();
         }
+
         return $this->relations[$key];
     }
 
@@ -103,6 +106,7 @@ trait HasAttributes
         $mutator = 'set' . $this->studly($key) . 'Attribute';
         if (method_exists($this, $mutator)) {
             $this->$mutator($value);
+
             return;
         }
 
@@ -129,6 +133,7 @@ trait HasAttributes
                 if (is_array($value) || is_object($value)) {
                     return json_encode($value);
                 }
+
                 return $value;
 
             case 'encrypted':
@@ -139,6 +144,7 @@ trait HasAttributes
                 if ($value instanceof \DateTimeInterface) {
                     return $value->format($this->dateFormat);
                 }
+
                 return $value;
 
             default:
@@ -153,6 +159,7 @@ trait HasAttributes
     {
         $words = explode(' ', str_replace(['-', '_'], ' ', $value));
         $studly = array_map('ucfirst', $words);
+
         return implode('', $studly);
     }
 
@@ -166,9 +173,11 @@ trait HasAttributes
             // Check if it's in the dates array or a timestamp column
             if ($this->isDateAttribute($key)) {
                 $datetime = $this->asDateTime($value);
+
                 // Return as string by default for easier usage
                 return $datetime ? $datetime->format($this->dateFormat) : null;
             }
+
             return $value;
         }
 
@@ -186,6 +195,7 @@ trait HasAttributes
 
         if ($castType === 'collection') {
             $data = is_string($value) ? json_decode($value, true) : $value;
+
             return new Collection(is_array($data) ? $data : []);
         }
 
@@ -204,8 +214,10 @@ trait HasAttributes
                 if (strpos($castType, ':') !== false) {
                     $parts = explode(':', $castType);
                     $decimals = isset($parts[1]) ? (int) $parts[1] : 2;
+
                     return number_format((float) $value, $decimals, '.', '');
                 }
+
                 return number_format((float) $value, 2, '.', '');
 
             case 'string':
@@ -225,6 +237,7 @@ trait HasAttributes
             case 'datetime':
             case 'date':
                 $datetime = $this->asDateTime($value);
+
                 // Return as formatted string to prevent "Object could not be converted to string" errors
                 return $datetime ? $datetime->format($this->dateFormat) : null;
 
@@ -233,6 +246,7 @@ trait HasAttributes
 
             case 'immutable_datetime':
                 $datetime = $this->asDateTimeImmutable($value);
+
                 return $datetime ? $datetime->format($this->dateFormat) : null;
 
             default:
@@ -240,12 +254,14 @@ trait HasAttributes
                 if (strpos($castType, 'datetime:') === 0) {
                     $format = substr($castType, 9);
                     $datetime = $this->asDateTime($value, $format);
+
                     return $datetime ? $datetime->format($format) : null;
                 }
 
                 if (strpos($castType, 'date:') === 0) {
                     $format = substr($castType, 5);
                     $datetime = $this->asDateTime($value, $format);
+
                     return $datetime ? $datetime->format($format) : null;
                 }
 
@@ -280,6 +296,7 @@ trait HasAttributes
 
         if (is_string($value)) {
             $value = strtolower($value);
+
             return in_array($value, ['1', 'true', 'yes', 'on'], true);
         }
 
@@ -319,6 +336,7 @@ trait HasAttributes
         if (is_numeric($value)) {
             $datetime = new DateTime();
             $datetime->setTimestamp((int) $value);
+
             return $datetime;
         }
 
@@ -367,6 +385,7 @@ trait HasAttributes
         }
 
         $datetime = $this->asDateTime($value);
+
         return $datetime ? $datetime->getTimestamp() : null;
     }
 
@@ -388,6 +407,7 @@ trait HasAttributes
     public static function createFromJson(string $json)
     {
         $instance = new static();
+
         return $instance->fill($instance->fromJson($json));
     }
 

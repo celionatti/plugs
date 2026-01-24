@@ -19,7 +19,7 @@ namespace Plugs\Http\Middleware;
 |
 | Protects against Cross-Site Request Forgery attacks by validating CSRF tokens
  * on state-changing HTTP methods (POST, PUT, PATCH, DELETE).
- * 
+ *
  *  * Features:
  * - Automatic token validation
  * - Configurable excluded routes
@@ -31,7 +31,7 @@ namespace Plugs\Http\Middleware;
  * - PSR-15 Middleware compliant
 |--------------------------------------------------------------------------
 | Usage:
- * 
+ *
  * 1. Register the middleware in your application.
  * 2. Configure options as needed (e.g., excluded routes, error handling).
  * 3. Ensure CSRF tokens are included in forms and AJAX requests.
@@ -42,11 +42,11 @@ namespace Plugs\Http\Middleware;
 * @package Plugs\Http\Middleware
 */
 
-use Plugs\Security\Csrf;
 use Plugs\Http\ResponseFactory;
+use Plugs\Security\Csrf;
 use Psr\Http\Message\ResponseInterface;
-use Psr\Http\Server\MiddlewareInterface;
 use Psr\Http\Message\ServerRequestInterface;
+use Psr\Http\Server\MiddlewareInterface;
 use Psr\Http\Server\RequestHandlerInterface;
 
 class CsrfMiddleware implements MiddlewareInterface
@@ -198,6 +198,7 @@ class CsrfMiddleware implements MiddlewareInterface
     private function isExcluded(ServerRequestInterface $request): bool
     {
         $path = $request->getUri()->getPath();
+
         return Csrf::shouldExclude($path, $this->except);
     }
 
@@ -217,9 +218,9 @@ class CsrfMiddleware implements MiddlewareInterface
             return ResponseFactory::json([
                 'error' => 'CSRF token mismatch',
                 'message' => 'The CSRF token is invalid or has expired. Please refresh the page and try again.',
-                'code' => 419
+                'code' => 419,
             ], 419, [
-                'X-CSRF-Failure' => 'true'
+                'X-CSRF-Failure' => 'true',
             ]);
         }
 
@@ -309,7 +310,7 @@ class CsrfMiddleware implements MiddlewareInterface
 
         return ResponseFactory::html($html, 419, [
             'X-CSRF-Failure' => 'true',
-            'Cache-Control' => 'no-cache, no-store, must-revalidate'
+            'Cache-Control' => 'no-cache, no-store, must-revalidate',
         ]);
     }
 
@@ -322,6 +323,7 @@ class CsrfMiddleware implements MiddlewareInterface
     private function isAjaxRequest(ServerRequestInterface $request): bool
     {
         $header = $request->getHeaderLine('X-Requested-With');
+
         return strtolower($header) === 'xmlhttprequest';
     }
 
@@ -354,7 +356,7 @@ class CsrfMiddleware implements MiddlewareInterface
             'method' => $request->getMethod(),
             'uri' => (string) $request->getUri(),
             'user_agent' => $request->getHeaderLine('User-Agent'),
-            'referer' => $request->getHeaderLine('Referer')
+            'referer' => $request->getHeaderLine('Referer'),
         ];
 
         // Use error_log if available
@@ -384,7 +386,7 @@ class CsrfMiddleware implements MiddlewareInterface
             'HTTP_X_FORWARDED_FOR',
             'HTTP_X_REAL_IP',
             'HTTP_CLIENT_IP',
-            'REMOTE_ADDR'
+            'REMOTE_ADDR',
         ];
 
         foreach ($headers as $header) {
@@ -412,6 +414,7 @@ class CsrfMiddleware implements MiddlewareInterface
     public function except(string $pattern): self
     {
         $this->except[] = $pattern;
+
         return $this;
     }
 
@@ -424,6 +427,7 @@ class CsrfMiddleware implements MiddlewareInterface
     public function setErrorHandler(callable $handler): self
     {
         $this->errorHandler = $handler;
+
         return $this;
     }
 

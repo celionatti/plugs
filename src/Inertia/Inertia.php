@@ -18,8 +18,8 @@ namespace Plugs\Inertia;
 |   Inertia::share('auth', ['user' => $currentUser]);
 */
 
-use Psr\Http\Message\ResponseInterface;
 use Plugs\Http\ResponseFactory;
+use Psr\Http\Message\ResponseInterface;
 
 class Inertia
 {
@@ -176,7 +176,7 @@ class Inertia
 
     /**
      * Create a location redirect response
-     * 
+     *
      * Used for external redirects or when you need to
      * force a full page reload
      *

@@ -35,6 +35,7 @@ class MigrateResetCommand extends Command
 
             if (empty($result['migrations'])) {
                 $this->note($result['message']);
+
                 return 0;
             }
 
@@ -45,6 +46,7 @@ class MigrateResetCommand extends Command
             $this->success($result['message']);
         } catch (\Exception $e) {
             $this->error($e->getMessage());
+
             return 1;
         }
 

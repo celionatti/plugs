@@ -16,7 +16,7 @@ class ForceJsonMiddleware implements MiddlewareInterface
      */
     public function process(ServerRequestInterface $request, RequestHandlerInterface $handler): ResponseInterface
     {
-        // Force the Accept header to application/json so the framework 
+        // Force the Accept header to application/json so the framework
         // treats it as an API request (e.g. for error handling)
         $request = $request->withHeader('Accept', 'application/json');
 

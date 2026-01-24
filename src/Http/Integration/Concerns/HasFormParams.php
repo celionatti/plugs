@@ -16,6 +16,7 @@ trait HasFormParams
     public function withData(array $data): self
     {
         $this->data = array_merge($this->data, $data);
+
         return $this;
     }
 

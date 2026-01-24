@@ -4,12 +4,12 @@ declare(strict_types=1);
 
 namespace Plugs\Http\Middleware;
 
+use Plugs\Http\Message\Response;
+use Plugs\Http\Message\Stream;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Server\MiddlewareInterface;
 use Psr\Http\Server\RequestHandlerInterface;
-use Plugs\Http\Message\Response;
-use Plugs\Http\Message\Stream;
 
 class PreventRequestsDuringMaintenance implements MiddlewareInterface
 {
@@ -43,12 +43,14 @@ class PreventRequestsDuringMaintenance implements MiddlewareInterface
         }
 
         $cookies = $request->getCookieParams();
+
         return isset($cookies['plugs_maintenance']) && $cookies['plugs_maintenance'] === (string) $data['secret'];
     }
 
     private function bypassResponse(string $secret): ResponseInterface
     {
         $response = new Response();
+
         return $response
             ->withHeader('Set-Cookie', "plugs_maintenance={$secret}; Path=/; HttpOnly")
             ->withHeader('Location', '/')
@@ -67,7 +69,7 @@ class PreventRequestsDuringMaintenance implements MiddlewareInterface
 
         return new Response(503, $body, [
             'Content-Type' => 'text/html',
-            'Retry-After' => $data['retry'] ?? 60
+            'Retry-After' => $data['retry'] ?? 60,
         ]);
     }
 
@@ -82,15 +84,16 @@ class PreventRequestsDuringMaintenance implements MiddlewareInterface
 
         foreach ($files as $file) {
             if (file_exists($file)) {
-                // If it's a PHP view, we should technically render it, but for maintenance mode 
+                // If it's a PHP view, we should technically render it, but for maintenance mode
                 // keeping it simple with file_get_contents is safe if it's static.
-                // However, .plug.php implies it might have PHP/Blade syntax. 
+                // However, .plug.php implies it might have PHP/Blade syntax.
                 // Since this is a middleware, basic PHP inclusion is better than raw constraints.
 
                 $retry_after = $data['retry'] ?? null;
 
                 ob_start();
                 include $file;
+
                 return ob_get_clean();
             }
         }

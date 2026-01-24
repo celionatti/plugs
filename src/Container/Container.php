@@ -16,7 +16,6 @@ namespace Plugs\Container;
 use Closure;
 use ReflectionClass;
 use ReflectionException;
-use ReflectionParameter;
 
 class Container
 {
@@ -143,7 +142,7 @@ class Container
 
         // If no constructor, just instantiate
         if ($constructor === null) {
-            return new $concrete;
+            return new $concrete();
         }
 
         // Resolve constructor dependencies
@@ -168,6 +167,7 @@ class Container
             // Check if primitive value provided
             if (isset($primitives[$name])) {
                 $dependencies[] = $primitives[$name];
+
                 continue;
             }
 

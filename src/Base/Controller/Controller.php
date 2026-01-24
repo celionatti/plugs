@@ -15,15 +15,14 @@ namespace Plugs\Base\Controller;
 */
 
 
-use Plugs\View\ViewEngine;
-use Plugs\Security\Validator;
 use Plugs\Database\Connection;
 use Plugs\Http\ResponseFactory;
+use Plugs\Security\Validator;
 use Plugs\View\ErrorMessage;
+use Plugs\View\ViewEngine;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use RuntimeException;
-
 
 abstract class Controller
 {
@@ -109,13 +108,14 @@ abstract class Controller
             if (config('app.debug', false)) {
                 throw $e;
             }
+
             return $this->renderErrorPage();
         }
     }
 
     /**
      * Render an Inertia page
-     * 
+     *
      * Use this for SPA-style rendering with React, Vue, or other frontend frameworks.
      * Returns JSON for XHR requests (navigation) or full HTML for initial page loads.
      *
@@ -165,6 +165,7 @@ abstract class Controller
     protected function redirectWithSuccess(string $url, string $message): ResponseInterface
     {
         $_SESSION['_success'] = $message;
+
         return $this->redirect($url);
     }
 
@@ -312,6 +313,7 @@ abstract class Controller
             // Check for proxy headers
             if (!empty($serverParams['HTTP_X_FORWARDED_FOR'])) {
                 $ips = explode(',', $serverParams['HTTP_X_FORWARDED_FOR']);
+
                 return 'ip_' . trim($ips[0]);
             }
 

@@ -4,12 +4,12 @@ declare(strict_types=1);
 
 namespace Plugs\Http\Middleware;
 
+use Plugs\Facades\Auth;
+use Plugs\Http\ResponseFactory;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Server\MiddlewareInterface;
 use Psr\Http\Server\RequestHandlerInterface;
-use Plugs\Facades\Auth;
-use Plugs\Http\ResponseFactory;
 
 class AuthenticateMiddleware implements MiddlewareInterface
 {

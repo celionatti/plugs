@@ -13,8 +13,8 @@ namespace Plugs\Console\Commands;
 */
 
 use Plugs\Console\Command;
-use Plugs\Console\Support\Str;
 use Plugs\Console\Support\Filesystem;
+use Plugs\Console\Support\Str;
 
 class MakeDTOCommand extends Command
 {
@@ -23,7 +23,7 @@ class MakeDTOCommand extends Command
     protected function defineArguments(): array
     {
         return [
-            'name' => 'The name of the DTO class'
+            'name' => 'The name of the DTO class',
         ];
     }
 
@@ -78,6 +78,7 @@ class MakeDTOCommand extends Command
         if (Filesystem::exists($path) && !$options['force']) {
             if (!$this->confirm("DTO {$name} already exists. Overwrite?", false)) {
                 $this->warning('DTO generation cancelled.');
+
                 return 0;
             }
         }

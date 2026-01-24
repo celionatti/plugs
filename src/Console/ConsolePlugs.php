@@ -11,10 +11,9 @@ namespace Plugs\Console;
 | Enhanced with timing, better error handling, and improved output
 */
 
-use Throwable;
-use Plugs\Console\Support\Output;
 use Plugs\Console\Support\ArgvParser;
-
+use Plugs\Console\Support\Output;
+use Throwable;
 
 class ConsolePlugs
 {
@@ -38,6 +37,7 @@ class ConsolePlugs
 
         if ($this->shouldShowVersion($input)) {
             $this->displayVersion($output);
+
             return 0;
         }
 
@@ -50,6 +50,7 @@ class ConsolePlugs
 
             if ($command === null) {
                 $this->displayCommandNotFound($output, $name);
+
                 return 1;
             }
 
@@ -68,6 +69,7 @@ class ConsolePlugs
 
         } catch (Throwable $e) {
             $this->displayError($output, $e, $input);
+
             return 1;
         }
     }
@@ -107,7 +109,7 @@ class ConsolePlugs
         if (!empty($similar)) {
             $output->box(
                 "Did you mean one of these?\n\n" .
-                implode("\n", array_map(fn($cmd) => "  • {$cmd}", $similar)),
+                implode("\n", array_map(fn ($cmd) => "  • {$cmd}", $similar)),
                 "💡 Suggestions",
                 "warning"
             );

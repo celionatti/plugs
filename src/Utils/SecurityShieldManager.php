@@ -33,7 +33,7 @@ class SecurityShieldManager
 
     /**
      * Get security statistics
-     * 
+     *
      * @param int $days Number of days to analyze
      * @return array
      */
@@ -47,7 +47,7 @@ class SecurityShieldManager
             'top_blocked_ips' => [],
             'top_endpoints' => [],
             'blocked_by_reason' => [],
-            'risk_distribution' => []
+            'risk_distribution' => [],
         ];
 
         try {
@@ -117,7 +117,7 @@ class SecurityShieldManager
 
     /**
      * Get recent blocked requests
-     * 
+     *
      * @param int $limit
      * @return array
      */
@@ -138,7 +138,7 @@ class SecurityShieldManager
 
     /**
      * Get whitelisted IPs
-     * 
+     *
      * @return array
      */
     public function getWhitelistedIps(): array
@@ -154,7 +154,7 @@ class SecurityShieldManager
 
     /**
      * Get blacklisted IPs
-     * 
+     *
      * @return array
      */
     public function getBlacklistedIps(): array
@@ -172,7 +172,7 @@ class SecurityShieldManager
 
     /**
      * Add IP to whitelist
-     * 
+     *
      * @param string $ip
      * @return bool
      */
@@ -184,6 +184,7 @@ class SecurityShieldManager
                  ON DUPLICATE KEY UPDATE active = 1",
                 [$ip]
             );
+
             return true;
         } catch (\Exception $e) {
             return false;
@@ -192,7 +193,7 @@ class SecurityShieldManager
 
     /**
      * Remove IP from whitelist
-     * 
+     *
      * @param string $ip
      * @return bool
      */
@@ -203,6 +204,7 @@ class SecurityShieldManager
                 "UPDATE whitelisted_ips SET active = 0 WHERE ip = ?",
                 [$ip]
             );
+
             return true;
         } catch (\Exception $e) {
             return false;
@@ -211,7 +213,7 @@ class SecurityShieldManager
 
     /**
      * Add IP to blacklist
-     * 
+     *
      * @param string $ip
      * @param string $reason
      * @param int|null $duration Duration in seconds, null for permanent
@@ -233,6 +235,7 @@ class SecurityShieldManager
                     [$ip, $reason]
                 );
             }
+
             return true;
         } catch (\Exception $e) {
             return false;
@@ -241,7 +244,7 @@ class SecurityShieldManager
 
     /**
      * Remove IP from blacklist
-     * 
+     *
      * @param string $ip
      * @return bool
      */
@@ -252,6 +255,7 @@ class SecurityShieldManager
                 "UPDATE blacklisted_ips SET active = 0 WHERE ip = ?",
                 [$ip]
             );
+
             return true;
         } catch (\Exception $e) {
             return false;
@@ -260,7 +264,7 @@ class SecurityShieldManager
 
     /**
      * Block a device fingerprint
-     * 
+     *
      * @param string $fingerprint
      * @param string $reason
      * @return bool
@@ -273,6 +277,7 @@ class SecurityShieldManager
                  VALUES (?, ?, NOW()) ON DUPLICATE KEY UPDATE reason = ?",
                 [$fingerprint, $reason, $reason]
             );
+
             return true;
         } catch (\Exception $e) {
             return false;
@@ -281,7 +286,7 @@ class SecurityShieldManager
 
     /**
      * Unblock a device fingerprint
-     * 
+     *
      * @param string $fingerprint
      * @return bool
      */
@@ -292,6 +297,7 @@ class SecurityShieldManager
                 "DELETE FROM blocked_fingerprints WHERE fingerprint = ?",
                 [$fingerprint]
             );
+
             return true;
         } catch (\Exception $e) {
             return false;
@@ -300,7 +306,7 @@ class SecurityShieldManager
 
     /**
      * Clear rate limit for an IP
-     * 
+     *
      * @param string $ip
      * @return bool
      */
@@ -311,6 +317,7 @@ class SecurityShieldManager
                 "DELETE FROM security_attempts WHERE identifier = ? AND type = 'ip'",
                 [$ip]
             );
+
             return true;
         } catch (\Exception $e) {
             return false;
@@ -319,7 +326,7 @@ class SecurityShieldManager
 
     /**
      * Check if IP is rate limited
-     * 
+     *
      * @param string $ip
      * @return bool
      */
@@ -332,6 +339,7 @@ class SecurityShieldManager
                  AND created_at > DATE_SUB(NOW(), INTERVAL 15 MINUTE)",
                 [$ip]
             );
+
             return (int)($result['count'] ?? 0) >= 5;
         } catch (\Exception $e) {
             return false;
@@ -340,7 +348,7 @@ class SecurityShieldManager
 
     /**
      * Clean up old logs and attempts
-     * 
+     *
      * @param int $daysToKeep
      * @return array Number of rows deleted
      */
@@ -349,7 +357,7 @@ class SecurityShieldManager
         $deleted = [
             'attempts' => 0,
             'logs' => 0,
-            'expired_blacklist' => 0
+            'expired_blacklist' => 0,
         ];
 
         try {
@@ -382,7 +390,7 @@ class SecurityShieldManager
 
     /**
      * Get IP details including history
-     * 
+     *
      * @param string $ip
      * @return array
      */
@@ -394,7 +402,7 @@ class SecurityShieldManager
             'is_blacklisted' => false,
             'total_requests' => 0,
             'blocked_requests' => 0,
-            'recent_activity' => []
+            'recent_activity' => [],
         ];
 
         try {
@@ -442,7 +450,7 @@ class SecurityShieldManager
 
     /**
      * Export statistics to array
-     * 
+     *
      * @param int $days
      * @return array
      */
@@ -454,7 +462,7 @@ class SecurityShieldManager
             'statistics' => $this->getStatistics($days),
             'whitelisted_ips' => $this->getWhitelistedIps(),
             'blacklisted_ips' => $this->getBlacklistedIps(),
-            'recent_blocked' => $this->getRecentBlocked(20)
+            'recent_blocked' => $this->getRecentBlocked(20),
         ];
     }
 }

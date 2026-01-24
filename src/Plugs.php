@@ -13,13 +13,12 @@ namespace Plugs;
 | point for the application and can be used to initialize and run the.
 */
 
-use Plugs\Http\Message\Stream;
-use Psr\Http\Message\ServerRequestInterface;
-
 use Plugs\Http\Message\Response;
-use Plugs\Http\MiddlewareDispatcher;
 use Plugs\Http\Message\ServerRequest;
+use Plugs\Http\Message\Stream;
+use Plugs\Http\MiddlewareDispatcher;
 use Psr\Http\Message\ResponseInterface;
+use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Server\MiddlewareInterface;
 
 class Plugs
@@ -49,6 +48,7 @@ class Plugs
             $body = new Stream(fopen('php://temp', 'w+'));
             $body->write('Not Found');
             $body->rewind();
+
             return new Response(404, $body, ['Content-Type' => 'text/plain']);
         };
     }
@@ -169,12 +169,14 @@ class Plugs
     public function pipe(MiddlewareInterface $middleware): self
     {
         $this->dispatcher->add($middleware);
+
         return $this;
     }
 
     public function setFallback(callable $handler): self
     {
         $this->fallbackHandler = $handler;
+
         return $this;
     }
 

@@ -20,23 +20,24 @@ class MakeMiddlewareCommand extends Command
     public function handle(): int
     {
         $name = $this->argument('0') ?? $this->ask('Middleware name', 'AuthMiddleware');
-        
+
         if (!str_ends_with($name, 'Middleware')) {
             $name .= 'Middleware';
         }
-        
+
         $content = $this->generateMiddleware($name);
         $path = $this->getMiddlewarePath($name);
-        
+
         if (Filesystem::exists($path) && !$this->confirm('File exists. Overwrite?', false)) {
             $this->warning('Operation cancelled');
+
             return 0;
         }
-        
+
         Filesystem::put($path, $content);
-        
+
         $this->success("Middleware created: {$path}");
-        
+
         return 0;
     }
 

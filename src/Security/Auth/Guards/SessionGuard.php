@@ -4,10 +4,10 @@ declare(strict_types=1);
 
 namespace Plugs\Security\Auth\Guards;
 
-use Plugs\Security\Auth\GuardInterface;
 use Plugs\Security\Auth\Authenticatable;
-use Plugs\Session\Session;
+use Plugs\Security\Auth\GuardInterface;
 use Plugs\Security\Hash;
+use Plugs\Session\Session;
 
 class SessionGuard implements GuardInterface
 {
@@ -81,6 +81,7 @@ class SessionGuard implements GuardInterface
 
         if ($user && Hash::verify($credentials['password'], $user->getAuthPassword())) {
             $this->login($user, $remember);
+
             return true;
         }
 

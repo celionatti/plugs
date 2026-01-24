@@ -11,11 +11,9 @@ declare(strict_types=1);
 | operations like redirects, URL generation, and route checking.
 */
 
-use Plugs\Router\Router;
-use Plugs\Http\ResponseFactory;
 use Plugs\Http\RedirectResponse;
+use Plugs\Router\Router;
 use Psr\Http\Message\ServerRequestInterface;
-use Psr\Http\Message\ResponseInterface;
 
 if (!function_exists('route')) {
     /**
@@ -27,6 +25,7 @@ if (!function_exists('route')) {
         if (!$router) {
             $router = app(Router::class);
         }
+
         return $router->route($name, $parameters, $absolute);
     }
 }
@@ -73,6 +72,7 @@ if (!function_exists('currentRoute')) {
     function currentRoute(?ServerRequestInterface $request = null): ?\Plugs\Router\Route
     {
         $request = $request ?? request();
+
         return $request?->getAttribute('_route');
     }
 }
@@ -81,6 +81,7 @@ if (!function_exists('currentRouteName')) {
     function currentRouteName(?ServerRequestInterface $request = null): ?string
     {
         $route = currentRoute($request);
+
         return $route?->getName();
     }
 }
@@ -161,6 +162,7 @@ if (!function_exists('hasRoute')) {
     {
         try {
             $router = app(Router::class);
+
             return $router->hasRoute($name);
         } catch (\Exception $e) {
             return false;
@@ -327,6 +329,7 @@ if (!function_exists('redirectTo')) {
     function redirectTo(string $routeName, array $parameters = [], int $status = 302): RedirectResponse
     {
         $url = route($routeName, $parameters);
+
         return redirect($url, $status);
     }
 }
@@ -338,6 +341,7 @@ if (!function_exists('redirectBack')) {
     function redirectBack(string $fallback = '/', int $status = 302): RedirectResponse
     {
         $url = previousUrl($fallback);
+
         return redirect($url, $status);
     }
 }
@@ -373,6 +377,7 @@ if (!function_exists('isActive')) {
                 if (routeIs($p)) {
                     return true;
                 }
+
                 continue;
             }
 

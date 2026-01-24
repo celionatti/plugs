@@ -54,42 +54,54 @@ trait HasEvents
         if (method_exists($this, $method)) {
             return $this->$method();
         }
+
         return true;
     }
 
     protected function retrieving()
     {
     }
+
     protected function retrieved()
     {
     }
+
     protected function creating()
     {
     }
+
     protected function created()
     {
     }
+
     protected function updating()
     {
     }
+
     protected function updated()
     {
     }
+
     protected function saving()
     {
     }
+
     protected function saved()
     {
     }
+
     protected function deleting()
     {
     }
+
     protected function deleted()
     {
     }
+
     protected function restoring()
     {
     }
+
     protected function restored()
     {
     }

@@ -14,12 +14,11 @@ namespace Plugs\Router;
 | Supports parameter constraints, caching, proxying, and more.
 */
 
-use Plugs\Http\HTTP;
+use InvalidArgumentException;
 use Plugs\Container\Container;
+use Plugs\Http\HTTPClient as HTTP;
 use Psr\Http\Message\ServerRequestInterface;
 use RuntimeException;
-use InvalidArgumentException;
-
 
 class Route
 {
@@ -57,7 +56,7 @@ class Route
         'HEAD',
         'OPTIONS',
         'TRACE',
-        'CONNECT'
+        'CONNECT',
     ];
 
     public function __construct(
@@ -90,6 +89,7 @@ class Route
         } else {
             $this->middleware[] = $middleware;
         }
+
         return $this;
     }
 
@@ -127,6 +127,7 @@ class Route
         }
 
         $this->pattern = $this->compilePattern($this->path);
+
         return $this;
     }
 
@@ -163,18 +164,21 @@ class Route
     public function whereIn(string $parameter, array $values): self
     {
         $pattern = '(' . implode('|', array_map('preg_quote', $values)) . ')';
+
         return $this->where($parameter, $pattern);
     }
 
     public function defaults(array $defaults): self
     {
         $this->defaults = array_merge($this->defaults, $defaults);
+
         return $this;
     }
 
     public function domain(string $domain): self
     {
         $this->domain = $domain;
+
         return $this;
     }
 
@@ -184,6 +188,7 @@ class Route
             throw new InvalidArgumentException("Invalid scheme: {$scheme}");
         }
         $this->scheme = $scheme;
+
         return $this;
     }
 
@@ -195,6 +200,7 @@ class Route
     public function meta(string $key, $value): self
     {
         $this->metadata[$key] = $value;
+
         return $this;
     }
 
@@ -213,6 +219,7 @@ class Route
             function ($matches) {
                 $param = $matches[1];
                 $constraint = $this->where[$param] ?? '[^/]+';
+
                 return "(?P<{$param}>{$constraint})";
             },
             $pattern
@@ -223,6 +230,7 @@ class Route
             function ($matches) {
                 $param = $matches[1];
                 $constraint = $this->where[$param] ?? '[^/]*';
+
                 return "(?P<{$param}>{$constraint})?";
             },
             $pattern
@@ -236,6 +244,7 @@ class Route
         $this->handler = function () use ($destination, $status) {
             return \Plugs\Http\ResponseFactory::redirect($destination, $status);
         };
+
         return $this;
     }
 
@@ -289,7 +298,7 @@ class Route
                 return \Plugs\Http\ResponseFactory::json(
                     [
                         'error' => 'Proxy request failed',
-                        'message' => $e->getMessage()
+                        'message' => $e->getMessage(),
                     ],
                     502
                 );
@@ -399,42 +408,52 @@ class Route
     {
         return $this->method;
     }
+
     public function getPath(): string
     {
         return $this->path;
     }
+
     public function getHandler()
     {
         return $this->handler;
     }
+
     public function getMiddleware(): array
     {
         return $this->middleware;
     }
+
     public function getPattern(): string
     {
         return $this->pattern;
     }
+
     public function getName(): ?string
     {
         return $this->name;
     }
+
     public function getConstraints(): array
     {
         return $this->where;
     }
+
     public function getDefaults(): array
     {
         return $this->defaults;
     }
+
     public function getDomain(): ?string
     {
         return $this->domain;
     }
+
     public function getScheme(): ?string
     {
         return $this->scheme;
     }
+
     public function getAllMetadata(): array
     {
         return $this->metadata;
@@ -522,6 +541,7 @@ class Route
     public function getSignature(): string
     {
         $name = $this->name ? " [{$this->name}]" : '';
+
         return "{$this->method} {$this->path}{$name}";
     }
 

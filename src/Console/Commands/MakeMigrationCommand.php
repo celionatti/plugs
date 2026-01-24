@@ -11,8 +11,8 @@ namespace Plugs\Console\Commands;
 */
 
 use Plugs\Console\Command;
-use Plugs\Console\Support\Str;
 use Plugs\Console\Support\Filesystem;
+use Plugs\Console\Support\Str;
 
 class MakeMigrationCommand extends Command
 {

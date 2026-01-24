@@ -13,7 +13,7 @@ declare(strict_types=1);
 if (!function_exists('old')) {
     /**
      * Get old input value after form submission
-     * 
+     *
      * @param string $key Input field name
      * @param mixed $default Default value if old input doesn't exist
      * @return mixed
@@ -37,7 +37,7 @@ if (!function_exists('old')) {
 if (!function_exists('flash_old_input')) {
     /**
      * Flash current input to session for next request
-     * 
+     *
      * @param array|null $input Input data (defaults to $_POST)
      * @return void
      */
@@ -54,7 +54,7 @@ if (!function_exists('flash_old_input')) {
 if (!function_exists('clear_old_input')) {
     /**
      * Clear old input from session
-     * 
+     *
      * @return void
      */
     function clear_old_input(): void

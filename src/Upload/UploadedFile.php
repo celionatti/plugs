@@ -18,9 +18,9 @@ namespace Plugs\Upload;
 | @package Plugs\Upload
 */
 
-use RuntimeException;
 use InvalidArgumentException;
 use Plugs\Facades\Storage;
+use RuntimeException;
 
 class UploadedFile
 {
@@ -68,7 +68,7 @@ class UploadedFile
         'swf',
         'xap',
         'dll',
-        'so'
+        'so',
     ];
 
     private const IMAGE_MIME_TYPES = [
@@ -79,7 +79,7 @@ class UploadedFile
         'image/webp',
         'image/bmp',
         'image/x-ms-bmp',
-        'image/svg+xml'
+        'image/svg+xml',
     ];
 
     public function __construct(array $file)
@@ -125,7 +125,7 @@ class UploadedFile
                         'type' => $files['type'][$i] ?? '',
                         'tmp_name' => $files['tmp_name'][$i],
                         'error' => $files['error'][$i],
-                        'size' => $files['size'][$i]
+                        'size' => $files['size'][$i],
                     ]);
                 }
             } else {
@@ -151,7 +151,7 @@ class UploadedFile
         $mimeType = @finfo_file($finfo, $this->tmpName);
         finfo_close($finfo);
 
-        if ($mimeType !== false && is_string($mimeType)) {
+        if ($mimeType !== false) {
             $this->actualMimeType = strtolower($mimeType);
         }
     }
@@ -164,6 +164,7 @@ class UploadedFile
     public function getClientExtension(): string
     {
         $extension = strtolower(pathinfo($this->name, PATHINFO_EXTENSION));
+
         return $extension !== '' ? $extension : '';
     }
 
@@ -215,6 +216,7 @@ class UploadedFile
     public function isImage(): bool
     {
         $imageExtensions = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp', 'svg'];
+
         return in_array($this->getClientExtension(), $imageExtensions, true);
     }
 
@@ -236,6 +238,7 @@ class UploadedFile
         }
 
         $imageInfo = @getimagesize($this->tmpName);
+
         return $imageInfo !== false;
     }
 
@@ -292,7 +295,7 @@ class UploadedFile
             'width' => $imageInfo[0],
             'height' => $imageInfo[1],
             'type' => $imageInfo[2],
-            'mime' => $imageInfo['mime'] ?? $this->actualMimeType ?? ''
+            'mime' => $imageInfo['mime'],
         ];
     }
 
@@ -312,7 +315,7 @@ class UploadedFile
                 'width' => (int) round((float) $width[1]),
                 'height' => (int) round((float) $height[1]),
                 'type' => 0,
-                'mime' => 'image/svg+xml'
+                'mime' => 'image/svg+xml',
             ];
         }
 
@@ -322,7 +325,7 @@ class UploadedFile
                 'width' => (int) round((float) $viewBox[1]),
                 'height' => (int) round((float) $viewBox[2]),
                 'type' => 0,
-                'mime' => 'image/svg+xml'
+                'mime' => 'image/svg+xml',
             ];
         }
 
@@ -391,6 +394,7 @@ class UploadedFile
 
         if (!@move_uploaded_file($this->tmpName, $targetPath)) {
             $error = error_get_last();
+
             throw new RuntimeException(
                 'Failed to move uploaded file: ' . ($error['message'] ?? 'Unknown error')
             );
@@ -399,6 +403,7 @@ class UploadedFile
         @chmod($targetPath, 0644);
 
         $this->moved = true;
+
         return true;
     }
 
@@ -420,6 +425,7 @@ class UploadedFile
             }
             if ($part === '..') {
                 array_pop($normalized);
+
                 continue;
             }
             $normalized[] = $part;
@@ -483,6 +489,7 @@ class UploadedFile
     public function hasDangerousExtension(): bool
     {
         $extension = $this->getClientExtension();
+
         return in_array($extension, self::DANGEROUS_EXTENSIONS, true);
     }
 

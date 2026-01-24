@@ -4,9 +4,9 @@ declare(strict_types=1);
 
 namespace Plugs\Security\Auth;
 
+use InvalidArgumentException;
 use Plugs\Security\Auth\Guards\SessionGuard;
 use Plugs\Session\Session;
-use InvalidArgumentException;
 
 class AuthManager
 {

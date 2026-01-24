@@ -23,19 +23,20 @@ namespace Plugs\View;
 
 class ViewCompiler
 {
-    private array $sectionStack = [];
-    private array $componentStack = [];
+    // private array $sectionStack = []; // Kept for future use? Or should be removed if truly unused. PHPStan says only written.
+    // private array $componentStack = []; // Same here.
+
     private array $componentData = [];
-    private ?ViewEngine $viewEngine;
+    // private ?ViewEngine $viewEngine; // Removed unused
     private array $compilationCache = [];
     private array $customDirectives = [];
     private array $verbatimBlocks = [];
-    private array $forElseVars = [];
+    // private array $forElseVars = []; // Removed unused
     private const MAX_CACHE_SIZE = 1000;
 
-    public function __construct(?ViewEngine $viewEngine = null)
+    public function __construct()
     {
-        $this->viewEngine = $viewEngine;
+        // $this->viewEngine = $viewEngine;
     }
 
     public function registerCustomDirective(string $name, callable $handler): void
@@ -71,6 +72,7 @@ class ViewCompiler
     {
         if (isset($this->componentData[$slotId])) {
             $slotContent = $this->componentData[$slotId];
+
             return $this->compileNonComponentContent($slotContent);
         }
 
@@ -93,7 +95,8 @@ class ViewCompiler
             '/<([A-Z][a-zA-Z0-9]*)' . $attrRegex . '\/>/s',
             function ($matches) {
                 $componentName = $matches[1];
-                $attributes = $matches[2] ?? '';
+                $attributes = $matches[2];
+
                 return $this->createComponentPlaceholder($componentName, trim($attributes), '');
             },
             $content
@@ -104,8 +107,9 @@ class ViewCompiler
             '/<([A-Z][a-zA-Z0-9]*)' . $attrRegex . '>(.*?)<\/\1\s*>/s',
             function ($matches) {
                 $componentName = $matches[1];
-                $attributes = $matches[2] ?? '';
-                $slotContent = $matches[3] ?? '';
+                $attributes = $matches[2];
+                $slotContent = $matches[3];
+
                 return $this->createComponentPlaceholder($componentName, trim($attributes), $slotContent);
             },
             $content
@@ -213,6 +217,7 @@ class ViewCompiler
                 $placeholder = sprintf('___EXPR_%d___', $expressionCounter);
                 $expressionMap[$placeholder] = trim($matches[1]);
                 $expressionCounter++;
+
                 return $placeholder;
             },
             $attributes
@@ -250,7 +255,7 @@ class ViewCompiler
             $result[$key] = [
                 'value' => $value,
                 'quoted' => true,
-                'is_variable' => $hasExpression
+                'is_variable' => $hasExpression,
             ];
         }
 
@@ -262,7 +267,7 @@ class ViewCompiler
                 $result[$match[1]] = [
                     'value' => $match[2],
                     'quoted' => false,
-                    'is_variable' => true
+                    'is_variable' => true,
                 ];
             }
         }
@@ -276,7 +281,7 @@ class ViewCompiler
                 $result[$attr] = [
                     'value' => 'true',
                     'quoted' => false,
-                    'is_variable' => false
+                    'is_variable' => false,
                 ];
             }
         }
@@ -317,6 +322,7 @@ class ViewCompiler
             function ($matches) use (&$verbatimBlocks) {
                 $placeholder = '___VERBATIM_' . md5($matches[1]) . '___';
                 $verbatimBlocks[$placeholder] = $matches[1];
+
                 return $placeholder;
             },
             $content
@@ -324,6 +330,7 @@ class ViewCompiler
 
         // Store for later restoration
         $this->verbatimBlocks = $verbatimBlocks;
+
         return $content;
     }
 
@@ -334,6 +341,7 @@ class ViewCompiler
             '/@php\s*\n?(.*?)\n?\s*@endphp/s',
             function ($matches) {
                 $code = trim($matches[1]);
+
                 return "<?php {$code} ?>";
             },
             $content
@@ -422,7 +430,7 @@ class ViewCompiler
     private function compileLoops(string $content): string
     {
         // Reset forelse tracking
-        $this->forElseVars = [];
+        // $this->forElseVars = [];
 
         // @forelse...@empty...@endforelse (Process FIRST before @foreach to avoid conflicts)
         $content = preg_replace_callback(
@@ -499,6 +507,7 @@ class ViewCompiler
                 if (isset($matches[1]) && !empty(trim($matches[1]))) {
                     return sprintf('<?php if (%s) continue; ?>', $matches[1]);
                 }
+
                 return '<?php continue; ?>';
             },
             $content
@@ -511,6 +520,7 @@ class ViewCompiler
                 if (isset($matches[1]) && !empty(trim($matches[1]))) {
                     return sprintf('<?php if (%s) break; ?>', $matches[1]);
                 }
+
                 return '<?php break; ?>';
             },
             $content
@@ -562,6 +572,7 @@ class ViewCompiler
             function ($matches) {
                 $name = addslashes($matches[1]);
                 $sectionContent = addslashes($matches[2]);
+
                 return sprintf('<?php $__sections[\'%s\'] = \'%s\'; ?>', $name, $sectionContent);
             },
             $content
@@ -572,6 +583,7 @@ class ViewCompiler
             '/@section\s*\([\'"](.+?)[\'"]\)/',
             function ($matches) {
                 $name = addslashes($matches[1]);
+
                 return sprintf('<?php $__currentSection = \'%s\'; ob_start(); ?>', $name);
             },
             $content
@@ -596,6 +608,7 @@ class ViewCompiler
             function ($matches) {
                 $section = addslashes($matches[1]);
                 $default = isset($matches[2]) ? addslashes($matches[2]) : '';
+
                 return sprintf('<?php echo $__sections[\'%s\'] ?? \'%s\'; ?>', $section, $default);
             },
             $content
@@ -614,6 +627,7 @@ class ViewCompiler
             '/@push\s*\(\s*[\'"](.+?)[\'"]\s*\)/',
             function ($matches) {
                 $stackName = addslashes($matches[1]);
+
                 return sprintf('<?php $__currentStack = \'%s\'; ob_start(); ?>', $stackName);
             },
             $content
@@ -632,6 +646,7 @@ class ViewCompiler
             '/@prepend\s*\(\s*[\'"](.+?)[\'"]\s*\)/',
             function ($matches) {
                 $stackName = addslashes($matches[1]);
+
                 return sprintf('<?php $__currentStack = \'%s\'; $__isPrepend = true; ob_start(); ?>', $stackName);
             },
             $content
@@ -650,6 +665,7 @@ class ViewCompiler
             '/@stack\s*\(\s*[\'"](.+?)[\'"]\s*\)/',
             function ($matches) {
                 $stackName = addslashes($matches[1]);
+
                 return sprintf('<?php echo implode(\'\', $__stacks[\'%s\'] ?? []); ?>', $stackName);
             },
             $content
@@ -683,6 +699,7 @@ class ViewCompiler
             '/@once\s*\n?(.*?)\n?\s*@endonce/s',
             function ($matches) {
                 $id = md5($matches[1]);
+
                 return sprintf(
                     '<?php if (!isset($__once_%s)): $__once_%s = true; ?>%s<?php endif; ?>',
                     $id,
@@ -701,6 +718,7 @@ class ViewCompiler
             '/@error\s*\(\s*[\'"](.+?)[\'"]\s*\)/',
             function ($matches) {
                 $field = $matches[1];
+
                 return sprintf(
                     '<?php if (isset($errors) && $errors->has(\'%s\')): ' .
                     '$message = $errors->first(\'%s\'); ?>',
@@ -725,7 +743,7 @@ class ViewCompiler
         );
     }
 
-    /**
+    /*
      * @jsonScript($data, 'variableName')
      * Output JSON in a script tag with CSP nonce support
      */
@@ -736,6 +754,7 @@ class ViewCompiler
             function ($matches) {
                 $data = $matches[1];
                 $varName = $matches[2];
+
                 return sprintf(
                     '<?php $__nonce = isset($view) ? $view->getCspNonce() : null; ' .
                     'echo "<script" . ($__nonce ? " nonce=\"{$__nonce}\"" : "") . ">" . ' .
@@ -749,7 +768,7 @@ class ViewCompiler
         );
     }
 
-    /**
+    /*
      * @class(['btn', 'btn-primary' => $isPrimary, 'disabled' => !$isActive])
      * Compile conditional class attributes
      */
@@ -781,6 +800,7 @@ class ViewCompiler
                 '/@' . preg_quote($name, '/') . '(?!\w)(?:\s*\((.*?)\))?/s',
                 function ($matches) use ($handler) {
                     $expression = $matches[1] ?? null;
+
                     return call_user_func($handler, $expression);
                 },
                 $content
@@ -870,6 +890,8 @@ class ViewCompiler
         $content = $this->compileUrl($content);
         $content = $this->compileConfig($content);
         $content = $this->compileEnv($content);
+        $content = $this->compileJsonScript($content);
+        $content = $this->compileClass($content);
 
         return $content;
     }
@@ -878,7 +900,7 @@ class ViewCompiler
     // DATE & TIME DIRECTIVES
     // ============================================
 
-    /**
+    /*
      * @date($timestamp, 'Y-m-d')
      * Format date - handles DateTime objects, timestamps, and strings
      */
@@ -889,6 +911,7 @@ class ViewCompiler
             function ($matches) {
                 $timestamp = trim($matches[1]);
                 $format = $matches[2];
+
                 return sprintf(
                     '<?php echo (function($ts, $fmt) {
                     if ($ts instanceof DateTime || $ts instanceof DateTimeInterface) {
@@ -907,7 +930,7 @@ class ViewCompiler
         );
     }
 
-    /**
+    /*
      * @time($timestamp, 'H:i:s')
      * Format time - handles DateTime objects, timestamps, and strings
      */
@@ -918,6 +941,7 @@ class ViewCompiler
             function ($matches) {
                 $timestamp = trim($matches[1]);
                 $format = $matches[2] ?? 'H:i:s';
+
                 return sprintf(
                     '<?php echo (function($ts, $fmt) {
                     if ($ts instanceof DateTime || $ts instanceof DateTimeInterface) {
@@ -936,7 +960,7 @@ class ViewCompiler
         );
     }
 
-    /**
+    /*
      * @datetime($timestamp, 'Y-m-d H:i:s')
      * Format datetime - handles DateTime objects, timestamps, and strings
      */
@@ -947,6 +971,7 @@ class ViewCompiler
             function ($matches) {
                 $timestamp = trim($matches[1]);
                 $format = $matches[2] ?? 'Y-m-d H:i:s';
+
                 return sprintf(
                     '<?php echo (function($ts, $fmt) {
                     if ($ts instanceof DateTime || $ts instanceof DateTimeInterface) {
@@ -965,7 +990,7 @@ class ViewCompiler
         );
     }
 
-    /**
+    /*
      * @humanDate($timestamp)
      * Output: January 15, 2024
      * Handles DateTime objects, timestamps, and strings
@@ -976,6 +1001,7 @@ class ViewCompiler
             '/@humanDate\s*\(\s*(.+?)\s*\)/s',
             function ($matches) {
                 $timestamp = trim($matches[1]);
+
                 return sprintf(
                     '<?php echo (function($ts) {
                     if ($ts instanceof DateTime || $ts instanceof DateTimeInterface) {
@@ -993,7 +1019,7 @@ class ViewCompiler
         );
     }
 
-    /**
+    /*
      * @diffForHumans($timestamp)
      * Output: 2 hours ago, 3 days ago, etc.
      * Handles: DateTime objects, timestamps, and date strings
@@ -1004,6 +1030,7 @@ class ViewCompiler
             '/@diffForHumans\s*\(\s*(.+?)\s*\)/s',
             function ($matches) {
                 $timestamp = trim($matches[1]);
+
                 return sprintf(
                     '<?php echo (function($ts) {
                     // Handle different input types
@@ -1051,7 +1078,7 @@ class ViewCompiler
     // NUMBER & CURRENCY DIRECTIVES
     // ============================================
 
-    /**
+    /*
      * @number($value, 2)
      * Format number with decimals
      */
@@ -1062,6 +1089,7 @@ class ViewCompiler
             function ($matches) {
                 $value = trim($matches[1]);
                 $decimals = $matches[2] ?? 0;
+
                 return sprintf(
                     '<?php echo number_format(%s, %d); ?>',
                     $value,
@@ -1072,7 +1100,7 @@ class ViewCompiler
         );
     }
 
-    /**
+    /*
      * @currency($amount, 'USD')
      * Format currency (default: USD)
      */
@@ -1101,7 +1129,7 @@ class ViewCompiler
         );
     }
 
-    /**
+    /*
      * @percent($value, 2)
      * Format as percentage
      */
@@ -1112,6 +1140,7 @@ class ViewCompiler
             function ($matches) {
                 $value = trim($matches[1]);
                 $decimals = $matches[2] ?? 2;
+
                 return sprintf(
                     '<?php echo number_format(%s, %d) . \'%%\'; ?>',
                     $value,
@@ -1126,7 +1155,7 @@ class ViewCompiler
     // STRING MANIPULATION DIRECTIVES
     // ============================================
 
-    /**
+    /*
      * @upper($string)
      * Convert to uppercase
      */
@@ -1136,13 +1165,14 @@ class ViewCompiler
             '/@upper\s*\(\s*(.+?)\s*\)/s',
             function ($matches) {
                 $string = trim($matches[1]);
+
                 return sprintf('<?php echo strtoupper(%s); ?>', $string);
             },
             $content
         );
     }
 
-    /**
+    /*
      * @lower($string)
      * Convert to lowercase
      */
@@ -1152,13 +1182,14 @@ class ViewCompiler
             '/@lower\s*\(\s*(.+?)\s*\)/s',
             function ($matches) {
                 $string = trim($matches[1]);
+
                 return sprintf('<?php echo strtolower(%s); ?>', $string);
             },
             $content
         );
     }
 
-    /**
+    /*
      * @title($string)
      * Convert to title case
      */
@@ -1168,13 +1199,14 @@ class ViewCompiler
             '/@title\s*\(\s*(.+?)\s*\)/s',
             function ($matches) {
                 $string = trim($matches[1]);
+
                 return sprintf('<?php echo ucwords(strtolower(%s)); ?>', $string);
             },
             $content
         );
     }
 
-    /**
+    /*
      * Add this new method to your ViewCompiler class
      * @titleTruncate($string, 50)
      * Combines title case + truncation in one directive
@@ -1202,7 +1234,7 @@ class ViewCompiler
         );
     }
 
-    /**
+    /*
      * @ucfirst($string)
      * Capitalize first letter
      */
@@ -1212,13 +1244,14 @@ class ViewCompiler
             '/@ucfirst\s*\(\s*(.+?)\s*\)/s',
             function ($matches) {
                 $string = trim($matches[1]);
+
                 return sprintf('<?php echo ucfirst(%s); ?>', $string);
             },
             $content
         );
     }
 
-    /**
+    /*
      * @slug($string)
      * Convert to URL-friendly slug
      */
@@ -1228,6 +1261,7 @@ class ViewCompiler
             '/@slug\s*\(\s*(.+?)\s*\)/s',
             function ($matches) {
                 $string = trim($matches[1]);
+
                 return sprintf(
                     '<?php echo strtolower(trim(preg_replace(\'/[^A-Za-z0-9-]+/\', \'-\', %s), \'-\')); ?>',
                     $string
@@ -1237,7 +1271,7 @@ class ViewCompiler
         );
     }
 
-    /**
+    /*
      * @truncate($string, 100, '...')
      * @truncate($string, 100)
      * @truncate($string) - defaults to 100 characters
@@ -1266,7 +1300,7 @@ class ViewCompiler
         );
     }
 
-    /**
+    /*
      * @excerpt($string, 150)
      * Create excerpt (word-aware truncation)
      */
@@ -1277,6 +1311,7 @@ class ViewCompiler
             function ($matches) {
                 $string = trim($matches[1]);
                 $length = $matches[2] ?? 150;
+
                 return sprintf(
                     '<?php echo (function($str, $len) {
                     $str = strip_tags($str);
@@ -1296,7 +1331,7 @@ class ViewCompiler
     // ARRAY & COLLECTION DIRECTIVES
     // ============================================
 
-    /**
+    /*
      * @count($array)
      * Count array elements
      */
@@ -1306,13 +1341,14 @@ class ViewCompiler
             '/@count\s*\(\s*(.+?)\s*\)/s',
             function ($matches) {
                 $array = trim($matches[1]);
+
                 return sprintf('<?php echo count(%s); ?>', $array);
             },
             $content
         );
     }
 
-    /**
+    /*
      * @join($array, ', ')
      * Join array elements with separator
      */
@@ -1323,6 +1359,7 @@ class ViewCompiler
             function ($matches) {
                 $array = trim($matches[1]);
                 $separator = $matches[2];
+
                 return sprintf(
                     '<?php echo implode(\'%s\', %s); ?>',
                     addslashes($separator),
@@ -1333,7 +1370,7 @@ class ViewCompiler
         );
     }
 
-    /**
+    /*
      * @implode($array, ', ')
      * Alias for join
      */
@@ -1346,7 +1383,7 @@ class ViewCompiler
     // UTILITY DIRECTIVES
     // ============================================
 
-    /**
+    /*
      * @default($value, 'fallback')
      * Provide default value if empty
      */
@@ -1357,6 +1394,7 @@ class ViewCompiler
             function ($matches) {
                 $value = trim($matches[1]);
                 $default = $matches[2];
+
                 return sprintf(
                     '<?php echo !empty(%s) ? %s : \'%s\'; ?>',
                     $value,
@@ -1368,7 +1406,7 @@ class ViewCompiler
         );
     }
 
-    /**
+    /*
      * @route('route.name', ['id' => 1])
      * Generate route URL
      */
@@ -1379,6 +1417,7 @@ class ViewCompiler
             function ($matches) {
                 $routeName = $matches[1];
                 $params = $matches[2] ?? '[]';
+
                 return sprintf(
                     '<?php echo function_exists(\'route\') ? route(\'%s\', %s) : \'#\'; ?>',
                     addslashes($routeName),
@@ -1389,7 +1428,7 @@ class ViewCompiler
         );
     }
 
-    /**
+    /*
      * @asset('css/style.css')
      * Generate asset URL
      */
@@ -1399,6 +1438,7 @@ class ViewCompiler
             '/@asset\s*\(\s*[\'"](.+?)[\'"]\s*\)/s',
             function ($matches) {
                 $path = $matches[1];
+
                 return sprintf(
                     '<?php echo (function($p) {
                     $base = rtrim($_SERVER[\'REQUEST_SCHEME\'] . \'://\' . $_SERVER[\'HTTP_HOST\'], \'/\');
@@ -1411,7 +1451,7 @@ class ViewCompiler
         );
     }
 
-    /**
+    /*
      * @url('path/to/page')
      * Generate full URL
      */
@@ -1421,6 +1461,7 @@ class ViewCompiler
             '/@url\s*\(\s*[\'"](.+?)[\'"]\s*\)/s',
             function ($matches) {
                 $path = $matches[1];
+
                 return sprintf(
                     '<?php echo rtrim($_SERVER[\'REQUEST_SCHEME\'] . \'://\' . $_SERVER[\'HTTP_HOST\'], \'/\') . \'/%s\'; ?>',
                     ltrim(addslashes($path), '/')
@@ -1430,7 +1471,7 @@ class ViewCompiler
         );
     }
 
-    /**
+    /*
      * @config('app.name')
      * Get config value
      */
@@ -1460,7 +1501,7 @@ class ViewCompiler
         );
     }
 
-    /**
+    /*
      * @env('APP_NAME', 'Default')
      * Get environment variable
      */
@@ -1471,6 +1512,7 @@ class ViewCompiler
             function ($matches) {
                 $key = $matches[1];
                 $default = $matches[2] ?? '';
+
                 return sprintf(
                     '<?php echo $_ENV[\'%s\'] ?? getenv(\'%s\') ?: \'%s\'; ?>',
                     addslashes($key),

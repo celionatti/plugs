@@ -17,12 +17,14 @@ class StorageLinkCommand extends Command
 
         if (file_exists($link)) {
             $this->error('The "public/storage" link already exists.');
+
             return 1;
         }
 
         if (!file_exists($target)) {
             if (!mkdir($target, 0755, true)) {
                 $this->error("The target directory \"{$target}\" does not exist and could not be created.");
+
                 return 1;
             }
         }
@@ -31,10 +33,12 @@ class StorageLinkCommand extends Command
 
         if (symlink($target, $link)) {
             $this->output->success('The "public/storage" link has been connected.');
+
             return 0;
         }
 
         $this->error('Failed to create symbolic link.');
+
         return 1;
     }
 }

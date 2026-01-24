@@ -33,6 +33,7 @@ class MigrateCommand extends Command
 
             if (empty($result['migrations'])) {
                 $this->note($result['message']);
+
                 return 0;
             }
 
@@ -43,6 +44,7 @@ class MigrateCommand extends Command
             $this->info($result['message'] . " (Batch: {$result['batch']})");
         } catch (\Exception $e) {
             $this->error($e->getMessage());
+
             return 1;
         }
 

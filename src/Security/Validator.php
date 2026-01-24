@@ -139,6 +139,7 @@ class Validator
     {
         if (empty($parts)) {
             $fields[] = rtrim($prefix, '.');
+
             return;
         }
 
@@ -352,6 +353,7 @@ class Validator
                 if ($value === null || $value === '') {
                     $this->addError($field, 'required');
                 }
+
                 break;
             }
         }
@@ -368,6 +370,7 @@ class Validator
                 if ($value === null || $value === '') {
                     $this->addError($field, 'required');
                 }
+
                 break;
             }
         }

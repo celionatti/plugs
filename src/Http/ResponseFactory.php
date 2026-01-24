@@ -14,11 +14,9 @@ namespace Plugs\Http;
 | clients.
 */
 
-use Plugs\Http\Message\Stream;
 use Plugs\Http\Message\Response;
-
+use Plugs\Http\Message\Stream;
 use Psr\Http\Message\ResponseInterface;
-use Psr\Http\Message\StreamInterface;
 
 class ResponseFactory
 {
@@ -28,6 +26,7 @@ class ResponseFactory
     public static function createResponse(int $statusCode = 200, array $headers = []): ResponseInterface
     {
         $body = new Stream(fopen('php://temp', 'w+'));
+
         return new Response($statusCode, $body, $headers);
     }
 
@@ -59,7 +58,7 @@ class ResponseFactory
         // Merge headers
         $headers = array_merge([
             'Content-Type' => 'application/json; charset=utf-8',
-            'Content-Length' => strlen($jsonData)
+            'Content-Length' => strlen($jsonData),
         ], $headers);
 
         return new Response($statusCode, $body, $headers);
@@ -77,7 +76,7 @@ class ResponseFactory
         // Merge headers
         $headers = array_merge([
             'Content-Type' => 'text/plain; charset=utf-8',
-            'Content-Length' => strlen($text)
+            'Content-Length' => strlen($text),
         ], $headers);
 
         return new Response($statusCode, $body, $headers);
@@ -95,7 +94,7 @@ class ResponseFactory
         // Merge headers
         $headers = array_merge([
             'Content-Type' => 'text/html; charset=utf-8',
-            'Content-Length' => strlen($html)
+            'Content-Length' => strlen($html),
         ], $headers);
 
         return new Response($statusCode, $body, $headers);
@@ -109,7 +108,7 @@ class ResponseFactory
         $body = new Stream(fopen('php://temp', 'r'));
 
         $headers = array_merge([
-            'Location' => $url
+            'Location' => $url,
         ], $headers);
 
         return new Response($statusCode, $body, $headers);
@@ -121,6 +120,7 @@ class ResponseFactory
     public static function noContent(int $statusCode = 204, array $headers = []): ResponseInterface
     {
         $body = new Stream(fopen('php://temp', 'r'));
+
         return new Response($statusCode, $body, $headers);
     }
 
@@ -142,7 +142,7 @@ class ResponseFactory
             'Content-Disposition' => 'attachment; filename="' . $fileName . '"',
             'Content-Length' => (string) $fileSize,
             'Pragma' => 'public',
-            'Cache-Control' => 'must-revalidate'
+            'Cache-Control' => 'must-revalidate',
         ], $headers);
 
         return new Response(200, $fileStream, $headers);
@@ -168,7 +168,7 @@ class ResponseFactory
             'Content-Type' => $contentType,
             'Content-Disposition' => 'inline; filename="' . $fileName . '"',
             'Content-Length' => (string) $fileSize,
-            'Cache-Control' => 'public, max-age=3600'
+            'Cache-Control' => 'public, max-age=3600',
         ], $headers);
 
         return new Response(200, $fileStream, $headers);
@@ -192,7 +192,7 @@ class ResponseFactory
             'Content-Disposition' => 'inline; filename="' . $fileName . '"',
             'Content-Length' => (string) $fileSize,
             'Accept-Ranges' => 'bytes',
-            'Cache-Control' => 'public, max-age=3600'
+            'Cache-Control' => 'public, max-age=3600',
         ], $headers);
 
         // Handle range requests for video/audio streaming
@@ -203,6 +203,7 @@ class ResponseFactory
         }
 
         $fileStream = new Stream(fopen($filePath, 'r'));
+
         return new Response(200, $fileStream, $headers);
     }
 
@@ -239,7 +240,7 @@ class ResponseFactory
             'Content-Type' => $contentType,
             'Content-Length' => (string) $length,
             'Content-Range' => "bytes $start-$end/$fileSize",
-            'Accept-Ranges' => 'bytes'
+            'Accept-Ranges' => 'bytes',
         ]);
 
         return new Response(206, $body, $headers); // 206 Partial Content
@@ -320,12 +321,13 @@ class ResponseFactory
             return self::json([
                 'error' => true,
                 'message' => $message,
-                'status' => $statusCode
+                'status' => $statusCode,
             ], $statusCode, $headers);
         }
 
         // Return HTML for browser requests
         $html = self::errorTemplate($statusCode, $message);
+
         return self::html($html, $statusCode, $headers);
     }
 
@@ -341,7 +343,7 @@ class ResponseFactory
             $response = [
                 'success' => true,
                 'message' => $message,
-                'status' => $statusCode
+                'status' => $statusCode,
             ];
 
             if ($data !== null) {
@@ -353,6 +355,7 @@ class ResponseFactory
 
         // Return HTML for browser requests
         $html = self::successTemplate($message);
+
         return self::html($html, $statusCode, $headers);
     }
 
@@ -368,7 +371,7 @@ class ResponseFactory
                 'error' => true,
                 'message' => $message,
                 'errors' => $errors,
-                'status' => $statusCode
+                'status' => $statusCode,
             ], $statusCode, $headers);
         }
 

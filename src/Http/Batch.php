@@ -9,13 +9,13 @@ namespace Plugs\Http;
 | Batch Class
 |--------------------------------------------------------------------------
 |
-| 
+|
 */
 
 use GuzzleHttp\Client;
-use GuzzleHttp\Promise\Utils;
-use GuzzleHttp\Pool;
 use GuzzleHttp\Exception\RequestException;
+use GuzzleHttp\Pool;
+use GuzzleHttp\Promise\Utils;
 
 class Batch
 {
@@ -39,12 +39,14 @@ class Batch
     public function concurrency(int $limit): self
     {
         $this->concurrency = $limit;
+
         return $this;
     }
 
     public function withOptions(array $options): self
     {
         $this->options = $options;
+
         return $this;
     }
 
@@ -58,6 +60,7 @@ class Batch
         if (!empty($data)) {
             $options['json'] = $data;
         }
+
         return $this->add('POST', $url, $options, $key);
     }
 
@@ -66,6 +69,7 @@ class Batch
         if (!empty($data)) {
             $options['json'] = $data;
         }
+
         return $this->add('PUT', $url, $options, $key);
     }
 
@@ -74,6 +78,7 @@ class Batch
         if (!empty($data)) {
             $options['json'] = $data;
         }
+
         return $this->add('PATCH', $url, $options, $key);
     }
 
@@ -85,13 +90,13 @@ class Batch
     public function add(string $method, string $url, array $options = [], ?string $key = null): self
     {
         $key = $key ?? count($this->requests);
-        
+
         $this->requests[$key] = [
             'method' => $method,
             'url' => $url,
             'options' => array_merge($this->options, $options),
         ];
-        
+
         return $this;
     }
 
@@ -105,19 +110,21 @@ class Batch
                 is_string($key) ? $key : null
             );
         }
-        
+
         return $this;
     }
 
     public function beforeSending(callable $callback): self
     {
         $this->beforeSendCallback = $callback;
+
         return $this;
     }
 
     public function afterResponse(callable $callback): self
     {
         $this->afterResponseCallback = $callback;
+
         return $this;
     }
 
@@ -128,12 +135,12 @@ class Batch
         }
 
         $promises = [];
-        
+
         foreach ($this->requests as $key => $request) {
             if ($this->beforeSendCallback) {
                 call_user_func($this->beforeSendCallback, $request, $key);
             }
-            
+
             $promises[$key] = $this->client->requestAsync(
                 $request['method'],
                 $request['url'],
@@ -142,9 +149,9 @@ class Batch
         }
 
         $results = Utils::settle($promises)->wait();
-        
+
         $responses = [];
-        
+
         foreach ($results as $key => $result) {
             if ($result['state'] === 'fulfilled') {
                 $httpResponse = new HTTPResponse($result['value']);
@@ -155,14 +162,14 @@ class Batch
                     $exception instanceof RequestException ? $exception : null
                 );
             }
-            
+
             if ($this->afterResponseCallback) {
                 call_user_func($this->afterResponseCallback, $httpResponse, $key);
             }
-            
+
             $responses[$key] = $httpResponse;
         }
-        
+
         return new BatchResponse($responses);
     }
 
@@ -173,13 +180,13 @@ class Batch
         }
 
         $responses = [];
-        
+
         $requests = function () {
             foreach ($this->requests as $key => $request) {
                 if ($this->beforeSendCallback) {
                     call_user_func($this->beforeSendCallback, $request, $key);
                 }
-                
+
                 yield $key => function () use ($request, $key) {
                     return $this->client->requestAsync(
                         $request['method'],
@@ -194,11 +201,11 @@ class Batch
             'concurrency' => $this->concurrency,
             'fulfilled' => function ($response, $key) use (&$responses) {
                 $httpResponse = new HTTPResponse($response);
-                
+
                 if ($this->afterResponseCallback) {
                     call_user_func($this->afterResponseCallback, $httpResponse, $key);
                 }
-                
+
                 $responses[$key] = $httpResponse;
             },
             'rejected' => function ($reason, $key) use (&$responses) {
@@ -206,24 +213,25 @@ class Batch
                     $reason instanceof RequestException ? $reason->getResponse() : null,
                     $reason instanceof RequestException ? $reason : null
                 );
-                
+
                 if ($this->afterResponseCallback) {
                     call_user_func($this->afterResponseCallback, $httpResponse, $key);
                 }
-                
+
                 $responses[$key] = $httpResponse;
             },
         ]);
 
         $promise = $pool->promise();
         $promise->wait();
-        
+
         return new BatchResponse($responses);
     }
 
     public function clear(): self
     {
         $this->requests = [];
+
         return $this;
     }
 

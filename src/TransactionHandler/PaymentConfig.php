@@ -18,7 +18,7 @@ class PaymentConfig
 {
     /**
      * Create a payment transaction handler from environment variables
-     * 
+     *
      * @param string $platform Payment platform (paystack, flutterwave, stripe, etc.)
      * @return PaymentTransactionHandler
      * @throws Exception
@@ -38,7 +38,7 @@ class PaymentConfig
 
     /**
      * Get configuration for a specific platform
-     * 
+     *
      * @param string $platform
      * @return array
      * @throws Exception
@@ -84,7 +84,7 @@ class PaymentConfig
         return [
             'secret_key' => $secretKey,
             'public_key' => $publicKey,
-            'webhook_secret' => self::getEnv('PAYSTACK_WEBHOOK_SECRET', '')
+            'webhook_secret' => self::getEnv('PAYSTACK_WEBHOOK_SECRET', ''),
         ];
     }
 
@@ -103,7 +103,7 @@ class PaymentConfig
         return [
             'secret_key' => $secretKey,
             'public_key' => $publicKey,
-            'encryption_key' => self::getEnv('FLUTTERWAVE_ENCRYPTION_KEY', '')
+            'encryption_key' => self::getEnv('FLUTTERWAVE_ENCRYPTION_KEY', ''),
         ];
     }
 
@@ -121,7 +121,7 @@ class PaymentConfig
         return [
             'secret_key' => $secretKey,
             'public_key' => self::getEnv('STRIPE_PUBLIC_KEY', ''),
-            'webhook_secret' => self::getEnv('STRIPE_WEBHOOK_SECRET', '')
+            'webhook_secret' => self::getEnv('STRIPE_WEBHOOK_SECRET', ''),
         ];
     }
 
@@ -140,7 +140,7 @@ class PaymentConfig
         return [
             'client_id' => $clientId,
             'client_secret' => $clientSecret,
-            'mode' => self::getEnv('PAYPAL_MODE', 'sandbox') // sandbox or live
+            'mode' => self::getEnv('PAYPAL_MODE', 'sandbox'), // sandbox or live
         ];
     }
 
@@ -157,7 +157,7 @@ class PaymentConfig
 
         return [
             'api_key' => $apiKey,
-            'program_id' => self::getEnv('PAYONEER_PROGRAM_ID', '')
+            'program_id' => self::getEnv('PAYONEER_PROGRAM_ID', ''),
         ];
     }
 
@@ -178,13 +178,13 @@ class PaymentConfig
             'api_key' => $apiKey,
             'store_id' => $storeId,
             'base_url' => $baseUrl,
-            'webhook_secret' => self::getEnv('BTCPAY_WEBHOOK_SECRET', '')
+            'webhook_secret' => self::getEnv('BTCPAY_WEBHOOK_SECRET', ''),
         ];
     }
 
     /**
      * Get environment variable with optional default
-     * 
+     *
      * @param string $key
      * @param mixed $default
      * @return mixed
@@ -208,7 +208,7 @@ class PaymentConfig
 
     /**
      * Get default currency from environment or use fallback
-     * 
+     *
      * @return string
      */
     public static function getDefaultCurrency(): string
@@ -218,18 +218,19 @@ class PaymentConfig
 
     /**
      * Check if in test mode
-     * 
+     *
      * @return bool
      */
     public static function isTestMode(): bool
     {
         $environment = self::getEnv('PAYMENT_ENVIRONMENT', 'test');
+
         return strtolower($environment) === 'test';
     }
 
     /**
      * Validate that required environment variables are set for a platform
-     * 
+     *
      * @param string $platform
      * @return bool
      */
@@ -237,6 +238,7 @@ class PaymentConfig
     {
         try {
             self::getConfig($platform);
+
             return true;
         } catch (Exception $e) {
             return false;

@@ -201,6 +201,7 @@ class Csrf
             // Check if token has expired
             if (self::$config['strict_mode'] && self::isTokenExpired()) {
                 self::regenerate();
+
                 return false;
             }
 
@@ -224,6 +225,7 @@ class Csrf
                         (time() - $timestamp) > self::$config['token_lifetime']
                     ) {
                         unset($_SESSION[self::REQUEST_TOKENS_KEY][$storedToken]);
+
                         return false;
                     }
 
@@ -286,7 +288,7 @@ class Csrf
 
         return json_encode([
             'csrf_token' => $token,
-            'token_name' => '_token'
+            'token_name' => '_token',
         ], JSON_THROW_ON_ERROR);
     }
 
@@ -314,6 +316,7 @@ class Csrf
     public static function validateRequest(): bool
     {
         $token = self::getTokenFromRequest();
+
         return self::verify($token);
     }
 
@@ -413,6 +416,7 @@ class Csrf
         }
 
         $age = time() - $_SESSION[self::TOKEN_TIMESTAMP_KEY];
+
         return $age > self::$config['token_lifetime'];
     }
 
@@ -493,6 +497,7 @@ class Csrf
     public static function isConfigured(): bool
     {
         self::ensureSessionStarted();
+
         return isset($_SESSION[self::TOKEN_KEY]);
     }
 
@@ -510,6 +515,7 @@ class Csrf
                 return true;
             }
         }
+
         return false;
     }
 

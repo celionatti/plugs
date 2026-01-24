@@ -13,8 +13,8 @@ namespace Plugs\Console\Commands;
 */
 
 use Plugs\Console\Command;
-use Plugs\Console\Support\Str;
 use Plugs\Console\Support\Filesystem;
+use Plugs\Console\Support\Str;
 
 class MakeServiceCommand extends Command
 {
@@ -23,7 +23,7 @@ class MakeServiceCommand extends Command
     protected function defineArguments(): array
     {
         return [
-            'name' => 'The name of the service class'
+            'name' => 'The name of the service class',
         ];
     }
 
@@ -81,6 +81,7 @@ class MakeServiceCommand extends Command
         if (Filesystem::exists($path) && !$options['force']) {
             if (!$this->confirm("Service {$name} already exists. Overwrite?", false)) {
                 $this->warning('Service generation cancelled.');
+
                 return 0;
             }
         }

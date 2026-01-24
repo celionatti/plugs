@@ -141,6 +141,7 @@ trait Debuggable
         }
 
         $analysis['stats'] = $stats;
+
         return $analysis;
     }
 

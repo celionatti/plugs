@@ -43,6 +43,7 @@ class DatabaseManager
     public function table(string $table, ?string $connection = null): QueryBuilder
     {
         $conn = $connection ? Connection::connection($connection) : $this->connection;
+
         return (new QueryBuilder($conn))->table($table);
     }
 

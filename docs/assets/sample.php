@@ -17,32 +17,35 @@ declare(strict_types=1);
 ?>
 <!DOCTYPE html>
 <html>
+
 <head>
     <title>My App</title>
-    
+
     <!-- Method 1: Simple asset URL with versioning -->
     <link rel="stylesheet" href="{{ asset('assets/css/app.css') }}">
-    
+
     <!-- Method 2: Generate multiple CSS tags -->
     {{{ css(['assets/css/normalize.css', 'assets/css/app.css']) }}}
-    
+
     <!-- Method 3: Use registered assets by name -->
     {{{ css(['normalize', 'app']) }}}
-    
+
     <!-- Method 4: Compile and combine CSS files -->
     {{{ css([
-        compile_css(['assets/css/normalize.css', 'assets/css/app.css'], 'frontend')
+    compile_css(['assets/css/normalize.css', 'assets/css/app.css'], 'frontend')
     ]) }}}
 </head>
+
 <body>
     <h1>Welcome to My App</h1>
-    
+
     <!-- JavaScript assets at bottom -->
     {{{ js(['jquery', 'app']) }}}
-    
+
     <!-- Or compile JS -->
     <script src="{{ asset(compile_js(['assets/js/app.js', 'assets/js/components.js'], 'bundle')) }}"></script>
 </body>
+
 </html>
 
 <?php
@@ -51,7 +54,7 @@ declare(strict_types=1);
 // 2. IN CONTROLLERS
 // ====================
 
-namespace App\Controllers;
+// namespace App\Controllers;
 
 use Plugs\Base\Controller\Controller;
 use Psr\Http\Message\ResponseInterface;
@@ -67,22 +70,23 @@ class HomeController extends Controller
             'assets/css/utilities.css',
             'assets/css/app.css',
         ], 'frontend');
-        
+
         $jsBundle = asset_manager()->compileJS([
             'assets/js/jquery.min.js',
             'assets/js/app.js',
         ], 'frontend');
-        
+
         return $this->view('home', [
             'cssBundle' => $cssBundle,
             'jsBundle' => $jsBundle,
         ]);
     }
-    
+
     public function clearCache(ServerRequestInterface $request): ResponseInterface
     {
         try {
             clear_asset_cache();
+
             return $this->json(['message' => 'Asset cache cleared successfully']);
         } catch (\Exception $e) {
             return $this->json(['error' => $e->getMessage()], 500);
@@ -129,11 +133,11 @@ if (!$manager->isCached('frontend', 'css')) {
 // Precompile assets on application boot (optional - good for production)
 if (env('APP_ENV', 'production') === 'production') {
     $manager = asset_manager();
-    
+
     // Compile frontend assets
     $manager->compileCSS(['normalize', 'utilities', 'app'], 'frontend');
     $manager->compileJS(['jquery', 'app'], 'frontend');
-    
+
     // Compile admin assets
     $manager->compileCSS(['normalize', 'utilities', 'app', 'admin'], 'admin');
     $manager->compileJS(['jquery', 'bootstrap', 'app', 'admin'], 'admin');
@@ -142,6 +146,7 @@ if (env('APP_ENV', 'production') === 'production') {
 // ====================
 // 5. COMMAND LINE SCRIPT (compile-assets.php)
 // ====================
+?>
 
 #!/usr/bin/env php
 <?php
@@ -195,31 +200,34 @@ echo "\nAll assets compiled successfully!\n";
 ?>
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>@yield('title', 'My App')</title>
-    
+
     @php
-        // Compile assets once per request
-        $cssBundle = compile_css(['normalize', 'utilities', 'app'], 'frontend');
+    // Compile assets once per request
+    $cssBundle = compile_css(['normalize', 'utilities', 'app'], 'frontend');
     @endphp
-    
+
     <link rel="stylesheet" href="{{ asset($cssBundle) }}">
-    
+
     @stack('styles')
 </head>
+
 <body>
     @yield('content')
-    
+
     @php
-        $jsBundle = compile_js(['jquery', 'app'], 'frontend');
+    $jsBundle = compile_js(['jquery', 'app'], 'frontend');
     @endphp
-    
+
     <script src="{{ asset($jsBundle) }}"></script>
-    
+
     @stack('scripts')
 </body>
+
 </html>
 
 <?php
@@ -243,11 +251,10 @@ echo "\nAll assets compiled successfully!\n";
 // 8. ADVANCED: CUSTOM MIDDLEWARE FOR ASSET COMPILATION
 // ====================
 
-namespace App\Middleware;
+// namespace App\Middleware;
 
-use Plugs\Http\Message\Response;
-use Psr\Http\Message\ResponseInterface;
-use Psr\Http\Message\ServerRequestInterface;
+// use Psr\Http\Message\ResponseInterface;
+// use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Server\MiddlewareInterface;
 use Psr\Http\Server\RequestHandlerInterface;
 
@@ -260,12 +267,12 @@ class AssetCompilationMiddleware implements MiddlewareInterface
         // Compile assets before handling request
         if (env('APP_ENV') === 'development') {
             $manager = asset_manager();
-            
+
             // Auto-compile on every request in development
             $manager->compileCSS(['app'], 'frontend');
             $manager->compileJS(['app'], 'frontend');
         }
-        
+
         return $handler->handle($request);
     }
 }

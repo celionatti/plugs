@@ -17,7 +17,7 @@ namespace Plugs\Session;
 class SessionManager
 {
     private $config;
-    
+
     public function __construct(array $config = [])
     {
         $this->config = array_merge([
@@ -30,13 +30,13 @@ class SessionManager
             'save_path' => null,
         ], $config);
     }
-    
+
     public function start(): void
     {
         if (session_status() === PHP_SESSION_ACTIVE) {
             return;
         }
-        
+
         // Set session configuration
         session_set_cookie_params([
             'lifetime' => $this->config['lifetime'] * 60,
@@ -46,7 +46,7 @@ class SessionManager
             'httponly' => $this->config['httponly'],
             'samesite' => $this->config['samesite'],
         ]);
-        
+
         // Set custom save path if provided
         if ($this->config['save_path'] !== null) {
             if (!is_dir($this->config['save_path'] ?? '')) {
@@ -54,26 +54,26 @@ class SessionManager
             }
             session_save_path($this->config['save_path']);
         }
-        
+
         session_start();
-        
+
         // Regenerate session ID periodically for security
         $this->regenerateIfNeeded();
     }
-    
+
     private function regenerateIfNeeded(): void
     {
         if (!isset($_SESSION['_last_regenerated'])) {
             $_SESSION['_last_regenerated'] = time();
         }
-        
+
         // Regenerate every 30 minutes
         if (time() - $_SESSION['_last_regenerated'] > 1800) {
             session_regenerate_id(true);
             $_SESSION['_last_regenerated'] = time();
         }
     }
-    
+
     public function getSession(): Session
     {
         return new Session();

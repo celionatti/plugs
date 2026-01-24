@@ -75,6 +75,7 @@ abstract class Page
 
                 if ($typeName === ServerRequestInterface::class || is_subclass_of($typeName, ServerRequestInterface::class)) {
                     $parameters[] = $request;
+
                     continue;
                 }
             }
@@ -92,6 +93,7 @@ abstract class Page
                 }
 
                 $parameters[] = $value;
+
                 continue;
             }
 
@@ -99,18 +101,21 @@ abstract class Page
             $attrValue = $request->getAttribute($paramName);
             if ($attrValue !== null) {
                 $parameters[] = $attrValue;
+
                 continue;
             }
 
             // Check if parameter has default value
             if ($param->isDefaultValueAvailable()) {
                 $parameters[] = $param->getDefaultValue();
+
                 continue;
             }
 
             // Check if parameter is nullable
             if ($paramType && $paramType->allowsNull()) {
                 $parameters[] = null;
+
                 continue;
             }
 
@@ -147,7 +152,7 @@ abstract class Page
     protected function options(): ResponseInterface
     {
         return $this->json([
-            'allowed_methods' => $this->getAllowedMethods()
+            'allowed_methods' => $this->getAllowedMethods(),
         ]);
     }
 
@@ -187,6 +192,7 @@ abstract class Page
         // Use the View system
         if (function_exists('view')) {
             $content = view($view, $data);
+
             return ResponseFactory::html($content, $status);
         }
 
@@ -232,6 +238,7 @@ abstract class Page
     {
         if (function_exists('route')) {
             $url = route($name, $parameters);
+
             return $this->redirect($url, $status);
         }
 
@@ -244,7 +251,7 @@ abstract class Page
     protected function notFound(string $message = 'Not Found'): ResponseInterface
     {
         return $this->json([
-            'error' => $message
+            'error' => $message,
         ], 404);
     }
 
@@ -254,7 +261,7 @@ abstract class Page
     protected function forbidden(string $message = 'Forbidden'): ResponseInterface
     {
         return $this->json([
-            'error' => $message
+            'error' => $message,
         ], 403);
     }
 
@@ -264,7 +271,7 @@ abstract class Page
     protected function unauthorized(string $message = 'Unauthorized'): ResponseInterface
     {
         return $this->json([
-            'error' => $message
+            'error' => $message,
         ], 401);
     }
 
@@ -274,7 +281,7 @@ abstract class Page
     protected function error(string $message = 'Internal Server Error', int $status = 500): ResponseInterface
     {
         return $this->json([
-            'error' => $message
+            'error' => $message,
         ], $status);
     }
 
@@ -286,7 +293,7 @@ abstract class Page
         $allowed = $this->getAllowedMethods();
         $jsonData = json_encode([
             'error' => "Method {$method} not allowed",
-            'allowed_methods' => $allowed
+            'allowed_methods' => $allowed,
         ]);
 
         $stream = new \Plugs\Http\Message\Stream(fopen('php://temp', 'r+'));

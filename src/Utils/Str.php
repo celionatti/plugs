@@ -526,7 +526,6 @@ class Str
         return Uuid::v7();
     }
 
-
     /**
      * Generate a MongoDB Object ID.
      */
@@ -777,78 +776,91 @@ class Stringable
     public function camel(): self
     {
         $this->value = Str::camel($this->value);
+
         return $this;
     }
 
     public function studly(): self
     {
         $this->value = Str::studly($this->value);
+
         return $this;
     }
 
     public function snake(string $delimiter = '_'): self
     {
         $this->value = Str::snake($this->value, $delimiter);
+
         return $this;
     }
 
     public function kebab(): self
     {
         $this->value = Str::kebab($this->value);
+
         return $this;
     }
 
     public function title(): self
     {
         $this->value = Str::title($this->value);
+
         return $this;
     }
 
     public function lower(): self
     {
         $this->value = Str::lower($this->value);
+
         return $this;
     }
 
     public function upper(): self
     {
         $this->value = Str::upper($this->value);
+
         return $this;
     }
 
     public function limit(int $limit = 100, string $end = '...'): self
     {
         $this->value = Str::limit($this->value, $limit, $end);
+
         return $this;
     }
 
     public function slug(string $separator = '-', ?string $language = 'en'): self
     {
         $this->value = Str::slug($this->value, $separator, $language);
+
         return $this;
     }
 
     public function trim(?string $charlist = null): self
     {
         $this->value = Str::trim($this->value, $charlist);
+
         return $this;
     }
 
     public function append(string $values): self
     {
         $this->value .= $values;
+
         return $this;
     }
 
     public function prepend(string $values): self
     {
         $this->value = $values . $this->value;
+
         return $this;
     }
 
     public function replace(string|array $search, string|array $replace): self
     {
         $this->value = Str::replace($search, $replace, $this->value);
+
         return $this;
     }
 
@@ -875,12 +887,14 @@ class Stringable
     public function substr(int $start, ?int $length = null): self
     {
         $this->value = Str::substr($this->value, $start, $length);
+
         return $this;
     }
 
     public function ucfirst(): self
     {
         $this->value = Str::ucfirst($this->value);
+
         return $this;
     }
 

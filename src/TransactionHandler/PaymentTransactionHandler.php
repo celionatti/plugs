@@ -12,11 +12,11 @@ namespace Plugs\TransactionHandler;
 
 use Exception;
 use Plugs\TransactionHandler\Adapter\BTCPayAdapter;
-use Plugs\TransactionHandler\Adapter\PayPalAdapter;
-use Plugs\TransactionHandler\Adapter\StripeAdapter;
-use Plugs\TransactionHandler\Adapter\PayoneerAdapter;
-use Plugs\TransactionHandler\Adapter\PaystackAdapter;
 use Plugs\TransactionHandler\Adapter\FlutterwaveAdapter;
+use Plugs\TransactionHandler\Adapter\PayoneerAdapter;
+use Plugs\TransactionHandler\Adapter\PayPalAdapter;
+use Plugs\TransactionHandler\Adapter\PaystackAdapter;
+use Plugs\TransactionHandler\Adapter\StripeAdapter;
 
 class PaymentTransactionHandler
 {
@@ -25,29 +25,29 @@ class PaymentTransactionHandler
     private $adapter;
 
     // Transaction types
-    const TYPE_ONE_TIME = 'one_time';
-    const TYPE_SUBSCRIPTION = 'subscription';
-    const TYPE_TRANSFER = 'transfer';
-    const TYPE_WITHDRAWAL = 'withdrawal';
-    const TYPE_REFUND = 'refund';
+    public const TYPE_ONE_TIME = 'one_time';
+    public const TYPE_SUBSCRIPTION = 'subscription';
+    public const TYPE_TRANSFER = 'transfer';
+    public const TYPE_WITHDRAWAL = 'withdrawal';
+    public const TYPE_REFUND = 'refund';
 
     // Transaction statuses
-    const STATUS_PENDING = 'pending';
-    const STATUS_SUCCESS = 'success';
-    const STATUS_FAILED = 'failed';
-    const STATUS_CANCELLED = 'cancelled';
+    public const STATUS_PENDING = 'pending';
+    public const STATUS_SUCCESS = 'success';
+    public const STATUS_FAILED = 'failed';
+    public const STATUS_CANCELLED = 'cancelled';
 
     // Supported platforms
-    const PLATFORM_PAYSTACK = 'paystack';
-    const PLATFORM_STRIPE = 'stripe';
-    const PLATFORM_PAYPAL = 'paypal';
-    const PLATFORM_PAYONEER = 'payoneer';
-    const PLATFORM_FLUTTERWAVE = 'flutterwave';
-    const PLATFORM_BTCPAY = 'btcpay';
+    public const PLATFORM_PAYSTACK = 'paystack';
+    public const PLATFORM_STRIPE = 'stripe';
+    public const PLATFORM_PAYPAL = 'paypal';
+    public const PLATFORM_PAYONEER = 'payoneer';
+    public const PLATFORM_FLUTTERWAVE = 'flutterwave';
+    public const PLATFORM_BTCPAY = 'btcpay';
 
     /**
      * Constructor
-     * 
+     *
      * @param string $platform Payment platform name
      * @param array $config Platform configuration
      */
@@ -66,21 +66,27 @@ class PaymentTransactionHandler
         switch ($this->platform) {
             case self::PLATFORM_PAYSTACK:
                 $this->adapter = new PaystackAdapter($this->config);
+
                 break;
             case self::PLATFORM_STRIPE:
                 $this->adapter = new StripeAdapter($this->config);
+
                 break;
             case self::PLATFORM_PAYPAL:
                 $this->adapter = new PayPalAdapter($this->config);
+
                 break;
             case self::PLATFORM_FLUTTERWAVE:
                 $this->adapter = new FlutterwaveAdapter($this->config);
+
                 break;
             case self::PLATFORM_PAYONEER:
                 $this->adapter = new PayoneerAdapter($this->config);
+
                 break;
             case self::PLATFORM_BTCPAY:
                 $this->adapter = new BTCPayAdapter($this->config);
+
                 break;
             default:
                 throw new Exception("Unsupported platform: {$this->platform}");
@@ -89,7 +95,7 @@ class PaymentTransactionHandler
 
     /**
      * Process a one-time payment
-     * 
+     *
      * @param array $data Payment data
      * @return array Transaction result
      */
@@ -104,7 +110,7 @@ class PaymentTransactionHandler
                 'email' => $data['email'],
                 'reference' => $data['reference'] ?? $this->generateReference(),
                 'metadata' => $data['metadata'] ?? [],
-                'callback_url' => $data['callback_url'] ?? null
+                'callback_url' => $data['callback_url'] ?? null,
             ]);
 
             return $this->formatResponse($result, self::TYPE_ONE_TIME);
@@ -115,7 +121,7 @@ class PaymentTransactionHandler
 
     /**
      * Create a subscription
-     * 
+     *
      * @param array $data Subscription data
      * @return array Transaction result
      */
@@ -131,7 +137,7 @@ class PaymentTransactionHandler
                 'currency' => $data['currency'] ?? 'USD',
                 'interval' => $data['interval'] ?? 'monthly',
                 'start_date' => $data['start_date'] ?? date('Y-m-d'),
-                'metadata' => $data['metadata'] ?? []
+                'metadata' => $data['metadata'] ?? [],
             ]);
 
             return $this->formatResponse($result, self::TYPE_SUBSCRIPTION);
@@ -142,7 +148,7 @@ class PaymentTransactionHandler
 
     /**
      * Cancel a subscription
-     * 
+     *
      * @param string $subscriptionId Subscription ID
      * @return array Transaction result
      */
@@ -154,7 +160,7 @@ class PaymentTransactionHandler
             return [
                 'status' => self::STATUS_SUCCESS,
                 'message' => 'Subscription cancelled successfully',
-                'data' => $result
+                'data' => $result,
             ];
         } catch (Exception $e) {
             return $this->handleError($e, self::TYPE_SUBSCRIPTION);
@@ -163,7 +169,7 @@ class PaymentTransactionHandler
 
     /**
      * Transfer funds to another account
-     * 
+     *
      * @param array $data Transfer data
      * @return array Transaction result
      */
@@ -178,7 +184,7 @@ class PaymentTransactionHandler
                 'recipient' => $data['recipient'],
                 'reason' => $data['reason'] ?? 'Fund Transfer',
                 'reference' => $data['reference'] ?? $this->generateReference(),
-                'metadata' => $data['metadata'] ?? []
+                'metadata' => $data['metadata'] ?? [],
             ]);
 
             return $this->formatResponse($result, self::TYPE_TRANSFER);
@@ -189,7 +195,7 @@ class PaymentTransactionHandler
 
     /**
      * Withdraw funds to bank account
-     * 
+     *
      * @param array $data Withdrawal data
      * @return array Transaction result
      */
@@ -205,7 +211,7 @@ class PaymentTransactionHandler
                 'account_number' => $data['account_number'],
                 'account_name' => $data['account_name'],
                 'reference' => $data['reference'] ?? $this->generateReference(),
-                'narration' => $data['narration'] ?? 'Withdrawal'
+                'narration' => $data['narration'] ?? 'Withdrawal',
             ]);
 
             return $this->formatResponse($result, self::TYPE_WITHDRAWAL);
@@ -216,7 +222,7 @@ class PaymentTransactionHandler
 
     /**
      * Process a refund
-     * 
+     *
      * @param array $data Refund data
      * @return array Transaction result
      */
@@ -228,7 +234,7 @@ class PaymentTransactionHandler
             $result = $this->adapter->refund([
                 'transaction_id' => $data['transaction_id'],
                 'amount' => $data['amount'] ?? null,
-                'reason' => $data['reason'] ?? 'Customer request'
+                'reason' => $data['reason'] ?? 'Customer request',
             ]);
 
             return $this->formatResponse($result, self::TYPE_REFUND);
@@ -239,7 +245,7 @@ class PaymentTransactionHandler
 
     /**
      * Verify a transaction
-     * 
+     *
      * @param string $reference Transaction reference
      * @return array Verification result
      */
@@ -251,20 +257,20 @@ class PaymentTransactionHandler
             return [
                 'status' => self::STATUS_SUCCESS,
                 'verified' => true,
-                'data' => $result
+                'data' => $result,
             ];
         } catch (Exception $e) {
             return [
                 'status' => self::STATUS_FAILED,
                 'verified' => false,
-                'message' => $e->getMessage()
+                'message' => $e->getMessage(),
             ];
         }
     }
 
     /**
      * Get transaction details
-     * 
+     *
      * @param string $transactionId Transaction ID
      * @return array Transaction details
      */
@@ -275,7 +281,7 @@ class PaymentTransactionHandler
 
             return [
                 'status' => self::STATUS_SUCCESS,
-                'data' => $result
+                'data' => $result,
             ];
         } catch (Exception $e) {
             return $this->handleError($e, 'fetch');
@@ -284,7 +290,7 @@ class PaymentTransactionHandler
 
     /**
      * List all transactions
-     * 
+     *
      * @param array $filters Optional filters
      * @return array List of transactions
      */
@@ -295,7 +301,7 @@ class PaymentTransactionHandler
 
             return [
                 'status' => self::STATUS_SUCCESS,
-                'data' => $result
+                'data' => $result,
             ];
         } catch (Exception $e) {
             return $this->handleError($e, 'list');
@@ -304,7 +310,7 @@ class PaymentTransactionHandler
 
     /**
      * Get balance from payment platform
-     * 
+     *
      * @return array Balance information
      */
     public function getBalance(): array
@@ -314,7 +320,7 @@ class PaymentTransactionHandler
 
             return [
                 'status' => self::STATUS_SUCCESS,
-                'data' => $result
+                'data' => $result,
             ];
         } catch (Exception $e) {
             return $this->handleError($e, 'balance');
@@ -323,7 +329,7 @@ class PaymentTransactionHandler
 
     /**
      * Create a payment recipient
-     * 
+     *
      * @param array $data Recipient data
      * @return array Recipient details
      */
@@ -336,12 +342,12 @@ class PaymentTransactionHandler
                 'account_number' => $data['account_number'],
                 'bank_code' => $data['bank_code'],
                 'currency' => $data['currency'] ?? 'USD',
-                'metadata' => $data['metadata'] ?? []
+                'metadata' => $data['metadata'] ?? [],
             ]);
 
             return [
                 'status' => self::STATUS_SUCCESS,
-                'data' => $result
+                'data' => $result,
             ];
         } catch (Exception $e) {
             return $this->handleError($e, 'recipient');
@@ -350,7 +356,7 @@ class PaymentTransactionHandler
 
     /**
      * Webhook handler
-     * 
+     *
      * @param array $payload Webhook payload
      * @return array Processing result
      */
@@ -366,7 +372,7 @@ class PaymentTransactionHandler
 
             return [
                 'status' => self::STATUS_SUCCESS,
-                'data' => $result
+                'data' => $result,
             ];
         } catch (Exception $e) {
             return $this->handleError($e, 'webhook');
@@ -375,7 +381,7 @@ class PaymentTransactionHandler
 
     /**
      * Generate unique reference
-     * 
+     *
      * @return string
      */
     private function generateReference(): string
@@ -385,7 +391,7 @@ class PaymentTransactionHandler
 
     /**
      * Format response
-     * 
+     *
      * @param mixed $result
      * @param string $type
      * @return array
@@ -397,13 +403,13 @@ class PaymentTransactionHandler
             'type' => $type,
             'platform' => $this->platform,
             'data' => $result,
-            'timestamp' => date('Y-m-d H:i:s')
+            'timestamp' => date('Y-m-d H:i:s'),
         ];
     }
 
     /**
      * Handle errors
-     * 
+     *
      * @param Exception $e
      * @param string $type
      * @return array
@@ -415,7 +421,7 @@ class PaymentTransactionHandler
             'type' => $type,
             'platform' => $this->platform,
             'message' => $e->getMessage(),
-            'timestamp' => date('Y-m-d H:i:s')
+            'timestamp' => date('Y-m-d H:i:s'),
         ];
     }
 

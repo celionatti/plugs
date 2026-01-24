@@ -6,7 +6,7 @@ namespace Plugs\Utils;
 
 /**
  * Skeleton Loader Utility
- * 
+ *
  * Provides methods to generate skeleton loading placeholders.
  */
 class Skeleton
@@ -26,6 +26,7 @@ class Skeleton
     public function width(string $width): self
     {
         $this->width = $width;
+
         return $this;
     }
 
@@ -35,6 +36,7 @@ class Skeleton
     public function height(string $height): self
     {
         $this->height = $height;
+
         return $this;
     }
 
@@ -44,6 +46,7 @@ class Skeleton
     public function radius(string $radius): self
     {
         $this->borderRadius = $radius;
+
         return $this;
     }
 
@@ -53,6 +56,7 @@ class Skeleton
     public function margin(string $margin): self
     {
         $this->margin = $margin;
+
         return $this;
     }
 
@@ -62,6 +66,7 @@ class Skeleton
     public function display(string $display): self
     {
         $this->display = $display;
+
         return $this;
     }
 
@@ -71,6 +76,7 @@ class Skeleton
     public function pulse(bool $pulse = true): self
     {
         $this->pulse = $pulse;
+
         return $this;
     }
 
@@ -80,6 +86,7 @@ class Skeleton
     public function class(string $class): self
     {
         $this->classes[] = $class;
+
         return $this;
     }
 
@@ -89,6 +96,7 @@ class Skeleton
     public function attr(string $key, string $value): self
     {
         $this->attributes[$key] = $value;
+
         return $this;
     }
 
@@ -124,6 +132,7 @@ class Skeleton
         );
 
         $this->reset();
+
         return $html;
     }
 

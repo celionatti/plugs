@@ -136,6 +136,7 @@ abstract class Facade
 
         if (!is_callable([$instance, $method])) {
             $class = get_class($instance);
+
             throw new RuntimeException("Method [{$method}] does not exist on [{$class}].");
         }
 

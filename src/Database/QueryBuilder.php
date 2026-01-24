@@ -42,24 +42,28 @@ class QueryBuilder
     public function with($relations): self
     {
         $this->with = is_string($relations) ? func_get_args() : $relations;
+
         return $this;
     }
 
     public function table(string $table): self
     {
         $this->table = $table;
+
         return $this;
     }
 
     public function select(array $columns = ['*']): self
     {
         $this->select = $columns;
+
         return $this;
     }
 
     public function setModel(string $model): self
     {
         $this->model = $model;
+
         return $this;
     }
 
@@ -78,10 +82,11 @@ class QueryBuilder
                     'type' => 'Nested',
                     'query' => "({$nestedSql})",
                     'boolean' => $boolean,
-                    'params' => $query->getParams()
+                    'params' => $query->getParams(),
                 ];
                 $this->params = array_merge($this->params, $query->getParams());
             }
+
             return $this;
         }
 
@@ -96,10 +101,11 @@ class QueryBuilder
         $this->where[] = [
             'type' => 'Basic',
             'query' => "{$column} {$operator} {$placeholder}",
-            'boolean' => $boolean
+            'boolean' => $boolean,
         ];
 
         $this->params[$placeholder] = $value;
+
         return $this;
     }
 
@@ -111,6 +117,7 @@ class QueryBuilder
     public function join(string $table, string $first, string $operator, string $second, string $type = 'INNER'): self
     {
         $this->joins[] = compact('table', 'first', 'operator', 'second', 'type');
+
         return $this;
     }
 
@@ -129,8 +136,9 @@ class QueryBuilder
         $this->where[] = [
             'type' => 'Null',
             'query' => "{$column} IS NULL",
-            'boolean' => $boolean
+            'boolean' => $boolean,
         ];
+
         return $this;
     }
 
@@ -139,8 +147,9 @@ class QueryBuilder
         $this->where[] = [
             'type' => 'NotNull',
             'query' => "{$column} IS NOT NULL",
-            'boolean' => $boolean
+            'boolean' => $boolean,
         ];
+
         return $this;
     }
 
@@ -178,7 +187,7 @@ class QueryBuilder
         $this->where[] = [
             'type' => 'In',
             'query' => "{$column} IN (" . implode(', ', $placeholders) . ")",
-            'boolean' => 'AND'
+            'boolean' => 'AND',
         ];
 
         return $this;
@@ -187,18 +196,21 @@ class QueryBuilder
     public function orderBy(string $column, string $direction = 'ASC'): self
     {
         $this->orderBy[] = "{$column} {$direction}";
+
         return $this;
     }
 
     public function limit(int $limit): self
     {
         $this->limit = $limit;
+
         return $this;
     }
 
     public function offset(int $offset): self
     {
         $this->offset = $offset;
+
         return $this;
     }
 
@@ -212,11 +224,12 @@ class QueryBuilder
         $results = $this->connection->fetchAll($sql, $this->params);
 
         if ($this->model && !empty($results)) {
-            $models = array_map(fn($item) => new $this->model($item), $results);
+            $models = array_map(fn ($item) => new $this->model($item), $results);
 
             if (!empty($this->with)) {
                 $collection = new Collection($models);
                 $this->model::loadRelations($collection, $this->with);
+
                 return $collection->all();
             }
 
@@ -321,6 +334,7 @@ class QueryBuilder
         $sql .= $this->getWhereClause();
 
         $result = $this->connection->fetch($sql, $this->params);
+
         return (int) ($result['count'] ?? 0);
     }
 

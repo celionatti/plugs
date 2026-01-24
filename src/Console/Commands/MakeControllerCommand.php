@@ -11,8 +11,8 @@ namespace Plugs\Console\Commands;
 */
 
 use Plugs\Console\Command;
-use Plugs\Console\Support\Str;
 use Plugs\Console\Support\Filesystem;
+use Plugs\Console\Support\Str;
 
 class MakeControllerCommand extends Command
 {
@@ -29,7 +29,7 @@ class MakeControllerCommand extends Command
     protected function defineArguments(): array
     {
         return [
-            'name' => 'The name of the controller class'
+            'name' => 'The name of the controller class',
         ];
     }
 
@@ -57,68 +57,69 @@ class MakeControllerCommand extends Command
     public function handle(): int
     {
         $this->checkpoint('start');
-        
+
         $this->title('Controller Generator');
-        
+
         // Get controller name
         $name = $this->argument('0');
-        
+
         if (!$name) {
             $name = $this->ask('Controller name', 'UserController');
         }
-        
+
         // Ensure it ends with Controller
         if (!str_ends_with($name, 'Controller')) {
             $name .= 'Controller';
         }
-        
+
         $name = Str::studly($name);
-        
+
         $this->checkpoint('name_collected');
-        
+
         // Gather options
         $options = $this->gatherOptions($name);
-        
+
         $this->checkpoint('options_collected');
-        
+
         // Display summary
         $this->displaySummary($name, $options);
-        
+
         if (!$this->confirm('Proceed with generation?', true)) {
             $this->warning('Controller generation cancelled.');
+
             return 0;
         }
-        
+
         $this->newLine();
         $this->section('Generating Files');
-        
+
         // Generate controller
         $controllerPath = $this->generateController($name, $options);
-        
+
         $this->checkpoint('controller_generated');
-        
+
         $filesCreated = [$controllerPath];
-        
+
         // Generate related files
         if ($options['requests']) {
             $requestPaths = $this->generateRequests($name, $options);
             $filesCreated = array_merge($filesCreated, $requestPaths);
         }
-        
+
         if ($options['test']) {
             $testPath = $this->generateTest($name, $options);
             $filesCreated[] = $testPath;
         }
-        
+
         $this->checkpoint('all_generated');
-        
+
         // Display results
         $this->displayResults($name, $filesCreated, $options);
-        
+
         if ($this->isVerbose()) {
             $this->displayTimings();
         }
-        
+
         return 0;
     }
 
@@ -138,49 +139,49 @@ class MakeControllerCommand extends Command
             'comments' => !$this->hasOption('no-comments'),
             'strict' => $this->hasOption('strict'),
         ];
-        
+
         // Interactive mode if no significant options provided
         if (!$this->hasAnyOption()) {
             $this->section('Configuration');
-            
+
             $typeChoice = $this->choice(
                 'Controller type?',
                 ['Plain', 'Resource', 'API', 'Invokable', 'Singleton'],
                 'Resource'
             );
-            
+
             $options['type'] = strtolower($typeChoice);
-            
+
             if (in_array($options['type'], ['resource', 'api', 'singleton'])) {
                 if ($this->confirm('Associate with a model?', true)) {
                     $modelName = $this->ask('Model name', str_replace('Controller', '', $name));
                     $options['model'] = Str::studly($modelName);
                 }
-                
+
                 if ($this->confirm('Is this a nested resource?', false)) {
                     $parentName = $this->ask('Parent resource name');
                     $options['parent'] = Str::studly($parentName);
                 }
             }
-            
+
             if (in_array($options['type'], ['resource', 'api'])) {
                 $options['requests'] = $this->confirm('Generate Form Request classes?', false);
             }
-            
+
             $options['test'] = $this->confirm('Generate test class?', false);
-            
+
             if ($options['test']) {
                 $options['pest'] = $this->confirm('Use Pest instead of PHPUnit?', false);
             }
-            
+
             $options['comments'] = $this->confirm('Add PHPDoc comments?', true);
         }
-        
+
         // Parse custom methods if provided
         if ($options['methods']) {
             $options['custom_methods'] = array_map('trim', explode(',', $options['methods']));
         }
-        
+
         return $options;
     }
 
@@ -189,63 +190,63 @@ class MakeControllerCommand extends Command
         if ($this->hasOption('invokable') || $this->hasOption('i')) {
             return 'invokable';
         }
-        
+
         if ($this->hasOption('api')) {
             return 'api';
         }
-        
+
         if ($this->hasOption('resource') || $this->hasOption('r')) {
             return 'resource';
         }
-        
+
         if ($this->hasOption('singleton')) {
             return 'singleton';
         }
-        
+
         if ($this->option('type')) {
             return strtolower($this->option('type'));
         }
-        
+
         return 'plain';
     }
 
     private function generateController(string $name, array $options): string
     {
-        $this->task('Generating controller class', function() use ($name, $options) {
+        $this->task('Generating controller class', function () use ($name, $options) {
             usleep(300000);
         });
-        
+
         $path = $this->getControllerPath($name, $options);
-        
+
         if (Filesystem::exists($path) && !$options['force']) {
             if (!$this->confirm("Controller {$name} already exists. Overwrite?", false)) {
                 $this->warning('Controller generation skipped.');
                 exit(0);
             }
         }
-        
+
         // Load template
         $template = $this->loadTemplate($options);
-        
+
         // Populate template
         $content = $this->populateTemplate($template, $name, $options);
-        
+
         Filesystem::put($path, $content);
-        
+
         $this->success("Controller created: {$path}");
-        
+
         return $path;
     }
 
     private function generateRequests(string $controllerName, array $options): array
     {
-        $this->task('Generating Form Request classes', function() {
+        $this->task('Generating Form Request classes', function () {
             usleep(200000);
         });
-        
+
         $baseName = str_replace('Controller', '', $controllerName);
         $paths = [];
-        
+
         // Store Request
         $storeRequestName = "Store{$baseName}Request";
         $storeRequestPath = $this->getRequestPath($storeRequestName);
@@ -253,7 +254,7 @@ class MakeControllerCommand extends Command
         Filesystem::put($storeRequestPath, $storeContent);
         $paths[] = $storeRequestPath;
         $this->success("Request created: {$storeRequestName}");
-        
+
         // Update Request
         $updateRequestName = "Update{$baseName}Request";
         $updateRequestPath = $this->getRequestPath($updateRequestName);
@@ -261,35 +262,35 @@ class MakeControllerCommand extends Command
         Filesystem::put($updateRequestPath, $updateContent);
         $paths[] = $updateRequestPath;
         $this->success("Request created: {$updateRequestName}");
-        
+
         return $paths;
     }
 
     private function generateTest(string $controllerName, array $options): string
     {
         $testType = $options['pest'] ? 'Pest' : 'PHPUnit';
-        
-        $this->task("Generating {$testType} test", function() {
+
+        $this->task("Generating {$testType} test", function () {
             usleep(200000);
         });
-        
+
         $testName = str_replace('Controller', '', $controllerName) . 'ControllerTest';
         $path = $this->getTestPath($testName);
-        
+
         $template = $options['pest'] ? $this->getPestTestTemplate() : $this->getPhpUnitTestTemplate();
-        
+
         $replacements = [
             '{{class}}' => $testName,
             '{{controller}}' => $controllerName,
             '{{controllerNamespace}}' => $this->buildNamespace($options) . '\\' . $controllerName,
         ];
-        
+
         $content = str_replace(array_keys($replacements), array_values($replacements), $template);
-        
+
         Filesystem::put($path, $content);
-        
+
         $this->success("Test created: {$testName}");
-        
+
         return $path;
     }
 
@@ -302,13 +303,13 @@ class MakeControllerCommand extends Command
             'singleton' => 'controller.singleton.stub',
             default => 'controller.plain.stub',
         };
-        
+
         $templatePath = $this->templatePath . '/' . $templateName;
-        
+
         if (Filesystem::exists($templatePath)) {
             return Filesystem::get($templatePath);
         }
-        
+
         return $this->getDefaultTemplate($options['type']);
     }
 
@@ -319,7 +320,7 @@ class MakeControllerCommand extends Command
         $methods = $this->buildMethods($options);
         $comments = $options['comments'] ? $this->buildClassComment($name, $options) : '';
         $strict = $options['strict'] ? "declare(strict_types=1);\n\n" : '';
-        
+
         $replacements = [
             '{{strict}}' => $strict,
             '{{namespace}}' => $namespace,
@@ -333,7 +334,7 @@ class MakeControllerCommand extends Command
             '{{parent}}' => $options['parent'] ?? 'Parent',
             '{{parentVariable}}' => $options['parent'] ? Str::camel($options['parent']) : 'parent',
         ];
-        
+
         return str_replace(array_keys($replacements), array_values($replacements), $template);
     }
 
@@ -342,34 +343,34 @@ class MakeControllerCommand extends Command
         if ($options['namespace']) {
             return $options['namespace'];
         }
-        
+
         $base = 'App\\Http\\Controllers';
-        
+
         if ($options['type'] === 'api') {
             return $base . '\\Api';
         }
-        
+
         return $base;
     }
 
     private function buildImports(array $options): string
     {
         $imports = ["use Plugs\\Base\\Controller\\Controller;"];
-        
+
         if ($options['model']) {
             $imports[] = "use App\\Models\\{$options['model']};";
         }
-        
+
         if ($options['parent']) {
             $imports[] = "use App\\Models\\{$options['parent']};";
         }
-        
+
         if ($options['requests']) {
             $baseName = str_replace('Controller', '', $options['model'] ?? 'Resource');
             $imports[] = "use App\\Http\\Requests\\Store{$baseName}Request;";
             $imports[] = "use App\\Http\\Requests\\Update{$baseName}Request;";
         }
-        
+
         return implode("\n", $imports);
     }
 
@@ -378,7 +379,7 @@ class MakeControllerCommand extends Command
         if (isset($options['custom_methods'])) {
             return $this->buildCustomMethods($options['custom_methods'], $options);
         }
-        
+
         return match($options['type']) {
             'invokable' => $this->buildInvokableMethod($options),
             'api' => $this->buildApiMethods($options),
@@ -399,7 +400,7 @@ class MakeControllerCommand extends Command
             $this->buildMethod('update', ['Request $request', 'int $id'], 'Update the specified resource', $options),
             $this->buildMethod('destroy', ['int $id'], 'Remove the specified resource', $options),
         ];
-        
+
         return implode("\n\n", $methods);
     }
 
@@ -412,7 +413,7 @@ class MakeControllerCommand extends Command
             $this->buildMethod('update', ['Request $request', 'int $id'], 'Update the specified resource', $options),
             $this->buildMethod('destroy', ['int $id'], 'Remove the specified resource', $options),
         ];
-        
+
         return implode("\n\n", $methods);
     }
 
@@ -423,7 +424,7 @@ class MakeControllerCommand extends Command
             $this->buildMethod('edit', [], 'Show the form for editing the resource', $options),
             $this->buildMethod('update', ['Request $request'], 'Update the resource', $options),
         ];
-        
+
         return implode("\n\n", $methods);
     }
 
@@ -440,11 +441,11 @@ class MakeControllerCommand extends Command
     private function buildCustomMethods(array $methods, array $options): string
     {
         $built = [];
-        
+
         foreach ($methods as $method) {
             $built[] = $this->buildMethod($method, [], "Handle {$method} request", $options);
         }
-        
+
         return implode("\n\n", $built);
     }
 
@@ -452,21 +453,21 @@ class MakeControllerCommand extends Command
     {
         $indent = '    ';
         $method = '';
-        
+
         if ($options['comments']) {
             $method .= "{$indent}/**\n";
             $method .= "{$indent} * {$description}\n";
             $method .= "{$indent} */\n";
         }
-        
+
         $paramString = implode(', ', $params);
         $returnType = $options['strict'] ? ': mixed' : '';
-        
+
         $method .= "{$indent}public function {$name}({$paramString}){$returnType}\n";
         $method .= "{$indent}{\n";
         $method .= "{$indent}    // TODO: Implement {$name} method\n";
         $method .= "{$indent}}";
-        
+
         return $method;
     }
 
@@ -475,27 +476,27 @@ class MakeControllerCommand extends Command
         $comment = "/**\n";
         $comment .= " * {$name}\n";
         $comment .= " *\n";
-        
+
         if ($options['model']) {
             $comment .= " * Controller for managing {$options['model']} resources\n";
         }
-        
+
         $comment .= " * Generated by ThePlugs Console\n";
         $comment .= " * @created " . date('Y-m-d H:i:s') . "\n";
         $comment .= " */\n";
-        
+
         return $comment;
     }
 
     private function generateRequestClass(string $name, array $options): string
     {
         $template = $this->loadRequestTemplate();
-        
+
         $replacements = [
             '{{class}}' => $name,
             '{{rules}}' => $this->buildValidationRules($options),
         ];
-        
+
         return str_replace(array_keys($replacements), array_values($replacements), $template);
     }
 
@@ -509,35 +510,39 @@ class MakeControllerCommand extends Command
     {
         $this->newLine();
         $this->section('Generation Summary');
-        
+
         $this->keyValue('Controller Name', $name);
         $this->keyValue('Type', ucfirst($options['type']));
         $this->keyValue('Namespace', $this->buildNamespace($options));
-        
+
         if ($options['model']) {
             $this->keyValue('Associated Model', $options['model']);
         }
-        
+
         if ($options['parent']) {
             $this->keyValue('Parent Resource', $options['parent']);
         }
-        
+
         $this->newLine();
         $this->info('Files to generate:');
-        
+
         $files = ['Controller'];
-        if ($options['requests']) $files[] = 'Form Requests (2)';
-        if ($options['test']) $files[] = ($options['pest'] ? 'Pest' : 'PHPUnit') . ' Test';
-        
+        if ($options['requests']) {
+            $files[] = 'Form Requests (2)';
+        }
+        if ($options['test']) {
+            $files[] = ($options['pest'] ? 'Pest' : 'PHPUnit') . ' Test';
+        }
+
         $this->bulletList($files);
-        
+
         $this->newLine();
     }
 
     private function displayResults(string $name, array $filesCreated, array $options): void
     {
         $this->newLine(2);
-        
+
         $this->box(
             "Controller '{$name}' generated successfully!\n\n" .
             "Type: " . ucfirst($options['type']) . "\n" .
@@ -546,31 +551,31 @@ class MakeControllerCommand extends Command
             "✅ Success",
             "success"
         );
-        
+
         $this->newLine();
         $this->section('Generated Files');
-        
+
         foreach ($filesCreated as $file) {
             $relativePath = str_replace(getcwd() . '/', '', $file);
             $this->success("  ✓ {$relativePath}");
         }
-        
+
         $this->newLine();
         $this->section('Next Steps');
-        
+
         $steps = [
             "Implement methods in: {$name}",
             "Register routes for the controller",
         ];
-        
+
         if ($options['model']) {
             $steps[] = "Ensure {$options['model']} model exists";
         }
-        
+
         if ($options['test']) {
             $steps[] = "Write tests for the controller methods";
         }
-        
+
         $this->numberedList($steps);
         $this->newLine();
     }
@@ -578,13 +583,13 @@ class MakeControllerCommand extends Command
     private function hasAnyOption(): bool
     {
         $checkOptions = ['resource', 'r', 'api', 'invokable', 'i', 'model', 'type', 'singleton'];
-        
+
         foreach ($checkOptions as $option) {
             if ($this->hasOption($option) || $this->option($option)) {
                 return true;
             }
         }
-        
+
         return false;
     }
 
@@ -593,7 +598,7 @@ class MakeControllerCommand extends Command
         $namespace = $this->buildNamespace($options);
         $path = str_replace('App\\Http\\Controllers', 'app/Http/Controllers', $namespace);
         $path = str_replace('\\', '/', $path);
-        
+
         return getcwd() . '/' . $path . '/' . $name . '.php';
     }
 
@@ -658,11 +663,11 @@ class MakeControllerCommand extends Command
     private function loadRequestTemplate(): string
     {
         $templatePath = $this->templatePath . '/request.stub';
-        
+
         if (Filesystem::exists($templatePath)) {
             return Filesystem::get($templatePath);
         }
-        
+
         return <<<'STUB'
         <?php
 

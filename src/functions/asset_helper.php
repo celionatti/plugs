@@ -23,7 +23,7 @@ if (!function_exists('asset_manager')) {
 
         if ($manager === null) {
             $manager = new AssetManager(
-                publicPath: PUBLIC_PATH ?? null,
+                publicPath: defined('PUBLIC_PATH') ? PUBLIC_PATH : null,
                 cachePath: null,
                 minify: config('assets.minify', true),
                 combine: config('assets.combine', true),
@@ -71,6 +71,7 @@ if (!function_exists('css')) {
     function css(string|array $files): string
     {
         $files = is_array($files) ? $files : [$files];
+
         return asset_manager()->tags($files, 'css');
     }
 }
@@ -82,6 +83,7 @@ if (!function_exists('js')) {
     function js(string|array $files, array $attrs = []): string
     {
         $files = is_array($files) ? $files : [$files];
+
         return asset_manager()->tags($files, 'js', $attrs);
     }
 }

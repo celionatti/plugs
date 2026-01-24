@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace Plugs\Database;
 
-use PDO;
 use Exception;
+use PDO;
 use Plugs\Base\Model\PlugModel;
 
 /**
@@ -36,7 +36,7 @@ class BelongsToManyProxy
     /**
      * Sync pivot table relationships
      * Replaces all existing relationships with the provided IDs
-     * 
+     *
      * @param array|int $ids Array of IDs or single ID to sync
      * @param bool $detaching Whether to detach records not in the list
      * @return array Returns ['attached' => [], 'detached' => [], 'updated' => []]
@@ -51,7 +51,7 @@ class BelongsToManyProxy
         extract($this->config); // $pivotTable, $foreignPivotKey, $relatedPivotKey, $parentKey
 
         $parentId = $this->parent->getAttribute($parentKey);
-        
+
         if (!$parentId) {
             throw new Exception("Parent model must exist before syncing relationships");
         }
@@ -67,7 +67,7 @@ class BelongsToManyProxy
         $changes = [
             'attached' => [],
             'detached' => [],
-            'updated' => []
+            'updated' => [],
         ];
 
         // Begin transaction
@@ -90,13 +90,14 @@ class BelongsToManyProxy
             $changes['updated'] = $idsToUpdate;
 
             $this->parent::commit();
-            
+
             // Clear cache if enabled
             $this->clearCache();
 
             return $changes;
         } catch (Exception $e) {
             $this->parent::rollBack();
+
             throw $e;
         }
     }
@@ -104,7 +105,7 @@ class BelongsToManyProxy
     /**
      * Attach relationships to pivot table
      * Adds new relationships without removing existing ones
-     * 
+     *
      * @param array|int $ids Array of IDs or single ID to attach
      * @param array $attributes Additional pivot attributes
      * @param bool $touch Whether to update timestamps
@@ -120,14 +121,14 @@ class BelongsToManyProxy
         extract($this->config); // $pivotTable, $foreignPivotKey, $relatedPivotKey, $parentKey
 
         $parentId = $this->parent->getAttribute($parentKey);
-        
+
         if (!$parentId) {
             throw new Exception("Parent model must exist before attaching relationships");
         }
 
         // Get existing relationship IDs to avoid duplicates
         $existingIds = $this->getCurrentPivotIds();
-        
+
         // Only attach IDs that don't already exist
         $idsToAttach = array_diff($ids, $existingIds);
 
@@ -139,13 +140,14 @@ class BelongsToManyProxy
 
         try {
             $this->attachPivot($idsToAttach, $attributes, $touch);
-            
+
             $this->parent::commit();
-            
+
             // Clear cache if enabled
             $this->clearCache();
         } catch (Exception $e) {
             $this->parent::rollBack();
+
             throw $e;
         }
     }
@@ -153,7 +155,7 @@ class BelongsToManyProxy
     /**
      * Detach relationships from pivot table
      * Removes relationships without affecting others
-     * 
+     *
      * @param array|int|null $ids Array of IDs, single ID, or null to detach all
      * @return int Number of relationships detached
      */
@@ -162,7 +164,7 @@ class BelongsToManyProxy
         extract($this->config); // $pivotTable, $foreignPivotKey, $relatedPivotKey, $parentKey
 
         $parentId = $this->parent->getAttribute($parentKey);
-        
+
         if (!$parentId) {
             return 0;
         }
@@ -176,15 +178,16 @@ class BelongsToManyProxy
 
         try {
             $count = $this->detachPivot($ids);
-            
+
             $this->parent::commit();
-            
+
             // Clear cache if enabled
             $this->clearCache();
 
             return $count;
         } catch (Exception $e) {
             $this->parent::rollBack();
+
             throw $e;
         }
     }
@@ -192,7 +195,7 @@ class BelongsToManyProxy
     /**
      * Toggle relationships in pivot table
      * Attaches if not present, detaches if present
-     * 
+     *
      * @param array|int $ids Array of IDs or single ID to toggle
      * @return array Returns ['attached' => [], 'detached' => []]
      */
@@ -206,7 +209,7 @@ class BelongsToManyProxy
         extract($this->config); // $pivotTable, $foreignPivotKey, $relatedPivotKey, $parentKey
 
         $parentId = $this->parent->getAttribute($parentKey);
-        
+
         if (!$parentId) {
             throw new Exception("Parent model must exist before toggling relationships");
         }
@@ -220,7 +223,7 @@ class BelongsToManyProxy
 
         $changes = [
             'attached' => [],
-            'detached' => []
+            'detached' => [],
         ];
 
         $this->parent::beginTransaction();
@@ -239,20 +242,21 @@ class BelongsToManyProxy
             }
 
             $this->parent::commit();
-            
+
             // Clear cache if enabled
             $this->clearCache();
 
             return $changes;
         } catch (Exception $e) {
             $this->parent::rollBack();
+
             throw $e;
         }
     }
 
     /**
      * Update existing pivot record attributes
-     * 
+     *
      * @param int $id The related model ID
      * @param array $attributes Attributes to update
      * @return bool
@@ -262,19 +266,19 @@ class BelongsToManyProxy
         extract($this->config); // $pivotTable, $foreignPivotKey, $relatedPivotKey, $parentKey
 
         $parentId = $this->parent->getAttribute($parentKey);
-        
+
         if (!$parentId || empty($attributes)) {
             return false;
         }
 
         $setClauses = [];
         $bindings = [];
-        
+
         foreach ($attributes as $key => $value) {
             $setClauses[] = "{$key} = ?";
             $bindings[] = $value;
         }
-        
+
         // Add updated_at if not present
         if (!array_key_exists('updated_at', $attributes)) {
             $setClauses[] = "updated_at = ?";
@@ -284,15 +288,17 @@ class BelongsToManyProxy
         $bindings[] = $parentId;
         $bindings[] = $id;
 
-        $sql = "UPDATE {$pivotTable} SET " . implode(', ', $setClauses) . 
+        $sql = "UPDATE {$pivotTable} SET " . implode(', ', $setClauses) .
                " WHERE {$foreignPivotKey} = ? AND {$relatedPivotKey} = ?";
 
         try {
             $this->executeQuery($sql, $bindings);
             $this->clearCache();
+
             return true;
         } catch (Exception $e) {
             error_log("Failed to update pivot: " . $e->getMessage());
+
             return false;
         }
     }
@@ -305,13 +311,13 @@ class BelongsToManyProxy
     private function getCurrentPivotIds(): array
     {
         extract($this->config); // $pivotTable, $foreignPivotKey, $relatedPivotKey, $parentKey
-        
+
         $parentId = $this->parent->getAttribute($parentKey);
-        
+
         $sql = "SELECT {$relatedPivotKey} FROM {$pivotTable} WHERE {$foreignPivotKey} = ?";
         $stmt = $this->executeQuery($sql, [$parentId]);
         $results = $stmt->fetchAll(PDO::FETCH_COLUMN);
-        
+
         return array_map('intval', $results);
     }
 
@@ -325,7 +331,7 @@ class BelongsToManyProxy
         }
 
         extract($this->config); // $pivotTable, $foreignPivotKey, $relatedPivotKey, $parentKey
-        
+
         $parentId = $this->parent->getAttribute($parentKey);
         $records = [];
         $now = date('Y-m-d H:i:s');
@@ -371,7 +377,7 @@ class BelongsToManyProxy
     private function detachPivot(?array $ids = null): int
     {
         extract($this->config); // $pivotTable, $foreignPivotKey, $relatedPivotKey, $parentKey
-        
+
         $parentId = $this->parent->getAttribute($parentKey);
 
         if ($ids === null) {
@@ -390,6 +396,7 @@ class BelongsToManyProxy
         }
 
         $stmt = $this->executeQuery($sql, $bindings);
+
         return $stmt->rowCount();
     }
 
@@ -401,6 +408,7 @@ class BelongsToManyProxy
         // Use reflection to call protected method
         $reflection = new \ReflectionMethod($this->parent, 'executeQuery');
         $reflection->setAccessible(true);
+
         return $reflection->invoke($this->parent, $sql, $bindings);
     }
 
@@ -411,7 +419,7 @@ class BelongsToManyProxy
     {
         $reflection = new \ReflectionProperty(get_class($this->parent), 'cacheEnabled');
         $reflection->setAccessible(true);
-        
+
         if ($reflection->getValue()) {
             $this->parent::flushCache();
         }

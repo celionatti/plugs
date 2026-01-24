@@ -3,9 +3,9 @@
 declare(strict_types=1);
 
 use Plugs\Http\Batch;
+use Plugs\Http\BatchResponse;
 use Plugs\Http\HTTPClient;
 use Plugs\Http\HTTPResponse;
-use Plugs\Http\BatchResponse;
 
 if (!function_exists('http')) {
     function http(?string $baseUri = null): HTTPClient
@@ -77,18 +77,23 @@ if (!function_exists('http_async')) {
             switch ($method) {
                 case 'get':
                     $batch->get($url, $options, $requestKey);
+
                     break;
                 case 'post':
                     $batch->post($url, $data, $options, $requestKey);
+
                     break;
                 case 'put':
                     $batch->put($url, $data, $options, $requestKey);
+
                     break;
                 case 'patch':
                     $batch->patch($url, $data, $options, $requestKey);
+
                     break;
                 case 'delete':
                     $batch->delete($url, $options, $requestKey);
+
                     break;
                 default:
                     $batch->add($method, $url, $options, $requestKey);

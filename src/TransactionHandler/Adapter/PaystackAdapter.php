@@ -39,7 +39,7 @@ class PaystackAdapter implements PaymentAdapterInterface
     {
         return $this->makeRequest("/subscription/disable", [
             'code' => $subscriptionId,
-            'token' => $subscriptionId
+            'token' => $subscriptionId,
         ], 'POST');
     }
 
@@ -71,6 +71,7 @@ class PaystackAdapter implements PaymentAdapterInterface
     public function listTransactions(array $filters)
     {
         $query = http_build_query($filters);
+
         return $this->makeRequest("/transaction?{$query}", [], 'GET');
     }
 
@@ -88,6 +89,7 @@ class PaystackAdapter implements PaymentAdapterInterface
     {
         $signature = $_SERVER['HTTP_X_PAYSTACK_SIGNATURE'] ?? '';
         $hash = hash_hmac('sha512', json_encode($payload), $this->secretKey);
+
         return $signature === $hash;
     }
 
@@ -103,7 +105,7 @@ class PaystackAdapter implements PaymentAdapterInterface
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
         curl_setopt($ch, CURLOPT_HTTPHEADER, [
             'Authorization: Bearer ' . $this->secretKey,
-            'Content-Type: application/json'
+            'Content-Type: application/json',
         ]);
 
         if ($method === 'POST') {

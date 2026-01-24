@@ -4,9 +4,9 @@ declare(strict_types=1);
 
 namespace Plugs\Queue\Drivers;
 
-use Plugs\Queue\QueueDriverInterface;
 use Plugs\Database\Connection;
 use Plugs\Database\QueryBuilder;
+use Plugs\Queue\QueueDriverInterface;
 
 class DatabaseQueueDriver implements QueueDriverInterface
 {
@@ -45,6 +45,7 @@ class DatabaseQueueDriver implements QueueDriverInterface
 
         if ($job) {
             $this->reserveJob($job['id']);
+
             return (object) $job;
         }
 
@@ -74,7 +75,7 @@ class DatabaseQueueDriver implements QueueDriverInterface
         $payload = serialize([
             'job' => is_object($job) ? get_class($job) : $job,
             'data' => $data,
-            'instance' => is_object($job) ? serialize($job) : null
+            'instance' => is_object($job) ? serialize($job) : null,
         ]);
 
         (new QueryBuilder($this->connection))
@@ -85,7 +86,7 @@ class DatabaseQueueDriver implements QueueDriverInterface
                 'attempts' => 0,
                 'reserved_at' => null,
                 'available_at' => $availableAt,
-                'created_at' => time()
+                'created_at' => time(),
             ]);
 
         return (int) $this->connection->lastInsertId();
@@ -101,7 +102,7 @@ class DatabaseQueueDriver implements QueueDriverInterface
                 'attempts' => (new QueryBuilder($this->connection))
                     ->table($this->table)
                     ->where('id', '=', $id)
-                    ->first()['attempts'] + 1
+                    ->first()['attempts'] + 1,
             ]);
     }
 }

@@ -13,8 +13,8 @@ namespace Plugs\Console\Commands;
 */
 
 use Plugs\Console\Command;
-use Plugs\Console\Support\Str;
 use Plugs\Console\Support\Filesystem;
+use Plugs\Console\Support\Str;
 
 class MakeActionCommand extends Command
 {
@@ -23,7 +23,7 @@ class MakeActionCommand extends Command
     protected function defineArguments(): array
     {
         return [
-            'name' => 'The name of the action class'
+            'name' => 'The name of the action class',
         ];
     }
 
@@ -78,6 +78,7 @@ class MakeActionCommand extends Command
         if (Filesystem::exists($path) && !$options['force']) {
             if (!$this->confirm("Action {$name} already exists. Overwrite?", false)) {
                 $this->warning('Action generation cancelled.');
+
                 return 0;
             }
         }

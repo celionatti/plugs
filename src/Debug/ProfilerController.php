@@ -4,12 +4,12 @@ declare(strict_types=1);
 
 namespace Plugs\Debug;
 
-use Psr\Http\Message\ServerRequestInterface;
 use Plugs\Http\ResponseFactory;
+use Psr\Http\Message\ServerRequestInterface;
 
 /**
  * Profiler Dashboard Controller
- * 
+ *
  * Provides routes for viewing and managing profiler data.
  */
 class ProfilerController
@@ -20,6 +20,7 @@ class ProfilerController
     public function index(ServerRequestInterface $request)
     {
         $profiles = Profiler::getProfiles(50);
+
         return ResponseFactory::html($this->renderDashboard($profiles));
     }
 
@@ -32,6 +33,7 @@ class ProfilerController
         if (!$profile) {
             return ResponseFactory::html($this->render404(), 404);
         }
+
         return ResponseFactory::html($this->renderProfile($profile));
     }
 
@@ -41,6 +43,7 @@ class ProfilerController
     public function destroy(ServerRequestInterface $request, string $id)
     {
         Profiler::deleteProfile($id);
+
         return ResponseFactory::json(['success' => true, 'message' => 'Profile deleted']);
     }
 
@@ -50,6 +53,7 @@ class ProfilerController
     public function clear(ServerRequestInterface $request)
     {
         $count = Profiler::clearProfiles();
+
         return ResponseFactory::json(['success' => true, 'deleted' => $count]);
     }
 
@@ -59,6 +63,7 @@ class ProfilerController
     public function latest(ServerRequestInterface $request)
     {
         $profiles = Profiler::getProfiles(1);
+
         return ResponseFactory::json($profiles[0] ?? null);
     }
 
@@ -73,7 +78,8 @@ class ProfilerController
             $durationClass = $this->getDurationClass((float) $profile['duration']);
             $queryCount = $profile['database']['query_count'] ?? 0;
 
-            $profileRows .= sprintf('
+            $profileRows .= sprintf(
+                '
                 <tr class="profile-row" onclick="window.location.href=\'/plugs/profiler/%s\'">
                     <td class="col-time">%s</td>
                     <td class="col-method"><span class="method-badge method-%s">%s</span></td>
@@ -105,7 +111,8 @@ class ProfilerController
             );
         }
 
-        return $this->getBaseHtml('Profiler Dashboard', sprintf('
+        return $this->getBaseHtml('Profiler Dashboard', sprintf(
+            '
             <div class="dashboard-header animate-fade-in">
                 <div>
                     <h1>Profiler Dashboard</h1>
@@ -201,7 +208,8 @@ class ProfilerController
             $tabNav .= sprintf('<button class="tab-btn" onclick="openTab(\'%s\')">%s</button>', $id, $label);
         }
 
-        return $this->getBaseHtml('Profile: ' . $profile['request']['path'], sprintf('
+        return $this->getBaseHtml('Profile: ' . $profile['request']['path'], sprintf(
+            '
             <div class="profile-header animate-fade-in">
                 <a href="/plugs/profiler" class="back-link">← Back to Dashboard</a>
                 <div class="profile-title">
@@ -318,6 +326,7 @@ class ProfilerController
         }
 
         $html .= '</div>';
+
         return $html;
     }
 
@@ -339,7 +348,8 @@ class ProfilerController
             $sqlHash = md5($query['query'] ?? '');
             $isDuplicate = isset($duplicateQueries[$sqlHash]);
 
-            $html .= sprintf('
+            $html .= sprintf(
+                '
                 <div class="query-item %s %s">
                     <div class="query-header">
                         <span class="query-number">#%d</span>
@@ -375,12 +385,14 @@ class ProfilerController
         $totalDuration = max($profile['duration'] ?? 1, 1);
 
         foreach ($timeline as $name => $segment) {
-            if ($segment['duration'] === null)
+            if ($segment['duration'] === null) {
                 continue;
+            }
             $percentage = min(100, ($segment['duration'] / $totalDuration) * 100);
             $startOffset = 0; // Simplified for now
 
-            $html .= sprintf('
+            $html .= sprintf(
+                '
                 <div class="timeline-row">
                     <div class="timeline-info">
                         <span class="timeline-name">%s</span>
@@ -397,6 +409,7 @@ class ProfilerController
             );
         }
         $html .= '</div>';
+
         return $html;
     }
 
@@ -412,8 +425,9 @@ class ProfilerController
             $html .= '<p class="empty">No model events.</p>';
         } else {
             $modelList = [];
-            foreach ($models as $m)
+            foreach ($models as $m) {
                 $modelList[] = sprintf('<strong>%s</strong>: <span class="badge">%s</span> at %s ms', class_basename($m['model']), $m['event'], number_format($m['time_offset'], 2));
+            }
             $html .= '<ul class="simple-list"><li>' . implode('</li><li>', $modelList) . '</li></ul>';
         }
         $html .= '</div>';
@@ -423,13 +437,15 @@ class ProfilerController
             $html .= '<p class="empty">No views rendered.</p>';
         } else {
             $viewList = [];
-            foreach ($views as $v)
+            foreach ($views as $v) {
                 $viewList[] = sprintf('<strong>%s</strong> (%s ms)', htmlspecialchars($v['name']), number_format($v['duration'], 2));
+            }
             $html .= '<ul class="simple-list"><li>' . implode('</li><li>', $viewList) . '</li></ul>';
         }
         $html .= '</div>';
 
         $html .= '</div>';
+
         return $html;
     }
 
@@ -455,6 +471,7 @@ class ProfilerController
                 is_array($value) ? '<pre>' . htmlspecialchars(json_encode($value, JSON_PRETTY_PRINT)) . '</pre>' : htmlspecialchars((string) $value)
             );
         }
+
         return '<table class="info-table">' . $rows . '</table>';
     }
 
@@ -469,6 +486,7 @@ class ProfilerController
             }
             $hashes[$hash] = true;
         }
+
         return $duplicates;
     }
 
@@ -488,21 +506,28 @@ class ProfilerController
 
     private function getStatusClass(int $status): string
     {
-        if ($status >= 500)
+        if ($status >= 500) {
             return 'status-error';
-        if ($status >= 400)
+        }
+        if ($status >= 400) {
             return 'status-warning';
-        if ($status >= 300)
+        }
+        if ($status >= 300) {
             return 'status-redirect';
+        }
+
         return 'status-success';
     }
 
     private function getDurationClass(float $duration): string
     {
-        if ($duration > 1000)
+        if ($duration > 1000) {
             return 'duration-slow';
-        if ($duration > 200)
+        }
+        if ($duration > 200) {
             return 'duration-medium';
+        }
+
         return 'duration-fast';
     }
 

@@ -4,11 +4,11 @@ declare(strict_types=1);
 
 namespace Plugs\Middlewares;
 
+use Plugs\Security\Sanitizer;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Server\MiddlewareInterface;
 use Psr\Http\Server\RequestHandlerInterface;
-use Plugs\Security\Sanitizer;
 
 class SanitizationMiddleware implements MiddlewareInterface
 {
@@ -53,6 +53,7 @@ class SanitizationMiddleware implements MiddlewareInterface
                 return true;
             }
         }
+
         return false;
     }
 

@@ -33,6 +33,7 @@ class MigrateRollbackCommand extends Command
 
             if (empty($result['migrations'])) {
                 $this->note($result['message']);
+
                 return 0;
             }
 
@@ -43,6 +44,7 @@ class MigrateRollbackCommand extends Command
             $this->info($result['message']);
         } catch (\Exception $e) {
             $this->error($e->getMessage());
+
             return 1;
         }
 

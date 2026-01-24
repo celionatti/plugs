@@ -180,7 +180,7 @@ class Output
         }
     }
 
-    // ... 
+    // ...
 
     private function getPlugLogoLines(): array
     {
@@ -214,6 +214,7 @@ class Output
         return array_map(function ($line) use ($width) {
             $stripped = $this->stripAnsiCodes($line);
             $padding = $width - mb_strwidth($stripped);
+
             return $line . str_repeat(' ', max(0, $padding));
         }, $logo);
     }
@@ -326,6 +327,7 @@ class Output
                         self::BRIGHT_BLUE . "│" . self::RESET . "\n";
 
                     $this->line(self::BRIGHT_BLUE . "╰" . str_repeat("─", $maxWidth) . "╯" . self::RESET);
+
                     throw $e;
                 }
             }
@@ -378,6 +380,7 @@ class Output
 
                 if ($i > 500) {
                     $this->warning("Spinner timeout reached");
+
                     break;
                 }
             }
@@ -567,6 +570,7 @@ class Output
                 self::BRIGHT_BLUE . "│" . self::RESET . "\n";
 
             $this->line(self::BRIGHT_BLUE . "╰" . str_repeat("─", $maxWidth) . "╯" . self::RESET);
+
             throw $error;
         }
 
@@ -590,6 +594,7 @@ class Output
     {
         if (empty($headers) || empty($rows)) {
             $this->warning("No data to display in table");
+
             return;
         }
 
@@ -736,7 +741,7 @@ class Output
             self::BRIGHT_GREEN,
             self::GRADIENT_TEAL,
             self::BRIGHT_CYAN,
-            self::BRIGHT_BLUE
+            self::BRIGHT_BLUE,
         ];
 
         $chars = mb_str_split($text);
@@ -932,8 +937,9 @@ class Output
 
     public function argumentList(array $arguments): void
     {
-        if (empty($arguments))
+        if (empty($arguments)) {
             return;
+        }
 
         $this->line(self::BRIGHT_WHITE . "  Arguments:" . self::RESET);
         foreach ($arguments as $name => $description) {
@@ -944,8 +950,9 @@ class Output
 
     public function optionList(array $options): void
     {
-        if (empty($options))
+        if (empty($options)) {
             return;
+        }
 
         $this->line(self::BRIGHT_WHITE . "  Options:" . self::RESET);
         foreach ($options as $name => $description) {
@@ -997,6 +1004,7 @@ class Output
         }
 
         echo "\n";
+
         return $password;
     }
 
@@ -1050,6 +1058,7 @@ class Output
 
         if ($input === '' && $default !== null) {
             $this->line();
+
             return $default;
         }
 
@@ -1057,10 +1066,12 @@ class Output
 
         if (!isset($indexedChoices[$selectedIndex])) {
             $this->error("Invalid choice. Please try again.");
+
             return $this->choice($question, $choices, $default);
         }
 
         $this->line();
+
         return $indexedChoices[$selectedIndex];
     }
 
@@ -1089,6 +1100,7 @@ class Output
 
         if ($input === '') {
             $this->line();
+
             return $defaults;
         }
 
@@ -1103,6 +1115,7 @@ class Output
         }
 
         $this->line();
+
         return $selected;
     }
 
@@ -1126,6 +1139,7 @@ class Output
         fclose($handle);
 
         $this->line();
+
         return $input === '' && $default !== null ? $default : $input;
     }
 
@@ -1210,7 +1224,7 @@ class Output
             " |_   _| || | __| | _ \\ | | | | |/ __/ __|",
             "   | | | __ | _|  |  _/ |_| |_| | (_ \\__ \\",
             "   |_| |_||_|___| |_| |_(_)\\___/ \\___|___/",
-            "  1 0 1 0 0 1   1 1 0 0 1 0   1 0 1 1 0 1 "
+            "  1 0 1 0 0 1   1 1 0 0 1 0   1 0 1 1 0 1 ",
         ];
 
         $maxWidth = 0;
@@ -1277,7 +1291,7 @@ class Output
             "|  -  | || | -| | - \\ | | | | |/ -/ -|",
             "  | | | -- | -  |  -/ |-| |-| | (- \\-- ",
             "  |-| |-||-|---| |-| |-(-)\\---/ \\_--|---|",
-            " 1-0-1-0-0-1  1-1-0-0-1-0  1-0-1-1-0-1 "
+            " 1-0-1-0-0-1  1-1-0-0-1-0  1-0-1-1-0-1 ",
         ];
 
         $maxWidth = 0;
@@ -1343,7 +1357,7 @@ class Output
     {
         $logo = [
             "THE PLUGS",
-            "1-0-1-0 1-1-0-1"
+            "1-0-1-0 1-1-0-1",
         ];
 
         foreach ($logo as $index => $line) {
@@ -1425,7 +1439,7 @@ class Output
             "     \ \_\    \ \_\\\\ \____/\ \____ \/\____/   ",
             "      \/_/     \/_/ \/___/  \/___L\ \/___/    ",
             "                              /\____/         ",
-            "                              \_/__/          "
+            "                              \_/__/          ",
         ];
 
         $colors = [

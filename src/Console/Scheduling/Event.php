@@ -45,6 +45,7 @@ class Event
     public function cron(string $expression): self
     {
         $this->cronExpression = $expression;
+
         return $this;
     }
 
@@ -118,6 +119,7 @@ class Event
     public function dailyAt(string $time): self
     {
         [$hour, $minute] = explode(':', $time);
+
         return $this->cron("{$minute} {$hour} * * *");
     }
 
@@ -144,6 +146,7 @@ class Event
     public function weeklyOn(int $dayOfWeek, string $time = '0:0'): self
     {
         [$hour, $minute] = explode(':', $time);
+
         return $this->cron("{$minute} {$hour} * * {$dayOfWeek}");
     }
 
@@ -161,6 +164,7 @@ class Event
     public function monthlyOn(int $day = 1, string $time = '0:0'): self
     {
         [$hour, $minute] = explode(':', $time);
+
         return $this->cron("{$minute} {$hour} {$day} * *");
     }
 
@@ -258,6 +262,7 @@ class Event
     public function description(string $description): self
     {
         $this->description = $description;
+
         return $this;
     }
 
@@ -275,6 +280,7 @@ class Event
     public function withoutOverlapping(): self
     {
         $this->withoutOverlapping = true;
+
         return $this;
     }
 
@@ -284,6 +290,7 @@ class Event
     public function runInBackground(): self
     {
         $this->runInBackground = true;
+
         return $this;
     }
 
@@ -293,6 +300,7 @@ class Event
     public function when(\Closure $callback): self
     {
         $this->filter = $callback;
+
         return $this;
     }
 
@@ -302,6 +310,7 @@ class Event
     public function skip(\Closure $callback): self
     {
         $this->reject = $callback;
+
         return $this;
     }
 
@@ -366,18 +375,21 @@ class Event
         // List (e.g., 1,15)
         if (str_contains($expression, ',')) {
             $values = array_map('intval', explode(',', $expression));
+
             return in_array($value, $values, true);
         }
 
         // Range (e.g., 1-5)
         if (str_contains($expression, '-')) {
             [$start, $end] = array_map('intval', explode('-', $expression));
+
             return $value >= $start && $value <= $end;
         }
 
         // Step (e.g., */5)
         if (str_starts_with($expression, '*/')) {
             $step = (int) substr($expression, 2);
+
             return $step > 0 && $value % $step === 0;
         }
 

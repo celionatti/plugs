@@ -14,9 +14,9 @@ namespace Plugs\Inertia;
 | header and responds appropriately.
 */
 
-use Plugs\Http\ResponseFactory;
-use Plugs\Http\Message\Stream;
 use Plugs\Http\Message\Response;
+use Plugs\Http\Message\Stream;
+use Plugs\Http\ResponseFactory;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 
@@ -253,12 +253,14 @@ HTML;
                 if ($partialComponent === $this->component && in_array($key, $partialData, true)) {
                     $resolved[$key] = $value();
                 }
+
                 continue;
             }
 
             // Handle callables (but not objects with __invoke unless LazyProp)
             if (is_callable($value) && !is_object($value)) {
                 $resolved[$key] = $value();
+
                 continue;
             }
 
@@ -336,6 +338,7 @@ HTML;
     public function with(array $props): self
     {
         $this->props = array_merge($this->props, $props);
+
         return $this;
     }
 
@@ -351,6 +354,7 @@ HTML;
 
         if ($request !== null) {
             $response = $this->toResponse($request);
+
             return (string) $response->getBody();
         }
 

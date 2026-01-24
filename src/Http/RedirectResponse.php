@@ -102,6 +102,7 @@ class RedirectResponse
     public function withHeader(string $name, string $value): self
     {
         $this->headers[$name] = $value;
+
         return $this;
     }
 
@@ -111,6 +112,7 @@ class RedirectResponse
     public function withHeaders(array $headers): self
     {
         $this->headers = array_merge($this->headers, $headers);
+
         return $this;
     }
 
@@ -127,6 +129,7 @@ class RedirectResponse
         bool $httpOnly = true
     ): self {
         setcookie($name, $value, $expires, $path, $domain, $secure, $httpOnly);
+
         return $this;
     }
 
@@ -136,6 +139,7 @@ class RedirectResponse
     public function withFragment(string $fragment): self
     {
         $this->url .= '#' . ltrim($fragment, '#');
+
         return $this;
     }
 
@@ -146,6 +150,7 @@ class RedirectResponse
     {
         $separator = str_contains($this->url, '?') ? '&' : '?';
         $this->url .= $separator . http_build_query($params);
+
         return $this;
     }
 

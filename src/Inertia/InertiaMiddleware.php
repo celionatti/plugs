@@ -64,7 +64,7 @@ class InertiaMiddleware implements MiddlewareInterface
 
     /**
      * Share data with all Inertia responses
-     * 
+     *
      * Override this method to add your own shared data
      *
      * @param ServerRequestInterface $request
@@ -134,7 +134,7 @@ class InertiaMiddleware implements MiddlewareInterface
 
     /**
      * Handle redirect responses for Inertia requests
-     * 
+     *
      * Converts 302 redirects to 303 for PUT/PATCH/DELETE requests
      * to ensure proper browser handling
      *

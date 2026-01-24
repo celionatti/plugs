@@ -22,7 +22,7 @@ function renderDebugErrorPage(Throwable $e): void
         'function' => '{main}',
         'class' => '',
         'type' => '',
-        'args' => []
+        'args' => [],
     ];
     foreach ($trace as $t) {
         $frames[] = $t;
@@ -577,6 +577,7 @@ function renderRequestGrid(): string
         'Protocol' => $_SERVER['SERVER_PROTOCOL'] ?? '-',
         'IP Address' => $_SERVER['REMOTE_ADDR'] ?? '-',
     ];
+
     return renderGridItems($data);
 }
 
@@ -587,6 +588,7 @@ function renderEnvGrid(): string
         'Server Software' => $_SERVER['SERVER_SOFTWARE'] ?? '-',
         'Interface' => $_SERVER['GATEWAY_INTERFACE'] ?? '-',
     ];
+
     return renderGridItems($data);
 }
 
@@ -599,6 +601,7 @@ function renderHeadersGrid(): string
             $headers[$name] = $value;
         }
     }
+
     return renderGridItems($headers);
 }
 
@@ -611,6 +614,7 @@ function renderGridItems(array $items): string
         $html .= '<div class="info-value">' . htmlspecialchars((string) $value) . '</div>';
         $html .= '</div>';
     }
+
     return $html;
 }
 

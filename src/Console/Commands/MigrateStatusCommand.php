@@ -29,6 +29,7 @@ class MigrateStatusCommand extends Command
 
             if (empty($status)) {
                 $this->note('No migrations found.');
+
                 return 0;
             }
 
@@ -46,6 +47,7 @@ class MigrateStatusCommand extends Command
             $this->line(str_repeat('-', 60));
         } catch (\Exception $e) {
             $this->error($e->getMessage());
+
             return 1;
         }
 

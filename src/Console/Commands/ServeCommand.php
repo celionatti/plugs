@@ -20,18 +20,18 @@ class ServeCommand extends Command
     {
         $host = $this->option('host') ?? '127.0.0.1';
         $port = $this->option('port') ?? 8000;
-        
+
         $this->banner('Development Server');
-        
+
         $this->panel(
             "Server URL: http://{$host}:{$port}\n" .
             "Document Root: " . getcwd() . "/public\n" .
             "Press Ctrl+C to stop",
             "🚀 Server Information"
         );
-        
+
         $command = "php -S {$host}:{$port} -t public";
-        
+
         return $this->execRealtime($command);
     }
 

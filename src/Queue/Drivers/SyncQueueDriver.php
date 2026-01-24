@@ -11,6 +11,7 @@ class SyncQueueDriver implements QueueDriverInterface
     public function push($job, $data = '', $queue = null)
     {
         $this->resolveAndExecute($job, $data);
+
         return 0;
     }
 
@@ -33,11 +34,13 @@ class SyncQueueDriver implements QueueDriverInterface
     {
         if ($job instanceof \Closure) {
             $job($data);
+
             return;
         }
 
         if (is_object($job)) {
             $job->handle($data);
+
             return;
         }
 

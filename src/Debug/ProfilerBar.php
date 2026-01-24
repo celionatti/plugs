@@ -6,7 +6,7 @@ namespace Plugs\Debug;
 
 /**
  * Profiler Bar
- * 
+ *
  * Injectable toolbar that displays profiling information at the bottom of HTML pages.
  */
 class ProfilerBar
@@ -166,10 +166,13 @@ class ProfilerBar
      */
     private static function getDurationClass(float $duration): string
     {
-        if ($duration > 1000)
+        if ($duration > 1000) {
             return 'pbar-slow';
-        if ($duration > 200)
+        }
+        if ($duration > 200) {
             return 'pbar-medium';
+        }
+
         return 'pbar-fast';
     }
 
@@ -178,10 +181,13 @@ class ProfilerBar
      */
     private static function getStatusClass(int $status): string
     {
-        if ($status >= 500)
+        if ($status >= 500) {
             return 'pbar-error';
-        if ($status >= 400)
+        }
+        if ($status >= 400) {
             return 'pbar-warning';
+        }
+
         return 'pbar-success';
     }
 }

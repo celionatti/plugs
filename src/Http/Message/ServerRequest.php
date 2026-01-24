@@ -14,10 +14,10 @@ namespace Plugs\Http\Message;
 | cookies, query parameters, and uploaded files.
 */
 
-use Psr\Http\Message\ServerRequestInterface;
-use Psr\Http\Message\UriInterface;
-use Psr\Http\Message\StreamInterface;
 use InvalidArgumentException;
+use Psr\Http\Message\ServerRequestInterface;
+use Psr\Http\Message\StreamInterface;
+use Psr\Http\Message\UriInterface;
 
 class ServerRequest implements ServerRequestInterface
 {
@@ -47,7 +47,7 @@ class ServerRequest implements ServerRequestInterface
         'HEAD',
         'OPTIONS',
         'TRACE',
-        'CONNECT'
+        'CONNECT',
     ];
 
     private const VALID_PROTOCOL_VERSIONS = [
@@ -56,7 +56,7 @@ class ServerRequest implements ServerRequestInterface
         '2',
         '2.0',
         '3',
-        '3.0'
+        '3.0',
     ];
 
     public function __construct(
@@ -208,6 +208,7 @@ class ServerRequest implements ServerRequestInterface
                     (str_starts_with($trustedHost, '.') && str_ends_with($host, $trustedHost))
                 ) {
                     $isTrusted = true;
+
                     break;
                 }
             }
@@ -219,6 +220,7 @@ class ServerRequest implements ServerRequestInterface
         if (!preg_match('/^[a-zA-Z0-9.-]+$/', $host)) {
             return 'localhost';
         }
+
         return $host;
     }
 
@@ -315,11 +317,13 @@ class ServerRequest implements ServerRequestInterface
         foreach ($files as $key => $value) {
             if ($value instanceof \Psr\Http\Message\UploadedFileInterface) {
                 $normalized[$key] = $value;
+
                 continue;
             }
 
             if (is_array($value) && isset($value['tmp_name'])) {
                 $normalized[$key] = self::createUploadedFile($value);
+
                 continue;
             }
 
@@ -392,7 +396,7 @@ class ServerRequest implements ServerRequestInterface
 
     /**
      * Get input value from query or parsed body
-     * 
+     *
      * @param string $key
      * @param mixed $default
      * @return mixed
@@ -414,7 +418,7 @@ class ServerRequest implements ServerRequestInterface
 
     /**
      * Check if input key exists
-     * 
+     *
      * @param string $key
      * @return bool
      */
@@ -426,7 +430,7 @@ class ServerRequest implements ServerRequestInterface
 
     /**
      * Get all input data (query + body)
-     * 
+     *
      * @return array
      */
     public function all(): array
@@ -439,7 +443,7 @@ class ServerRequest implements ServerRequestInterface
 
     /**
      * Get only specified keys from input
-     * 
+     *
      * @param array $keys
      * @return array
      */
@@ -459,7 +463,7 @@ class ServerRequest implements ServerRequestInterface
 
     /**
      * Get all input except specified keys
-     * 
+     *
      * @param array $keys
      * @return array
      */
@@ -476,7 +480,7 @@ class ServerRequest implements ServerRequestInterface
 
     /**
      * Get uploaded file by key
-     * 
+     *
      * @param string $key
      * @return mixed|null
      */
@@ -503,7 +507,7 @@ class ServerRequest implements ServerRequestInterface
 
     /**
      * Check if file was uploaded successfully
-     * 
+     *
      * @param string $key
      * @return bool
      */
@@ -530,7 +534,7 @@ class ServerRequest implements ServerRequestInterface
 
     /**
      * Check if request is AJAX
-     * 
+     *
      * @return bool
      */
     public function isAjax(): bool
@@ -540,7 +544,7 @@ class ServerRequest implements ServerRequestInterface
 
     /**
      * Check if request is JSON
-     * 
+     *
      * @return bool
      */
     public function isJson(): bool
@@ -550,7 +554,7 @@ class ServerRequest implements ServerRequestInterface
 
     /**
      * Check if request expects JSON response
-     * 
+     *
      * @return bool
      */
     public function expectsJson(): bool
@@ -565,7 +569,7 @@ class ServerRequest implements ServerRequestInterface
 
     /**
      * Get client IP address
-     * 
+     *
      * @return string|null
      */
     public function getClientIp(): ?string
@@ -579,6 +583,7 @@ class ServerRequest implements ServerRequestInterface
         foreach (self::$trustedProxies as $proxy) {
             if ($proxy === '*' || $proxy === $remoteAddr) {
                 $isTrusted = true;
+
                 break;
             }
         }
@@ -588,14 +593,16 @@ class ServerRequest implements ServerRequestInterface
         // Now safe to check proxy headers
         if (!empty($this->serverParams['HTTP_X_FORWARDED_FOR'])) {
             $ips = explode(',', $this->serverParams['HTTP_X_FORWARDED_FOR']);
+
             return trim($ips[0]);
         }
+
         return $remoteAddr;
     }
 
     /**
      * Get user agent
-     * 
+     *
      * @return string|null
      */
     public function getUserAgent(): ?string
@@ -605,7 +612,7 @@ class ServerRequest implements ServerRequestInterface
 
     /**
      * Get referer URL
-     * 
+     *
      * @return string|null
      */
     public function getReferer(): ?string
@@ -615,7 +622,7 @@ class ServerRequest implements ServerRequestInterface
 
     /**
      * Check if request is secure (HTTPS)
-     * 
+     *
      * @return bool
      */
     public function isSecure(): bool
@@ -625,7 +632,7 @@ class ServerRequest implements ServerRequestInterface
 
     /**
      * Get full URL
-     * 
+     *
      * @return string
      */
     public function getFullUrl(): string
@@ -635,7 +642,7 @@ class ServerRequest implements ServerRequestInterface
 
     /**
      * Get URL path
-     * 
+     *
      * @return string
      */
     public function getPath(): string
@@ -645,7 +652,7 @@ class ServerRequest implements ServerRequestInterface
 
     /**
      * Check if the request path matches a pattern
-     * 
+     *
      * @param mixed ...$patterns
      * @return bool
      */
@@ -664,6 +671,7 @@ class ServerRequest implements ServerRequestInterface
                 if ($this->is(...$pattern)) {
                     return true;
                 }
+
                 continue;
             }
 
@@ -693,7 +701,7 @@ class ServerRequest implements ServerRequestInterface
 
     /**
      * Check if the route matches a pattern
-     * 
+     *
      * @param mixed ...$patterns
      * @return bool
      */
@@ -725,6 +733,7 @@ class ServerRequest implements ServerRequestInterface
                 if ($this->routeIs(...$pattern)) {
                     return true;
                 }
+
                 continue;
             }
 
@@ -763,6 +772,7 @@ class ServerRequest implements ServerRequestInterface
     {
         $new = clone $this;
         $new->cookieParams = $cookies;
+
         return $new;
     }
 
@@ -775,6 +785,7 @@ class ServerRequest implements ServerRequestInterface
     {
         $new = clone $this;
         $new->queryParams = $query;
+
         return $new;
     }
 
@@ -787,6 +798,7 @@ class ServerRequest implements ServerRequestInterface
     {
         $new = clone $this;
         $new->uploadedFiles = $uploadedFiles;
+
         return $new;
     }
 
@@ -805,6 +817,7 @@ class ServerRequest implements ServerRequestInterface
 
         $new = clone $this;
         $new->parsedBody = $data;
+
         return $new;
     }
 
@@ -830,6 +843,7 @@ class ServerRequest implements ServerRequestInterface
 
         $new = clone $this;
         $new->attributes[$name] = $value;
+
         return $new;
     }
 
@@ -841,6 +855,7 @@ class ServerRequest implements ServerRequestInterface
 
         $new = clone $this;
         unset($new->attributes[$name]);
+
         return $new;
     }
 
@@ -863,6 +878,7 @@ class ServerRequest implements ServerRequestInterface
 
         $new = clone $this;
         $new->protocolVersion = $normalizedVersion;
+
         return $new;
     }
 
@@ -885,6 +901,7 @@ class ServerRequest implements ServerRequestInterface
         }
 
         $originalName = $this->headerNames[$normalized];
+
         return $this->headers[$originalName];
     }
 
@@ -958,6 +975,7 @@ class ServerRequest implements ServerRequestInterface
 
         $new = clone $this;
         $new->body = $body;
+
         return $new;
     }
 
@@ -985,6 +1003,7 @@ class ServerRequest implements ServerRequestInterface
         }
 
         $new = clone $this;
+
         return $new;
     }
 
@@ -1008,6 +1027,7 @@ class ServerRequest implements ServerRequestInterface
 
         $new = clone $this;
         $new->method = $method;
+
         return $new;
     }
 

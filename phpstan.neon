@@ -8,5 +8,4 @@ parameters:
         - vendor
         - storage
     tmpDir: storage/framework/cache/phpstan
-    checkMissingIterableValueType: false
-    checkGenericClassInNonGenericObjectType: false
+

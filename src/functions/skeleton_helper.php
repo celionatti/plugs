@@ -14,6 +14,7 @@ if (!function_exists('skeleton')) {
         if ($instance === null) {
             $instance = new Skeleton();
         }
+
         return $instance;
     }
 }

@@ -13,8 +13,8 @@ namespace Plugs\Console\Commands;
 */
 
 use Plugs\Console\Command;
-use Plugs\Console\Support\Str;
 use Plugs\Console\Support\Filesystem;
+use Plugs\Console\Support\Str;
 
 class MakeRepositoryCommand extends Command
 {
@@ -23,7 +23,7 @@ class MakeRepositoryCommand extends Command
     protected function defineArguments(): array
     {
         return [
-            'name' => 'The name of the repository class'
+            'name' => 'The name of the repository class',
         ];
     }
 
@@ -78,6 +78,7 @@ class MakeRepositoryCommand extends Command
         if (Filesystem::exists($path) && !$options['force']) {
             if (!$this->confirm("Repository {$name} already exists. Overwrite?", false)) {
                 $this->warning('Repository generation cancelled.');
+
                 return 0;
             }
         }

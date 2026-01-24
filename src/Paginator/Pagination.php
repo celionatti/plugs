@@ -8,21 +8,21 @@ use Plugs\Database\Collection;
 
 /**
  * Enhanced Pagination Class
- * 
+ *
  * A flexible pagination class with multiple render styles.
  * Fully compatible with PlugModel pagination.
- * 
+ *
  * @example
  * // Basic pagination
  * $users = User::paginate(15, 1);
  * echo $users['paginator']->render();
- * 
+ *
  * // Load more style
  * echo $users['paginator']->renderLoadMore();
- * 
+ *
  * // Simple prev/next
  * echo $users['paginator']->renderSimple();
- * 
+ *
  * // Numbers with ellipsis
  * echo $users['paginator']->renderWithEllipsis();
  */
@@ -44,7 +44,7 @@ class Pagination
         'show_prev_next' => true,
         'max_links' => 7,
         'ellipsis_enabled' => true,
-        
+
         // CSS Classes
         'container_class' => 'pagination-container',
         'pagination_class' => 'pagination',
@@ -53,7 +53,7 @@ class Pagination
         'disabled_class' => 'disabled',
         'info_class' => 'pagination-info',
         'ellipsis_class' => 'page-ellipsis',
-        
+
         // Text/Icons
         'prev_text' => '&laquo; Previous',
         'next_text' => 'Next &raquo;',
@@ -62,12 +62,12 @@ class Pagination
         'ellipsis_text' => '...',
         'load_more_text' => 'Load More',
         'loading_text' => 'Loading...',
-        
+
         // Info format
         'info_format' => 'Showing {from} to {to} of {total} results',
         'info_format_single' => 'Showing {total} result',
         'info_format_empty' => 'No results found',
-        
+
         // AJAX options
         'ajax_enabled' => false,
         'ajax_container' => '#results-container',
@@ -108,7 +108,7 @@ class Pagination
         $total = $query->count();
         $offset = ($currentPage - 1) * $perPage;
         $collection = $query->offset($offset)->limit($perPage)->get();
-        
+
         $items = [];
         foreach ($collection as $item) {
             $items[] = $item;
@@ -123,14 +123,14 @@ class Pagination
     public static function fromArray(array $paginationData): self
     {
         $data = $paginationData['data'] ?? [];
-        
+
         // Handle Collection objects
         if ($data instanceof Collection) {
             $items = $data->all();
         } else {
             $items = is_array($data) ? $data : [];
         }
-        
+
         $perPage = $paginationData['per_page'] ?? 15;
         $currentPage = $paginationData['current_page'] ?? 1;
         $total = $paginationData['total'] ?? count($items);
@@ -144,6 +144,7 @@ class Pagination
     public function setOptions(array $options): self
     {
         $this->options = array_merge($this->options, $options);
+
         return $this;
     }
 
@@ -153,6 +154,7 @@ class Pagination
     public function setPath(string $path): self
     {
         $this->path = $path;
+
         return $this;
     }
 
@@ -162,6 +164,7 @@ class Pagination
     public function appends(array $query): self
     {
         $this->query = array_merge($this->query, $query);
+
         return $this;
     }
 
@@ -173,19 +176,70 @@ class Pagination
         return $this->items;
     }
 
-    public function total(): int { return $this->total; }
-    public function perPage(): int { return $this->perPage; }
-    public function currentPage(): int { return $this->currentPage; }
-    public function lastPage(): int { return $this->lastPage; }
-    public function from(): int { return $this->from; }
-    public function to(): int { return $this->to; }
-    public function hasPages(): bool { return $this->lastPage > 1; }
-    public function onFirstPage(): bool { return $this->currentPage <= 1; }
-    public function onLastPage(): bool { return $this->currentPage >= $this->lastPage; }
-    public function hasPreviousPage(): bool { return $this->currentPage > 1; }
-    public function hasNextPage(): bool { return $this->currentPage < $this->lastPage; }
-    public function previousPage(): ?int { return $this->hasPreviousPage() ? $this->currentPage - 1 : null; }
-    public function nextPage(): ?int { return $this->hasNextPage() ? $this->currentPage + 1 : null; }
+    public function total(): int
+    {
+        return $this->total;
+    }
+
+    public function perPage(): int
+    {
+        return $this->perPage;
+    }
+
+    public function currentPage(): int
+    {
+        return $this->currentPage;
+    }
+
+    public function lastPage(): int
+    {
+        return $this->lastPage;
+    }
+
+    public function from(): int
+    {
+        return $this->from;
+    }
+
+    public function to(): int
+    {
+        return $this->to;
+    }
+
+    public function hasPages(): bool
+    {
+        return $this->lastPage > 1;
+    }
+
+    public function onFirstPage(): bool
+    {
+        return $this->currentPage <= 1;
+    }
+
+    public function onLastPage(): bool
+    {
+        return $this->currentPage >= $this->lastPage;
+    }
+
+    public function hasPreviousPage(): bool
+    {
+        return $this->currentPage > 1;
+    }
+
+    public function hasNextPage(): bool
+    {
+        return $this->currentPage < $this->lastPage;
+    }
+
+    public function previousPage(): ?int
+    {
+        return $this->hasPreviousPage() ? $this->currentPage - 1 : null;
+    }
+
+    public function nextPage(): ?int
+    {
+        return $this->hasNextPage() ? $this->currentPage + 1 : null;
+    }
 
     /**
      * Build URL for a page
@@ -194,6 +248,7 @@ class Pagination
     {
         $query = array_merge($this->query, ['page' => $page]);
         $queryString = http_build_query($query);
+
         return $this->path . ($queryString ? '?' . $queryString : '');
     }
 
@@ -203,12 +258,12 @@ class Pagination
     protected function getPageRangeWithEllipsis(): array
     {
         $maxLinks = $this->options['max_links'];
-        
+
         if ($this->lastPage <= $maxLinks + 2) {
             return [
                 'pages' => range(1, $this->lastPage),
                 'show_first_ellipsis' => false,
-                'show_last_ellipsis' => false
+                'show_last_ellipsis' => false,
             ];
         }
 
@@ -223,7 +278,7 @@ class Pagination
         return [
             'pages' => range($start, $end),
             'show_first_ellipsis' => $start > 2,
-            'show_last_ellipsis' => $end < $this->lastPage - 1
+            'show_last_ellipsis' => $end < $this->lastPage - 1,
         ];
     }
 
@@ -233,7 +288,7 @@ class Pagination
     protected function getPageRange(): array
     {
         $maxLinks = $this->options['max_links'];
-        
+
         if ($this->lastPage <= $maxLinks) {
             return range(1, $this->lastPage);
         }
@@ -264,6 +319,7 @@ class Pagination
     {
         $query = $_GET ?? [];
         unset($query['page']);
+
         return $query;
     }
 
@@ -306,38 +362,38 @@ class Pagination
         $html .= $this->renderInfo();
         $html .= '<nav aria-label="Page navigation">';
         $html .= '<ul class="' . $this->options['pagination_class'] . '">';
-        
+
         // First
         if ($this->options['show_first_last']) {
             $html .= $this->renderFirstLink();
         }
-        
+
         // Previous
         if ($this->options['show_prev_next']) {
             $html .= $this->renderPrevLink();
         }
-        
+
         // Numbers
         if ($this->options['show_numbers']) {
             foreach ($this->getPageRange() as $page) {
-                $html .= $page === $this->currentPage 
-                    ? $this->renderActiveLink($page) 
+                $html .= $page === $this->currentPage
+                    ? $this->renderActiveLink($page)
                     : $this->renderPageLink($page);
             }
         }
-        
+
         // Next
         if ($this->options['show_prev_next']) {
             $html .= $this->renderNextLink();
         }
-        
+
         // Last
         if ($this->options['show_first_last']) {
             $html .= $this->renderLastLink();
         }
-        
+
         $html .= '</ul></nav></div>';
-        
+
         return $html;
     }
 
@@ -351,53 +407,53 @@ class Pagination
         }
 
         $range = $this->getPageRangeWithEllipsis();
-        
+
         $html = '<div class="' . $this->options['container_class'] . '">';
         $html .= $this->renderInfo();
         $html .= '<nav aria-label="Page navigation">';
         $html .= '<ul class="' . $this->options['pagination_class'] . '">';
-        
+
         // Previous
         if ($this->options['show_prev_next']) {
             $html .= $this->renderPrevLink();
         }
-        
+
         // First page
-        $html .= $this->currentPage === 1 
-            ? $this->renderActiveLink(1) 
+        $html .= $this->currentPage === 1
+            ? $this->renderActiveLink(1)
             : $this->renderPageLink(1);
-        
+
         // First ellipsis
         if ($range['show_first_ellipsis']) {
             $html .= $this->renderEllipsis();
         }
-        
+
         // Middle pages
         foreach ($range['pages'] as $page) {
-            $html .= $page === $this->currentPage 
-                ? $this->renderActiveLink($page) 
+            $html .= $page === $this->currentPage
+                ? $this->renderActiveLink($page)
                 : $this->renderPageLink($page);
         }
-        
+
         // Last ellipsis
         if ($range['show_last_ellipsis']) {
             $html .= $this->renderEllipsis();
         }
-        
+
         // Last page
         if ($this->lastPage > 1) {
-            $html .= $this->currentPage === $this->lastPage 
-                ? $this->renderActiveLink($this->lastPage) 
+            $html .= $this->currentPage === $this->lastPage
+                ? $this->renderActiveLink($this->lastPage)
                 : $this->renderPageLink($this->lastPage);
         }
-        
+
         // Next
         if ($this->options['show_prev_next']) {
             $html .= $this->renderNextLink();
         }
-        
+
         $html .= '</ul></nav></div>';
-        
+
         return $html;
     }
 
@@ -414,7 +470,7 @@ class Pagination
         $html .= $this->renderInfo();
         $html .= '<nav aria-label="Page navigation">';
         $html .= '<ul class="' . $this->options['pagination_class'] . '">';
-        
+
         $html .= $this->renderPrevLink();
         $html .= sprintf(
             '<li class="page-item"><span class="page-link">Page %d of %d</span></li>',
@@ -422,9 +478,9 @@ class Pagination
             $this->lastPage
         );
         $html .= $this->renderNextLink();
-        
+
         $html .= '</ul></nav></div>';
-        
+
         return $html;
     }
 
@@ -439,12 +495,12 @@ class Pagination
 
         $html = '<div class="' . $this->options['container_class'] . ' pagination-load-more">';
         $html .= $this->renderInfo();
-        
+
         if ($this->hasNextPage()) {
             $nextUrl = $this->url($this->nextPage());
             $loadMoreText = $this->options['load_more_text'];
             $loadingText = $this->options['loading_text'];
-            
+
             if ($this->options['ajax_enabled']) {
                 $html .= sprintf(
                     '<button class="btn-load-more" data-url="%s" data-page="%d" data-container="%s">%s</button>',
@@ -460,9 +516,9 @@ class Pagination
         } else {
             $html .= '<div class="no-more-results">No more results</div>';
         }
-        
+
         $html .= '</div>';
-        
+
         return $html;
     }
 
@@ -477,19 +533,19 @@ class Pagination
 
         $html = '<nav aria-label="Page navigation" class="pagination-compact">';
         $html .= '<ul class="' . $this->options['pagination_class'] . '">';
-        
+
         $html .= $this->renderPrevLink('&lsaquo;');
-        
+
         foreach ($this->getPageRange() as $page) {
-            $html .= $page === $this->currentPage 
-                ? $this->renderActiveLink($page) 
+            $html .= $page === $this->currentPage
+                ? $this->renderActiveLink($page)
                 : $this->renderPageLink($page);
         }
-        
+
         $html .= $this->renderNextLink('&rsaquo;');
-        
+
         $html .= '</ul></nav>';
-        
+
         return $html;
     }
 
@@ -521,7 +577,7 @@ class Pagination
     protected function renderPrevLink(?string $text = null): string
     {
         $text = $text ?? $this->options['prev_text'];
-        
+
         if (!$this->hasPreviousPage()) {
             return sprintf(
                 '<li class="page-item %s"><span class="%s">%s</span></li>',
@@ -530,7 +586,7 @@ class Pagination
                 $text
             );
         }
-        
+
         return sprintf(
             '<li class="page-item"><a href="%s" class="%s" rel="prev" aria-label="Previous page">%s</a></li>',
             $this->url($this->previousPage()),
@@ -542,7 +598,7 @@ class Pagination
     protected function renderNextLink(?string $text = null): string
     {
         $text = $text ?? $this->options['next_text'];
-        
+
         if (!$this->hasNextPage()) {
             return sprintf(
                 '<li class="page-item %s"><span class="%s">%s</span></li>',
@@ -551,7 +607,7 @@ class Pagination
                 $text
             );
         }
-        
+
         return sprintf(
             '<li class="page-item"><a href="%s" class="%s" rel="next" aria-label="Next page">%s</a></li>',
             $this->url($this->nextPage()),
@@ -565,7 +621,7 @@ class Pagination
         if ($this->currentPage <= 2) {
             return '';
         }
-        
+
         return sprintf(
             '<li class="page-item"><a href="%s" class="%s" aria-label="First page">%s</a></li>',
             $this->url(1),
@@ -579,7 +635,7 @@ class Pagination
         if ($this->currentPage >= $this->lastPage - 1) {
             return '';
         }
-        
+
         return sprintf(
             '<li class="page-item"><a href="%s" class="%s" aria-label="Last page">%s</a></li>',
             $this->url($this->lastPage),
@@ -683,6 +739,7 @@ JS;
         if (method_exists($this, $name)) {
             return $this->$name();
         }
+
         return null;
     }
 

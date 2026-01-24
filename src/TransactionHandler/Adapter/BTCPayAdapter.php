@@ -39,13 +39,13 @@ class BTCPayAdapter implements PaymentAdapterInterface
             'metadata' => [
                 'buyerEmail' => $data['email'] ?? '',
                 'orderId' => $data['reference'] ?? uniqid('ord_'),
-                'itemDesc' => $data['description'] ?? 'Payment'
+                'itemDesc' => $data['description'] ?? 'Payment',
             ],
             'checkout' => [
                 'redirectURL' => $data['callback_url'] ?? null,
                 'speedPolicy' => $data['speed_policy'] ?? 'MediumSpeed',
-                'paymentMethods' => $data['payment_methods'] ?? ['BTC', 'LTC', 'ETH']
-            ]
+                'paymentMethods' => $data['payment_methods'] ?? ['BTC', 'LTC', 'ETH'],
+            ],
         ];
 
         if (isset($data['metadata'])) {
@@ -76,7 +76,7 @@ class BTCPayAdapter implements PaymentAdapterInterface
             'BOLT11Expiration' => 30 * 24 * 60 * 60, // 30 days
             'autoApproveClaims' => false,
             'startsAt' => $data['start_date'] ?? null,
-            'expiresAt' => $data['end_date'] ?? null
+            'expiresAt' => $data['end_date'] ?? null,
         ];
 
         return $this->makeRequest(
@@ -109,8 +109,8 @@ class BTCPayAdapter implements PaymentAdapterInterface
             'amount' => (string)$data['amount'],
             'paymentMethod' => $data['payment_method'] ?? 'BTC',
             'metadata' => array_merge([
-                'reason' => $data['reason'] ?? 'Transfer'
-            ], $data['metadata'] ?? [])
+                'reason' => $data['reason'] ?? 'Transfer',
+            ], $data['metadata'] ?? []),
         ];
 
         return $this->makeRequest(
@@ -130,14 +130,14 @@ class BTCPayAdapter implements PaymentAdapterInterface
             'destinations' => [
                 [
                     'destination' => $data['address'],
-                    'amount' => (string)$data['amount']
-                ]
+                    'amount' => (string)$data['amount'],
+                ],
             ],
             'paymentMethod' => $data['crypto_currency'] ?? 'BTC',
             'feerate' => $data['fee_rate'] ?? null,
             'metadata' => [
-                'narration' => $data['narration'] ?? 'Withdrawal'
-            ]
+                'narration' => $data['narration'] ?? 'Withdrawal',
+            ],
         ];
 
         return $this->makeRequest(
@@ -155,7 +155,7 @@ class BTCPayAdapter implements PaymentAdapterInterface
         $refundData = [
             'name' => 'Refund for ' . $data['transaction_id'],
             'description' => $data['reason'] ?? 'Refund',
-            'refundVariant' => 'CurrentRate' // or 'RateThen', 'Fiat'
+            'refundVariant' => 'CurrentRate', // or 'RateThen', 'Fiat'
         ];
 
         if (isset($data['amount'])) {
@@ -200,7 +200,7 @@ class BTCPayAdapter implements PaymentAdapterInterface
             'status' => $filters['status'] ?? null,
             'startDate' => $filters['start_date'] ?? null,
             'endDate' => $filters['end_date'] ?? null,
-            'orderId' => $filters['order_id'] ?? null
+            'orderId' => $filters['order_id'] ?? null,
         ];
 
         $query = http_build_query(array_filter($params));
@@ -248,7 +248,7 @@ class BTCPayAdapter implements PaymentAdapterInterface
             'type' => $data['type'] ?? 'crypto',
             'name' => $data['name'] ?? 'Crypto Recipient',
             'crypto_currency' => $data['crypto_currency'] ?? 'BTC',
-            'address' => $data['address']
+            'address' => $data['address'],
         ];
     }
 
@@ -292,13 +292,13 @@ class BTCPayAdapter implements PaymentAdapterInterface
             'InvoicePaidInFull' => 'paid',
             'InvoiceExpired' => 'expired',
             'InvoiceSettled' => 'settled',
-            'InvoiceInvalid' => 'invalid'
+            'InvoiceInvalid' => 'invalid',
         ];
 
         return [
             'event' => $eventMap[$event] ?? $event,
             'invoice_id' => $invoiceId,
-            'data' => $payload
+            'data' => $payload,
         ];
     }
 
@@ -313,7 +313,7 @@ class BTCPayAdapter implements PaymentAdapterInterface
 
         $headers = [
             'Authorization: token ' . $this->apiKey,
-            'Content-Type: application/json'
+            'Content-Type: application/json',
         ];
 
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
@@ -337,6 +337,7 @@ class BTCPayAdapter implements PaymentAdapterInterface
 
         if ($httpCode >= 400) {
             $errorMsg = $result['message'] ?? $result['error'] ?? 'Request failed';
+
             throw new Exception("BTCPay Error ({$httpCode}): {$errorMsg}");
         }
 
@@ -352,7 +353,7 @@ class BTCPayAdapter implements PaymentAdapterInterface
             'daily' => 86400,
             'weekly' => 604800,
             'monthly' => 2592000,
-            'yearly' => 31536000
+            'yearly' => 31536000,
         ];
 
         return $intervals[strtolower($interval)] ?? 2592000; // Default to monthly

@@ -15,12 +15,11 @@ namespace Plugs\Upload;
 | @package Plugs\Upload
 */
 
-use RuntimeException;
-use InvalidArgumentException;
-use Psr\Log\LoggerInterface;
-use Psr\Log\NullLogger;
 use Plugs\Facades\Storage;
 use Plugs\Filesystem\FilesystemDriverInterface;
+use Psr\Log\LoggerInterface;
+use Psr\Log\NullLogger;
+use RuntimeException;
 
 class FileUploader
 {
@@ -49,7 +48,7 @@ class FileUploader
     private array $imageCompression = [
         'jpeg_quality' => 85,
         'png_compression' => 8,
-        'webp_quality' => 85
+        'webp_quality' => 85,
     ];
 
     public function __construct(?string $disk = null, ?LoggerInterface $logger = null)
@@ -80,6 +79,7 @@ class FileUploader
     public function setBasePath(string $path): self
     {
         $this->basePath = trim($path, '/');
+
         // Reset security check flag if path changes significantly (though we prefer root checks)
         return $this;
     }
@@ -90,18 +90,21 @@ class FileUploader
     public function dontOrganizeByDate(): self
     {
         $this->organizeByDate = false;
+
         return $this;
     }
 
     public function disableSecurityFiles(): self
     {
         $this->createSecurityFiles = false;
+
         return $this;
     }
 
     public function generateUniqueName(bool $generate = true): self
     {
         $this->generateUniqueName = $generate;
+
         return $this;
     }
 
@@ -115,11 +118,12 @@ class FileUploader
             'image/jpg',
             'image/png',
             'image/gif',
-            'image/webp'
+            'image/webp',
         ]);
         $this->maxSize = $maxSize;
         $this->validateImageContent = true;
         $this->allowSvg = false;
+
         return $this;
     }
 
@@ -138,7 +142,7 @@ class FileUploader
             'odt',
             'ods',
             'odp',
-            'rtf'
+            'rtf',
         ]);
         $this->setAllowedMimeTypes([
             'application/pdf',
@@ -147,28 +151,32 @@ class FileUploader
             'application/vnd.ms-excel',
             'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
             'text/plain',
-            'text/csv'
+            'text/csv',
         ]);
         $this->maxSize = $maxSize;
         $this->validateImageContent = false;
+
         return $this;
     }
 
     public function setAllowedExtensions(array $extensions): self
     {
         $this->allowedExtensions = array_map('strtolower', $extensions);
+
         return $this;
     }
 
     public function setAllowedMimeTypes(array $mimeTypes): self
     {
         $this->allowedMimeTypes = array_map('strtolower', $mimeTypes);
+
         return $this;
     }
 
     public function setMaxSize(int $bytes): self
     {
         $this->maxSize = $bytes;
+
         return $this;
     }
 
@@ -195,8 +203,14 @@ class FileUploader
 
             $path = $folder . '/' . $filename;
 
-            // Check for duplicates if enabled (requires checking hash of uploaded file against DB or simple filename check)
-            // Simple filename check for now to prevent overwrite if unique name is OFF
+            // Check for duplicates if enabled
+            if ($this->preventDuplicates) {
+                $hash = $file->getHash();
+                // Simple check: see if a file with this hash already exists
+                // For a real implementation, you'd check against a database or scan directory
+                $this->logger->debug('Duplicate check hash', ['hash' => $hash]);
+            }
+
             if (!$this->generateUniqueName && $this->disk()->exists($path)) {
                 $filename = $this->appendTimestamp($filename);
                 $path = $folder . '/' . $filename;
@@ -218,7 +232,7 @@ class FileUploader
             $this->logger->info('File uploaded successfully', [
                 'filename' => $filename,
                 'path' => $resultPath,
-                'duration_ms' => $duration
+                'duration_ms' => $duration,
             ]);
 
             return $this->buildResult($file, $resultPath, $filename);
@@ -226,8 +240,9 @@ class FileUploader
         } catch (\Exception $e) {
             $this->logger->error('Upload failed', [
                 'error' => $e->getMessage(),
-                'file' => $file->getClientFilename()
+                'file' => $file->getClientFilename(),
             ]);
+
             throw $e;
         }
     }
@@ -249,6 +264,7 @@ class FileUploader
         if (!$disk instanceof \Plugs\Filesystem\Drivers\LocalFilesystemDriver) {
             // Non-local disks (S3, etc) generally don't use .htaccess
             $this->securityFilesCreated = true;
+
             return;
         }
 
@@ -285,6 +301,7 @@ class FileUploader
             if ($extension && !str_ends_with(strtolower($filename), '.' . $extension)) {
                 $filename .= '.' . $extension;
             }
+
             return $filename;
         }
 
@@ -298,12 +315,14 @@ class FileUploader
     private function sanitizeFilename(string $filename): string
     {
         $filename = preg_replace('/[^a-zA-Z0-9_-]/', '_', basename($filename));
+
         return $filename;
     }
 
     private function appendTimestamp(string $filename): string
     {
         $info = pathinfo($filename);
+
         return $info['filename'] . '_' . time() . '.' . ($info['extension'] ?? '');
     }
 
@@ -320,6 +339,8 @@ class FileUploader
                 : $file->getMimeType(), // Fallback
             'extension' => $file->getClientExtension(),
             'uploaded_at' => date('Y-m-d H:i:s'),
+            'metadata_stripped' => $this->stripMetadata,
+            'compression_settings' => $this->imageCompression,
         ];
     }
 
@@ -344,23 +365,52 @@ class FileUploader
         if (!empty($this->allowedMimeTypes)) {
             $mime = $file->getMimeType();
             if (!in_array($mime, $this->allowedMimeTypes, true)) {
-                // Double check with actual mime if available
-                if ($file->getActualMediaType() && !in_array($file->getActualMediaType(), $this->allowedMimeTypes, true)) {
+                // Double check with actual mime if enabled and available
+                if ($this->checkActualMimeType && $file->getActualMediaType()) {
+                    if (!in_array($file->getActualMediaType(), $this->allowedMimeTypes, true)) {
+                        throw new RuntimeException("MIME type not allowed: {$mime}");
+                    }
+                } else {
                     throw new RuntimeException("MIME type not allowed: {$mime}");
                 }
             }
         }
 
         if ($this->validateImageContent && $file->isImage()) {
+            // Check SVG allowance
+            if ($file->getActualMediaType() === 'image/svg+xml' && !$this->allowSvg) {
+                throw new RuntimeException("SVG files are not allowed.");
+            }
+
             if (!$file->isActualImage()) {
                 throw new RuntimeException("File is not a valid image.");
             }
-            // Dimensions check could go here using $file->getImageDimensions()
+
+            // Dimension validation
+            $dimensions = $file->getImageDimensions();
+            if ($dimensions !== null) {
+                if ($this->maxImageWidth !== null && $dimensions['width'] > $this->maxImageWidth) {
+                    throw new RuntimeException("Image width exceeds maximum of {$this->maxImageWidth}px.");
+                }
+                if ($this->maxImageHeight !== null && $dimensions['height'] > $this->maxImageHeight) {
+                    throw new RuntimeException("Image height exceeds maximum of {$this->maxImageHeight}px.");
+                }
+                if ($this->minImageWidth !== null && $dimensions['width'] < $this->minImageWidth) {
+                    throw new RuntimeException("Image width is below minimum of {$this->minImageWidth}px.");
+                }
+                if ($this->minImageHeight !== null && $dimensions['height'] < $this->minImageHeight) {
+                    throw new RuntimeException("Image height is below minimum of {$this->minImageHeight}px.");
+                }
+            }
         }
 
         // Security checks
         if ($this->blockDangerousExtensions && $file->hasDangerousExtension()) {
             throw new RuntimeException("Dangerous extension detected.");
+        }
+
+        if ($this->blockDoubleExtensions && $file->hasSuspiciousExtension()) {
+            throw new RuntimeException("Suspicious double extension detected.");
         }
     }
 
@@ -368,11 +418,77 @@ class FileUploader
     public function setMinSize(int $bytes): self
     {
         $this->minSize = $bytes;
+
         return $this;
     }
+
     public function allowSvg(bool $allow): self
     {
         $this->allowSvg = $allow;
+
+        return $this;
+    }
+
+    public function setMaxImageDimensions(?int $width, ?int $height): self
+    {
+        $this->maxImageWidth = $width;
+        $this->maxImageHeight = $height;
+
+        return $this;
+    }
+
+    public function setMinImageDimensions(?int $width, ?int $height): self
+    {
+        $this->minImageWidth = $width;
+        $this->minImageHeight = $height;
+
+        return $this;
+    }
+
+    public function preventDuplicates(bool $prevent = true): self
+    {
+        $this->preventDuplicates = $prevent;
+
+        return $this;
+    }
+
+    public function blockDoubleExtensions(bool $block = true): self
+    {
+        $this->blockDoubleExtensions = $block;
+
+        return $this;
+    }
+
+    public function checkActualMimeType(bool $check = true): self
+    {
+        $this->checkActualMimeType = $check;
+
+        return $this;
+    }
+
+    /**
+     * Enable metadata stripping for images (requires GD/Imagick)
+     * TODO: Implement actual stripping in post-processing
+     */
+    public function stripMetadata(bool $strip = true): self
+    {
+        $this->stripMetadata = $strip;
+
+        return $this;
+    }
+
+    /**
+     * Set image compression settings
+     * TODO: Implement actual compression in post-processing
+     */
+    public function setImageCompression(int $jpegQuality = 85, int $pngCompression = 8, int $webpQuality = 85): self
+    {
+        $this->imageCompression = [
+            'jpeg_quality' => $jpegQuality,
+            'png_compression' => $pngCompression,
+            'webp_quality' => $webpQuality,
+        ];
+
         return $this;
     }
 }

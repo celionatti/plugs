@@ -14,10 +14,10 @@ namespace Plugs\Base\Model;
 | inserting, updating, and deleting records.
 */
 
+use Plugs\Database\Collection;
 use Plugs\Database\Connection;
 use Plugs\Database\QueryBuilder;
 use Plugs\Database\Traits\HasQueryBuilder;
-use Plugs\Database\Collection;
 
 abstract class Model
 {
@@ -43,6 +43,7 @@ abstract class Model
     {
         $connection = Connection::getInstance();
         $builder = new QueryBuilder($connection);
+
         return $builder->table(static::getTable());
     }
 
@@ -62,6 +63,7 @@ abstract class Model
         if (!$result) {
             throw new \Exception("Model not found with id: {$id}");
         }
+
         return $result;
     }
 
@@ -81,6 +83,7 @@ abstract class Model
         if (!$result) {
             throw new \Exception("No records found");
         }
+
         return $result;
     }
 
@@ -90,6 +93,7 @@ abstract class Model
             $value = $operator;
             $operator = '=';
         }
+
         return static::query()->where($column, $operator, $value);
     }
 
@@ -135,7 +139,7 @@ abstract class Model
 
     /**
      * Paginate results
-     * 
+     *
      * @param int $perPage Items per page
      * @param int|null $page Current page number
      * @param array $columns Columns to select
@@ -187,7 +191,7 @@ abstract class Model
             array_pop($items);
         }
 
-        $data = array_map(fn($item) => new static($item), $items);
+        $data = array_map(fn ($item) => new static($item), $items);
 
         return [
             'data' => $data,
@@ -229,6 +233,7 @@ abstract class Model
                         $query->orWhere($column, 'LIKE', "%{$value}%");
                     }
                 }
+
                 continue;
             }
 
@@ -236,6 +241,7 @@ abstract class Model
             if ($key === 'sort') {
                 $direction = strtoupper($params['direction'] ?? 'ASC');
                 $query->orderBy($value, $direction);
+
                 continue;
             }
 
@@ -280,7 +286,7 @@ abstract class Model
             ->offset($offset)
             ->get();
 
-        $data = array_map(fn($item) => new static($item), $items);
+        $data = array_map(fn ($item) => new static($item), $items);
 
         return [
             'data' => $data,
@@ -288,7 +294,7 @@ abstract class Model
             'per_page' => $perPage,
             'current_page' => $page,
             'last_page' => (int) ceil($total / $perPage),
-            'filters' => array_filter($params, fn($k) => !in_array($k, ['page', 'per_page']), ARRAY_FILTER_USE_KEY),
+            'filters' => array_filter($params, fn ($k) => !in_array($k, ['page', 'per_page']), ARRAY_FILTER_USE_KEY),
         ];
     }
 
@@ -296,6 +302,7 @@ abstract class Model
     {
         $model = new static($attributes);
         $model->save();
+
         return $model;
     }
 
@@ -313,6 +320,7 @@ abstract class Model
             $model = new static($result);
             $model->fill($values);
             $model->save();
+
             return $model;
         }
 

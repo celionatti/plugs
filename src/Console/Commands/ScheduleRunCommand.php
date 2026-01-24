@@ -5,8 +5,8 @@ declare(strict_types=1);
 namespace Plugs\Console\Commands;
 
 use Plugs\Console\Command;
-use Plugs\Console\Scheduling\Schedule;
 use Plugs\Console\Scheduling\CallbackEvent;
+use Plugs\Console\Scheduling\Schedule;
 
 /**
  * Runs all scheduled tasks that are due.

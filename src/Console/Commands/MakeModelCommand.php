@@ -5,8 +5,8 @@ declare(strict_types=1);
 namespace Plugs\Console\Commands;
 
 use Plugs\Console\Command;
-use Plugs\Console\Support\Str;
 use Plugs\Console\Support\Filesystem;
+use Plugs\Console\Support\Str;
 
 /*
 |--------------------------------------------------------------------------
@@ -30,7 +30,7 @@ class MakeModelCommand extends Command
     protected function defineArguments(): array
     {
         return [
-            'name' => 'The name of the model class'
+            'name' => 'The name of the model class',
         ];
     }
 
@@ -60,74 +60,75 @@ class MakeModelCommand extends Command
     public function handle(): int
     {
         $this->checkpoint('start');
-        
+
         $this->title('Model Generator');
-        
+
         // Get model name
         $name = $this->argument('0');
-        
+
         if (!$name) {
             $name = $this->ask('Model name', 'User');
         }
-        
+
         // Clean model name
         $name = Str::studly($name);
-        
+
         $this->checkpoint('name_collected');
-        
+
         // Interactive mode if no options provided
         $options = $this->gatherOptions($name);
-        
+
         $this->checkpoint('options_collected');
-        
+
         // Display summary
         $this->displaySummary($name, $options);
-        
+
         if (!$this->confirm('Proceed with generation?', true)) {
             $this->warning('Model generation cancelled.');
+
             return 0;
         }
-        
+
         $this->newLine();
         $this->section('Generating Files');
-        
+
         // Generate model
         $modelPath = $this->generateModel($name, $options);
-        
+
         $this->checkpoint('model_generated');
-        
+
         $filesCreated = [$modelPath];
-        
+
         // Generate related files
         if ($options['migration']) {
             $migrationPath = $this->generateMigration($name, $options);
             $filesCreated[] = $migrationPath;
         }
-        
+
         if ($options['controller']) {
             $controllerPath = $this->generateController($name, $options);
             $filesCreated[] = $controllerPath;
         }
-        
+
         if ($options['factory']) {
             $factoryPath = $this->generateFactory($name, $options);
             $filesCreated[] = $factoryPath;
         }
-        
+
         if ($options['seeder']) {
             $seederPath = $this->generateSeeder($name, $options);
             $filesCreated[] = $seederPath;
         }
-        
+
         $this->checkpoint('all_generated');
-        
+
         // Display results
         $this->displayResults($name, $filesCreated, $options);
-        
+
         if ($this->isVerbose()) {
             $this->displayTimings();
         }
-        
+
         return 0;
     }
 
@@ -150,122 +151,122 @@ class MakeModelCommand extends Command
             'table' => $this->option('table'),
             'connection' => $this->option('connection'),
         ];
-        
+
         // Interactive mode if no CLI options
         if (!$this->hasAnyOption()) {
             $this->section('Configuration');
-            
+
             $options['migration'] = $this->confirm('Create migration?', true);
             $options['controller'] = $this->confirm('Create controller?', false);
-            
+
             if ($options['controller']) {
                 $controllerType = $this->choice(
                     'Controller type?',
                     ['Basic', 'Resource', 'API'],
                     'Resource'
                 );
-                
+
                 $options['resource'] = $controllerType === 'Resource';
                 $options['api'] = $controllerType === 'API';
             }
-            
+
             $options['factory'] = $this->confirm('Create factory?', false);
             $options['seeder'] = $this->confirm('Create seeder?', false);
             $options['soft_deletes'] = $this->confirm('Add soft deletes?', false);
-            
+
             // Fields configuration
             if ($this->confirm('Configure fillable fields?', false)) {
                 $fields = $this->ask('Enter fillable fields (comma-separated)', 'name,email');
                 $options['fillable'] = $fields;
             }
-            
+
             if ($this->confirm('Configure hidden fields?', false)) {
                 $fields = $this->ask('Enter hidden fields (comma-separated)', 'password');
                 $options['hidden'] = $fields;
             }
-            
+
             if ($this->confirm('Configure casts?', false)) {
                 $this->info('Enter casts in format: field:type (e.g., is_active:boolean,data:array)');
                 $casts = $this->ask('Enter casts (comma-separated)');
                 $options['casts'] = $casts;
             }
         }
-        
+
         return $options;
     }
 
     private function generateModel(string $name, array $options): string
     {
-        $this->task('Generating model class', function() use ($name, $options) {
+        $this->task('Generating model class', function () use ($name, $options) {
             usleep(300000);
         });
-        
+
         $path = $this->getModelPath($name);
-        
+
         if (Filesystem::exists($path) && !$options['force']) {
             if (!$this->confirm("Model {$name} already exists. Overwrite?", false)) {
                 $this->warning('Model generation skipped.');
                 exit(0);
             }
         }
-        
+
         // Load template
         $template = $this->loadTemplate('model.stub');
-        
+
         // Replace placeholders
         $content = $this->populateTemplate($template, $name, $options);
-        
+
         Filesystem::put($path, $content);
-        
+
         $this->success("Model created: {$path}");
-        
+
         return $path;
     }
 
     private function generateMigration(string $name, array $options): string
     {
-        $this->task('Generating migration', function() {
+        $this->task('Generating migration', function () {
             usleep(200000);
         });
-        
+
         $tableName = $options['table'] ?? Str::snake(Str::pluralize($name));
         $timestamp = date('Y_m_d_His');
         $migrationName = "create_{$tableName}_table";
         $className = Str::studly($migrationName);
-        
+
         $filename = "{$timestamp}_{$migrationName}.php";
         $path = $this->getMigrationPath($filename);
-        
+
         // Load migration template
         $template = $this->loadTemplate($options['pivot'] ? 'migration.pivot.stub' : 'migration.stub');
-        
+
         // Build fields
         $fields = $this->buildMigrationFields($options);
-        
+
         $replacements = [
             '{{class}}' => $className,
             '{{table}}' => $tableName,
             '{{fields}}' => $fields,
         ];
-        
+
         $content = str_replace(array_keys($replacements), array_values($replacements), $template);
-        
+
         Filesystem::put($path, $content);
-        
+
         $this->success("Migration created: {$filename}");
-        
+
         return $path;
     }
 
     private function generateController(string $name, array $options): string
     {
-        $this->task('Generating controller', function() {
+        $this->task('Generating controller', function () {
             usleep(200000);
         });
-        
+
         $controllerName = "{$name}Controller";
         $path = $this->getControllerPath($controllerName);
-        
+
         // Determine template type
         $templateName = 'controller.stub';
         if ($options['api']) {
@@ -273,87 +274,87 @@ class MakeModelCommand extends Command
         } elseif ($options['resource']) {
             $templateName = 'controller.resource.stub';
         }
-        
+
         $template = $this->loadTemplate($templateName);
-        
+
         $replacements = [
             '{{class}}' => $controllerName,
             '{{model}}' => $name,
             '{{modelVariable}}' => Str::camel($name),
             '{{modelNamespace}}' => 'App\\Models\\' . $name,
         ];
-        
+
         $content = str_replace(array_keys($replacements), array_values($replacements), $template);
-        
+
         Filesystem::put($path, $content);
-        
+
         $this->success("Controller created: {$controllerName}");
-        
+
         return $path;
     }
 
     private function generateFactory(string $name, array $options): string
     {
-        $this->task('Generating factory', function() {
+        $this->task('Generating factory', function () {
             usleep(200000);
         });
-        
+
         $factoryName = "{$name}Factory";
         $path = $this->getFactoryPath($factoryName);
-        
+
         $template = $this->loadTemplate('factory.stub');
-        
+
         $replacements = [
             '{{class}}' => $factoryName,
             '{{model}}' => $name,
             '{{modelNamespace}}' => 'App\\Models\\' . $name,
             '{{definition}}' => $this->buildFactoryDefinition($options),
         ];
-        
+
         $content = str_replace(array_keys($replacements), array_values($replacements), $template);
-        
+
         Filesystem::put($path, $content);
-        
+
         $this->success("Factory created: {$factoryName}");
-        
+
         return $path;
     }
 
     private function generateSeeder(string $name, array $options): string
     {
-        $this->task('Generating seeder', function() {
+        $this->task('Generating seeder', function () {
             usleep(200000);
         });
-        
+
         $seederName = "{$name}Seeder";
         $path = $this->getSeederPath($seederName);
-        
+
         $template = $this->loadTemplate('seeder.stub');
-        
+
         $replacements = [
             '{{class}}' => $seederName,
             '{{model}}' => $name,
             '{{modelNamespace}}' => 'App\\Models\\' . $name,
         ];
-        
+
         $content = str_replace(array_keys($replacements), array_values($replacements), $template);
-        
+
         Filesystem::put($path, $content);
-        
+
         $this->success("Seeder created: {$seederName}");
-        
+
         return $path;
     }
 
     private function loadTemplate(string $templateName): string
     {
         $templatePath = $this->templatePath . '/' . $templateName;
-        
+
         if (!Filesystem::exists($templatePath)) {
             // Use default inline template
             return $this->getDefaultTemplate($templateName);
         }
-        
+
         return Filesystem::get($templatePath);
     }
 
@@ -361,24 +362,24 @@ class MakeModelCommand extends Command
     {
         $tableName = $options['table'] ?? Str::snake(Str::pluralize($name));
         $connection = $options['connection'] ?? 'default';
-        
+
         // Build property arrays
         $fillable = $this->buildArrayProperty($options['fillable'] ?? '');
         $hidden = $this->buildArrayProperty($options['hidden'] ?? '');
         $casts = $this->buildCastsProperty($options['casts'] ?? '');
-        
+
         // Build traits and imports
         $traits = [];
         $imports = [];
-        
+
         if ($options['soft_deletes']) {
             $traits[] = 'SoftDeletes';
             $imports[] = 'use Illuminate\\Database\\Eloquent\\SoftDeletes;';
         }
-        
+
         $traitsString = !empty($traits) ? 'use ' . implode(', ', $traits) . ';' : '';
         $importsString = !empty($imports) ? implode("\n", $imports) . "\n" : '';
-        
+
         $replacements = [
             '{{class}}' => $name,
             '{{table}}' => $tableName,
@@ -390,14 +391,14 @@ class MakeModelCommand extends Command
             '{{imports}}' => $importsString,
             '{{timestamps}}' => $options['timestamps'] ? 'true' : 'false',
         ];
-        
+
         return str_replace(array_keys($replacements), array_values($replacements), $template);
     }
 
     private function buildMigrationFields(array $options): string
     {
         $fields = ["            \$table->id();"];
-        
+
         // Add fillable fields as string columns
         if ($fillable = $options['fillable'] ?? '') {
             $fieldNames = array_map('trim', explode(',', $fillable));
@@ -405,17 +406,17 @@ class MakeModelCommand extends Command
                 $fields[] = "            \$table->string('{$field}');";
             }
         }
-        
+
         // Add timestamps
         if ($options['timestamps']) {
             $fields[] = "            \$table->timestamps();";
         }
-        
+
         // Add soft deletes
         if ($options['soft_deletes']) {
             $fields[] = "            \$table->softDeletes();";
         }
-        
+
         return implode("\n", $fields);
     }
 
@@ -424,15 +425,15 @@ class MakeModelCommand extends Command
         if (!$fields) {
             return '[]';
         }
-        
-        $items = array_map(function($field) {
+
+        $items = array_map(function ($field) {
             return "'{$field}'";
         }, array_map('trim', explode(',', $fields)));
-        
+
         if (count($items) <= 3) {
             return '[' . implode(', ', $items) . ']';
         }
-        
+
         return "[\n        " . implode(",\n        ", $items) . ",\n    ]";
     }
 
@@ -441,31 +442,31 @@ class MakeModelCommand extends Command
         if (!$casts) {
             return '[]';
         }
-        
+
         $items = [];
         foreach (explode(',', $casts) as $cast) {
             [$field, $type] = array_map('trim', explode(':', $cast));
             $items[] = "'{$field}' => '{$type}'";
         }
-        
+
         if (count($items) <= 2) {
             return '[' . implode(', ', $items) . ']';
         }
-        
+
         return "[\n        " . implode(",\n        ", $items) . ",\n    ]";
     }
 
     private function buildFactoryDefinition(array $options): string
     {
         $fields = [];
-        
+
         if ($fillable = $options['fillable'] ?? '') {
             $fieldNames = array_map('trim', explode(',', $fillable));
             foreach ($fieldNames as $field) {
                 $fields[] = "            '{$field}' => \$this->faker->word(),";
             }
         }
-        
+
         return implode("\n", $fields);
     }
 
@@ -473,19 +474,21 @@ class MakeModelCommand extends Command
     {
         $this->newLine();
         $this->section('Generation Summary');
-        
+
         $this->keyValue('Model Name', $name);
         $this->keyValue('Table Name', $options['table'] ?? Str::snake(Str::pluralize($name)));
-        
+
         if ($options['connection']) {
             $this->keyValue('Connection', $options['connection']);
         }
-        
+
         $this->newLine();
         $this->info('Files to generate:');
-        
+
         $files = ['Model'];
-        if ($options['migration']) $files[] = 'Migration';
+        if ($options['migration']) {
+            $files[] = 'Migration';
+        }
         if ($options['controller']) {
             if ($options['api']) {
                 $files[] = 'API Controller';
@@ -495,27 +498,31 @@ class MakeModelCommand extends Command
                 $files[] = 'Controller';
             }
         }
-        if ($options['factory']) $files[] = 'Factory';
-        if ($options['seeder']) $files[] = 'Seeder';
-        
+        if ($options['factory']) {
+            $files[] = 'Factory';
+        }
+        if ($options['seeder']) {
+            $files[] = 'Seeder';
+        }
+
         $this->bulletList($files);
-        
+
         if ($options['fillable']) {
             $this->newLine();
             $this->keyValue('Fillable Fields', $options['fillable']);
         }
-        
+
         if ($options['soft_deletes']) {
             $this->info('✓ Soft deletes enabled');
         }
-        
+
         $this->newLine();
     }
 
     private function displayResults(string $name, array $filesCreated, array $options): void
     {
         $this->newLine(2);
-        
+
         $this->box(
             "Model '{$name}' generated successfully!\n\n" .
             "Files created: " . count($filesCreated) . "\n" .
@@ -523,30 +530,30 @@ class MakeModelCommand extends Command
             "✅ Success",
             "success"
         );
-        
+
         $this->newLine();
         $this->section('Generated Files');
-        
+
         foreach ($filesCreated as $file) {
             $relativePath = str_replace(getcwd() . '/', '', $file);
             $this->success("  ✓ {$relativePath}");
         }
-        
+
         $this->newLine();
         $this->section('Next Steps');
-        
+
         $steps = [
             "Edit the model: app/Models/{$name}.php",
         ];
-        
+
         if ($options['migration']) {
             $steps[] = "Run migrations: php theplugs migrate";
         }
-        
+
         if ($options['controller']) {
             $steps[] = "Register routes for {$name}Controller";
         }
-        
+
         $this->numberedList($steps);
         $this->newLine();
     }
@@ -554,13 +561,13 @@ class MakeModelCommand extends Command
     private function hasAnyOption(): bool
     {
         $checkOptions = ['migration', 'm', 'controller', 'c', 'all', 'a', 'factory', 'f', 'seed', 's', 'resource', 'r', 'api'];
-        
+
         foreach ($checkOptions as $option) {
             if ($this->hasOption($option)) {
                 return true;
             }
         }
-        
+
         return false;
     }
 

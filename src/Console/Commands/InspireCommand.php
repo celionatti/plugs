@@ -32,11 +32,11 @@ class InspireCommand extends Command
     public function handle(): int
     {
         $quote = $this->quotes[array_rand($this->quotes)];
-        
+
         $this->newLine();
         $this->quote($quote[0], $quote[1]);
         $this->newLine();
-        
+
         return 0;
     }
 }

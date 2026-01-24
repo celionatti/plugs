@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Plugs\Forms;
 
-use Plugs\Forms\ThemeInterface;
 use Plugs\Forms\Themes\BootstrapTheme;
 use Plugs\View\ErrorMessage;
 
@@ -33,18 +32,21 @@ class FormBuilder
     public function action(string $action): self
     {
         $this->action = $action;
+
         return $this;
     }
 
     public function method(string $method): self
     {
         $this->method = strtoupper($method);
+
         return $this;
     }
 
     public function theme(ThemeInterface $theme): self
     {
         $this->theme = $theme;
+
         return $this;
     }
 
@@ -100,12 +102,14 @@ class FormBuilder
     public function attr(string $key, $value): self
     {
         $this->attributes[$key] = $value;
+
         return $this;
     }
 
     public function attributes(array $attributes): self
     {
         $this->attributes = array_merge($this->attributes, $attributes);
+
         return $this;
     }
 
@@ -135,8 +139,10 @@ class FormBuilder
             if (class_exists('\Plugs\Security\Csrf') && isset($_SESSION['csrf_token'])) {
                 $token = $_SESSION['csrf_token'];
             }
+
             return sprintf('<input type="hidden" name="csrf_token" value="%s">', $token);
         }
+
         return '';
     }
 

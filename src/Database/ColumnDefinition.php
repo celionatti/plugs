@@ -49,6 +49,7 @@ class ColumnDefinition
     public function nullable(bool $value = true): self
     {
         $this->nullable = $value;
+
         return $this;
     }
 
@@ -59,6 +60,7 @@ class ColumnDefinition
     {
         $this->default = $value;
         $this->hasDefault = true;
+
         return $this;
     }
 
@@ -68,6 +70,7 @@ class ColumnDefinition
     public function unsigned(): self
     {
         $this->unsigned = true;
+
         return $this;
     }
 
@@ -77,6 +80,7 @@ class ColumnDefinition
     public function autoIncrement(): self
     {
         $this->autoIncrement = true;
+
         return $this;
     }
 
@@ -86,6 +90,7 @@ class ColumnDefinition
     public function primary(): self
     {
         $this->primary = true;
+
         return $this;
     }
 
@@ -95,6 +100,7 @@ class ColumnDefinition
     public function unique(): self
     {
         $this->unique = true;
+
         return $this;
     }
 
@@ -104,6 +110,7 @@ class ColumnDefinition
     public function index(): self
     {
         $this->index = true;
+
         return $this;
     }
 
@@ -113,6 +120,7 @@ class ColumnDefinition
     public function comment(string $comment): self
     {
         $this->comment = $comment;
+
         return $this;
     }
 
@@ -122,6 +130,7 @@ class ColumnDefinition
     public function after(string $column): self
     {
         $this->after = $column;
+
         return $this;
     }
 
@@ -131,6 +140,7 @@ class ColumnDefinition
     public function first(): self
     {
         $this->first = true;
+
         return $this;
     }
 
@@ -140,6 +150,7 @@ class ColumnDefinition
     public function charset(string $charset): self
     {
         $this->charset = $charset;
+
         return $this;
     }
 
@@ -149,6 +160,7 @@ class ColumnDefinition
     public function collation(string $collation): self
     {
         $this->collation = $collation;
+
         return $this;
     }
 
@@ -158,6 +170,7 @@ class ColumnDefinition
     public function useCurrent(): self
     {
         $this->useCurrent = true;
+
         return $this;
     }
 
@@ -167,6 +180,7 @@ class ColumnDefinition
     public function useCurrentOnUpdate(): self
     {
         $this->useCurrentOnUpdate = true;
+
         return $this;
     }
 
@@ -176,6 +190,7 @@ class ColumnDefinition
     public function virtualAs(string $expression): self
     {
         $this->virtualAs = $expression;
+
         return $this;
     }
 
@@ -185,6 +200,7 @@ class ColumnDefinition
     public function storedAs(string $expression): self
     {
         $this->storedAs = $expression;
+
         return $this;
     }
 

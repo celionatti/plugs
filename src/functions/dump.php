@@ -13,7 +13,7 @@ declare(strict_types=1);
 if (!function_exists('dd')) {
     /**
      * Plugs Debug & Die - Dump and terminate execution
-     * 
+     *
      * @param mixed ...$vars Variables to dump
      * @return void
      */
@@ -26,7 +26,7 @@ if (!function_exists('dd')) {
 if (!function_exists('d')) {
     /**
      * Plugs Dump - Dump without dying
-     * 
+     *
      * @param mixed ...$vars Variables to dump
      * @return void
      */
@@ -39,7 +39,7 @@ if (!function_exists('d')) {
 if (!function_exists('dq')) {
     /**
      * Dump Queries - Show all executed queries
-     * 
+     *
      * @param bool $die Whether to terminate execution
      * @return void
      */
@@ -54,17 +54,17 @@ if (!function_exists('dq')) {
             echo '<div style="padding: 20px; background: #fee; border: 2px solid #f00; color: #900; font-family: monospace;">';
             echo '<strong>Error:</strong> Model class not found. Make sure PlugModel is loaded.';
             echo '</div>';
-            if ($die)
+            if ($die) {
                 exit(1);
+            }
+
             return;
         }
 
         try {
             $queries = call_user_func([$modelClass, 'getQueryLog']);
 
-            if (!is_array($queries)) {
-                $queries = [];
-            }
+
 
             $totalTime = 0;
             foreach ($queries as $query) {
@@ -78,7 +78,7 @@ if (!function_exists('dq')) {
                     'total_time' => $totalTime,
                     'memory_usage' => memory_get_usage(true),
                     'peak_memory' => memory_get_peak_usage(true),
-                ]
+                ],
             ];
 
             plugs_dump([$data], $die, 'query');
@@ -89,8 +89,9 @@ if (!function_exists('dq')) {
             echo '<div style="padding: 20px; background: #fee; border: 2px solid #f00; color: #900; font-family: monospace;">';
             echo '<strong>Error:</strong> ' . htmlspecialchars($e->getMessage());
             echo '</div>';
-            if ($die)
+            if ($die) {
                 exit(1);
+            }
         }
     }
 }
@@ -98,7 +99,7 @@ if (!function_exists('dq')) {
 if (!function_exists('dm')) {
     /**
      * Dump Model - Show model with relations and queries
-     * 
+     *
      * @param mixed $model Model instance
      * @param bool $die Whether to terminate execution
      * @return void
@@ -107,6 +108,7 @@ if (!function_exists('dm')) {
     {
         if (!is_object($model)) {
             plugs_dump([$model], $die);
+
             return;
         }
 
@@ -124,8 +126,9 @@ if (!function_exists('dm')) {
  */
 function plugs_dump(array $vars, bool $die = false, string $mode = 'default'): void
 {
-    if (!headers_sent())
+    if (!headers_sent()) {
         header('Content-Type: text/html; charset=UTF-8');
+    }
 
     $backtrace = debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS, 2);
     $caller = $backtrace[1] ?? $backtrace[0] ?? [];
@@ -243,8 +246,9 @@ function plugs_dump(array $vars, bool $die = false, string $mode = 'default'): v
 </script>
 JS;
 
-    if ($die)
+    if ($die) {
         exit(1);
+    }
 }
 
 /**
@@ -731,6 +735,7 @@ function plugs_render_variables(array $vars): string
     }
 
     $html .= '</div><div id="breadcrumb-bar" class="breadcrumbs"></div>';
+
     return $html;
 }
 
@@ -898,6 +903,7 @@ function plugs_render_queries(array $data): string
     $html .= '</div>';
 
     $html .= '</div>';
+
     return $html;
 }
 
@@ -956,6 +962,7 @@ function plugs_render_model(array $data): string
     }
 
     $html .= '</div>';
+
     return $html;
 }
 
@@ -964,24 +971,30 @@ function plugs_render_model(array $data): string
  */
 function plugs_format_value($value, int $depth = 0, array $path = []): string
 {
-    if ($depth > 12)
+    if ($depth > 12) {
         return '<span class="syntax-null">... (depth limit)</span>';
+    }
     $indent = str_repeat('  ', $depth);
 
-    if (is_null($value))
+    if (is_null($value)) {
         return '<span class="syntax-null">null</span>';
-    if (is_bool($value))
+    }
+    if (is_bool($value)) {
         return '<span class="syntax-bool">' . ($value ? 'true' : 'false') . '</span>';
-    if (is_int($value) || is_float($value))
+    }
+    if (is_int($value) || is_float($value)) {
         return '<span class="syntax-number">' . $value . '</span>';
+    }
     if (is_string($value)) {
         $escaped = htmlspecialchars($value);
+
         return '<span class="syntax-string" data-full-value="' . $escaped . '">"' . (strlen($value) > 200 ? substr($escaped, 0, 200) . '...' : $escaped) . '"</span>';
     }
 
     if (is_array($value)) {
-        if (empty($value))
+        if (empty($value)) {
             return '<span class="syntax-array">[]</span>';
+        }
         $html = '<span class="syntax-array">Array(' . count($value) . ')</span> [<br>';
         $isAssoc = array_keys($value) !== range(0, count($value) - 1);
 
@@ -1002,12 +1015,14 @@ function plugs_format_value($value, int $depth = 0, array $path = []): string
             $html .= '<br>';
         }
         $html .= $indent . ']';
+
         return $html;
     }
 
     if (is_object($value)) {
         $className = get_class($value);
         $html = '<span class="syntax-object">Object(' . $className . ')</span> {<br>';
+
         try {
             $reflection = new \ReflectionClass($value);
             $properties = $reflection->getProperties();
@@ -1022,6 +1037,7 @@ function plugs_format_value($value, int $depth = 0, array $path = []): string
             $html .= $indent . '  <span class="syntax-null">Unable to reflect</span><br>';
         }
         $html .= $indent . '}';
+
         return $html;
     }
 

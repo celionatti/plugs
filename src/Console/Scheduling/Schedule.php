@@ -21,7 +21,7 @@ class Schedule
      */
     public function __construct()
     {
-        // 
+        //
     }
 
     /**
@@ -35,6 +35,7 @@ class Schedule
     {
         $event = new Event($command, $parameters);
         $this->events[] = $event;
+
         return $event;
     }
 
@@ -49,6 +50,7 @@ class Schedule
     {
         $event = new CallbackEvent($callback, $parameters);
         $this->events[] = $event;
+
         return $event;
     }
 

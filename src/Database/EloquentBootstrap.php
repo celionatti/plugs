@@ -14,9 +14,9 @@ namespace Plugs\Database;
 | connections and manage its configuration.
 */
 
+use Illuminate\Container\Container as IlluminateContainer;
 use Illuminate\Database\Capsule\Manager as Capsule;
 use Illuminate\Events\Dispatcher;
-use Illuminate\Container\Container as IlluminateContainer;
 
 class EloquentBootstrap
 {
@@ -25,7 +25,7 @@ class EloquentBootstrap
 
     /**
      * Boot Eloquent ORM with given database configuration
-     * 
+     *
      * @param array $config Database configuration array
      * @return Capsule
      */
@@ -35,7 +35,7 @@ class EloquentBootstrap
             return self::$capsule;
         }
 
-        self::$capsule = new Capsule;
+        self::$capsule = new Capsule();
 
         // Add the connection
         self::$capsule->addConnection([
@@ -53,7 +53,7 @@ class EloquentBootstrap
         ]);
 
         // Set the event dispatcher (for model events)
-        self::$capsule->setEventDispatcher(new Dispatcher(new IlluminateContainer));
+        self::$capsule->setEventDispatcher(new Dispatcher(new IlluminateContainer()));
 
         // Make this Capsule instance available globally via static methods
         self::$capsule->setAsGlobal();
@@ -68,7 +68,7 @@ class EloquentBootstrap
 
     /**
      * Boot Eloquent with multiple database connections
-     * 
+     *
      * @param array $connections Array of connection configurations
      * @param string $default Default connection name
      * @return Capsule
@@ -79,7 +79,7 @@ class EloquentBootstrap
             return self::$capsule;
         }
 
-        self::$capsule = new Capsule;
+        self::$capsule = new Capsule();
 
         // Add each connection
         foreach ($connections as $name => $config) {
@@ -102,7 +102,7 @@ class EloquentBootstrap
         self::$capsule->getDatabaseManager()->setDefaultConnection($default);
 
         // Set the event dispatcher
-        self::$capsule->setEventDispatcher(new Dispatcher(new IlluminateContainer));
+        self::$capsule->setEventDispatcher(new Dispatcher(new IlluminateContainer()));
 
         // Make this Capsule instance available globally
         self::$capsule->setAsGlobal();
@@ -117,7 +117,7 @@ class EloquentBootstrap
 
     /**
      * Get the Capsule instance
-     * 
+     *
      * @return Capsule|null
      */
     public static function getCapsule(): ?Capsule
@@ -127,7 +127,7 @@ class EloquentBootstrap
 
     /**
      * Check if Eloquent has been booted
-     * 
+     *
      * @return bool
      */
     public static function isBooted(): bool
@@ -137,7 +137,7 @@ class EloquentBootstrap
 
     /**
      * Get the current connection name
-     * 
+     *
      * @return string
      */
     public static function getConnectionName(): string
@@ -151,7 +151,7 @@ class EloquentBootstrap
 
     /**
      * Switch the default connection
-     * 
+     *
      * @param string $name Connection name
      * @return void
      */
@@ -166,7 +166,7 @@ class EloquentBootstrap
 
     /**
      * Get all connection names
-     * 
+     *
      * @return array
      */
     public static function getConnections(): array

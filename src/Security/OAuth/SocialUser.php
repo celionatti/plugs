@@ -37,12 +37,14 @@ class SocialUser
     public function setToken(string $token): self
     {
         $this->token = $token;
+
         return $this;
     }
 
     public function setRaw(array $user): self
     {
         $this->user = $user;
+
         return $this;
     }
 }

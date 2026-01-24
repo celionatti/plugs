@@ -13,6 +13,7 @@ class CheckboxField extends Field
     public function render(): string
     {
         $checked = $this->value ? ' checked' : '';
+
         return sprintf(
             '<input type="checkbox" name="%s" value="1"%s %s>',
             $this->name,

@@ -6,19 +6,19 @@ namespace Plugs\Paginator;
 
 /**
  * Paginator Class
- * 
+ *
  * A flexible pagination class that can be used with any type of data.
  * Supports both array data and query builder results.
- * 
+ *
  * @example
  * // With array data
  * $data = range(1, 100);
  * $paginator = new Paginator($data, 10, 1);
- * 
+ *
  * // With query builder
  * $query = User::where('active', 1);
  * $paginator = Paginator::fromQuery($query, 15, 2);
- * 
+ *
  * // Render in view
  * echo $paginator->render();
  */
@@ -94,7 +94,7 @@ class Paginator
 
         // Get items for current page (keep as Collection/Model objects)
         $collection = $query->offset($offset)->limit($perPage)->get();
-        
+
         // Convert Collection to array but keep model objects
         $items = [];
         foreach ($collection as $item) {
@@ -102,7 +102,7 @@ class Paginator
         }
 
         $instance = new self($items, $perPage, $currentPage, $total);
-        
+
         return $instance;
     }
 
@@ -113,7 +113,7 @@ class Paginator
     {
         $instance = new self($items, $perPage + 1, $currentPage); // Get one extra to check if there's more
         $instance->items = array_slice($instance->items, 0, $perPage); // Remove the extra
-        
+
         return $instance;
     }
 
@@ -123,6 +123,7 @@ class Paginator
     public function setOptions(array $options): self
     {
         $this->options = array_merge($this->options, $options);
+
         return $this;
     }
 
@@ -132,6 +133,7 @@ class Paginator
     public function setPath(string $path): self
     {
         $this->path = $path;
+
         return $this;
     }
 
@@ -141,6 +143,7 @@ class Paginator
     public function appends(array $query): self
     {
         $this->query = array_merge($this->query, $query);
+
         return $this;
     }
 
@@ -263,7 +266,7 @@ class Paginator
     {
         $query = array_merge($this->query, ['page' => $page]);
         $queryString = http_build_query($query);
-        
+
         return $this->path . ($queryString ? '?' . $queryString : '');
     }
 
@@ -273,7 +276,7 @@ class Paginator
     protected function getPageRange(): array
     {
         $maxLinks = $this->options['max_links'];
-        
+
         if ($this->lastPage <= $maxLinks) {
             return range(1, $this->lastPage);
         }
@@ -305,6 +308,7 @@ class Paginator
     {
         $query = $_GET ?? [];
         unset($query['page']); // Remove page parameter
+
         return $query;
     }
 
@@ -318,13 +322,13 @@ class Paginator
         }
 
         $html = '<div class="' . $this->options['container_class'] . '">';
-        
+
         // Showing info
         $html .= $this->renderInfo();
-        
+
         // Pagination links
         $html .= '<ul class="' . $this->options['pagination_class'] . '">';
-        
+
         // First page link
         if ($this->options['show_first_last'] && $this->currentPage > 2) {
             $html .= $this->renderLink(1, $this->options['first_text']);
@@ -332,12 +336,12 @@ class Paginator
                 $html .= '<li><span>...</span></li>';
             }
         }
-        
+
         // Previous page link
         if ($this->options['show_prev_next'] && $this->hasPreviousPage()) {
             $html .= $this->renderLink($this->previousPage(), $this->options['prev_text']);
         }
-        
+
         // Page numbers
         if ($this->options['show_numbers']) {
             foreach ($this->getPageRange() as $page) {
@@ -348,12 +352,12 @@ class Paginator
                 }
             }
         }
-        
+
         // Next page link
         if ($this->options['show_prev_next'] && $this->hasNextPage()) {
             $html .= $this->renderLink($this->nextPage(), $this->options['next_text']);
         }
-        
+
         // Last page link
         if ($this->options['show_first_last'] && $this->currentPage < $this->lastPage - 1) {
             if ($this->currentPage < $this->lastPage - 2) {
@@ -361,10 +365,10 @@ class Paginator
             }
             $html .= $this->renderLink($this->lastPage, $this->options['last_text']);
         }
-        
+
         $html .= '</ul>';
         $html .= '</div>';
-        
+
         return $html;
     }
 
@@ -433,27 +437,27 @@ class Paginator
 
         $html = '<div class="' . $this->options['container_class'] . '">';
         $html .= '<ul class="' . $this->options['pagination_class'] . '">';
-        
+
         // Previous
         if ($this->hasPreviousPage()) {
             $html .= $this->renderLink($this->previousPage(), $this->options['prev_text']);
         } else {
             $html .= $this->renderLink(null, $this->options['prev_text']);
         }
-        
+
         // Current page indicator
         $html .= sprintf('<li><span>Page %d of %d</span></li>', $this->currentPage, $this->lastPage);
-        
+
         // Next
         if ($this->hasNextPage()) {
             $html .= $this->renderLink($this->nextPage(), $this->options['next_text']);
         } else {
             $html .= $this->renderLink(null, $this->options['next_text']);
         }
-        
+
         $html .= '</ul>';
         $html .= '</div>';
-        
+
         return $html;
     }
 
@@ -495,6 +499,7 @@ class Paginator
         if (method_exists($this, $method)) {
             return $this->$method();
         }
+
         return null;
     }
 

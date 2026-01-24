@@ -9,7 +9,7 @@ namespace Plugs\Http;
 | BatchResponse Class
 |--------------------------------------------------------------------------
 |
-| 
+|
 */
 
 class BatchResponse implements \Countable, \IteratorAggregate, \ArrayAccess
@@ -52,7 +52,7 @@ class BatchResponse implements \Countable, \IteratorAggregate, \ArrayAccess
                 return false;
             }
         }
-        
+
         return true;
     }
 
@@ -74,11 +74,11 @@ class BatchResponse implements \Countable, \IteratorAggregate, \ArrayAccess
     public function map(callable $callback): array
     {
         $results = [];
-        
+
         foreach ($this->responses as $key => $response) {
             $results[$key] = $callback($response, $key);
         }
-        
+
         return $results;
     }
 
@@ -92,7 +92,7 @@ class BatchResponse implements \Countable, \IteratorAggregate, \ArrayAccess
         foreach ($this->responses as $key => $response) {
             $callback($response, $key);
         }
-        
+
         return $this;
     }
 

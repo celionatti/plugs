@@ -39,7 +39,7 @@ class StripeAdapter implements PaymentAdapterInterface
             'currency' => strtolower($data['currency'] ?? 'usd'),
             'description' => $data['description'] ?? 'Payment',
             'receipt_email' => $data['email'] ?? '',
-            'metadata' => $data['metadata'] ?? []
+            'metadata' => $data['metadata'] ?? [],
         ];
 
         // If payment method is provided, confirm immediately
@@ -68,10 +68,10 @@ class StripeAdapter implements PaymentAdapterInterface
             'customer' => $customer['id'],
             'items' => [
                 [
-                    'price' => $data['price_id'] ?? $data['plan_code']
-                ]
+                    'price' => $data['price_id'] ?? $data['plan_code'],
+                ],
             ],
-            'metadata' => $data['metadata'] ?? []
+            'metadata' => $data['metadata'] ?? [],
         ];
 
         // Add trial period if specified
@@ -100,7 +100,7 @@ class StripeAdapter implements PaymentAdapterInterface
             'currency' => strtolower($data['currency'] ?? 'usd'),
             'destination' => $data['recipient'], // Connected account ID or bank account
             'description' => $data['reason'] ?? 'Transfer',
-            'metadata' => $data['metadata'] ?? []
+            'metadata' => $data['metadata'] ?? [],
         ];
 
         return $this->makeRequest('/transfers', $transferData);
@@ -117,8 +117,8 @@ class StripeAdapter implements PaymentAdapterInterface
             'description' => $data['narration'] ?? 'Withdrawal',
             'metadata' => [
                 'bank_account' => $data['account_number'] ?? '',
-                'bank_code' => $data['bank_code'] ?? ''
-            ]
+                'bank_code' => $data['bank_code'] ?? '',
+            ],
         ];
 
         // If destination bank account is provided
@@ -136,7 +136,7 @@ class StripeAdapter implements PaymentAdapterInterface
     {
         $refundData = [
             'payment_intent' => $data['transaction_id'],
-            'reason' => 'requested_by_customer'
+            'reason' => 'requested_by_customer',
         ];
 
         // Add amount for partial refund
@@ -177,7 +177,7 @@ class StripeAdapter implements PaymentAdapterInterface
         $params = [
             'limit' => $filters['limit'] ?? 10,
             'starting_after' => $filters['starting_after'] ?? null,
-            'ending_before' => $filters['ending_before'] ?? null
+            'ending_before' => $filters['ending_before'] ?? null,
         ];
 
         if (isset($filters['customer'])) {
@@ -185,6 +185,7 @@ class StripeAdapter implements PaymentAdapterInterface
         }
 
         $query = http_build_query(array_filter($params));
+
         return $this->makeRequest("/payment_intents?{$query}", [], 'GET');
     }
 
@@ -209,14 +210,14 @@ class StripeAdapter implements PaymentAdapterInterface
             'account_holder_name' => $data['name'],
             'account_holder_type' => $data['type'] ?? 'individual',
             'routing_number' => $data['routing_number'] ?? '',
-            'account_number' => $data['account_number']
+            'account_number' => $data['account_number'],
         ];
 
         // For external accounts, we need to create via customer or connect
         // For simplicity, returning the account data
         return [
             'recipient_code' => 'ba_' . uniqid(),
-            'details' => $accountData
+            'details' => $accountData,
         ];
     }
 
@@ -275,14 +276,14 @@ class StripeAdapter implements PaymentAdapterInterface
             'customer.subscription.deleted' => 'subscription_cancelled',
             'payout.paid' => 'payout_successful',
             'payout.failed' => 'payout_failed',
-            'refund.created' => 'refund_created'
+            'refund.created' => 'refund_created',
         ];
 
         return [
             'event' => $eventMap[$event] ?? $event,
             'transaction_id' => $data['id'] ?? '',
             'status' => $data['status'] ?? '',
-            'data' => $data
+            'data' => $data,
         ];
     }
 
@@ -302,7 +303,7 @@ class StripeAdapter implements PaymentAdapterInterface
         return $this->makeRequest('/customers', [
             'email' => $email,
             'name' => $name,
-            'description' => 'Customer for ' . $email
+            'description' => 'Customer for ' . $email,
         ]);
     }
 
@@ -317,7 +318,7 @@ class StripeAdapter implements PaymentAdapterInterface
 
         $headers = [
             'Authorization: Bearer ' . $this->secretKey,
-            'Content-Type: application/x-www-form-urlencoded'
+            'Content-Type: application/x-www-form-urlencoded',
         ];
 
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
@@ -347,6 +348,7 @@ class StripeAdapter implements PaymentAdapterInterface
 
         if ($httpCode >= 400) {
             $errorMsg = $result['error']['message'] ?? 'Request failed';
+
             throw new Exception("Stripe Error ({$httpCode}): {$errorMsg}");
         }
 

@@ -11,7 +11,7 @@ use Psr\Http\Server\RequestHandlerInterface;
 
 /**
  * Flash Middleware
- * 
+ *
  * Manages flash data lifecycle:
  * - Starts session if needed
  * - Marks old flash data for deletion

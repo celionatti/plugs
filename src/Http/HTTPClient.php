@@ -17,7 +17,6 @@ namespace Plugs\Http;
 use GuzzleHttp\Client;
 use GuzzleHttp\Exception\RequestException;
 use GuzzleHttp\Promise\PromiseInterface;
-use Psr\Http\Message\ResponseInterface;
 
 class HTTPClient
 {
@@ -49,18 +48,21 @@ class HTTPClient
     public function baseUri(string $uri): self
     {
         $this->baseUri = rtrim($uri, '/');
+
         return $this;
     }
 
     public function header(string $name, string $value): self
     {
         $this->headers[$name] = $value;
+
         return $this;
     }
 
     public function headers(array $headers): self
     {
         $this->headers = array_merge($this->headers, $headers);
+
         return $this;
     }
 
@@ -72,6 +74,7 @@ class HTTPClient
     public function basicAuth(string $username, string $password): self
     {
         $credentials = base64_encode($username . ':' . $password);
+
         return $this->header('Authorization', 'Basic ' . $credentials);
     }
 
@@ -88,30 +91,35 @@ class HTTPClient
     public function query(array $params): self
     {
         $this->queryParams = array_merge($this->queryParams, $params);
+
         return $this;
     }
 
     public function form(array $params): self
     {
         $this->formParams = array_merge($this->formParams, $params);
+
         return $this;
     }
 
     public function json(array $data): self
     {
         $this->jsonData = $data;
+
         return $this->header('Content-Type', 'application/json');
     }
 
     public function timeout(int $seconds): self
     {
         $this->timeout = $seconds;
+
         return $this;
     }
 
     public function connectTimeout(int $seconds): self
     {
         $this->connectTimeout = $seconds;
+
         return $this;
     }
 
@@ -119,6 +127,7 @@ class HTTPClient
     {
         $this->retries = $times;
         $this->retryDelay = $delayMs;
+
         return $this;
     }
 
@@ -126,18 +135,21 @@ class HTTPClient
     {
         $this->allowRedirects = $allow;
         $this->maxRedirects = $max;
+
         return $this;
     }
 
     public function verify(bool $verify = true): self
     {
         $this->verify = $verify;
+
         return $this;
     }
 
     public function withOptions(array $options): self
     {
         $this->options = array_merge($this->options, $options);
+
         return $this;
     }
 
@@ -146,6 +158,7 @@ class HTTPClient
         if (!empty($query)) {
             $this->query($query);
         }
+
         return $this->send('GET', $url);
     }
 
@@ -154,6 +167,7 @@ class HTTPClient
         if (!empty($data) && $this->jsonData === null) {
             $this->json($data);
         }
+
         return $this->send('POST', $url);
     }
 
@@ -162,6 +176,7 @@ class HTTPClient
         if (!empty($data) && $this->jsonData === null) {
             $this->json($data);
         }
+
         return $this->send('PUT', $url);
     }
 
@@ -170,6 +185,7 @@ class HTTPClient
         if (!empty($data) && $this->jsonData === null) {
             $this->json($data);
         }
+
         return $this->send('PATCH', $url);
     }
 
@@ -178,6 +194,7 @@ class HTTPClient
         if (!empty($data) && $this->jsonData === null) {
             $this->json($data);
         }
+
         return $this->send('DELETE', $url);
     }
 
@@ -186,6 +203,7 @@ class HTTPClient
         if (!empty($query)) {
             $this->query($query);
         }
+
         return $this->sendAsync('GET', $url);
     }
 
@@ -194,6 +212,7 @@ class HTTPClient
         if (!empty($data) && $this->jsonData === null) {
             $this->json($data);
         }
+
         return $this->sendAsync('POST', $url);
     }
 
@@ -208,6 +227,7 @@ class HTTPClient
         while ($attempts < $maxAttempts) {
             try {
                 $response = $this->client->request($method, $fullUrl, $options);
+
                 return new HTTPResponse($response);
             } catch (RequestException $e) {
                 $attempts++;

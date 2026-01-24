@@ -96,6 +96,7 @@ class Connection
             if ($this->connectionAttempts < $this->maxRetries) {
                 usleep(100000 * $this->connectionAttempts);
                 $this->connect($config);
+
                 return;
             }
 
@@ -114,11 +115,13 @@ class Connection
 
         if ($driver === 'mysql') {
             $charset = $config['charset'] ?? 'utf8mb4';
+
             return "mysql:host={$host};port={$port};dbname={$database};charset={$charset}";
         }
 
         if ($driver === 'pgsql') {
             $charset = $config['charset'] ?? 'utf8';
+
             return "pgsql:host={$host};port={$port};dbname={$database};options='--client_encoding={$charset}'";
         }
 
@@ -170,6 +173,7 @@ class Connection
             if (self::$poolConfig['validate_on_checkout']) {
                 if ($conn->ping() && !$conn->isStale()) {
                     $pool['in_use'][$conn->poolId] = $conn;
+
                     return $conn;
                 } else {
                     // Connection is bad, destroy it
@@ -178,6 +182,7 @@ class Connection
                 }
             } else {
                 $pool['in_use'][$conn->poolId] = $conn;
+
                 return $conn;
             }
         }
@@ -189,6 +194,7 @@ class Connection
             $conn->isInPool = true;
             $pool['in_use'][$conn->poolId] = $conn;
             $pool['total']++;
+
             return $conn;
         }
 
@@ -256,6 +262,7 @@ class Connection
     private function isStale(): bool
     {
         $idleTime = time() - $this->lastActivityTime;
+
         return $idleTime > self::$poolConfig['idle_timeout'];
     }
 
@@ -283,6 +290,7 @@ class Connection
             } else {
                 // Put it back if not stale
                 array_unshift($pool['available'], $conn);
+
                 break;
             }
         }
@@ -385,6 +393,7 @@ class Connection
                 $this->reconnect();
                 $stmt = $this->preparePooled($sql);
                 $stmt->execute($params);
+
                 return $stmt;
             }
 
@@ -575,6 +584,7 @@ class Connection
 
         if ((time() - $this->lastActivityTime) > $maxIdleTime) {
             $this->reconnect();
+
             return;
         }
 
@@ -588,9 +598,11 @@ class Connection
         try {
             $this->pdo->query('SELECT 1');
             $this->lastActivityTime = time();
+
             return true;
         } catch (PDOException $e) {
             $this->isHealthy = false;
+
             return false;
         }
     }
@@ -613,6 +625,7 @@ class Connection
     private function isConnectionError(PDOException $e): bool
     {
         $connectionErrors = ['HY000', '2006', '2013', '08S01'];
+
         return in_array($e->getCode(), $connectionErrors, true);
     }
 
@@ -655,6 +668,7 @@ class Connection
     {
         $this->ensureConnectionHealth();
         $this->lastActivityTime = time();
+
         return $this->pdo;
     }
 
@@ -662,18 +676,21 @@ class Connection
     {
         $stmt = $this->query($sql, $params);
         $result = $stmt->fetch();
+
         return $result ?: null;
     }
 
     public function fetchAll(string $sql, array $params = []): array
     {
         $stmt = $this->query($sql, $params);
+
         return $stmt->fetchAll();
     }
 
     public function execute(string $sql, array $params = []): bool
     {
         $stmt = $this->query($sql, $params);
+
         return $stmt->rowCount() > 0;
     }
 
@@ -685,6 +702,7 @@ class Connection
     public function beginTransaction(): bool
     {
         $this->ensureConnectionHealth();
+
         return $this->pdo->beginTransaction();
     }
 

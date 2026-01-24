@@ -13,7 +13,6 @@ namespace Plugs\Console\Commands;
 
 use Plugs\Console\Command;
 use Plugs\Console\ConsoleKernel;
-use Plugs\Console\Support\Str;
 
 class HelpCommand extends Command
 {
@@ -22,7 +21,7 @@ class HelpCommand extends Command
     protected function defineArguments(): array
     {
         return [
-            'command_name' => 'The command name to show help for'
+            'command_name' => 'The command name to show help for',
         ];
     }
 
@@ -30,7 +29,7 @@ class HelpCommand extends Command
     {
         return [
             '--format=FORMAT' => 'The output format (text, json)',
-            '--raw' => 'To output raw command help'
+            '--raw' => 'To output raw command help',
         ];
     }
 
@@ -113,6 +112,7 @@ class HelpCommand extends Command
         if (!$command) {
             $this->error("Command '{$commandName}' not found.");
             $this->showCommandSuggestions($kernel, $commandName);
+
             return 1;
         }
 

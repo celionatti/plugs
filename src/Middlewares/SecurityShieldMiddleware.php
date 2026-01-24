@@ -21,11 +21,11 @@ namespace Plugs\Middlewares;
 */
 
 use Plugs\Database\Connection;
+use Plugs\Http\ResponseFactory;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Server\MiddlewareInterface;
 use Psr\Http\Server\RequestHandlerInterface;
-use Plugs\Http\ResponseFactory;
 
 class SecurityShieldMiddleware implements MiddlewareInterface
 {
@@ -37,7 +37,7 @@ class SecurityShieldMiddleware implements MiddlewareInterface
 
     /**
      * Initialize SecurityShield Middleware
-     * 
+     *
      * @param array $config Configuration options
      */
     public function __construct(array $config = [])
@@ -90,12 +90,13 @@ class SecurityShieldMiddleware implements MiddlewareInterface
             'risk_score' => 0,
             'checks_passed' => [],
             'checks_failed' => [],
-            'timestamp' => time()
+            'timestamp' => time(),
         ];
 
         // Check whitelist first
         if ($this->isWhitelisted($requestData['ip'])) {
             $decision['reason'] = 'Whitelisted IP';
+
             return $decision;
         }
 
@@ -115,7 +116,7 @@ class SecurityShieldMiddleware implements MiddlewareInterface
             'bot_detection' => ['weight' => 0.25, 'method' => 'detectBots'],
             'behavior' => ['weight' => 0.20, 'method' => 'analyzeBehavior'],
             'email' => ['weight' => 0.15, 'method' => 'validateEmail'],
-            'fingerprint' => ['weight' => 0.10, 'method' => 'checkFingerprint']
+            'fingerprint' => ['weight' => 0.10, 'method' => 'checkFingerprint'],
         ];
 
         foreach ($checks as $checkName => $check) {
@@ -127,6 +128,7 @@ class SecurityShieldMiddleware implements MiddlewareInterface
 
             if (!$result['allowed']) {
                 $decision['checks_failed'][] = $checkName;
+
                 return $result; // Immediate deny
             }
 
@@ -168,7 +170,7 @@ class SecurityShieldMiddleware implements MiddlewareInterface
             'ip_attempts' => $this->getAttemptCount($ip, 'ip'),
             'email_attempts' => $email ? $this->getAttemptCount($email, 'email') : 0,
             'ip_daily' => $this->getDailyCount($ip, 'ip'),
-            'endpoint_rate' => $this->getEndpointRate($ip, $endpoint)
+            'endpoint_rate' => $this->getEndpointRate($ip, $endpoint),
         ];
 
         // Check endpoint-specific rate limit
@@ -179,6 +181,7 @@ class SecurityShieldMiddleware implements MiddlewareInterface
         // Check IP-based rate limits
         if ($limits['ip_attempts'] >= $this->config['rate_limits']['login_attempts']) {
             $this->addToBlacklist($ip, 'rate_limit', 3600);
+
             return $this->deny('Too many attempts from this IP', 0.9);
         }
 
@@ -201,7 +204,7 @@ class SecurityShieldMiddleware implements MiddlewareInterface
             'allowed' => true,
             'risk_score' => min($riskScore, 0.95),
             'challenge_required' => $riskScore > 0.5,
-            'limits' => $limits
+            'limits' => $limits,
         ];
     }
 
@@ -261,7 +264,7 @@ class SecurityShieldMiddleware implements MiddlewareInterface
             'risk_score' => $botScore * 0.8,
             'challenge_required' => $botScore > 0.4,
             'challenge_type' => $botScore > 0.6 ? 'advanced_captcha' : 'captcha',
-            'details' => $details
+            'details' => $details,
         ];
     }
 
@@ -289,7 +292,7 @@ class SecurityShieldMiddleware implements MiddlewareInterface
             'allowed' => true,
             'risk_score' => min($behaviorScore, 0.95),
             'challenge_required' => $behaviorScore > 0.5,
-            'details' => $details
+            'details' => $details,
         ];
     }
 
@@ -319,7 +322,7 @@ class SecurityShieldMiddleware implements MiddlewareInterface
             'risk_score' => min($typoScore, 0.95),
             'challenge_required' => $typoScore > 0.6,
             'typo_detected' => $typoScore > 0.7,
-            'suggested_email' => $typoScore > 0.7 ? $this->suggestEmailCorrection($email) : null
+            'suggested_email' => $typoScore > 0.7 ? $this->suggestEmailCorrection($email) : null,
         ];
     }
 
@@ -363,7 +366,7 @@ class SecurityShieldMiddleware implements MiddlewareInterface
             'endpoint' => $request->getUri()->getPath(),
             'method' => $request->getMethod(),
             'timestamp' => time(),
-            'fingerprint' => $headers['x-fingerprint'] ?? ''
+            'fingerprint' => $headers['x-fingerprint'] ?? '',
         ];
     }
 
@@ -374,7 +377,7 @@ class SecurityShieldMiddleware implements MiddlewareInterface
             'HTTP_X_FORWARDED_FOR',
             'HTTP_X_REAL_IP',
             'HTTP_CLIENT_IP',
-            'REMOTE_ADDR'
+            'REMOTE_ADDR',
         ];
 
         $serverParams = $request->getServerParams();
@@ -401,10 +404,10 @@ class SecurityShieldMiddleware implements MiddlewareInterface
             'error' => 'Security validation failed',
             'reason' => $decision['reason'],
             'risk_score' => $decision['risk_score'],
-            'timestamp' => $decision['timestamp']
+            'timestamp' => $decision['timestamp'],
         ], 403, [
             'X-Security-Decision' => 'denied',
-            'X-Risk-Score' => (string) $decision['risk_score']
+            'X-Risk-Score' => (string) $decision['risk_score'],
         ]);
     }
 
@@ -416,10 +419,10 @@ class SecurityShieldMiddleware implements MiddlewareInterface
             'challenge_required' => true,
             'challenge_type' => $challengeType,
             'risk_score' => $decision['risk_score'],
-            'message' => 'Please complete the security challenge'
+            'message' => 'Please complete the security challenge',
         ], 429, [
             'X-Challenge-Type' => $challengeType,
-            'Retry-After' => '60'
+            'Retry-After' => '60',
         ]);
     }
 
@@ -445,6 +448,7 @@ class SecurityShieldMiddleware implements MiddlewareInterface
                  WHERE identifier = ? AND type = ? AND created_at > DATE_SUB(NOW(), INTERVAL ? SECOND)",
                 [$identifier, $type, $window]
             );
+
             return (int) $stmt->fetchColumn();
         } catch (\Exception $e) {
             return 0;
@@ -463,6 +467,7 @@ class SecurityShieldMiddleware implements MiddlewareInterface
                  WHERE identifier = ? AND type = ? AND created_at > DATE_SUB(NOW(), INTERVAL 24 HOUR)",
                 [$identifier, $type]
             );
+
             return (int) $stmt->fetchColumn();
         } catch (\Exception $e) {
             return 0;
@@ -477,6 +482,7 @@ class SecurityShieldMiddleware implements MiddlewareInterface
                  WHERE identifier = ? AND endpoint = ? AND created_at > DATE_SUB(NOW(), INTERVAL 60 SECOND)",
                 [$ip, $endpoint]
             );
+
             return (int) $stmt->fetchColumn();
         } catch (\Exception $e) {
             return 0;
@@ -514,7 +520,7 @@ class SecurityShieldMiddleware implements MiddlewareInterface
                     $requestData['endpoint'],
                     $decision['risk_score'],
                     $decision['allowed'] ? 'allowed' : 'denied',
-                    json_encode(['reason' => $decision['reason'], 'checks' => $decision])
+                    json_encode(['reason' => $decision['reason'], 'checks' => $decision]),
                 ]
             );
         } catch (\Exception $e) {
@@ -535,6 +541,7 @@ class SecurityShieldMiddleware implements MiddlewareInterface
     {
         $isBrowser = preg_match('/(mozilla|chrome|safari|firefox|edge)/i', $userAgent);
         $hasAccept = isset($headers['accept']);
+
         return $isBrowser === $hasAccept;
     }
 
@@ -564,7 +571,7 @@ class SecurityShieldMiddleware implements MiddlewareInterface
             'throwawaymail.com',
             'temp-mail.org',
             'getnada.com',
-            'maildrop.cc'
+            'maildrop.cc',
         ];
 
         return in_array($domain, $disposableDomains);
@@ -578,7 +585,7 @@ class SecurityShieldMiddleware implements MiddlewareInterface
             'hotmail.com',
             'outlook.com',
             'aol.com',
-            'icloud.com'
+            'icloud.com',
         ];
 
         $userDomain = strtolower(explode('@', $email)[1] ?? '');
@@ -620,6 +627,7 @@ class SecurityShieldMiddleware implements MiddlewareInterface
                  WHERE identifier = ? AND type = 'ip' AND created_at > DATE_SUB(NOW(), INTERVAL 5 MINUTE)",
                 [$ip]
             );
+
             return (int) $stmt->fetchColumn();
         } catch (\Exception $e) {
             return 1;
@@ -634,6 +642,7 @@ class SecurityShieldMiddleware implements MiddlewareInterface
                  WHERE identifier = ? AND type = 'ip' AND created_at > DATE_SUB(NOW(), INTERVAL 1 MINUTE)",
                 [$ip]
             );
+
             return (int) $stmt->fetchColumn();
         } catch (\Exception $e) {
             return 0;
@@ -647,6 +656,7 @@ class SecurityShieldMiddleware implements MiddlewareInterface
                 "SELECT COUNT(*) FROM blocked_fingerprints WHERE fingerprint = ?",
                 [$fingerprint]
             );
+
             return (int) $stmt->fetchColumn() > 0;
         } catch (\Exception $e) {
             return false;
@@ -704,12 +714,12 @@ class SecurityShieldMiddleware implements MiddlewareInterface
                 'login_window' => 900,        // 15 minutes
                 'ip_daily_limit' => 100,
                 'user_daily_limit' => 50,
-                'endpoint_limit' => 20        // Per minute
+                'endpoint_limit' => 20,        // Per minute
             ],
             'bot_detection' => [
                 'suspicious_headers' => ['bot', 'crawler', 'spider', 'scraper', 'curl', 'wget'],
-                'block_suspicious_bots' => true
-            ]
+                'block_suspicious_bots' => true,
+            ],
         ];
     }
 
@@ -720,7 +730,7 @@ class SecurityShieldMiddleware implements MiddlewareInterface
             'bot_detection' => true,
             'email' => true,
             'behavior' => true,
-            'fingerprint' => false
+            'fingerprint' => false,
         ];
     }
 
@@ -731,7 +741,7 @@ class SecurityShieldMiddleware implements MiddlewareInterface
             'reason' => $reason,
             'risk_score' => $riskScore,
             'challenge_required' => false,
-            'timestamp' => time()
+            'timestamp' => time(),
         ];
     }
 
@@ -767,6 +777,7 @@ class SecurityShieldMiddleware implements MiddlewareInterface
         if (isset($this->rules[$rule])) {
             $this->rules[$rule] = true;
         }
+
         return $this;
     }
 
@@ -778,6 +789,7 @@ class SecurityShieldMiddleware implements MiddlewareInterface
         if (isset($this->rules[$rule])) {
             $this->rules[$rule] = false;
         }
+
         return $this;
     }
 

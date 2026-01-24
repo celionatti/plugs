@@ -11,10 +11,9 @@ namespace Plugs\Console;
 | Enhanced with timing utilities and better helper methods
 */
 
+use Plugs\Console\Contract\CommandInterface;
 use Plugs\Console\Support\Input;
 use Plugs\Console\Support\Output;
-use Plugs\Console\Contract\CommandInterface;
-
 
 abstract class Command implements CommandInterface
 {
@@ -22,7 +21,7 @@ abstract class Command implements CommandInterface
     protected string $description = '';
     protected Input $input;
     protected Output $output;
-    
+
     private float $startTime;
     private array $checkpoints = [];
 
@@ -44,7 +43,7 @@ abstract class Command implements CommandInterface
 
     public function setIO(Input $input, Output $output): void
     {
-        $this->input  = $input;
+        $this->input = $input;
         $this->output = $output;
     }
 
@@ -275,8 +274,8 @@ abstract class Command implements CommandInterface
         $result = null;
         $error = null;
         $completed = false;
-        
-        $this->output->spinner($message, function() use ($callback, &$result, &$error, &$completed) {
+
+        $this->output->spinner($message, function () use ($callback, &$result, &$error, &$completed) {
             if (!$completed) {
                 try {
                     $result = $callback();
@@ -286,6 +285,7 @@ abstract class Command implements CommandInterface
                     $completed = true;
                 }
             }
+
             return $completed;
         });
 
@@ -328,6 +328,7 @@ abstract class Command implements CommandInterface
         if (!$this->fileExists($path)) {
             throw new \RuntimeException("File not found: {$path}");
         }
+
         return file_get_contents($path);
     }
 
@@ -344,8 +345,10 @@ abstract class Command implements CommandInterface
     {
         if (!$this->fileExists($path)) {
             $this->error("Path does not exist: {$path}");
+
             return false;
         }
+
         return true;
     }
 
@@ -353,8 +356,10 @@ abstract class Command implements CommandInterface
     {
         if (!is_dir($path)) {
             $this->error("Directory does not exist: {$path}");
+
             return false;
         }
+
         return true;
     }
 
@@ -363,6 +368,7 @@ abstract class Command implements CommandInterface
         if (!is_dir($path)) {
             return mkdir($path, 0755, true);
         }
+
         return true;
     }
 
@@ -370,11 +376,12 @@ abstract class Command implements CommandInterface
     {
         if (!$this->fileExists($source)) {
             $this->error("Source file not found: {$source}");
+
             return false;
         }
-        
+
         $this->ensureDirectory(dirname($destination));
-        
+
         return copy($source, $destination);
     }
 
@@ -383,32 +390,34 @@ abstract class Command implements CommandInterface
     protected function exec(string $command, array &$output = [], int &$exitCode = 0): string
     {
         exec($command, $output, $exitCode);
+
         return implode("\n", $output);
     }
 
     protected function execRealtime(string $command): int
     {
         $process = popen($command, 'r');
-        
+
         if (!$process) {
             $this->error("Failed to execute command: {$command}");
+
             return 1;
         }
-        
+
         while (!feof($process)) {
             $line = fgets($process);
             if ($line !== false) {
                 echo $line;
             }
         }
-        
+
         return pclose($process);
     }
 
     protected function call(string $command, array $arguments = []): int
     {
         $cmd = "php theplugs {$command}";
-        
+
         foreach ($arguments as $key => $value) {
             if (is_int($key)) {
                 $cmd .= " {$value}";
@@ -416,11 +425,11 @@ abstract class Command implements CommandInterface
                 $cmd .= " --{$key}={$value}";
             }
         }
-        
+
         if ($this->isVerbose()) {
             $this->info("Calling: {$cmd}");
         }
-        
+
         return $this->execRealtime($cmd);
     }
 
@@ -436,7 +445,7 @@ abstract class Command implements CommandInterface
         if (!isset($this->checkpoints[$name])) {
             return null;
         }
-        
+
         return microtime(true) - $this->checkpoints[$name];
     }
 
@@ -445,16 +454,16 @@ abstract class Command implements CommandInterface
         if (empty($this->checkpoints)) {
             return;
         }
-        
+
         $this->line();
         $this->section('Execution Timings');
         $this->line();
-        
+
         $previous = $this->startTime;
         foreach ($this->checkpoints as $name => $time) {
             $elapsed = $time - $previous;
             $total = $time - $this->startTime;
-            
+
             $this->line(sprintf(
                 "  %s %s (+%s total: %s)",
                 "\033[36m▶\033[0m",
@@ -462,10 +471,10 @@ abstract class Command implements CommandInterface
                 $this->formatTime($elapsed),
                 $this->formatTime($total)
             ));
-            
+
             $previous = $time;
         }
-        
+
         $this->line();
     }
 
@@ -522,6 +531,7 @@ abstract class Command implements CommandInterface
         } elseif ($seconds < 1) {
             return number_format($seconds * 1000, 0) . 'ms';
         }
+
         return number_format($seconds, 2) . 's';
     }
 
@@ -530,7 +540,7 @@ abstract class Command implements CommandInterface
         if (mb_strlen($text) <= $length) {
             return $text;
         }
-        
+
         return mb_substr($text, 0, $length - 3) . '...';
     }
 

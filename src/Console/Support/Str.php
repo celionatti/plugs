@@ -20,6 +20,7 @@ class Str
     public static function snake(string $name): string
     {
         $name = preg_replace('/(.)([A-Z])/u', '$1_$2', $name);
+
         return strtolower((string)$name);
     }
 

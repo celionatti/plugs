@@ -5,8 +5,8 @@ declare(strict_types=1);
 namespace Plugs\Console\Commands;
 
 use Plugs\Console\Command;
-use Plugs\Console\Support\Str;
 use Plugs\Console\Support\Filesystem;
+use Plugs\Console\Support\Str;
 use Plugs\Http\Integration\Enums\Method;
 
 class MakeApiRequestCommand extends Command
@@ -61,6 +61,7 @@ class MakeApiRequestCommand extends Command
 
         if (Filesystem::exists($path) && !$this->isForce()) {
             $this->error("Request already exists: {$path}");
+
             return 1;
         }
 

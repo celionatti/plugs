@@ -6,23 +6,23 @@ namespace Plugs\Utils;
 
 /**
  * FlashMessage Class
- * 
+ *
  * Handles session-based flash messages with automatic cleanup.
  * Supports multiple message types and custom rendering.
- * 
+ *
  * @example
  * // Set messages
  * FlashMessage::success('Category created successfully!');
  * FlashMessage::error('Failed to delete item.');
- * 
+ *
  * // Display in view
  * echo FlashMessage::render();
- * 
+ *
  * // Or check and display specific type
  * if (FlashMessage::has('success')) {
  *     echo FlashMessage::get('success');
  * }
- * 
+ *
  * // Custom styling
  * FlashMessage::setRenderOptions([
  *     'include_styles' => false, // Use your own CSS
@@ -379,6 +379,7 @@ CSS;
     public static function first(?string $type = null, bool $clear = true): ?array
     {
         $messages = self::get($type, $clear);
+
         return !empty($messages) ? $messages[0] : null;
     }
 
@@ -394,7 +395,7 @@ CSS;
         } else {
             $_SESSION[self::SESSION_KEY] = array_filter(
                 $_SESSION[self::SESSION_KEY],
-                fn($flash) => $flash['type'] !== $type
+                fn ($flash) => $flash['type'] !== $type
             );
             $_SESSION[self::SESSION_KEY] = array_values($_SESSION[self::SESSION_KEY]);
         }
@@ -552,6 +553,7 @@ CSS;
     public static function toJson(): string
     {
         $messages = self::get();
+
         return json_encode([
             'flash_messages' => $messages,
             'has_messages' => !empty($messages),
@@ -645,6 +647,7 @@ CSS;
     public static function hasOldInput(string $key): bool
     {
         self::ensureSession();
+
         return isset($_SESSION[self::OLD_INPUT_KEY][$key]);
     }
 
@@ -656,6 +659,7 @@ CSS;
         self::ensureSession();
         $input = $_SESSION[self::OLD_INPUT_KEY] ?? [];
         unset($_SESSION[self::OLD_INPUT_KEY]);
+
         return $input;
     }
 
@@ -690,7 +694,7 @@ CSS;
 
         return count(array_filter(
             $_SESSION[self::SESSION_KEY],
-            fn($flash) => $flash['type'] === $type
+            fn ($flash) => $flash['type'] === $type
         ));
     }
 

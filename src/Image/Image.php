@@ -60,18 +60,22 @@ class Image
             switch ($this->type) {
                 case IMAGETYPE_JPEG:
                     $this->image = imagecreatefromjpeg($path);
+
                     break;
                 case IMAGETYPE_PNG:
                     $this->image = imagecreatefrompng($path);
+
                     break;
                 case IMAGETYPE_GIF:
                     $this->image = imagecreatefromgif($path);
+
                     break;
                 case IMAGETYPE_WEBP:
                     if (!function_exists('imagecreatefromwebp')) {
                         throw new \RuntimeException("WebP support not available");
                     }
                     $this->image = imagecreatefromwebp($path);
+
                     break;
                 case IMAGETYPE_BMP:
                     if (function_exists('imagecreatefrombmp')) {
@@ -79,6 +83,7 @@ class Image
                     } else {
                         throw new \RuntimeException("BMP support not available");
                     }
+
                     break;
                 default:
                     throw new \RuntimeException("Unsupported image type: " . image_type_to_mime_type($this->type));
@@ -117,6 +122,7 @@ class Image
     public function quality(int $quality): self
     {
         $this->quality = max(1, min(100, $quality));
+
         return $this;
     }
 
@@ -163,6 +169,7 @@ class Image
 
         if (!$result) {
             imagedestroy($newImage);
+
             throw new \RuntimeException('Failed to resize image');
         }
 
@@ -226,6 +233,7 @@ class Image
 
         if ($newImage === false) {
             imagedestroy($tempImage);
+
             throw new \RuntimeException('Failed to create final image');
         }
 
@@ -304,6 +312,7 @@ class Image
     {
         $this->ensureImageLoaded();
         imageflip($this->image, IMG_FLIP_HORIZONTAL);
+
         return $this;
     }
 
@@ -314,6 +323,7 @@ class Image
     {
         $this->ensureImageLoaded();
         imageflip($this->image, IMG_FLIP_VERTICAL);
+
         return $this;
     }
 
@@ -324,6 +334,7 @@ class Image
     {
         $this->ensureImageLoaded();
         imagefilter($this->image, IMG_FILTER_GRAYSCALE);
+
         return $this;
     }
 
@@ -335,6 +346,7 @@ class Image
         $this->ensureImageLoaded();
         $level = max(-255, min(255, $level));
         imagefilter($this->image, IMG_FILTER_BRIGHTNESS, $level);
+
         return $this;
     }
 
@@ -346,6 +358,7 @@ class Image
         $this->ensureImageLoaded();
         $level = max(-100, min(100, $level));
         imagefilter($this->image, IMG_FILTER_CONTRAST, $level);
+
         return $this;
     }
 
@@ -360,6 +373,7 @@ class Image
         for ($i = 0; $i < $passes; $i++) {
             imagefilter($this->image, IMG_FILTER_GAUSSIAN_BLUR);
         }
+
         return $this;
     }
 
@@ -370,6 +384,7 @@ class Image
     {
         $this->ensureImageLoaded();
         imagefilter($this->image, IMG_FILTER_MEAN_REMOVAL);
+
         return $this;
     }
 
@@ -424,7 +439,7 @@ class Image
             case 'center':
                 return [
                     (int) (($this->width - $wmWidth) / 2),
-                    (int) (($this->height - $wmHeight) / 2)
+                    (int) (($this->height - $wmHeight) / 2),
                 ];
             default:
                 throw new \InvalidArgumentException("Invalid watermark position: {$position}");
@@ -482,19 +497,23 @@ class Image
             switch ($type) {
                 case IMAGETYPE_JPEG:
                     $result = imagejpeg($this->image, $path, $this->quality);
+
                     break;
                 case IMAGETYPE_PNG:
                     $pngQuality = (int) (9 - ($this->quality / 100 * 9));
                     $result = imagepng($this->image, $path, $pngQuality);
+
                     break;
                 case IMAGETYPE_GIF:
                     $result = imagegif($this->image, $path);
+
                     break;
                 case IMAGETYPE_WEBP:
                     if (!function_exists('imagewebp')) {
                         throw new \RuntimeException("WebP support not available");
                     }
                     $result = imagewebp($this->image, $path, $this->quality);
+
                     break;
                 default:
                     throw new \RuntimeException("Unsupported image type for saving");
@@ -536,19 +555,23 @@ class Image
             case IMAGETYPE_JPEG:
                 header('Content-Type: image/jpeg');
                 imagejpeg($this->image, null, $this->quality);
+
                 break;
             case IMAGETYPE_PNG:
                 header('Content-Type: image/png');
                 $pngQuality = (int) (9 - ($this->quality / 100 * 9));
                 imagepng($this->image, null, $pngQuality);
+
                 break;
             case IMAGETYPE_GIF:
                 header('Content-Type: image/gif');
                 imagegif($this->image);
+
                 break;
             case IMAGETYPE_WEBP:
                 header('Content-Type: image/webp');
                 imagewebp($this->image, null, $this->quality);
+
                 break;
             default:
                 throw new \RuntimeException("Unsupported image type for output");
@@ -620,8 +643,10 @@ class Image
         switch ($unit) {
             case 'g':
                 $value *= 1024;
+                // no break
             case 'm':
                 $value *= 1024;
+                // no break
             case 'k':
                 $value *= 1024;
         }

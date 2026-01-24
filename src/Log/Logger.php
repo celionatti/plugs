@@ -4,9 +4,9 @@ declare(strict_types=1);
 
 namespace Plugs\Log;
 
+use InvalidArgumentException;
 use Psr\Log\AbstractLogger;
 use Psr\Log\LogLevel;
-use InvalidArgumentException;
 
 class Logger extends AbstractLogger
 {

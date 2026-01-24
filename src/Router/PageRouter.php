@@ -10,7 +10,7 @@ namespace Plugs\Router;
 |--------------------------------------------------------------------------
 |
 | Handles file-based routing (Next.js-style pages routing).
-| Automatically discovers routes from the pages directory and 
+| Automatically discovers routes from the pages directory and
 | registers them with the main router.
 |
 | Features:
@@ -21,10 +21,10 @@ namespace Plugs\Router;
 | - HTTP method-specific handling
 */
 
-use RuntimeException;
+use Plugs\Base\Page;
 use RecursiveDirectoryIterator;
 use RecursiveIteratorIterator;
-use Plugs\Base\Page;
+use RuntimeException;
 
 class PageRouter
 {
@@ -287,6 +287,7 @@ class PageRouter
         // Handle Class-based Pages
         if ($routeInfo['is_class']) {
             $this->registerClassRoute($routeInfo);
+
             return;
         }
 
@@ -372,7 +373,7 @@ class PageRouter
             // If string returned, use it
             if (is_string($result)) {
                 // Check if it looks like a view (if View system exists)
-                // Actually, if they return view('name'), that returns a string or object? 
+                // Actually, if they return view('name'), that returns a string or object?
                 // In this framework, view() likely returns string or we need ResponseFactory.
                 return \Plugs\Http\ResponseFactory::html($result);
             }

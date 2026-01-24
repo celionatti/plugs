@@ -4,9 +4,9 @@ declare(strict_types=1);
 
 namespace Plugs\Database\Traits;
 
+use Plugs\Database\Collection;
 use Plugs\Database\Connection;
 use Plugs\Database\QueryBuilder;
-use Plugs\Database\Collection;
 
 trait HasQueryBuilder
 {
@@ -25,6 +25,7 @@ trait HasQueryBuilder
     public static function get(array $columns = ['*']): array|Collection
     {
         $results = static::query()->get($columns);
+
         return is_array($results) ? new Collection($results) : $results;
     }
 
@@ -42,6 +43,7 @@ trait HasQueryBuilder
     public static function with($relations): QueryBuilder
     {
         $relations = is_string($relations) ? func_get_args() : $relations;
+
         return static::query()->with($relations);
     }
 
@@ -56,6 +58,7 @@ trait HasQueryBuilder
         if (!$result) {
             throw new \Exception("Model not found with id: {$id}");
         }
+
         return $result;
     }
 
@@ -75,6 +78,7 @@ trait HasQueryBuilder
         if (!$result) {
             throw new \Exception("No records found");
         }
+
         return $result;
     }
 
@@ -105,6 +109,7 @@ trait HasQueryBuilder
             $value = $operator;
             $operator = '=';
         }
+
         return static::query()->where($column, $operator, $value);
     }
 
@@ -165,7 +170,7 @@ trait HasQueryBuilder
             ->offset($offset)
             ->get();
 
-        $data = array_map(fn($item) => new static($item), $items);
+        $data = array_map(fn ($item) => new static($item), $items);
 
         return [
             'data' => $data,
@@ -199,7 +204,7 @@ trait HasQueryBuilder
             array_pop($items);
         }
 
-        $data = array_map(fn($item) => new static($item), $items);
+        $data = array_map(fn ($item) => new static($item), $items);
 
         return [
             'data' => $data,
@@ -243,6 +248,7 @@ trait HasQueryBuilder
                         }
                     }
                 }
+
                 continue;
             }
 
@@ -250,6 +256,7 @@ trait HasQueryBuilder
             if ($key === 'sort') {
                 $direction = strtoupper($params['direction'] ?? 'ASC');
                 $query->orderBy($value, $direction);
+
                 continue;
             }
 
@@ -286,7 +293,7 @@ trait HasQueryBuilder
             ->offset($offset)
             ->get();
 
-        $data = array_map(fn($item) => new static($item), $items);
+        $data = array_map(fn ($item) => new static($item), $items);
 
         return [
             'data' => $data,
@@ -294,7 +301,7 @@ trait HasQueryBuilder
             'per_page' => $perPage,
             'current_page' => $page,
             'last_page' => (int) ceil($total / $perPage),
-            'filters' => array_filter($params, fn($k) => !in_array($k, ['page', 'per_page']), ARRAY_FILTER_USE_KEY),
+            'filters' => array_filter($params, fn ($k) => !in_array($k, ['page', 'per_page']), ARRAY_FILTER_USE_KEY),
         ];
     }
 }

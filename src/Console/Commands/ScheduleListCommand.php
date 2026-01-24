@@ -22,6 +22,7 @@ class ScheduleListCommand extends Command
 
         if (empty($events)) {
             $this->warning('No scheduled tasks defined.');
+
             return 0;
         }
 

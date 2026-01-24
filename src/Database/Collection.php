@@ -146,6 +146,7 @@ class Collection implements \ArrayAccess, \Iterator, \Countable, \JsonSerializab
     {
         $keys = array_keys($this->items);
         $items = array_map($callback, $this->items, $keys);
+
         return new static(array_combine($keys, $items));
     }
 
@@ -157,6 +158,7 @@ class Collection implements \ArrayAccess, \Iterator, \Countable, \JsonSerializab
         if ($callback) {
             return new static(array_filter($this->items, $callback, ARRAY_FILTER_USE_BOTH));
         }
+
         return new static(array_filter($this->items));
     }
 
@@ -200,6 +202,7 @@ class Collection implements \ArrayAccess, \Iterator, \Countable, \JsonSerializab
             if ($item instanceof PlugModel) {
                 return array_intersect_key($item->toArray(), array_flip($keys));
             }
+
             return array_intersect_key($item, array_flip($keys));
         });
     }
@@ -213,6 +216,7 @@ class Collection implements \ArrayAccess, \Iterator, \Countable, \JsonSerializab
             if ($item instanceof PlugModel) {
                 return array_diff_key($item->toArray(), array_flip($keys));
             }
+
             return array_diff_key($item, array_flip($keys));
         });
     }
@@ -224,6 +228,7 @@ class Collection implements \ArrayAccess, \Iterator, \Countable, \JsonSerializab
     {
         if ($key) {
             $exists = [];
+
             return $this->filter(function ($item) use ($key, &$exists, $strict) {
                 $value = $item instanceof PlugModel ? $item->$key : ($item[$key] ?? null);
 
@@ -238,6 +243,7 @@ class Collection implements \ArrayAccess, \Iterator, \Countable, \JsonSerializab
                 }
 
                 $exists[] = $value;
+
                 return true;
             });
         }
@@ -277,6 +283,7 @@ class Collection implements \ArrayAccess, \Iterator, \Countable, \JsonSerializab
         } else {
             sort($items);
         }
+
         return new static($items);
     }
 
@@ -290,8 +297,10 @@ class Collection implements \ArrayAccess, \Iterator, \Countable, \JsonSerializab
             $aVal = $a instanceof PlugModel ? $a->$key : ($a[$key] ?? null);
             $bVal = $b instanceof PlugModel ? $b->$key : ($b[$key] ?? null);
             $result = $aVal <=> $bVal;
+
             return $descending ? -$result : $result;
         });
+
         return new static($items);
     }
 
@@ -318,6 +327,7 @@ class Collection implements \ArrayAccess, \Iterator, \Countable, \JsonSerializab
     {
         $items = $this->items;
         shuffle($items);
+
         return new static($items);
     }
 
@@ -331,6 +341,7 @@ class Collection implements \ArrayAccess, \Iterator, \Countable, \JsonSerializab
             $value = $item instanceof PlugModel ? $item->$key : ($item[$key] ?? null);
             $groups[$value][] = $item;
         }
+
         return new static(array_map(function ($group) {
             return new static($group);
         }, $groups));
@@ -346,6 +357,7 @@ class Collection implements \ArrayAccess, \Iterator, \Countable, \JsonSerializab
             $keyValue = $item instanceof PlugModel ? $item->$key : ($item[$key] ?? null);
             $results[$keyValue] = $item;
         }
+
         return new static($results);
     }
 
@@ -355,6 +367,7 @@ class Collection implements \ArrayAccess, \Iterator, \Countable, \JsonSerializab
     public function chunk(int $size): Collection
     {
         $chunks = array_chunk($this->items, $size, true);
+
         return new static(array_map(function ($chunk) {
             return new static($chunk);
         }, $chunks));
@@ -370,6 +383,7 @@ class Collection implements \ArrayAccess, \Iterator, \Countable, \JsonSerializab
         }
 
         $groupSize = ceil($this->count() / $numberOfGroups);
+
         return $this->chunk((int) $groupSize);
     }
 
@@ -439,6 +453,7 @@ class Collection implements \ArrayAccess, \Iterator, \Countable, \JsonSerializab
         if ($key) {
             return array_sum($this->pluck($key)->all());
         }
+
         return array_sum($this->items);
     }
 
@@ -448,6 +463,7 @@ class Collection implements \ArrayAccess, \Iterator, \Countable, \JsonSerializab
     public function avg(?string $key = null)
     {
         $count = $this->count();
+
         return $count > 0 ? $this->sum($key) / $count : 0;
     }
 
@@ -496,6 +512,7 @@ class Collection implements \ArrayAccess, \Iterator, \Countable, \JsonSerializab
     public function max(?string $key = null)
     {
         $values = $key ? $this->pluck($key)->all() : $this->items;
+
         return !empty($values) ? max($values) : null;
     }
 
@@ -505,6 +522,7 @@ class Collection implements \ArrayAccess, \Iterator, \Countable, \JsonSerializab
     public function min(?string $key = null)
     {
         $values = $key ? $this->pluck($key)->all() : $this->items;
+
         return !empty($values) ? min($values) : null;
     }
 
@@ -553,6 +571,7 @@ class Collection implements \ArrayAccess, \Iterator, \Countable, \JsonSerializab
     {
         return $this->filter(function ($item) use ($key, $values) {
             $itemValue = $item instanceof PlugModel ? $item->$key : ($item[$key] ?? null);
+
             return in_array($itemValue, $values);
         });
     }
@@ -564,6 +583,7 @@ class Collection implements \ArrayAccess, \Iterator, \Countable, \JsonSerializab
     {
         return $this->filter(function ($item) use ($key, $values) {
             $itemValue = $item instanceof PlugModel ? $item->$key : ($item[$key] ?? null);
+
             return !in_array($itemValue, $values);
         });
     }
@@ -575,6 +595,7 @@ class Collection implements \ArrayAccess, \Iterator, \Countable, \JsonSerializab
     {
         return $this->filter(function ($item) use ($key) {
             $itemValue = $item instanceof PlugModel ? $item->$key : ($item[$key] ?? null);
+
             return is_null($itemValue);
         });
     }
@@ -586,6 +607,7 @@ class Collection implements \ArrayAccess, \Iterator, \Countable, \JsonSerializab
     {
         return $this->filter(function ($item) use ($key) {
             $itemValue = $item instanceof PlugModel ? $item->$key : ($item[$key] ?? null);
+
             return !is_null($itemValue);
         });
     }
@@ -597,6 +619,7 @@ class Collection implements \ArrayAccess, \Iterator, \Countable, \JsonSerializab
     {
         return $this->filter(function ($item) use ($key, $values) {
             $itemValue = $item instanceof PlugModel ? $item->$key : ($item[$key] ?? null);
+
             return $itemValue >= $values[0] && $itemValue <= $values[1];
         });
     }
@@ -750,6 +773,7 @@ class Collection implements \ArrayAccess, \Iterator, \Countable, \JsonSerializab
     public function put($key, $value): Collection
     {
         $this->items[$key] = $value;
+
         return $this;
     }
 
@@ -760,6 +784,7 @@ class Collection implements \ArrayAccess, \Iterator, \Countable, \JsonSerializab
     {
         $value = $this->items[$key] ?? $default;
         unset($this->items[$key]);
+
         return $value;
     }
 
@@ -806,6 +831,7 @@ class Collection implements \ArrayAccess, \Iterator, \Countable, \JsonSerializab
                 break;
             }
         }
+
         return $this;
     }
 
@@ -815,6 +841,7 @@ class Collection implements \ArrayAccess, \Iterator, \Countable, \JsonSerializab
     public function tap(callable $callback): Collection
     {
         $callback(new static($this->items));
+
         return $this;
     }
 
@@ -835,6 +862,7 @@ class Collection implements \ArrayAccess, \Iterator, \Countable, \JsonSerializab
             if (is_callable($key)) {
                 return $this->first($key) !== null;
             }
+
             return in_array($key, $this->items);
         }
 
@@ -915,13 +943,14 @@ class Collection implements \ArrayAccess, \Iterator, \Countable, \JsonSerializab
         $this->_pivotModel = $model;
         $this->_pivotRelation = $relation;
         $this->_pivotConfig = $config;
+
         return $this;
     }
 
     /**
      * Sync pivot table relationships
      * Replaces all existing relationships with the provided IDs
-     * 
+     *
      * @param array|int $ids Array of IDs or single ID to sync
      * @param bool $detaching Whether to detach records not in the list
      * @return array Returns ['attached' => [], 'detached' => [], 'updated' => []]
@@ -954,7 +983,7 @@ class Collection implements \ArrayAccess, \Iterator, \Countable, \JsonSerializab
         $changes = [
             'attached' => [],
             'detached' => [],
-            'updated' => []
+            'updated' => [],
         ];
 
         // Begin transaction
@@ -988,6 +1017,7 @@ class Collection implements \ArrayAccess, \Iterator, \Countable, \JsonSerializab
             return $changes;
         } catch (\Exception $e) {
             $modelClass::rollBack();
+
             throw $e;
         }
     }
@@ -995,7 +1025,7 @@ class Collection implements \ArrayAccess, \Iterator, \Countable, \JsonSerializab
     /**
      * Attach relationships to pivot table
      * Adds new relationships without removing existing ones
-     * 
+     *
      * @param array|int $ids Array of IDs or single ID to attach
      * @param array $attributes Additional pivot attributes
      * @param bool $touch Whether to update timestamps
@@ -1045,6 +1075,7 @@ class Collection implements \ArrayAccess, \Iterator, \Countable, \JsonSerializab
             return $this;
         } catch (\Exception $e) {
             $modelClass::rollBack();
+
             throw $e;
         }
     }
@@ -1052,7 +1083,7 @@ class Collection implements \ArrayAccess, \Iterator, \Countable, \JsonSerializab
     /**
      * Detach relationships from pivot table
      * Removes relationships without affecting others
-     * 
+     *
      * @param array|int|null $ids Array of IDs, single ID, or null to detach all
      * @return int Number of relationships detached
      */
@@ -1090,6 +1121,7 @@ class Collection implements \ArrayAccess, \Iterator, \Countable, \JsonSerializab
             return $count;
         } catch (\Exception $e) {
             $modelClass::rollBack();
+
             throw $e;
         }
     }
@@ -1097,7 +1129,7 @@ class Collection implements \ArrayAccess, \Iterator, \Countable, \JsonSerializab
     /**
      * Toggle relationships in pivot table
      * Attaches if not present, detaches if present
-     * 
+     *
      * @param array|int $ids Array of IDs or single ID to toggle
      * @return array Returns ['attached' => [], 'detached' => []]
      */
@@ -1127,7 +1159,7 @@ class Collection implements \ArrayAccess, \Iterator, \Countable, \JsonSerializab
 
         $changes = [
             'attached' => [],
-            'detached' => []
+            'detached' => [],
         ];
 
         $modelClass = get_class($this->_pivotModel);
@@ -1157,13 +1189,14 @@ class Collection implements \ArrayAccess, \Iterator, \Countable, \JsonSerializab
             return $changes;
         } catch (\Exception $e) {
             $modelClass::rollBack();
+
             throw $e;
         }
     }
 
     /**
      * Update existing pivot record attributes
-     * 
+     *
      * @param int $id The related model ID
      * @param array $attributes Attributes to update
      * @return bool
@@ -1204,9 +1237,11 @@ class Collection implements \ArrayAccess, \Iterator, \Countable, \JsonSerializab
             $this->executePivotQuery($sql, $bindings);
             $this->clearPivotCache();
             $this->reloadFromDatabase();
+
             return true;
         } catch (\Exception $e) {
             error_log("Failed to update pivot: " . $e->getMessage());
+
             return false;
         }
     }
@@ -1314,6 +1349,7 @@ class Collection implements \ArrayAccess, \Iterator, \Countable, \JsonSerializab
         }
 
         $stmt = $this->executePivotQuery($sql, $bindings);
+
         return $stmt->rowCount();
     }
 
@@ -1325,6 +1361,7 @@ class Collection implements \ArrayAccess, \Iterator, \Countable, \JsonSerializab
         // Use reflection to call protected method
         $reflection = new \ReflectionMethod($this->_pivotModel, 'executeQuery');
         $reflection->setAccessible(true);
+
         return $reflection->invoke($this->_pivotModel, $sql, $bindings);
     }
 

@@ -67,6 +67,7 @@ class View
     public function with(string $key, $value): self
     {
         $this->data[$key] = $value;
+
         return $this;
     }
 
@@ -79,6 +80,7 @@ class View
     public function withData(array $data): self
     {
         $this->data = array_merge($this->data, $data);
+
         return $this;
     }
 

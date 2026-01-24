@@ -10,12 +10,13 @@ namespace Plugs\Console\Support;
 |--------------------------------------------------------------------------
 */
 
-use Plugs\Console\Support\Input;
 
 
 class ArgvParser
 {
-    public function __construct(private array $argv) {}
+    public function __construct(private array $argv)
+    {
+    }
 
     public function commandName(): ?string
     {

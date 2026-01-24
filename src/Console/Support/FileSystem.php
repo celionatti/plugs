@@ -32,6 +32,7 @@ class Filesystem
         if (!self::exists($path)) {
             throw new \RuntimeException("File does not exist: {$path}");
         }
+
         return file_get_contents($path);
     }
 

@@ -4,10 +4,10 @@ declare(strict_types=1);
 
 namespace Plugs\Http\Integration;
 
+use GuzzleHttp\Promise\PromiseInterface;
 use Plugs\Http\HTTPClient;
 use Plugs\Http\HTTPResponse;
 use Plugs\Http\Integration\Enums\Method;
-use GuzzleHttp\Promise\PromiseInterface;
 
 abstract class Connector
 {
@@ -91,7 +91,7 @@ abstract class Connector
             } elseif ($contentType === 'application/x-www-form-urlencoded') {
                 $client->form($body);
             } else {
-                // Fallback: if array, assume JSON or form based on method? 
+                // Fallback: if array, assume JSON or form based on method?
                 // Actually existing HTTPClient separates json() and form().
                 // Let's assume JSON by default if body is array and method is not GET?
                 if (is_array($body)) {
@@ -146,7 +146,7 @@ abstract class Connector
         $method = $request->method();
         $url = $request->resolveEndpoint();
 
-        // HTTPClient has getAsync, postAsync. 
+        // HTTPClient has getAsync, postAsync.
         // We might need to extend HTTPClient to support generic requestAsync if we want full coverage.
         // For now:
         if ($method === Method::GET) {

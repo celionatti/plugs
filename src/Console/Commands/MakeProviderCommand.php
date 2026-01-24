@@ -28,6 +28,7 @@ class MakeProviderCommand extends Command
 
         if (file_exists($path)) {
             $this->error("Provider [{$name}] already exists!");
+
             return 1;
         }
 
@@ -36,10 +37,12 @@ class MakeProviderCommand extends Command
         if (file_put_contents($path, $stub)) {
             $this->output->success("Provider [{$name}] created successfully.");
             $this->info("Don't forget to register it in config/app.php!");
+
             return 0;
         }
 
         $this->error("Failed to create provider.");
+
         return 1;
     }
 

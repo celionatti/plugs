@@ -42,14 +42,14 @@ class FlutterwaveAdapter implements PaymentAdapterInterface
             'customer' => [
                 'email' => $data['email'],
                 'name' => $data['customer_name'] ?? '',
-                'phonenumber' => $data['phone'] ?? ''
+                'phonenumber' => $data['phone'] ?? '',
             ],
             'customizations' => [
                 'title' => $data['title'] ?? 'Payment',
                 'description' => $data['description'] ?? 'Payment',
-                'logo' => $data['logo'] ?? ''
+                'logo' => $data['logo'] ?? '',
             ],
-            'meta' => $data['metadata'] ?? []
+            'meta' => $data['metadata'] ?? [],
         ];
 
         return $this->makeRequest('/payments', $paymentData);
@@ -66,7 +66,7 @@ class FlutterwaveAdapter implements PaymentAdapterInterface
             'name' => $data['plan_name'] ?? 'Subscription Plan',
             'interval' => $data['interval'] ?? 'monthly',
             'duration' => $data['duration'] ?? 0, // 0 means indefinite
-            'currency' => $data['currency'] ?? 'NGN'
+            'currency' => $data['currency'] ?? 'NGN',
         ];
 
         // Create plan
@@ -80,7 +80,7 @@ class FlutterwaveAdapter implements PaymentAdapterInterface
                 'amount' => $data['amount'],
                 'currency' => $data['currency'] ?? 'NGN',
                 'payment_plan' => $plan['id'],
-                'redirect_url' => $data['callback_url'] ?? ''
+                'redirect_url' => $data['callback_url'] ?? '',
             ];
 
             return $this->makeRequest('/payments', $subscriptionData);
@@ -110,7 +110,7 @@ class FlutterwaveAdapter implements PaymentAdapterInterface
             'narration' => $data['reason'] ?? 'Transfer',
             'reference' => $data['reference'] ?? $this->generateReference(),
             'callback_url' => $data['callback_url'] ?? '',
-            'debit_currency' => $data['currency'] ?? 'NGN'
+            'debit_currency' => $data['currency'] ?? 'NGN',
         ];
 
         // If recipient code is provided, use it directly
@@ -120,7 +120,7 @@ class FlutterwaveAdapter implements PaymentAdapterInterface
                 'amount' => $data['amount'],
                 'currency' => $data['currency'] ?? 'NGN',
                 'narration' => $data['reason'] ?? 'Transfer',
-                'reference' => $data['reference'] ?? $this->generateReference()
+                'reference' => $data['reference'] ?? $this->generateReference(),
             ];
         }
 
@@ -140,7 +140,7 @@ class FlutterwaveAdapter implements PaymentAdapterInterface
             'narration' => $data['narration'] ?? 'Withdrawal',
             'reference' => $data['reference'] ?? $this->generateReference(),
             'callback_url' => $data['callback_url'] ?? '',
-            'debit_currency' => $data['currency'] ?? 'NGN'
+            'debit_currency' => $data['currency'] ?? 'NGN',
         ];
 
         return $this->makeRequest('/transfers', $withdrawalData);
@@ -152,7 +152,7 @@ class FlutterwaveAdapter implements PaymentAdapterInterface
     public function refund(array $data)
     {
         $refundData = [
-            'id' => $data['transaction_id']
+            'id' => $data['transaction_id'],
         ];
 
         if (isset($data['amount'])) {
@@ -188,10 +188,11 @@ class FlutterwaveAdapter implements PaymentAdapterInterface
             'to' => $filters['end_date'] ?? '',
             'page' => $filters['page'] ?? 1,
             'currency' => $filters['currency'] ?? '',
-            'status' => $filters['status'] ?? ''
+            'status' => $filters['status'] ?? '',
         ];
 
         $query = http_build_query(array_filter($params));
+
         return $this->makeRequest("/transactions?{$query}", [], 'GET');
     }
 
@@ -216,7 +217,7 @@ class FlutterwaveAdapter implements PaymentAdapterInterface
             'currency' => $data['currency'] ?? 'NGN',
             'email' => $data['email'] ?? '',
             'mobile_number' => $data['phone'] ?? '',
-            'meta' => $data['metadata'] ?? []
+            'meta' => $data['metadata'] ?? [],
         ];
 
         return $this->makeRequest('/beneficiaries', $recipientData);
@@ -251,7 +252,7 @@ class FlutterwaveAdapter implements PaymentAdapterInterface
             'charge.completed' => 'payment_successful',
             'transfer.completed' => 'transfer_successful',
             'transfer.failed' => 'transfer_failed',
-            'refund.completed' => 'refund_successful'
+            'refund.completed' => 'refund_successful',
         ];
 
         return [
@@ -259,7 +260,7 @@ class FlutterwaveAdapter implements PaymentAdapterInterface
             'transaction_id' => $data['id'] ?? '',
             'reference' => $data['tx_ref'] ?? '',
             'status' => $data['status'] ?? '',
-            'data' => $data
+            'data' => $data,
         ];
     }
 
@@ -269,13 +270,13 @@ class FlutterwaveAdapter implements PaymentAdapterInterface
     private function makeRequest(string $endpoint, array $data = [], string $method = 'POST')
     {
         $url = $this->baseUrl . $endpoint;
-        
+
         $ch = curl_init($url);
 
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
         curl_setopt($ch, CURLOPT_HTTPHEADER, [
             'Authorization: Bearer ' . $this->secretKey,
-            'Content-Type: application/json'
+            'Content-Type: application/json',
         ]);
 
         if ($method === 'POST' || $method === 'PUT') {
@@ -300,6 +301,7 @@ class FlutterwaveAdapter implements PaymentAdapterInterface
 
         if ($httpCode !== 200 && $httpCode !== 201) {
             $errorMsg = $result['message'] ?? 'Request failed';
+
             throw new Exception("Flutterwave Error ({$httpCode}): {$errorMsg}");
         }
 

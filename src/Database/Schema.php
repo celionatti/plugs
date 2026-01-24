@@ -35,6 +35,7 @@ class Schema
         if (!self::$connection) {
             self::$connection = Connection::getInstance(null, self::$defaultConnection);
         }
+
         return self::$connection;
     }
 
@@ -108,6 +109,7 @@ class Schema
     public static function hasTable(string $table): bool
     {
         $tables = self::getTables();
+
         return in_array($table, $tables);
     }
 
@@ -119,6 +121,7 @@ class Schema
         $connection = self::getConnection();
         $sql = "SHOW COLUMNS FROM `{$table}` LIKE ?";
         $result = $connection->fetch($sql, [$column]);
+
         return $result !== null;
     }
 
@@ -129,6 +132,7 @@ class Schema
     {
         $connection = self::getConnection();
         $sql = "SHOW COLUMNS FROM `{$table}`";
+
         return $connection->fetchAll($sql);
     }
 
@@ -192,6 +196,7 @@ class Schema
     public static function getBlueprint(string $table): Blueprint
     {
         $connection = self::getConnection();
+
         return new Blueprint($connection, $table);
     }
 }

@@ -4,10 +4,10 @@ declare(strict_types=1);
 
 namespace Plugs\Queue;
 
-use Plugs\Queue\Drivers\SyncQueueDriver;
-use Plugs\Queue\Drivers\DatabaseQueueDriver;
-use Plugs\Database\Connection;
 use InvalidArgumentException;
+use Plugs\Database\Connection;
+use Plugs\Queue\Drivers\DatabaseQueueDriver;
+use Plugs\Queue\Drivers\SyncQueueDriver;
 
 class QueueManager
 {

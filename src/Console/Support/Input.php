@@ -16,5 +16,6 @@ class Input
     public function __construct(
         public array $arguments,
         public array $options
-    ) {}
+    ) {
+    }
 }

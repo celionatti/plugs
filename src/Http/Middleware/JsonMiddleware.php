@@ -22,12 +22,12 @@ class JsonMiddleware implements MiddlewareInterface
     public function process(ServerRequestInterface $request, RequestHandlerInterface $handler): ResponseInterface
     {
         $response = $handler->handle($request);
-        
+
         // Add JSON header if not already set
         if (!$response->hasHeader('Content-Type')) {
             $response = $response->withHeader('Content-Type', 'application/json');
         }
-        
+
         return $response;
     }
 }

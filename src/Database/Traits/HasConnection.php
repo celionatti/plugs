@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace Plugs\Database\Traits;
 
-use PDO;
 use Exception;
+use PDO;
 use PDOException;
 use Plugs\Database\Connection;
 
@@ -40,15 +40,19 @@ trait HasConnection
             switch ($driver) {
                 case 'mysql':
                     $dsn = "mysql:host={$host};port={$port};dbname={$database};charset={$charset}";
+
                     break;
                 case 'pgsql':
                     $dsn = "pgsql:host={$host};port={$port};dbname={$database}";
+
                     break;
                 case 'sqlite':
                     $dsn = "sqlite:{$database}";
+
                     break;
                 case 'sqlsrv':
                     $dsn = "sqlsrv:Server={$host},{$port};Database={$database}";
+
                     break;
                 default:
                     throw new Exception("Unsupported database driver: {$driver}");
@@ -83,6 +87,7 @@ trait HasConnection
         }
 
         $connection = Connection::getInstance();
+
         return $connection instanceof PDO ? $connection : $connection->getPdo();
     }
 

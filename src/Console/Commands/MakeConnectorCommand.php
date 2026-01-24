@@ -5,8 +5,8 @@ declare(strict_types=1);
 namespace Plugs\Console\Commands;
 
 use Plugs\Console\Command;
-use Plugs\Console\Support\Str;
 use Plugs\Console\Support\Filesystem;
+use Plugs\Console\Support\Str;
 
 class MakeConnectorCommand extends Command
 {
@@ -20,7 +20,7 @@ class MakeConnectorCommand extends Command
     protected function defineArguments(): array
     {
         return [
-            'name' => 'The name of the connector class (e.g. Stripe)'
+            'name' => 'The name of the connector class (e.g. Stripe)',
         ];
     }
 
@@ -45,7 +45,7 @@ class MakeConnectorCommand extends Command
         }
 
         $name = Str::studly($name);
-        // If name is StripeConnector, directory should be Stripe? 
+        // If name is StripeConnector, directory should be Stripe?
         // Or if I name it Stripe, it becomes StripeConnector.
 
         // Let's assume standard App\Http\Integrations\{Name}\{Name}Connector
@@ -61,6 +61,7 @@ class MakeConnectorCommand extends Command
 
         if (Filesystem::exists($path) && !$this->isForce()) {
             $this->error("Connector already exists: {$path}");
+
             return 1;
         }
 

@@ -1,4 +1,5 @@
 <!DOCTYPE html>
+<?php /** @var string $childContent */ ?>
 <html lang="en">
 
 <head>

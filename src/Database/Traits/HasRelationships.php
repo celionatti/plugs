@@ -5,9 +5,9 @@ declare(strict_types=1);
 namespace Plugs\Database\Traits;
 
 use Exception;
-use ReflectionMethod;
-use Plugs\Database\Collection;
 use Plugs\Database\BelongsToManyProxy;
+use Plugs\Database\Collection;
+use ReflectionMethod;
 
 trait HasRelationships
 {
@@ -59,6 +59,7 @@ trait HasRelationships
         $localKey = $localKey ?? $this->primaryKey;
 
         $instance = new $related();
+
         return $instance->instanceWhere($type, static::class)
             ->instanceWhere($id, $this->getAttribute($localKey))
             ->get();
@@ -67,12 +68,14 @@ trait HasRelationships
     protected function morphOne($related, $name, $type = null, $id = null, $localKey = null)
     {
         $collection = $this->morphMany($related, $name, $type, $id, $localKey);
+
         return $collection->first();
     }
 
     public function setRelation(string $relation, $value)
     {
         $this->relations[$relation] = $value;
+
         return $this;
     }
 
@@ -89,6 +92,7 @@ trait HasRelationships
     public function unsetRelation(string $relation)
     {
         unset($this->relations[$relation]);
+
         return $this;
     }
 
@@ -130,6 +134,7 @@ trait HasRelationships
         if (!isset($this->relations[$relation])) {
             $this->relations[$relation] = $this->$relation();
         }
+
         return $this;
     }
 
@@ -186,6 +191,7 @@ trait HasRelationships
         foreach ($patterns as $pattern) {
             if (preg_match($pattern, $methodCode, $matches)) {
                 $config['related'] = $matches[1];
+
                 break;
             }
         }
@@ -206,6 +212,7 @@ trait HasRelationships
                 }
 
                 $config['localKey'] = $model->getKeyName();
+
                 break;
 
             case 'belongsTo':
@@ -216,6 +223,7 @@ trait HasRelationships
                 }
 
                 $config['ownerKey'] = 'id';
+
                 break;
 
             case 'belongsToMany':
@@ -225,6 +233,7 @@ trait HasRelationships
                 $config['relatedPivotKey'] = strtolower(class_basename($relatedClass)) . '_id';
                 $config['parentKey'] = $model->getKeyName();
                 $config['relatedKey'] = 'id';
+
                 break;
         }
 
@@ -238,6 +247,7 @@ trait HasRelationships
             strtolower(class_basename($relatedClass)),
         ];
         sort($tables);
+
         return implode('_', $tables);
     }
 
@@ -263,6 +273,7 @@ trait HasRelationships
         foreach ($patterns as $pattern) {
             if (preg_match($pattern, $code, $matches)) {
                 $relatedClass = $matches[1];
+
                 break;
             }
         }
@@ -306,6 +317,7 @@ trait HasRelationships
         }
 
         $lines = file($filename);
+
         return implode('', array_slice($lines, $startLine - 1, $endLine - $startLine + 1));
     }
 
@@ -346,6 +358,7 @@ trait HasRelationships
         foreach (array_keys(static::$relationLoaders) as $relType) {
             if (str_contains($code, $relType)) {
                 $type = $relType;
+
                 break;
             }
         }
@@ -414,6 +427,7 @@ trait HasRelationships
             foreach ($models as $model) {
                 $model->setRelation($relation, null);
             }
+
             return;
         }
 
@@ -465,8 +479,9 @@ trait HasRelationships
 
         foreach ($groups as $type => $groupModels) {
             $class = static::getMorphedModel($type);
-            if (!class_exists($class))
+            if (!class_exists($class)) {
                 continue;
+            }
 
             $ids = $groupModels->pluck($relation . '_id')->unique()->all();
             $results = $class::query()->whereIn('id', $ids)->get()->keyBy('id');

@@ -13,8 +13,8 @@ namespace Plugs\Console\Commands;
 */
 
 use Plugs\Console\Command;
-use Plugs\Console\Support\Str;
 use Plugs\Console\Support\Filesystem;
+use Plugs\Console\Support\Str;
 
 class MakeRequestCommand extends Command
 {
@@ -23,7 +23,7 @@ class MakeRequestCommand extends Command
     protected function defineArguments(): array
     {
         return [
-            'name' => 'The name of the request class'
+            'name' => 'The name of the request class',
         ];
     }
 
@@ -76,6 +76,7 @@ class MakeRequestCommand extends Command
         if (Filesystem::exists($path) && !$options['force']) {
             if (!$this->confirm("Request {$name} already exists. Overwrite?", false)) {
                 $this->warning('Request generation cancelled.');
+
                 return 0;
             }
         }

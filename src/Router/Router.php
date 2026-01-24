@@ -19,18 +19,16 @@ namespace Plugs\Router;
  * - Route caching
 */
 
+use InvalidArgumentException;
 use Plugs\Container\Container;
-use ReflectionMethod;
-
-use ReflectionParameter;
-
 use Plugs\Http\MiddlewareDispatcher;
 use Plugs\Http\ResponseFactory;
 use Plugs\Inertia\InertiaResponse;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
+use ReflectionMethod;
+use ReflectionParameter;
 use RuntimeException;
-use InvalidArgumentException;
 
 class Router
 {
@@ -146,6 +144,7 @@ class Router
             if (function_exists('view')) {
                 return view($view, $data);
             }
+
             // Fallback if view helper is missing
             return ResponseFactory::html("View: {$view}");
         });
@@ -479,6 +478,7 @@ class Router
     private function dispatchCachedRoute(Route $route, ServerRequestInterface $request, string $method): ResponseInterface
     {
         $path = $request->getUri()->getPath();
+
         return $this->dispatchRoute($route, $request, $path);
     }
 
@@ -553,6 +553,7 @@ class Router
         }
 
         $container = Container::getInstance();
+
         return $container->make($middleware);
     }
 
@@ -589,6 +590,7 @@ class Router
         if ($handler instanceof \Closure) {
             $reflection = new \ReflectionFunction($handler);
             $parameters = $this->resolveMethodParameters($reflection, $request);
+
             return $handler(...$parameters);
         }
 
@@ -596,6 +598,7 @@ class Router
         if (is_array($handler) && count($handler) === 2) {
             $reflection = new ReflectionMethod($handler[0], $handler[1]);
             $parameters = $this->resolveMethodParameters($reflection, $request);
+
             return $handler(...$parameters);
         }
 
@@ -659,6 +662,7 @@ class Router
                 } else {
                     $parameters[] = $resolved;
                 }
+
                 continue;
             }
 
@@ -698,6 +702,7 @@ class Router
             $parsedBody = $request->getParsedBody();
             if (is_array($parsedBody) && array_key_exists($paramName, $parsedBody)) {
                 $value = $parsedBody[$paramName];
+
                 return is_array($value) ? $value : [$value];
             }
 
@@ -832,12 +837,14 @@ class Router
                     if ($value === '' || $value === null) {
                         return $type->allowsNull() ? null : 0;
                     }
+
                     return (int) $value;
 
                 case 'float':
                     if ($value === '' || $value === null) {
                         return $type->allowsNull() ? null : 0.0;
                     }
+
                     return (float) $value;
 
                 case 'bool':
@@ -854,18 +861,21 @@ class Router
                             return false;
                         }
                     }
+
                     return filter_var($value, FILTER_VALIDATE_BOOLEAN);
 
                 case 'string':
                     if ($value === null) {
                         return $type->allowsNull() ? null : '';
                     }
+
                     return (string) $value;
 
                 case 'array':
                     if ($value === null) {
                         return $type->allowsNull() ? null : [];
                     }
+
                     return is_array($value) ? $value : [$value];
 
                 case 'object':
@@ -1022,7 +1032,8 @@ class Router
     public function getRoutesByMethod(string $method): array
     {
         $method = strtoupper($method);
-        return array_filter($this->routes, fn($route) => $route->getMethod() === $method);
+
+        return $this->routes[$method] ?? [];
     }
 
     public function count(): int
@@ -1071,8 +1082,6 @@ class Router
         $this->clearCache();
     }
 
-
-
     /**
      * Route list for debugging
      */
@@ -1105,6 +1114,7 @@ class Router
             if (is_object($handler[0])) {
                 return get_class($handler[0]) . '@' . $handler[1];
             }
+
             return $handler[0] . '@' . $handler[1];
         }
 

@@ -16,9 +16,10 @@ trait HasJsonBody
     public function withData(array $data): self
     {
         $this->data = array_merge($this->data, $data);
+
         return $this;
     }
-    
+
     protected function defaultHeaders(): array
     {
         return [

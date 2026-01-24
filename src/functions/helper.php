@@ -44,6 +44,7 @@ function cleanHtmlText(string $html): string
 {
     $text = strip_tags($html);
     $text = html_entity_decode($text, ENT_QUOTES | ENT_HTML5, 'UTF-8');
+
     return normalizeWhitespace($text);
 }
 
@@ -53,6 +54,7 @@ function cleanHtmlText(string $html): string
 function generateSeoTitle(string $title, int $maxLength = 60): string
 {
     $seoTitle = normalizeWhitespace($title);
+
     return truncateText($seoTitle, $maxLength, "");
 }
 
@@ -203,7 +205,7 @@ function getDefaultStopWords(): array
         'so',
         'than',
         'too',
-        'very'
+        'very',
     ];
 }
 
@@ -313,5 +315,6 @@ function generateExcerpt(string $content, int $length = 200, string $suffix = '.
     }
 
     $text = cleanHtmlText($content);
+
     return truncateText($text, $length, $suffix);
 }

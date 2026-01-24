@@ -8,7 +8,7 @@ use Plugs\Database\Connection;
 
 /**
  * Performance Profiler
- * 
+ *
  * Collects and stores performance metrics for debugging and optimization.
  * Tracks request timing, memory usage, database queries, and custom events.
  */
@@ -40,6 +40,7 @@ class Profiler
         if (self::$instance === null) {
             self::$instance = new self();
         }
+
         return self::$instance;
     }
 
@@ -132,8 +133,9 @@ class Profiler
      */
     public function startSegment(string $name, string $label = ''): void
     {
-        if (!$this->enabled)
+        if (!$this->enabled) {
             return;
+        }
 
         $this->timeline[$name] = [
             'label' => $label ?: $name,
@@ -150,8 +152,9 @@ class Profiler
      */
     public function stopSegment(string $name): void
     {
-        if (!$this->enabled || !isset($this->timeline[$name]))
+        if (!$this->enabled || !isset($this->timeline[$name])) {
             return;
+        }
 
         $endTime = microtime(true);
         $this->timeline[$name]['end'] = $endTime;
@@ -199,8 +202,9 @@ class Profiler
      */
     public function log(string $level, string $message, array $context = []): void
     {
-        if (!$this->enabled)
+        if (!$this->enabled) {
             return;
+        }
 
         $this->logs[] = [
             'level' => $level,
@@ -216,8 +220,9 @@ class Profiler
      */
     public function recordModelEvent(string $model, string $event): void
     {
-        if (!$this->enabled)
+        if (!$this->enabled) {
             return;
+        }
 
         $this->models[] = [
             'model' => $model,
@@ -249,7 +254,7 @@ class Profiler
         $files = glob($storageDir . '*.json');
 
         // Sort by modification time (newest first)
-        usort($files, fn($a, $b) => filemtime($b) <=> filemtime($a));
+        usort($files, fn ($a, $b) => filemtime($b) <=> filemtime($a));
 
         $profiles = [];
         foreach (array_slice($files, 0, $limit) as $file) {
@@ -278,6 +283,7 @@ class Profiler
         }
 
         $content = file_get_contents($file);
+
         return $content ? json_decode($content, true) : null;
     }
 
@@ -367,6 +373,7 @@ class Profiler
     private static function getStorageDir(): string
     {
         $basePath = defined('BASE_PATH') ? BASE_PATH : dirname(__DIR__, 3) . '/';
+
         return $basePath . self::STORAGE_DIR;
     }
 
@@ -385,6 +392,7 @@ class Profiler
                 $headers[str_replace(' ', '-', ucwords(strtolower(str_replace('_', ' ', substr($name, 5)))))] = $value;
             }
         }
+
         return $headers;
     }
 
@@ -401,6 +409,7 @@ class Profiler
                 $headers[trim($parts[0])] = trim($parts[1]);
             }
         }
+
         return $headers;
     }
 

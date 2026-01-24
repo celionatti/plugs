@@ -203,6 +203,7 @@ class Browser
         foreach ($platforms as $key => $value) {
             if (stripos($agent, (string) $key) !== false) {
                 $platform = $value;
+
                 break;
             }
         }

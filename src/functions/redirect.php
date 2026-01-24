@@ -26,6 +26,7 @@ if (!function_exists('flash')) {
         if ($key === null) {
             $data = $_SESSION['_flash'] ?? [];
             unset($data['_delete_next']);
+
             return $data;
         }
 
@@ -106,6 +107,7 @@ if (!function_exists('hasErrors')) {
     function hasErrors(?string $key = 'errors'): bool
     {
         $errorData = errors($key);
+
         return !empty($errorData);
     }
 }
@@ -117,17 +119,14 @@ if (!function_exists('firstError')) {
     function firstError(?string $key = 'errors'): ?string
     {
         $errorData = errors($key);
-        
+
         if (empty($errorData)) {
             return null;
         }
 
-        // If it's an array of errors, get the first one
-        if (is_array($errorData)) {
-            return reset($errorData) ?: null;
-        }
+        return reset($errorData) ?: null;
 
-        return $errorData;
+
     }
 }
 
@@ -167,6 +166,7 @@ if (!function_exists('keepFlash')) {
         if ($keys === null) {
             // Keep all flash data
             unset($_SESSION['_flash']['_delete_next']);
+
             return;
         }
 

@@ -4,16 +4,16 @@ declare(strict_types=1);
 
 namespace Plugs\Http\Middleware;
 
+use Plugs\Debug\Profiler;
+use Plugs\Debug\ProfilerBar;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Server\MiddlewareInterface;
 use Psr\Http\Server\RequestHandlerInterface;
-use Plugs\Debug\Profiler;
-use Plugs\Debug\ProfilerBar;
 
 /**
  * Profiler Middleware
- * 
+ *
  * Profiles request performance and optionally injects a profiler bar into HTML responses.
  */
 class ProfilerMiddleware implements MiddlewareInterface
@@ -119,6 +119,7 @@ class ProfilerMiddleware implements MiddlewareInterface
         $forwardedFor = $request->getHeaderLine('X-Forwarded-For');
         if ($forwardedFor) {
             $ips = explode(',', $forwardedFor);
+
             return trim($ips[0]);
         }
 
@@ -128,6 +129,7 @@ class ProfilerMiddleware implements MiddlewareInterface
         }
 
         $serverParams = $request->getServerParams();
+
         return $serverParams['REMOTE_ADDR'] ?? 'unknown';
     }
 }

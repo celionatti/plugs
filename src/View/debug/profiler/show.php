@@ -1,4 +1,5 @@
 <?php $__extends = 'layout'; ?>
+<?php /** @var array $profile */ ?>
 
 <?php
 function getMethodClass($method)
@@ -75,7 +76,7 @@ function getMethodClass($method)
                 </thead>
                 <tbody>
                     <?php
-                    // Flatten the simplified stats for list view or use raw logs if I had them. 
+                    // Flatten the simplified stats for list view or use raw logs if I had them.
                     // Current Profiler uses Connection::getQueryAnalysisReport()
                     // which returns grouped stats.
                     ?>

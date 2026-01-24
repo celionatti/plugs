@@ -70,7 +70,7 @@ class MigrationRunner
         return [
             'message' => 'Migration completed successfully.',
             'migrations' => $ran,
-            'batch' => $batch
+            'batch' => $batch,
         ];
     }
 
@@ -98,7 +98,7 @@ class MigrationRunner
 
         return [
             'message' => 'Rollback completed successfully.',
-            'migrations' => $rolledBack
+            'migrations' => $rolledBack,
         ];
     }
 
@@ -122,7 +122,7 @@ class MigrationRunner
 
         return [
             'message' => 'Database reset successfully.',
-            'migrations' => $rolledBack
+            'migrations' => $rolledBack,
         ];
     }
 
@@ -136,7 +136,7 @@ class MigrationRunner
 
         return [
             'reset' => $reset,
-            'run' => $run
+            'run' => $run,
         ];
     }
 
@@ -158,7 +158,7 @@ class MigrationRunner
             $status[] = [
                 'migration' => $migration,
                 'ran' => isset($ranMap[$migration]),
-                'batch' => $ranMap[$migration]['batch'] ?? null
+                'batch' => $ranMap[$migration]['batch'] ?? null,
             ];
         }
 
@@ -189,6 +189,7 @@ class MigrationRunner
             if ($this->connection->inTransaction()) {
                 $this->connection->rollBack();
             }
+
             throw new \RuntimeException(
                 "Migration failed: {$migration}\nError: " . $e->getMessage(),
                 0,
@@ -221,6 +222,7 @@ class MigrationRunner
             if ($this->connection->inTransaction()) {
                 $this->connection->rollBack();
             }
+
             throw new \RuntimeException(
                 "Rollback failed: {$migration}\nError: " . $e->getMessage(),
                 0,
@@ -269,6 +271,7 @@ class MigrationRunner
     private function getRanMigrations(): array
     {
         $sql = "SELECT migration, batch FROM {$this->migrationsTable} ORDER BY id DESC";
+
         return $this->connection->fetchAll($sql);
     }
 
@@ -285,6 +288,7 @@ class MigrationRunner
 
         $sql = "SELECT migration, batch FROM {$this->migrationsTable} 
                 WHERE batch = ? ORDER BY id DESC";
+
         return $this->connection->fetchAll($sql, [$lastBatch]);
     }
 
@@ -295,6 +299,7 @@ class MigrationRunner
     {
         $sql = "SELECT MAX(batch) as batch FROM {$this->migrationsTable}";
         $result = $this->connection->fetch($sql);
+
         return (int) ($result['batch'] ?? 0);
     }
 

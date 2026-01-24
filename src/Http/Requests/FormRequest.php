@@ -9,7 +9,7 @@ use Plugs\View\ErrorMessage;
 
 /**
  * Class FormRequest
- * 
+ *
  * Base class for form requests handling validation.
  * Users should extend this class and implement rules(), and optionally messages() and attributes().
  */
@@ -21,7 +21,7 @@ abstract class FormRequest
 
     /**
      * FormRequest constructor.
-     * 
+     *
      * @param array|null $data The data to validate
      */
     public function __construct(?array $data = [])
@@ -39,7 +39,7 @@ abstract class FormRequest
 
     /**
      * Get validation rules.
-     * 
+     *
      * @return array
      */
     public function rules(): array
@@ -49,7 +49,7 @@ abstract class FormRequest
 
     /**
      * Get custom error messages.
-     * 
+     *
      * @return array
      */
     public function messages(): array
@@ -59,7 +59,7 @@ abstract class FormRequest
 
     /**
      * Get custom attribute names.
-     * 
+     *
      * @return array
      */
     public function attributes(): array
@@ -69,7 +69,7 @@ abstract class FormRequest
 
     /**
      * Run validation.
-     * 
+     *
      * @return bool
      */
     public function validate(): bool
@@ -81,14 +81,16 @@ abstract class FormRequest
 
         if (!$this->validator->validate()) {
             $this->errors = $this->validator->errors();
+
             return false;
         }
+
         return true;
     }
 
     /**
      * Get validation errors.
-     * 
+     *
      * @return ErrorMessage
      */
     public function errors(): ErrorMessage
@@ -98,7 +100,7 @@ abstract class FormRequest
 
     /**
      * Get validated data.
-     * 
+     *
      * @return array
      */
     public function validated(): array
