@@ -43,11 +43,11 @@ function renderDebugErrorPage(Throwable $e): void
         @import url("https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Dancing+Script:wght@700&display=swap");
 
         :root {
-            --bg-body: #0f172a;
-            --bg-sidebar: #1e293b;
-            --bg-card: #1e293b;
-            --bg-header: #0f172a;
-            --border-color: #334155;
+            --bg-body: #080b12;
+            --bg-sidebar: rgba(15, 23, 42, 0.95);
+            --bg-card: rgba(30, 41, 59, 0.3);
+            --bg-header: rgba(8, 11, 18, 0.9);
+            --border-color: rgba(255, 255, 255, 0.08);
             --text-primary: #f8fafc;
             --text-secondary: #94a3b8;
             --text-muted: #64748b;
@@ -56,8 +56,8 @@ function renderDebugErrorPage(Throwable $e): void
             --danger: #ef4444;
             --warning: #f59e0b;
             --success: #10b981;
-            --code-bg: #0d1117;
-            --highlight-bg: rgba(239, 68, 68, 0.15);
+            --code-bg: rgba(13, 17, 23, 0.5);
+            --highlight-bg: rgba(239, 68, 68, 0.1);
             --highlight-border: #ef4444;
         }
 
@@ -66,6 +66,9 @@ function renderDebugErrorPage(Throwable $e): void
         body {
             font-family: "Outfit", sans-serif;
             background-color: var(--bg-body);
+            background-image: 
+                radial-gradient(circle at 15% 15%, rgba(139, 92, 246, 0.05) 0%, transparent 40%),
+                radial-gradient(circle at 85% 85%, rgba(59, 130, 246, 0.05) 0%, transparent 40%);
             color: var(--text-primary);
             height: 100vh;
             display: flex;
@@ -77,9 +80,9 @@ function renderDebugErrorPage(Throwable $e): void
 
         /* Scrollbar */
         ::-webkit-scrollbar { width: 8px; height: 8px; }
-        ::-webkit-scrollbar-track { background: var(--bg-body); }
-        ::-webkit-scrollbar-thumb { background: var(--border-color); border-radius: 4px; }
-        ::-webkit-scrollbar-thumb:hover { background: var(--text-muted); }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.1); border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: rgba(255, 255, 255, 0.2); }
 
         /* Header */
         .header {
@@ -88,8 +91,8 @@ function renderDebugErrorPage(Throwable $e): void
             display: flex;
             align-items: center;
             padding: 0 2rem;
-            background-color: rgba(15, 23, 42, 0.9);
-            backdrop-filter: blur(8px);
+            background-color: var(--bg-header);
+            backdrop-filter: blur(10px);
             z-index: 50;
             justify-content: space-between;
         }
@@ -117,8 +120,9 @@ function renderDebugErrorPage(Throwable $e): void
             font-size: 0.75rem;
             color: var(--text-muted);
             background: rgba(255,255,255,0.05);
-            padding: 4px 8px;
-            border-radius: 4px;
+            padding: 4px 10px;
+            border-radius: 20px;
+            border: 1px solid var(--border-color);
         }
 
         /* Main Layout */
@@ -136,6 +140,7 @@ function renderDebugErrorPage(Throwable $e): void
             display: flex;
             flex-direction: column;
             flex-shrink: 0;
+            backdrop-filter: blur(20px);
         }
         
         .sidebar-header {
@@ -144,12 +149,11 @@ function renderDebugErrorPage(Throwable $e): void
         }
         
         .sidebar-title {
-            font-size: 0.875rem;
+            font-size: 0.75rem;
             text-transform: uppercase;
-            letter-spacing: 0.05em;
+            letter-spacing: 0.1em;
             color: var(--text-muted);
-            font-weight: 600;
-            margin-bottom: 0.5rem;
+            font-weight: 700;
         }
 
         .stack-list {
@@ -162,12 +166,15 @@ function renderDebugErrorPage(Throwable $e): void
             border-bottom: 1px solid var(--border-color);
             padding: 1rem 1.5rem;
             cursor: pointer;
-            transition: background 0.2s;
+            transition: all 0.2s;
             position: relative;
         }
         
         .stack-item:hover { background-color: rgba(255,255,255,0.02); }
-        .stack-item.active { background-color: rgba(139, 92, 246, 0.1); border-left: 3px solid var(--accent-primary); }
+        .stack-item.active { 
+            background: linear-gradient(to right, rgba(139, 92, 246, 0.1), transparent);
+            border-left: 3px solid var(--accent-primary); 
+        }
         
         .stack-index {
             position: absolute;
@@ -190,18 +197,19 @@ function renderDebugErrorPage(Throwable $e): void
         .stack-method {
             font-family: "JetBrains Mono", monospace;
             font-size: 0.8125rem;
-            color: var(--accent-secondary);
+            color: var(--accent-primary);
             font-weight: 500;
         }
         
         .stack-line {
             display: inline-block;
-            background: rgba(255,255,255,0.1);
-            padding: 0 4px;
-            border-radius: 3px;
+            background: rgba(255,255,255,0.05);
+            padding: 2px 6px;
+            border-radius: 4px;
             color: var(--text-primary);
-            font-size: 0.75rem;
-            margin-right: 6px;
+            font-size: 0.7rem;
+            margin-right: 8px;
+            border: 1px solid var(--border-color);
         }
 
         /* Content Area */
@@ -214,9 +222,9 @@ function renderDebugErrorPage(Throwable $e): void
         }
 
         .error-banner {
-            background: linear-gradient(to right, rgba(239, 68, 68, 0.1), transparent);
+            background: linear-gradient(to bottom, rgba(30, 41, 59, 0.4), transparent);
             border-bottom: 1px solid var(--border-color);
-            padding: 2.5rem;
+            padding: 3rem;
             flex-shrink: 0;
         }
 
@@ -224,17 +232,19 @@ function renderDebugErrorPage(Throwable $e): void
             font-size: 0.875rem;
             color: var(--danger);
             font-weight: 600;
-            margin-bottom: 0.75rem;
+            margin-bottom: 1rem;
             display: flex;
             align-items: center;
-            gap: 8px;
+            gap: 10px;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
         }
         
         .exception-type::before {
             content: "";
             display: block;
-            width: 8px;
-            height: 8px;
+            width: 6px;
+            height: 6px;
             background: var(--danger);
             border-radius: 50%;
             box-shadow: 0 0 0 4px rgba(239, 68, 68, 0.2);
@@ -251,20 +261,20 @@ function renderDebugErrorPage(Throwable $e): void
         .exception-location {
             font-family: "JetBrains Mono", monospace;
             font-size: 0.875rem;
-            background: var(--code-bg);
+            background: var(--bg-card);
             padding: 0.75rem 1rem;
-            border-radius: 6px;
+            border-radius: 8px;
             border: 1px solid var(--border-color);
             color: var(--text-secondary);
             display: inline-flex;
             align-items: center;
-            gap: 0.5rem;
+            gap: 0.75rem;
         }
 
         /* Code Viewer */
         .code-viewer-container {
             border-bottom: 1px solid var(--border-color);
-            background: var(--code-bg);
+            background: rgba(13, 17, 23, 0.3);
             flex-shrink: 0;
             min-height: 100px;
         }
@@ -298,6 +308,7 @@ function renderDebugErrorPage(Throwable $e): void
             user-select: none;
             border-right: 1px solid var(--border-color);
             vertical-align: top;
+            background: rgba(255,255,255,0.01);
         }
         
         .code-content {
@@ -314,7 +325,8 @@ function renderDebugErrorPage(Throwable $e): void
         .code-row.error-line .code-line-num {
             color: var(--danger);
             font-weight: bold;
-            border-right-color: var(--danger);
+            border-right-color: rgba(239, 68, 68, 0.3);
+            background-color: var(--highlight-bg);
         }
         
         .code-row.error-line .code-content {
@@ -323,7 +335,7 @@ function renderDebugErrorPage(Throwable $e): void
 
         /* Sections */
         .section-container {
-            padding: 2.5rem;
+            padding: 3rem;
         }
         
         .tabs {
@@ -340,6 +352,7 @@ function renderDebugErrorPage(Throwable $e): void
             font-weight: 500;
             transition: all 0.2s;
             position: relative;
+            font-size: 0.95rem;
         }
         
         .tab:hover { color: var(--text-primary); }
@@ -356,6 +369,7 @@ function renderDebugErrorPage(Throwable $e): void
             width: 100%;
             height: 2px;
             background: var(--accent-primary);
+            box-shadow: 0 -2px 10px var(--accent-primary);
         }
         
         .info-grid {
@@ -365,30 +379,40 @@ function renderDebugErrorPage(Throwable $e): void
         }
         
         .info-card {
-            background: rgba(255,255,255,0.02);
+            background: var(--bg-card);
             border: 1px solid var(--border-color);
-            border-radius: 8px;
-            padding: 1.25rem;
+            border-radius: 12px;
+            padding: 1.5rem;
+            transition: transform 0.2s;
+        }
+        
+        .info-card:hover {
+            border-color: rgba(255,255,255,0.15);
         }
         
         .info-label {
             font-size: 0.75rem;
             text-transform: uppercase;
             color: var(--text-muted);
-            margin-bottom: 0.5rem;
-            font-weight: 600;
+            margin-bottom: 0.75rem;
+            font-weight: 700;
             letter-spacing: 0.05em;
         }
         
         .info-value {
             font-family: "JetBrains Mono", monospace;
-            font-size: 0.8125rem;
-            color: var(--text-secondary);
+            font-size: 0.875rem;
+            color: var(--text-primary);
             word-break: break-all;
         }
 
         .tab-content { display: none; }
-        .tab-content.active { display: block; }
+        .tab-content.active { display: block; animation: fadeIn 0.3s ease-out; }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
         
         @media (max-width: 1024px) {
             .container { flex-direction: column-reverse; overflow: auto; }
@@ -592,7 +616,7 @@ function renderGridItems(array $items): string
 /**
  * Render production error page without sensitive information
  */
-function renderProductionErrorPage(Exception $e, int $statusCode = 500): void
+function renderProductionErrorPage(Throwable $e, int $statusCode = 500): void
 {
     error_log($e->getMessage() . "\n" . $e->getTraceAsString());
     http_response_code($statusCode);
@@ -619,7 +643,7 @@ function renderProductionErrorPage(Exception $e, int $statusCode = 500): void
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <style>
-        @import url("https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&family=JetBrains+Mono:wght@700&family=Dancing+Script:wght@700&display=swap");
+        @import url("https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&family=Dancing+Script:wght@700&display=swap");
         
         :root {
             --bg-body: #080b12;
@@ -637,8 +661,8 @@ function renderProductionErrorPage(Exception $e, int $statusCode = 500): void
             font-family: "Outfit", sans-serif;
             background-color: var(--bg-body);
             background-image: 
-                radial-gradient(circle at 20% 20%, rgba(139, 92, 246, 0.05) 0%, transparent 40%),
-                radial-gradient(circle at 80% 80%, rgba(59, 130, 246, 0.05) 0%, transparent 40%);
+                radial-gradient(circle at 15% 15%, rgba(139, 92, 246, 0.05) 0%, transparent 40%),
+                radial-gradient(circle at 85% 85%, rgba(59, 130, 246, 0.05) 0%, transparent 40%);
             color: var(--text-primary);
             min-height: 100vh;
             display: flex;
@@ -692,20 +716,26 @@ function renderProductionErrorPage(Exception $e, int $statusCode = 500): void
         }
 
         .error-code {
-            font-family: "JetBrains Mono", monospace;
+            font-family: "Outfit", sans-serif;
             font-size: 6rem;
             line-height: 1;
             font-weight: 700;
             margin-bottom: 16px;
-            opacity: 0.2;
-            letter-spacing: -2px;
+            opacity: 0.1;
+            letter-spacing: -4px;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%) scale(1.5);
+            z-index: -1;
+            pointer-events: none;
         }
 
         h1 {
             font-size: 2rem;
             font-weight: 700;
             margin-bottom: 16px;
-            color: var(--text-primary);
+            position: relative;
         }
 
         .message {
@@ -713,12 +743,14 @@ function renderProductionErrorPage(Exception $e, int $statusCode = 500): void
             font-size: 1.1rem;
             line-height: 1.6;
             margin-bottom: 40px;
+            position: relative;
         }
 
         .actions {
             display: flex;
             gap: 16px;
             justify-content: center;
+            position: relative;
         }
 
         .btn {
@@ -756,12 +788,6 @@ function renderProductionErrorPage(Exception $e, int $statusCode = 500): void
             transform: translateY(-2px);
         }
 
-        .dots {
-            position: absolute;
-            z-index: -1;
-            opacity: 0.3;
-        }
-
         @media (max-width: 640px) {
             .error-card { padding: 40px 20px; }
             .error-code { font-size: 4.5rem; }
@@ -777,9 +803,9 @@ function renderProductionErrorPage(Exception $e, int $statusCode = 500): void
 
     <div class="error-card">
         <span class="error-icon">' . $error['icon'] . '</span>
-        <div class="error-code">' . $statusCode . '</div>
         <h1>' . htmlspecialchars($error['title']) . '</h1>
         <p class="message">' . htmlspecialchars($error['message']) . '</p>
+        <div class="error-code">' . $statusCode . '</div>
         <div class="actions">
             <a href="/" class="btn btn-primary">
                 <span>🏠</span> Return Home
