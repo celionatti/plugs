@@ -490,14 +490,46 @@ trait HasAttributes
 
     public function toArray(): array
     {
-        $array = $this->attributes;
+        $attributes = $this->getArrayableAttributes();
 
-        // Remove hidden attributes
-        foreach ($this->hidden as $key) {
-            unset($array[$key]);
+        // Add appended attributes
+        foreach ($this->appends as $key) {
+            $attributes[$key] = $this->getAttribute($key);
         }
 
-        return $array;
+        // Add loaded relationships
+        if (property_exists($this, 'relations')) {
+            foreach ($this->relations as $key => $value) {
+                if (in_array($key, $this->hidden)) {
+                    continue;
+                }
+
+                if ($value instanceof Collection) {
+                    $attributes[$key] = $value->all();
+                } else if ($value instanceof PlugModel) {
+                    $attributes[$key] = $value->toArray();
+                } else {
+                    $attributes[$key] = $value;
+                }
+            }
+        }
+
+        return $attributes;
+    }
+
+    protected function getArrayableAttributes(): array
+    {
+        $attributes = $this->attributes;
+
+        if (count($this->visible) > 0) {
+            $attributes = array_intersect_key($attributes, array_flip($this->visible));
+        }
+
+        if (count($this->hidden) > 0) {
+            $attributes = array_diff_key($attributes, array_flip($this->hidden));
+        }
+
+        return $attributes;
     }
 
     public function toJson(): string

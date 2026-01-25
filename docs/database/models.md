@@ -236,3 +236,56 @@ class Comment extends PlugModel
     }
 }
 ```
+
+## Serialization
+
+When building APIs, you often need to convert your models and relationships to arrays or JSON.
+
+### Converting To Arrays
+
+To convert a model and its loaded relationships to an array, you should use the `toArray` method. This method is recursive, so all attributes and all relations (including the relations of relations) will be converted to arrays:
+
+```php
+$user = User::with('posts')->find(1);
+return $user->toArray();
+```
+
+### Serialization Visibility
+
+Sometimes you may wish to limit the attributes, such as passwords, that are included in your model's array or JSON representation. To do so, add a `$hidden` property to your model:
+
+```php
+class User extends PlugModel
+{
+    protected $hidden = ['password'];
+}
+```
+
+Alternatively, you may use the `visible` property to define a "white list" of attributes that should be included in your model's array and JSON representation:
+
+```php
+class User extends PlugModel
+{
+    protected $visible = ['first_name', 'last_name'];
+}
+```
+
+### Appending Values To JSON
+
+Occasionally, when converting models to an array or JSON, you may wish to add attributes that do not have a corresponding column in your database. To do so, first define an [accessor](#accessors) for the value:
+
+```php
+public function getIsAdminAttribute()
+{
+    return $this->attributes['admin'] === 'yes';
+}
+```
+
+After creating the accessor, add the attribute name to the `appends` property on the model:
+
+```php
+class User extends PlugModel
+{
+    protected $appends = ['is_admin'];
+}
+```

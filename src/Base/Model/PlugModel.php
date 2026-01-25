@@ -725,6 +725,11 @@ abstract class PlugModel
         throw new BadMethodCallException("Static method {$method} does not exist on " . get_called_class());
     }
 
+    public function toResponse(int $status = 200, ?string $message = null): \Plugs\Http\StandardResponse
+    {
+        return new \Plugs\Http\StandardResponse($this->toArray(), true, $status, $message);
+    }
+
     public function __toString(): string
     {
         return $this->toJson();

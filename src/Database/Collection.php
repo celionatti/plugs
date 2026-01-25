@@ -1413,4 +1413,11 @@ class Collection implements \ArrayAccess, \Iterator, \Countable, \JsonSerializab
     {
         return $this->toJson();
     }
+    /**
+     * Convert collection to standardized API response
+     */
+    public function toResponse(int $status = 200, ?string $message = null): \Plugs\Http\StandardResponse
+    {
+        return new \Plugs\Http\StandardResponse($this->jsonSerialize(), true, $status, $message);
+    }
 }

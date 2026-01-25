@@ -35,6 +35,22 @@ trait HasQueryBuilder
     }
 
     /**
+     * Get all results as a standardized API response.
+     */
+    public static function allResponse(array $columns = ['*'], int $status = 200, ?string $message = null): \Plugs\Http\StandardResponse
+    {
+        return static::all($columns)->toResponse($status, $message);
+    }
+
+    /**
+     * Get a standardized API response for a collection.
+     */
+    public static function getResponse(array $columns = ['*'], int $status = 200, ?string $message = null): \Plugs\Http\StandardResponse
+    {
+        return static::get($columns)->toResponse($status, $message);
+    }
+
+    /**
      * Begin querying a model with eager loads.
      *
      * @param  array|string  $relations
@@ -50,6 +66,20 @@ trait HasQueryBuilder
     public static function find($id, array $columns = ['*'])
     {
         return static::query()->find($id, $columns);
+    }
+
+    /**
+     * Find a model and return as a standardized API response.
+     */
+    public static function findResponse($id, array $columns = ['*'], int $status = 200, ?string $message = null): \Plugs\Http\StandardResponse
+    {
+        $result = static::find($id, $columns);
+
+        if (!$result) {
+            return \Plugs\Http\StandardResponse::error("Record not found", 404);
+        }
+
+        return $result->toResponse($status, $message);
     }
 
     public static function findOrFail($id, array $columns = ['*'])
@@ -70,6 +100,20 @@ trait HasQueryBuilder
     public static function first(array $columns = ['*'])
     {
         return static::query()->first($columns);
+    }
+
+    /**
+     * Get the first result as a standardized API response.
+     */
+    public static function firstResponse(array $columns = ['*'], int $status = 200, ?string $message = null): \Plugs\Http\StandardResponse
+    {
+        $result = static::first($columns);
+
+        if (!$result) {
+            return \Plugs\Http\StandardResponse::error("No records found", 404);
+        }
+
+        return $result->toResponse($status, $message);
     }
 
     public static function firstOrFail(array $columns = ['*'])
@@ -170,16 +214,25 @@ trait HasQueryBuilder
             ->offset($offset)
             ->get();
 
-        $data = array_map(fn ($item) => new static($item), $items);
+        $data = array_map(fn($item) => new static($item), $items);
+        $lastPage = (int) ceil($total / $perPage);
 
         return [
             'data' => $data,
-            'total' => $total,
-            'per_page' => $perPage,
-            'current_page' => $page,
-            'last_page' => (int) ceil($total / $perPage),
-            'from' => $offset + 1,
-            'to' => min($offset + $perPage, $total),
+            'meta' => [
+                'total' => $total,
+                'per_page' => $perPage,
+                'current_page' => $page,
+                'last_page' => $lastPage,
+                'from' => $offset + 1,
+                'to' => min($offset + $perPage, $total),
+            ],
+            'links' => [
+                'first' => '?page=1',
+                'last' => '?page=' . $lastPage,
+                'next' => $page < $lastPage ? '?page=' . ($page + 1) : null,
+                'prev' => $page > 1 ? '?page=' . ($page - 1) : null,
+            ]
         ];
     }
 
@@ -204,7 +257,7 @@ trait HasQueryBuilder
             array_pop($items);
         }
 
-        $data = array_map(fn ($item) => new static($item), $items);
+        $data = array_map(fn($item) => new static($item), $items);
 
         return [
             'data' => $data,
@@ -293,15 +346,24 @@ trait HasQueryBuilder
             ->offset($offset)
             ->get();
 
-        $data = array_map(fn ($item) => new static($item), $items);
+        $data = array_map(fn($item) => new static($item), $items);
+        $lastPage = (int) ceil($total / $perPage);
 
         return [
             'data' => $data,
-            'total' => $total,
-            'per_page' => $perPage,
-            'current_page' => $page,
-            'last_page' => (int) ceil($total / $perPage),
-            'filters' => array_filter($params, fn ($k) => !in_array($k, ['page', 'per_page']), ARRAY_FILTER_USE_KEY),
+            'meta' => [
+                'total' => $total,
+                'per_page' => $perPage,
+                'current_page' => $page,
+                'last_page' => $lastPage,
+            ],
+            'links' => [
+                'first' => '?page=1',
+                'last' => '?page=' . $lastPage,
+                'next' => $page < $lastPage ? '?page=' . ($page + 1) : null,
+                'prev' => $page > 1 ? '?page=' . ($page - 1) : null,
+            ],
+            'filters' => array_filter($params, fn($k) => !in_array($k, ['page', 'per_page']), ARRAY_FILTER_USE_KEY),
         ];
     }
 }

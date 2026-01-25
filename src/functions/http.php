@@ -110,3 +110,13 @@ if (!function_exists('browser')) {
         return \Plugs\Http\Browser::make();
     }
 }
+
+if (!function_exists('api_response')) {
+    /**
+     * Create a standardized API response.
+     */
+    function api_response(mixed $data = null, int $status = 200, ?string $message = null): \Plugs\Http\StandardResponse
+    {
+        return new \Plugs\Http\StandardResponse($data, true, $status, $message);
+    }
+}
