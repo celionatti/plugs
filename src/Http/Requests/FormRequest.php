@@ -107,4 +107,46 @@ abstract class FormRequest
     {
         return $this->validator ? $this->validator->validated() : [];
     }
+
+    /**
+     * Get sanitization rules.
+     * Use rule names from Sanitizer class (string, int, float, email, url, safe_html).
+     *
+     * @return array
+     */
+    public function sanitizers(): array
+    {
+        return [];
+    }
+
+    /**
+     * Get sanitized data.
+     * Applies sanitization rules defined in sanitizers().
+     *
+     * @return array
+     */
+    public function sanitized(): array
+    {
+        $data = $this->validated();
+        $rules = $this->sanitizers();
+
+        foreach ($rules as $field => $method) {
+            if (isset($data[$field])) {
+                $data[$field] = \Plugs\Security\Sanitizer::$method($data[$field]);
+            }
+        }
+
+        return $data;
+    }
+
+    /**
+     * Get raw input data.
+     *
+     * @return array
+     */
+    public function raw(): array
+    {
+        return $this->data;
+    }
 }
+

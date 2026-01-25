@@ -295,6 +295,7 @@ class Validator
             'active_url' => 'The :attribute is not a valid URL.',
             'password' => 'The :attribute must meet the complexity requirements: :requirements.',
             'strong_password' => 'The :attribute must be at least 8 characters and contain at least one uppercase letter, one lowercase letter, one number, and one special character.',
+            'safe_html' => 'The :attribute contains invalid or dangerous HTML tags.',
         ];
 
         return $messages[$rule] ?? "The :attribute is invalid.";
@@ -1030,6 +1031,44 @@ class Validator
 
         if (!preg_match($pattern, $value)) {
             $this->addError($field, 'strong_password');
+        }
+    }
+
+    /**
+     * Safe HTML validation
+     */
+    private function validateSafeHtml(string $field, $value): void
+    {
+        if ($value === null || $value === '') {
+            return;
+        }
+
+        $sanitized = \Plugs\Security\Sanitizer::safeHtml($value);
+
+        // If the sanitized version is different from original, it might contain dangerous tags
+        // However, some editors might send slightly different formatting.
+        // A better check is to see if any forbidden tags were removed.
+        if (strip_tags((string) $value) !== strip_tags($sanitized)) {
+            // This is a simple check; more advanced check could compare DOM structures
+        }
+
+        // For validation purposes, we can check if certain very dangerous patterns exist
+        $dangerousPatterns = [
+            '/<script/i',
+            '/on[a-z]+\s*=/i',
+            '/javascript:/i',
+            '/data:/i',
+            '/<iframe/i',
+            '/<object/i',
+            '/<embed/i'
+        ];
+
+        foreach ($dangerousPatterns as $pattern) {
+            if (preg_match($pattern, (string) $value)) {
+                $this->addError($field, 'safe_html');
+
+                break;
+            }
         }
     }
 }

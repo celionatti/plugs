@@ -45,6 +45,77 @@ class Sanitizer
         return strip_tags((string) $value, $allowedTags);
     }
 
+    /**
+     * Sanitize HTML content by allowing safe tags and stripping dangerous attributes.
+     * Useful for blog posts and rich text editors.
+     */
+    public static function safeHtml($value, ?array $allowedTags = null): string
+    {
+        if ($value === null || $value === '') {
+            return '';
+        }
+
+        // Default allowed tags for blog content
+        if ($allowedTags === null) {
+            $allowedTags = [
+                'p',
+                'br',
+                'b',
+                'i',
+                'u',
+                'strong',
+                'em',
+                'span',
+                'h1',
+                'h2',
+                'h3',
+                'h4',
+                'h5',
+                'h6',
+                'ul',
+                'ol',
+                'li',
+                'blockquote',
+                'code',
+                'pre',
+                'a',
+                'img',
+                'table',
+                'thead',
+                'tbody',
+                'tr',
+                'th',
+                'td',
+                'div',
+                'hr'
+            ];
+        }
+
+        $tagString = '<' . implode('><', $allowedTags) . '>';
+        $content = strip_tags((string) $value, $tagString);
+
+        return self::cleanAttributes($content);
+    }
+
+    /**
+     * Strip dangerous attributes like onclick, script:, etc.
+     */
+    protected static function cleanAttributes(string $html): string
+    {
+        // Remove javascript: and data: URIs
+        $html = preg_replace('/(href|src|background)\s*=\s*["\']\s*(javascript|data):/i', '$1="#', $html);
+
+        // Remove event handlers (onmouseover, onclick, etc.)
+        $html = preg_replace('/(\s)on[a-z]+\s*=\s*["\'][^"\']*["\']/i', '$1', $html);
+        $html = preg_replace('/(\s)on[a-z]+\s*=\s*[^\s>]+/i', '$1', $html);
+
+        // Remove <meta>, <link>, <style>, <script>, <embed>, <object>, <iframe> tags if somehow they slipped through
+        $html = preg_replace('/<(meta|link|style|script|embed|object|iframe)[^>]*>.*?<\/\1>/is', '', $html);
+        $html = preg_replace('/<(meta|link|style|script|embed|object|iframe)[^>]*>/is', '', $html);
+
+        return $html;
+    }
+
     public static function array(array $data, string $method = 'string'): array
     {
         return array_map([self::class, $method], $data);
