@@ -143,33 +143,6 @@ Use the `@error` and `@old` directives to handle this gracefully:
 
 Flash messages are one-time alerts stored in the session for the next request. They are perfect for "Success" or "Info" notifications.
 
-### Setting Flash Messages
-```php
-// In a Controller
-return redirect('/dashboard')->with('success', 'Profile updated!');
+The Plugs framework features a dedicated, premium flash system that supports titles, modern OKLCH colors, and animations.
 
-// Or manually using the helper
-flash('info', 'Your session will expire in 5 minutes.');
-```
-
-### Using the Premium Flash Component
-I have provided a premium, ready-to-use flash component that automatically handles Success, Error, and Info states with a modern look.
-
-Just include it in your layout (usually right before the closing `</body>` tag):
-
-```html
-<!-- Inside resources/views/layouts/app.plug.php -->
-    <x-flash />
-</body>
-```
-
-### Accessing Manually
-If you want to build your own alerting system:
-
-```php
-@session('success')
-    <div class="alert alert-success">
-        {{ session('success') }}
-    </div>
-@endsession
-```
+👉 **[Read the Full Flash Messages Guide](file:///docs/features/flash-messages.md)**
