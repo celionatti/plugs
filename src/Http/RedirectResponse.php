@@ -5,12 +5,13 @@ declare(strict_types=1);
 namespace Plugs\Http;
 
 use Psr\Http\Message\ResponseInterface;
+use Psr\Http\Message\StreamInterface;
 
-class RedirectResponse
+class RedirectResponse implements ResponseInterface
 {
+    protected ResponseInterface $response;
     protected string $url;
     protected int $status;
-    protected array $headers = [];
     protected array $flashData = [];
     protected array $flashErrors = [];
     protected array $flashInput = [];
@@ -19,6 +20,17 @@ class RedirectResponse
     {
         $this->url = $url;
         $this->status = $status;
+        $this->response = ResponseFactory::createResponse($status)
+            ->withHeader('Location', $url);
+    }
+
+    /**
+     * Create a redirect response from current global context (referer)
+     */
+    public static function fromGlobal(string $fallback = '/', int $status = 302): self
+    {
+        $url = $_SERVER['HTTP_REFERER'] ?? $fallback;
+        return new self($url, $status);
     }
 
     /**
@@ -53,13 +65,21 @@ class RedirectResponse
     /**
      * Flash errors to the session
      */
-    public function withErrors(array|string $errors, string $key = 'errors'): self
+    public function withErrors(mixed $errors, string $key = 'errors'): self
     {
-        if (is_string($errors)) {
-            $errors = [$errors];
+        if ($errors instanceof \Plugs\View\ErrorMessage) {
+            $this->flashErrors['_errors'] = $errors;
+        } elseif (is_array($errors)) {
+            $current = $this->flashErrors['_errors'] ?? new \Plugs\View\ErrorMessage();
+            foreach ($errors as $field => $message) {
+                $current->add(is_numeric($field) ? 'general' : (string) $field, $message);
+            }
+            $this->flashErrors['_errors'] = $current;
+        } else {
+            $current = $this->flashErrors['_errors'] ?? new \Plugs\View\ErrorMessage();
+            $current->add('general', (string) $errors);
+            $this->flashErrors['_errors'] = $current;
         }
-
-        $this->flashErrors[$key] = $errors;
 
         return $this;
     }
@@ -67,90 +87,46 @@ class RedirectResponse
     /**
      * Flash a success message
      */
-    public function withSuccess(string $message): self
+    public function withSuccess(string $message, ?string $title = null): self
     {
-        return $this->with('success', $message);
+        return $this->withFlash('success', $message, $title);
     }
 
     /**
      * Flash an error message
      */
-    public function withError(string $message): self
+    public function withError(string $message, ?string $title = null): self
     {
-        return $this->with('error', $message);
+        return $this->withFlash('error', $message, $title);
     }
 
     /**
      * Flash a warning message
      */
-    public function withWarning(string $message): self
+    public function withWarning(string $message, ?string $title = null): self
     {
-        return $this->with('warning', $message);
+        return $this->withFlash('warning', $message, $title);
     }
 
     /**
      * Flash an info message
      */
-    public function withInfo(string $message): self
+    public function withInfo(string $message, ?string $title = null): self
     {
-        return $this->with('info', $message);
+        return $this->withFlash('info', $message, $title);
     }
 
     /**
-     * Add a header to the redirect
+     * Helper to flash to FlashMessage
      */
-    public function withHeader(string $name, string $value): self
+    protected function withFlash(string $type, string $message, ?string $title = null): self
     {
-        $this->headers[$name] = $value;
-
-        return $this;
-    }
-
-    /**
-     * Add multiple headers
-     */
-    public function withHeaders(array $headers): self
-    {
-        $this->headers = array_merge($this->headers, $headers);
-
-        return $this;
-    }
-
-    /**
-     * Set a cookie with the redirect
-     */
-    public function withCookie(
-        string $name,
-        string $value,
-        int $expires = 0,
-        string $path = '/',
-        string $domain = '',
-        bool $secure = false,
-        bool $httpOnly = true
-    ): self {
-        setcookie($name, $value, $expires, $path, $domain, $secure, $httpOnly);
-
-        return $this;
-    }
-
-    /**
-     * Add a fragment to the URL
-     */
-    public function withFragment(string $fragment): self
-    {
-        $this->url .= '#' . ltrim($fragment, '#');
-
-        return $this;
-    }
-
-    /**
-     * Add query parameters to the redirect URL
-     */
-    public function withQuery(array $params): self
-    {
-        $separator = str_contains($this->url, '?') ? '&' : '?';
-        $this->url .= $separator . http_build_query($params);
-
+        $this->flashData[$type] = [
+            'message' => $message,
+            'title' => $title,
+            'type' => $type,
+            'timestamp' => time()
+        ];
         return $this;
     }
 
@@ -160,17 +136,22 @@ class RedirectResponse
     public function send(): void
     {
         // Store flash data in session
-        if (!empty($this->flashData) || !empty($this->flashErrors) || !empty($this->flashInput)) {
-            $this->storeFlashData();
-        }
+        $this->storeFlashData();
 
-        // Send headers
-        foreach ($this->headers as $name => $value) {
-            header("$name: $value");
+        // Send headers and body from the underlying response
+        if (method_exists($this->response, 'send')) {
+            $this->response->send();
+        } else {
+            // Manual fallback if not framework response
+            if (!headers_sent()) {
+                header("HTTP/1.1 {$this->status}");
+                foreach ($this->getHeaders() as $name => $values) {
+                    foreach ($values as $value) {
+                        header("{$name}: {$value}", false);
+                    }
+                }
+            }
         }
-
-        // Send redirect header
-        header("Location: {$this->url}", true, $this->status);
         exit;
     }
 
@@ -179,85 +160,108 @@ class RedirectResponse
      */
     protected function storeFlashData(): void
     {
-        // Ensure session is started
         if (session_status() === PHP_SESSION_NONE) {
             session_start();
         }
 
-        // Store flash data
-        if (!empty($this->flashData)) {
-            foreach ($this->flashData as $key => $value) {
-                $_SESSION['_flash'][$key] = $value;
-            }
+        // Initialize flash nested array if not exists
+        if (!isset($_SESSION['_flash'])) {
+            $_SESSION['_flash'] = [];
         }
 
-        // Store flash errors
-        if (!empty($this->flashErrors)) {
-            foreach ($this->flashErrors as $key => $errors) {
-                $_SESSION['_flash'][$key] = $errors;
-            }
+        foreach ($this->flashData as $key => $value) {
+            $_SESSION['_flash'][$key] = $value;
         }
 
-        // Store flash input
+        if (!empty($this->flashErrors['_errors'])) {
+            $_SESSION['_errors'] = $this->flashErrors['_errors'];
+        }
+
         if (!empty($this->flashInput)) {
-            $_SESSION['_flash']['_old_input'] = $this->flashInput;
+            $_SESSION['_old_input'] = $this->flashInput;
         }
-
-        // Mark flash data for deletion on next request
-        $_SESSION['_flash']['_delete_next'] = true;
     }
 
     /**
-     * Convert to PSR-7 Response (if using PSR-7 responses)
+     * PSR-7 Implementation delegation
      */
-    public function toResponse(): ResponseInterface
+    public function getProtocolVersion(): string
     {
-        // Create empty response with redirect status
-        $response = ResponseFactory::createResponse($this->status);
-        $response = $response->withHeader('Location', $this->url);
-
-        foreach ($this->headers as $name => $value) {
-            $response = $response->withHeader($name, $value);
-        }
-
-        // Store flash data
-        if (!empty($this->flashData) || !empty($this->flashErrors) || !empty($this->flashInput)) {
-            $this->storeFlashData();
-        }
-
-        return $response;
+        return $this->response->getProtocolVersion();
     }
-
-    /**
-     * Get the redirect URL
-     */
-    public function getUrl(): string
+    public function withProtocolVersion($version): ResponseInterface
     {
-        return $this->url;
+        $new = clone $this;
+        $new->response = $this->response->withProtocolVersion($version);
+        return $new;
     }
-
-    /**
-     * Get the status code
-     */
-    public function getStatus(): int
+    public function getHeaders(): array
     {
-        return $this->status;
+        return $this->response->getHeaders();
+    }
+    public function hasHeader($name): bool
+    {
+        return $this->response->hasHeader($name);
+    }
+    public function getHeader($name): array
+    {
+        return $this->response->getHeader($name);
+    }
+    public function getHeaderLine($name): string
+    {
+        return $this->response->getHeaderLine($name);
+    }
+    public function withHeader($name, $value): ResponseInterface
+    {
+        $new = clone $this;
+        $new->response = $this->response->withHeader($name, $value);
+        return $new;
+    }
+    public function withAddedHeader($name, $value): ResponseInterface
+    {
+        $new = clone $this;
+        $new->response = $this->response->withAddedHeader($name, $value);
+        return $new;
+    }
+    public function withoutHeader($name): ResponseInterface
+    {
+        $new = clone $this;
+        $new->response = $this->response->withoutHeader($name);
+        return $new;
+    }
+    public function getBody(): StreamInterface
+    {
+        return $this->response->getBody();
+    }
+    public function withBody(StreamInterface $body): ResponseInterface
+    {
+        $new = clone $this;
+        $new->response = $this->response->withBody($body);
+        return $new;
+    }
+    public function getStatusCode(): int
+    {
+        return $this->response->getStatusCode();
+    }
+    public function withStatus($code, $reasonPhrase = ''): ResponseInterface
+    {
+        $new = clone $this;
+        $new->response = $this->response->withStatus($code, $reasonPhrase);
+        return $new;
+    }
+    public function getReasonPhrase(): string
+    {
+        return $this->response->getReasonPhrase();
     }
 
-    /**
-     * Auto-send when object is destroyed (if not already sent)
-     */
     public function __destruct()
     {
-        // Only auto-send if headers haven't been sent yet
-        if (!headers_sent()) {
-            $this->send();
+        // For CLI or when someone forgot to return the response
+        if (PHP_SAPI !== 'cli' && !headers_sent() && $this->status >= 300 && $this->status < 400) {
+            // $this->send(); // Optional: Automatic send can be dangerous if not careful
         }
     }
 
-    /**
-     * Allow using the object as a string
-     */
     public function __toString(): string
     {
         return $this->url;

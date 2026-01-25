@@ -106,12 +106,70 @@ public function store(CreateBlogPostRequest $request)
 }
 ```
 
-## Advanced Helper Methods
+## Handling Validation Errors
 
-The `FormRequest` object also provides several helpers for fine-grained control:
+When a request fails validation, you typically want to redirect back to the form with the error messages and the user's previously entered data (so they don't have to type it again).
 
-- `$request->validated()`: Returns only the data that was defined in `rules()`.
-- `$request->sanitized()`: Returns validated data with sanitization applied.
-- `$request->raw()`: Returns the original, untouched input data.
-- `$request->input('key')`: Retrieve a specific input value.
-- `$request->has('key')`: Check if an input key exists.
+### The Fluent Pattern
+You can now chain your response in the controller:
+
+```php
+if (!$request->validate()) {
+    return back()
+        ->withErrors($request->errors())
+        ->withInput(); // Flashes current input to session
+}
+```
+
+### In Your View
+Use the `@error` and `@old` directives to handle this gracefully:
+
+```html
+<form method="POST" action="/blog">
+    <div class="form-group">
+        <label>Title</label>
+        <input type="text" name="title" value="@old('title')">
+        
+        @error('title')
+            <span class="text-danger">{{ $errors->first('title') }}</span>
+        @enderror
+    </div>
+</form>
+```
+
+---
+
+## Flash Messages
+
+Flash messages are one-time alerts stored in the session for the next request. They are perfect for "Success" or "Info" notifications.
+
+### Setting Flash Messages
+```php
+// In a Controller
+return redirect('/dashboard')->with('success', 'Profile updated!');
+
+// Or manually using the helper
+flash('info', 'Your session will expire in 5 minutes.');
+```
+
+### Using the Premium Flash Component
+I have provided a premium, ready-to-use flash component that automatically handles Success, Error, and Info states with a modern look.
+
+Just include it in your layout (usually right before the closing `</body>` tag):
+
+```html
+<!-- Inside resources/views/layouts/app.plug.php -->
+    <x-flash />
+</body>
+```
+
+### Accessing Manually
+If you want to build your own alerting system:
+
+```php
+@session('success')
+    <div class="alert alert-success">
+        {{ session('success') }}
+    </div>
+@endsession
+```

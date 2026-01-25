@@ -227,6 +227,71 @@ if (!function_exists('response')) {
     }
 }
 
+if (!function_exists('session')) {
+    /**
+     * Get / set session value or return the session manager
+     */
+    function session(string|array|null $key = null, $default = null)
+    {
+        try {
+            $session = resolve(\Plugs\Session\Session::class);
+
+            if ($key === null) {
+                return $session;
+            }
+
+            if (is_array($key)) {
+                foreach ($key as $k => $v) {
+                    $session->set($k, $v);
+                }
+
+                return null;
+            }
+
+            // Check flash through FlashMessage first
+            if (\Plugs\Utils\FlashMessage::has($key)) {
+                return \Plugs\Utils\FlashMessage::get($key);
+            }
+
+            return $session->get($key, $default);
+        } catch (\Exception $e) {
+            if (session_status() === PHP_SESSION_NONE)
+                session_start();
+            if ($key === null)
+                return $_SESSION;
+            return $_SESSION[$key] ?? $default;
+        }
+    }
+}
+
+if (!function_exists('old')) {
+    /**
+     * Get old input value from previous request
+     */
+    function old(string $key, $default = null)
+    {
+        if (isset($_SESSION['_old_input'][$key])) {
+            return $_SESSION['_old_input'][$key];
+        }
+
+        return $default;
+    }
+}
+
+if (!function_exists('flash')) {
+    /**
+     * Get or set flash message
+     */
+    function flash(string $key, $value = null, ?string $title = null)
+    {
+        if ($value === null) {
+            return \Plugs\Utils\FlashMessage::get($key);
+        }
+
+        \Plugs\Utils\FlashMessage::set($key, $value, $title);
+    }
+}
+
 if (!function_exists('auth')) {
     /**
      * Get the auth manager or a specific guard

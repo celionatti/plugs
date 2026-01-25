@@ -298,9 +298,12 @@ if (!function_exists('previousUrl')) {
 }
 
 if (!function_exists('back')) {
-    function back(): string
+    /**
+     * Create a redirect to the previous URL (chainable)
+     */
+    function back(string $fallback = '/', int $status = 302): RedirectResponse
     {
-        return previousUrl();
+        return redirectBack($fallback, $status);
     }
 }
 

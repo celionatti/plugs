@@ -223,6 +223,31 @@ class ViewEngine
 
             return "<?php echo skeleton()->$expression; ?>";
         });
+
+        $this->directive('session', function ($expression) {
+            return "<?php if (\\Plugs\\Utils\\FlashMessage::peek($expression)): ?>";
+        });
+
+        $this->directive('endsession', function () {
+            return "<?php endif; ?>";
+        });
+
+        $this->directive('old', function ($expression) {
+            return "<?php echo old($expression); ?>";
+        });
+
+        $this->directive('flash', function ($expression) {
+            return "<?php echo \\Plugs\\Utils\\FlashMessage::renderType($expression); ?>";
+        });
+
+        $this->directive('error', function ($expression) {
+            $key = trim($expression, " '\"");
+            return "<?php if (isset(\$errors) && \$errors->has('$key')): ?>";
+        });
+
+        $this->directive('enderror', function () {
+            return "<?php endif; ?>";
+        });
     }
 
     public function render(string $view, array $data = [], bool $isComponent = false): string
@@ -430,7 +455,7 @@ class ViewEngine
             /** @phpstan-ignore-next-line */
             if (isset($__extends) && $__extends && !$this->suppressLayout) {
                 // FIX: Pass stacks and childContent to parent layout
-                return $this->renderParent(
+                return (string) $this->renderParent(
                     $__extends,
                     array_merge($data, ['childContent' => $childContent]),
                     $__sections,
@@ -514,7 +539,7 @@ class ViewEngine
             /** @phpstan-ignore-next-line */
             if (isset($__extends) && $__extends && !$this->suppressLayout) {
                 // FIX: Pass stacks and childContent to parent layout
-                return $this->renderParentDirect(
+                return (string) $this->renderParentDirect(
                     $__extends,
                     array_merge($data, ['childContent' => $childContent]),
                     $__sections,

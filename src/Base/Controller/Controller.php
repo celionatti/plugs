@@ -129,56 +129,43 @@ abstract class Controller
     }
 
     /**
-     * Redirect back with errors and old input
+     * Redirect back with errors and old input (chainable)
      */
-    protected function back(?ErrorMessage $errors = null, array $data = []): ResponseInterface
+    protected function back(string $fallback = '/', int $status = 302): \Plugs\Http\RedirectResponse
     {
-        // Flash errors to session if provided
-        if ($errors && $errors->any()) {
-            $_SESSION['_errors'] = $errors;
-        }
+        return (\Plugs\Http\RedirectResponse::class)::fromGlobal($fallback, $status);
+    }
 
-        // Flash old input to session
-        if ($this->currentRequest) {
-            $parsedBody = $this->currentRequest->getParsedBody();
-            if (is_array($parsedBody)) {
-                $_SESSION['_old_input'] = $parsedBody;
-            }
-        }
-
-        // Flash additional data if provided
-        if (!empty($data)) {
-            foreach ($data as $key => $value) {
-                $_SESSION['_flash_' . $key] = $value;
-            }
-        }
-
-        // Get referer or fallback to home
-        $referer = $_SERVER['HTTP_REFERER'] ?? '/';
-
-        return $this->redirect($referer);
+    /**
+     * Create a redirect response (chainable)
+     */
+    protected function redirect(string $url, int $status = 302): \Plugs\Http\RedirectResponse
+    {
+        return new \Plugs\Http\RedirectResponse($url, $status);
     }
 
     /**
      * Redirect with success message
      */
-    protected function redirectWithSuccess(string $url, string $message): ResponseInterface
+    protected function redirectWithSuccess(string $url, string $message, ?string $title = null): ResponseInterface
     {
-        $_SESSION['_success'] = $message;
-
-        return $this->redirect($url);
+        return $this->redirect($url)->withSuccess($message, $title);
     }
 
     /**
      * Redirect with error message
      */
-    protected function redirectWithError(string $url, string $message): ResponseInterface
+    protected function redirectWithError(string $url, string $message, ?string $title = null): ResponseInterface
     {
-        $errors = new ErrorMessage();
-        $errors->add('general', $message);
-        $_SESSION['_errors'] = $errors;
+        return $this->redirect($url)->withError($message, $title);
+    }
 
-        return $this->redirect($url);
+    /**
+     * Flash a message to the session
+     */
+    protected function flash(string $key, $value, ?string $title = null): void
+    {
+        flash($key, $value, $title);
     }
 
     /**
@@ -245,47 +232,57 @@ abstract class Controller
     }
 
     /**
-     * Redirect to URL
+     * Return file response
      */
-    protected function redirect(string $url, int $status = 302): ResponseInterface
+    protected function file(string $path, ?string $name = null, array $headers = []): ResponseInterface
     {
-        return ResponseFactory::redirect($url, $status);
+        return ResponseFactory::file($path, $name, $headers);
     }
 
     /**
-     * Validate request data - now with automatic error handling
+     * Return download response
      */
-    protected function validate(ServerRequestInterface $request, array $rules): array|object
+    protected function download(string $path, ?string $name = null, array $headers = []): ResponseInterface
     {
-        $data = $request->getParsedBody() ?? [];
-
-        $validator = new Validator($data, $rules);
-
-        if (!$validator->validate()) {
-            // Convert validator errors to ErrorBag
-            $errorBag = new ErrorMessage($validator->errors());
-
-            // Flash errors and old input, then redirect back
-            return $this->back($errorBag);
-        }
-
-        return $data;
+        return ResponseFactory::download($path, $name, $headers);
     }
 
     /**
-     * Validate request data - throws exception instead of redirecting
+     * Validate request data
+     * Supports both array rules and FormRequest objects.
      */
-    protected function validateOrFail(ServerRequestInterface $request, array $rules): array
+    protected function validate(ServerRequestInterface|string $request, array $rules = []): array
     {
-        $data = $request->getParsedBody() ?? [];
+        // Handle FormRequest class string
+        if (is_string($request) && is_subclass_of($request, \Plugs\Http\Requests\FormRequest::class)) {
+            $formRequest = new $request($this->currentRequest?->getParsedBody() ?? $_POST);
+            if (!$formRequest->validate()) {
+                $this->back()->withErrors($formRequest->errors())->withInput()->send();
+            }
+            return $formRequest->sanitized();
+        }
 
+        // Handle regular array rules
+        $data = $request instanceof ServerRequestInterface ? ($request->getParsedBody() ?? []) : $_POST;
         $validator = new Validator($data, $rules);
 
         if (!$validator->validate()) {
-            throw new RuntimeException(json_encode($validator->errors()), 422);
+            $this->back()->withErrors($validator->errors())->withInput()->send();
         }
 
-        return $data;
+        return $validator->validated();
+    }
+
+    /**
+     * Authorize a given action
+     */
+    protected function authorize(string $ability, $arguments = []): void
+    {
+        // Implementation for simple authorization
+        // This could integrate with a Gate or similar system later
+        if (method_exists($this, 'can') && !$this->can($ability, $arguments)) {
+            throw new RuntimeException("This action is unauthorized.", 403);
+        }
     }
 
     /**
@@ -327,10 +324,23 @@ abstract class Controller
     }
 
     /**
+     * Get the current request instance
+     */
+    protected function request(): ServerRequestInterface
+    {
+        if ($this->currentRequest) {
+            return $this->currentRequest;
+        }
+
+        return request() ?? \Plugs\Http\Message\ServerRequest::fromGlobals();
+    }
+
+    /**
      * Get all input data
      */
-    protected function all(ServerRequestInterface $request): array
+    protected function all(?ServerRequestInterface $request = null): array
     {
+        $request = $request ?? $this->request();
         $queryParams = $request->getQueryParams();
         $parsedBody = $request->getParsedBody();
 
@@ -341,12 +351,37 @@ abstract class Controller
     }
 
     /**
+     * Get a specific input value
+     */
+    protected function input(string $key, $default = null): mixed
+    {
+        $all = $this->all();
+        return $all[$key] ?? $default;
+    }
+
+    /**
+     * Get the session instance
+     */
+    protected function session(): \Plugs\Session\Session
+    {
+        return session();
+    }
+
+    /**
      * Ensure session is started
      */
     private function ensureSessionStarted(): void
     {
         if (session_status() === PHP_SESSION_NONE) {
             session_start();
+        }
+
+        // Logic to clear old input after it's been available for one GET request
+        if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_SESSION['_old_input'])) {
+            // We keep it for the current execution but mark for deletion
+            register_shutdown_function(function () {
+                unset($_SESSION['_old_input']);
+            });
         }
     }
 

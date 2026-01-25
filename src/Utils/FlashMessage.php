@@ -32,7 +32,7 @@ namespace Plugs\Utils;
  */
 class FlashMessage
 {
-    protected const SESSION_KEY = '_flash_messages';
+    protected const SESSION_KEY = '_flash';
     protected const OLD_INPUT_KEY = '_old_input';
 
     protected static array $types = [
@@ -344,33 +344,44 @@ CSS;
     {
         self::ensureSession();
 
-        if (empty($_SESSION[self::SESSION_KEY])) {
+        $allFlsh = $_SESSION[self::SESSION_KEY] ?? [];
+        if (empty($allFlsh)) {
             return [];
         }
 
         $messages = [];
 
         if ($type === null) {
-            $messages = $_SESSION[self::SESSION_KEY];
-            if ($clear) {
-                $_SESSION[self::SESSION_KEY] = [];
-            }
-        } else {
-            foreach ($_SESSION[self::SESSION_KEY] as $key => $flash) {
-                if ($flash['type'] === $type) {
-                    $messages[] = $flash;
-                    if ($clear) {
-                        unset($_SESSION[self::SESSION_KEY][$key]);
-                    }
+            foreach ($allFlsh as $key => $flash) {
+                // Filter out internal keys like _delete_next if present
+                if (is_string($key) && str_starts_with($key, '_'))
+                    continue;
+
+                $messages[$key] = $flash;
+                if ($clear) {
+                    unset($_SESSION[self::SESSION_KEY][$key]);
                 }
             }
-
-            if ($clear) {
-                $_SESSION[self::SESSION_KEY] = array_values($_SESSION[self::SESSION_KEY]);
+        } else {
+            if (isset($allFlsh[$type])) {
+                $content = $allFlsh[$type];
+                $messages = is_array($content) && !isset($content['message']) ? $content : [$content];
+                if ($clear) {
+                    unset($_SESSION[self::SESSION_KEY][$type]);
+                }
             }
         }
 
         return $messages;
+    }
+
+    /**
+     * Get flash message without clearing (useful for view checks)
+     */
+    public static function peek(string $key, $default = null)
+    {
+        self::ensureSession();
+        return $_SESSION[self::SESSION_KEY][$key] ?? $default;
     }
 
     /**
