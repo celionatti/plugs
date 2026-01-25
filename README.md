@@ -60,13 +60,14 @@ composer require plugs/plugs
 
 Explore our comprehensive guides to learn more about the Plugs Framework:
 
--   [**Getting Started**](file:///docs/getting-started/introduction.md)
--   [**Routing**](file:///docs/the-basics/routing.md)
--   [**Views & Components**](file:///docs/the-basics/views.md)
--   [**Database & ORM**](file:///docs/database/getting-started.md)
--   [**Security Shield**](file:///docs/security/security-shield.md)
--   [**Inertia / SPA Mode**](file:///docs/advanced/inertia-spa.md)
--   [**CLI Tool**](file:///docs/advanced/cli-commands.md)
+-   [**Getting Started**](docs/getting-started/introduction.md)
+-   [**Routing**](docs/the-basics/routing.md)
+-   [**Views & Components**](docs/the-basics/views.md)
+-   [**Database & ORM**](docs/database/getting-started.md)
+-   [**Security Shield**](docs/security/security-shield.md)
+-   [**Inertia / SPA Mode**](docs/advanced/inertia-spa.md)
+-   [**CLI Tool**](docs/advanced/cli-commands.md)
+-   [**Pagination**](docs/features/pagination.md)
 
 ## 🤝 Contributing
 
