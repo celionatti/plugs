@@ -175,8 +175,10 @@ class ViewCompiler
         // 8. Form helpers
         $content = $safeCompile([$this, 'compileCsrf'], $content);
         $content = $safeCompile([$this, 'compileMethod'], $content);
+        $content = $safeCompile([$this, 'compileFormHelpers'], $content);
 
         // 9. Utilities
+        $content = $safeCompile([$this, 'compileInject'], $content);
         $content = $safeCompile([$this, 'compileJson'], $content);
         $content = $safeCompile([$this, 'compileHelperDirectives'], $content);
         $content = $safeCompile([$this, 'compileOld'], $content);
@@ -429,10 +431,7 @@ class ViewCompiler
 
     private function compileLoops(string $content): string
     {
-        // Reset forelse tracking
-        // $this->forElseVars = [];
-
-        // @forelse...@empty...@endforelse (Process FIRST before @foreach to avoid conflicts)
+        // @forelse
         $content = preg_replace_callback(
             '/@forelse\s*\((.+?)\s+as\s+(.+?)\)(.*?)@empty(.*?)@endforelse/s',
             function ($matches) {
@@ -442,23 +441,24 @@ class ViewCompiler
                 $emptyContent = $matches[4];
                 $emptyVar = '__empty_' . md5($array . uniqid());
 
-                // Extract variable name for safety check
-                if (preg_match('/^(\$[\w]+)/', $array, $varMatch)) {
-                    $varName = $varMatch[1];
-                } else {
-                    $varName = $array;
-                }
+                $checkIsset = preg_match('/^\$[\w]+$/', $array) ? "isset($array) && " : '';
+                $varName = $array;
+
+                $initLoop = '$__loop_parent = $loop ?? null; $loop = new \Plugs\View\Loop(' . $array . ', $__loop_parent, ($__loop_parent->depth ?? 0) + 1);';
+                $endLoop = '$loop = $__loop_parent;';
 
                 return sprintf(
-                    '<?php $%s = true; if(isset(%s) && is_iterable(%s) && count((array)%s) > 0): foreach (%s as %s): $%s = false; ?>%s<?php endforeach; endif; if($%s): ?>%s<?php endif; ?>',
+                    '<?php $%s = true; if(%sis_iterable(%s) && count((array)%s) > 0): %s foreach (%s as %s): $%s = false; ?>%s<?php $loop->tick(); endforeach; %s endif; if($%s): ?>%s<?php endif; ?>',
                     $emptyVar,
-                    $varName,
+                    $checkIsset,
                     $array,
                     $array,
+                    $initLoop,
                     $array,
                     $iteration,
                     $emptyVar,
                     $loopContent,
+                    $endLoop,
                     $emptyVar,
                     $emptyContent
                 );
@@ -466,31 +466,29 @@ class ViewCompiler
             $content
         );
 
-        // @foreach with safety checks
+        // @foreach
         $content = preg_replace_callback(
             '/@foreach\s*\((.+?)\s+as\s+(.+?)\)/s',
             function ($matches) {
                 $array = trim($matches[1]);
                 $iteration = trim($matches[2]);
+                $checkIsset = preg_match('/^\$[\w]+$/', $array) ? "isset($array) && " : '';
 
-                // Extract variable name for safety check
-                if (preg_match('/^(\$[\w]+)/', $array, $varMatch)) {
-                    $varName = $varMatch[1];
-                } else {
-                    $varName = $array;
-                }
+                $initLoop = '$__loop_parent = $loop ?? null; $loop = new \Plugs\View\Loop(' . $array . ', $__loop_parent, ($__loop_parent->depth ?? 0) + 1);';
 
                 return sprintf(
-                    '<?php if(isset(%s) && is_iterable(%s)): foreach (%s as %s): ?>',
-                    $varName,
+                    '<?php if(%sis_iterable(%s)): %s foreach (%s as %s): ?>',
+                    $checkIsset,
                     $array,
+                    $initLoop,
                     $array,
                     $iteration
                 );
             },
             $content
         );
-        $content = preg_replace('/@endforeach\s*(?:\r?\n)?/', '<?php endforeach; endif; ?>', $content);
+
+        $content = preg_replace('/@endforeach\s*(?:\r?\n)?/', '<?php $loop->tick(); endforeach; $loop = $__loop_parent; endif; ?>', $content);
 
         // @for
         $content = preg_replace('/@for\s*\((.+?)\)/s', '<?php for ($1): ?>', $content);
@@ -500,27 +498,25 @@ class ViewCompiler
         $content = preg_replace('/@while\s*\((.+?)\)/s', '<?php while ($1): ?>', $content);
         $content = preg_replace('/@endwhile\s*(?:\r?\n)?/', '<?php endwhile; ?>', $content);
 
-        // @continue with optional condition
+        // @continue
         $content = preg_replace_callback(
             '/@continue(?:\s*\((.+?)\))?/s',
             function ($matches) {
                 if (isset($matches[1]) && !empty(trim($matches[1]))) {
                     return sprintf('<?php if (%s) continue; ?>', $matches[1]);
                 }
-
                 return '<?php continue; ?>';
             },
             $content
         );
 
-        // @break with optional condition
+        // @break
         $content = preg_replace_callback(
             '/@break(?:\s*\((.+?)\))?/s',
             function ($matches) {
                 if (isset($matches[1]) && !empty(trim($matches[1]))) {
                     return sprintf('<?php if (%s) break; ?>', $matches[1]);
                 }
-
                 return '<?php break; ?>';
             },
             $content
@@ -892,6 +888,7 @@ class ViewCompiler
         $content = $this->compileEnv($content);
         $content = $this->compileJsonScript($content);
         $content = $this->compileClass($content);
+        $content = $this->compileStyle($content);
 
         return $content;
     }
@@ -1430,7 +1427,7 @@ class ViewCompiler
 
     /*
      * @asset('css/style.css')
-     * Generate asset URL
+     * Generate asset URL with cache busting
      */
     private function compileAsset(string $content): string
     {
@@ -1441,8 +1438,11 @@ class ViewCompiler
 
                 return sprintf(
                     '<?php echo (function($p) {
+                    $docRoot = $_SERVER[\'DOCUMENT_ROOT\'] ?? \'\';
+                    $filePath = rtrim($docRoot, \'/\') . \'/\' . ltrim($p, \'/\');
+                    $version = file_exists($filePath) ? \'?v=\' . filemtime($filePath) : \'\';
                     $base = rtrim($_SERVER[\'REQUEST_SCHEME\'] . \'://\' . $_SERVER[\'HTTP_HOST\'], \'/\');
-                    return $base . \'/\' . ltrim($p, \'/\');
+                    return $base . \'/\' . ltrim($p, \'/\') . $version;
                 })(\'%s\'); ?>',
                     addslashes($path)
                 );
@@ -1531,5 +1531,80 @@ class ViewCompiler
         }
 
         $this->compilationCache[$key] = $content;
+    }
+
+    private function compileFormHelpers(string $content): string
+    {
+        // @checked(condition)
+        $content = preg_replace(
+            '/@checked\s*\((.+?)\)/',
+            '<?php if($1) echo "checked"; ?>',
+            $content
+        );
+
+        // @selected(condition)
+        $content = preg_replace(
+            '/@selected\s*\((.+?)\)/',
+            '<?php if($1) echo "selected"; ?>',
+            $content
+        );
+
+        // @disabled(condition)
+        $content = preg_replace(
+            '/@disabled\s*\((.+?)\)/',
+            '<?php if($1) echo "disabled"; ?>',
+            $content
+        );
+
+        // @readonly(condition)
+        $content = preg_replace(
+            '/@readonly\s*\((.+?)\)/',
+            '<?php if($1) echo "readonly"; ?>',
+            $content
+        );
+
+        // @required(condition)
+        $content = preg_replace(
+            '/@required\s*\((.+?)\)/',
+            '<?php if($1) echo "required"; ?>',
+            $content
+        );
+
+        return $content;
+    }
+
+    private function compileInject(string $content): string
+    {
+        return preg_replace_callback(
+            '/@inject\s*\(\s*[\'"](.+?)[\'"]\s*,\s*[\'"](.+?)[\'"]\s*\)/',
+            function ($matches) {
+                $variable = $matches[1];
+                $service = $matches[2];
+
+                return sprintf(
+                    '<?php $%s = \Plugs\Container\Container::getInstance()->make(\'%s\'); ?>',
+                    $variable,
+                    $service
+                );
+            },
+            $content
+        );
+    }
+
+    private function compileStyle(string $content): string
+    {
+        return preg_replace_callback(
+            '/@style\s*\((\[.+?\])\)/s',
+            function ($matches) {
+                return sprintf(
+                    '<?php echo \'style="\' . implode(\'; \', array_filter(array_map(function($k, $v) {
+                    return is_int($k) ? $v : ($v ? $k : null);
+                }, array_keys(%s), array_values(%s)))) . \'"\'; ?>',
+                    $matches[1],
+                    $matches[1]
+                );
+            },
+            $content
+        );
     }
 }
