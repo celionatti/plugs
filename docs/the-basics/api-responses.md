@@ -95,3 +95,113 @@ return User::findResponse($id);
 // Get filtered results as API response
 return User::where('active', 1)->getResponse();
 ```
+
+## Practical Controller Example
+
+Here is how you might use these features in a typical API controller:
+
+```php
+namespace App\Http\Controllers;
+
+use App\Models\User;
+use Plugs\Http\StandardResponse;
+
+class UserController extends Controller
+{
+    /**
+     * Display a listing of the resource.
+     */
+    public function index()
+    {
+        // One-liner for simple indices
+        return User::where('status', 'active')->getResponse();
+    }
+
+    /**
+     * Display the specified resource.
+     */
+    public function show($id)
+    {
+        // Efficiently fetch and respond with 404 handling
+        return User::findResponse($id, ['id', 'name', 'email'], 200, 'User profile found');
+    }
+
+    /**
+     * Create a new resource with a custom success message.
+     */
+    public function store()
+    {
+        $user = User::create(request()->all());
+
+        return $user->toResponse(201, 'Account created successfully')
+            ->withHeader('X-Registration-Source', 'Web');
+    }
+}
+```
+
+## Advanced Customization
+
+### Conditional Metadata
+
+You might want to add metadata based on certain conditions:
+
+```php
+$response = User::getResponse();
+
+if (auth()->isAdmin()) {
+    $response->withMeta(['admin_stats' => $stats]);
+}
+
+return $response;
+```
+
+### Error Handling
+
+Standardized errors can be generated manually:
+
+```php
+if (!$paymentSuccessful) {
+    return StandardResponse::error('Transaction failed', 402)
+        ->withMeta(['reason' => 'insufficient_funds']);
+}
+```
+
+## Production-Ready Pagination
+
+The `paginate()` method and its variants are designed for production security and usability.
+
+### Security: Per-Page Limits
+
+To prevent Denial of Service (DoS) attacks where a user requests a massive number of records, Plugs enforces a `MAX_PER_PAGE` limit (default: 100). You can customize this on a per-model basis:
+
+```php
+class Post extends PlugModel
+{
+    public const MAX_PER_PAGE = 50;
+}
+```
+
+### HATEOAS: Absolute Links
+
+Standardized pagination responses include absolute URLs for easy navigation by frontend clients:
+
+```json
+"links": {
+    "first": "https://api.example.com/posts?page=1",
+    "last": "https://api.example.com/posts?page=10",
+    "next": "https://api.example.com/posts?page=3",
+    "prev": "https://api.example.com/posts?page=1"
+}
+```
+
+### Pagination Response Helper
+
+Use `paginateResponse()` to get a fully formatted API response in one call:
+
+```php
+// In a Controller
+public function index()
+{
+    return Post::paginateResponse(perPage: 15);
+}
+```

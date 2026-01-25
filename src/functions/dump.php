@@ -288,18 +288,20 @@ function plugs_render_styles(): string
     @import url("https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Dancing+Script:wght@700&display=swap");
 
     :root {
-        --bg-body: #0f172a;
-        --bg-card: #1e293b;
-        --border-color: #334155;
+        --bg-body: #0a0f1d;
+        --bg-card: rgba(30, 41, 59, 0.7);
+        --border-color: rgba(51, 65, 85, 0.5);
         --text-primary: #f8fafc;
-        --text-secondary: #94a3b8;
-        --text-muted: #64748b;
-        --accent-primary: #8b5cf6;
-        --accent-secondary: #3b82f6;
+        --text-secondary: #cbd5e1;
+        --text-muted: #94a3b8;
+        --accent-primary: #a855f7;
+        --accent-secondary: #6366f1;
         --danger: #ef4444;
         --warning: #f59e0b;
         --success: #10b981;
         --code-bg: #0d1117;
+        --glass-bg: rgba(15, 23, 42, 0.6);
+        --glow: 0 0 20px rgba(168, 85, 247, 0.15);
     }
 
     * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -321,11 +323,24 @@ function plugs_render_styles(): string
     
     .plugs-debug-header {
         background: var(--bg-card);
+        backdrop-filter: blur(12px);
         border: 1px solid var(--border-color);
-        border-radius: 16px;
+        border-radius: 20px;
         padding: 32px;
         margin-bottom: 24px;
-        box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3);
+        box-shadow: 0 10px 40px -10px rgba(0, 0, 0, 0.5), var(--glow);
+        position: relative;
+        overflow: hidden;
+    }
+    
+    .plugs-debug-header::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 2px;
+        background: linear-gradient(90deg, var(--accent-primary), var(--accent-secondary));
     }
     
     .header-top {
@@ -822,25 +837,25 @@ function plugs_render_queries(array $data): string
     $queries = $data['queries'] ?? [];
     $stats = $data['stats'] ?? [];
 
-    $html = '<div style="padding: 24px;">';
+    $html = '<div style="padding: 32px;">';
+    $html .= '<div class="section-title" style="margin-bottom: 24px; font-size: 18px; color: var(--text-primary);">📊 Query Insights</div>';
 
     // Stats cards
-    $html .= '<div class="stats-grid" style="margin-bottom: 24px;">';
+    $html .= '<div class="stats-grid" style="margin-bottom: 32px;">';
 
-    $html .= '<div class="stat-card">';
-    $html .= '<div class="stat-label">Total Queries</div>';
+    $html .= '<div class="stat-card" style="background: linear-gradient(145deg, rgba(168, 85, 247, 0.1), transparent);">';
+    $html .= '<div class="stat-label">✨ Total Queries</div>';
     $html .= '<div class="stat-value">' . ($stats['total_queries'] ?? 0) . '</div>';
     $html .= '</div>';
 
-    $html .= '<div class="stat-card">';
-    $html .= '<div class="stat-label">Total Time</div>';
+    $html .= '<div class="stat-card" style="background: linear-gradient(145deg, rgba(99, 102, 241, 0.1), transparent);">';
+    $html .= '<div class="stat-label">⏱️ Total Time</div>';
     $html .= '<div class="stat-value">' . number_format(($stats['total_time'] ?? 0) * 1000, 2) . ' ms</div>';
     $html .= '</div>';
 
     $html .= '<div class="stat-card">';
-    $html .= '<div class="stat-label">Avg Time</div>';
-    $avgTime = $stats['total_queries'] > 0 ? ($stats['total_time'] / $stats['total_queries']) : 0;
-    $html .= '<div class="stat-value">' . number_format($avgTime * 1000, 2) . ' ms</div>';
+    $html .= '<div class="stat-label">🧠 Memory Peak</div>';
+    $html .= '<div class="stat-value">' . plugs_format_bytes($stats['peak_memory'] ?? memory_get_peak_usage(true)) . '</div>';
     $html .= '</div>';
 
     $html .= '</div>';
@@ -848,63 +863,64 @@ function plugs_render_queries(array $data): string
     // Performance assessment
     $totalQueries = $stats['total_queries'] ?? 0;
     if ($totalQueries > 20) {
-        $html .= '<div class="alert alert-danger">';
-        $html .= '<div class="alert-title">❌ Too Many Queries</div>';
-        $html .= "Detected {$totalQueries} queries. This will impact performance. Consider eager loading or query optimization.";
+        $html .= '<div class="alert alert-danger" style="animation: pulse 2s infinite;">';
+        $html .= '<div class="alert-title">🔥 Critical Warning</div>';
+        $html .= "High query volume ({$totalQueries}). This will significantly slow down production response times.";
         $html .= '</div>';
     } elseif ($totalQueries > 10) {
         $html .= '<div class="alert alert-warning">';
-        $html .= '<div class="alert-title">⚠️ High Query Count</div>';
-        $html .= "Found {$totalQueries} queries. Consider optimization before production.";
-        $html .= '</div>';
-    } else {
-        $html .= '<div class="alert alert-success">';
-        $html .= '<div class="alert-title">✅ Good Performance</div>';
-        $html .= "Query count ({$totalQueries}) is within acceptable limits.";
+        $html .= '<div class="alert-title">⚡ Optimization Recommended</div>';
+        $html .= "Multiple queries detected. Use eager loading (with()) to reduce database roundtrips.";
         $html .= '</div>';
     }
 
-    // N+1 detection
-    $nPlusOne = plugs_detect_n_plus_one($queries);
-    if ($nPlusOne['detected']) {
-        $html .= '<div class="alert alert-danger" style="margin-top: 16px;">';
-        $html .= '<div class="alert-title">⚠️ N+1 Query Problem Detected</div>';
-        $html .= "Found {$nPlusOne['count']} similar queries. Use eager loading with <code>with()</code> to fix this.";
-        $html .= '</div>';
-    }
-
-    // Query table
-    $html .= '<div style="margin-top: 24px;">';
-    $html .= '<div class="section-title">🔍 Executed Queries</div>';
-    $html .= '<table class="query-table">';
-    $html .= '<thead><tr>';
-    $html .= '<th>#</th>';
-    $html .= '<th>Query</th>';
-    $html .= '<th>Bindings</th>';
-    $html .= '<th>Time</th>';
-    $html .= '<th>Timestamp</th>';
-    $html .= '</tr></thead>';
-    $html .= '<tbody>';
+    // Query List
+    $html .= '<div style="margin-top: 40px;">';
+    $html .= '<div class="section-title">🔮 Execution Log</div>';
 
     foreach ($queries as $index => $query) {
         $time = $query['time'] ?? 0;
-        $timeClass = $time < 0.01 ? 'time-fast' : ($time < 0.05 ? 'time-normal' : 'time-slow');
+        $ms = number_format($time * 1000, 2);
+        $isSlow = $time > 0.05;
 
-        $html .= '<tr>';
-        $html .= '<td>' . ($index + 1) . '</td>';
-        $html .= '<td><div class="query-sql" title="' . htmlspecialchars($query['query'] ?? '') . '">' . htmlspecialchars($query['query'] ?? '') . '</div></td>';
-        $html .= '<td><code>' . json_encode($query['bindings'] ?? []) . '</code></td>';
-        $html .= '<td class="query-time ' . $timeClass . '">' . number_format($time * 1000, 2) . ' ms</td>';
-        $html .= '<td>' . ($query['timestamp'] ?? '') . '</td>';
-        $html .= '</tr>';
+        $html .= '<div class="var-item" style="margin-bottom: 16px;">';
+        $html .= '<div class="var-header" onclick="toggleVar(this)">';
+        $html .= '<div class="var-title"><span>#' . ($index + 1) . '</span> <code style="color: var(--accent-secondary);">' . substr(htmlspecialchars($query['query']), 0, 60) . (strlen($query['query']) > 60 ? '...' : '') . '</code></div>';
+        $html .= '<div class="var-badges">';
+        if ($isSlow)
+            $html .= '<span class="badge" style="background: rgba(239, 68, 68, 0.1); color: var(--danger);">SLOW</span>';
+        $html .= '<span class="badge">' . $ms . ' ms</span>';
+        $html .= '</div>';
+        $html .= '</div>';
+        $html .= '<div class="var-body" style="display: none;">';
+        $html .= '<div class="code-block">';
+        $html .= '<code class="syntax-string">' . htmlspecialchars($query['query']) . '</code>';
+        $html .= '</div>';
+        if (!empty($query['bindings'])) {
+            $html .= '<div style="margin-top: 12px; font-size: 13px; color: var(--text-muted);">Bindings: <code>' . json_encode($query['bindings']) . '</code></div>';
+        }
+        $html .= '</div>';
+        $html .= '</div>';
     }
 
-    $html .= '</tbody></table>';
     $html .= '</div>';
-
     $html .= '</div>';
 
     return $html;
+}
+
+/**
+ * Add CSS Animation
+ */
+function plugs_append_animations(): string
+{
+    return "
+    @keyframes pulse {
+        0% { transform: scale(1); }
+        50% { transform: scale(1.01); }
+        100% { transform: scale(1); }
+    }
+    ";
 }
 
 /**

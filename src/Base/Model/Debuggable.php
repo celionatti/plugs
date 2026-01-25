@@ -19,6 +19,8 @@ trait Debuggable
     protected static $debugEnabled = false;
     protected static $slowQueryThreshold = 0.1; // 100ms
     protected static $queryWarnings = [];
+    protected static $marks = [];
+    protected static $loadedModelsCount = [];
 
     /**
      * Enable debug mode for this model
@@ -253,5 +255,56 @@ trait Debuggable
         if ($data !== null) {
             error_log(print_r($data, true));
         }
+    }
+
+    /**
+     * Mark a point in execution for performance tracking
+     */
+    public static function mark(string $name): void
+    {
+        static::$marks[$name] = [
+            'time' => microtime(true),
+            'memory' => memory_get_usage(true),
+        ];
+    }
+
+    /**
+     * Get performance summary between two marks
+     */
+    public static function getPerformanceSummary(string $start, string $end): array
+    {
+        if (!isset(static::$marks[$start], static::$marks[$end])) {
+            return ['error' => 'Marks not found'];
+        }
+
+        $startTime = static::$marks[$start]['time'];
+        $endTime = static::$marks[$end]['time'];
+        $startMem = static::$marks[$start]['memory'];
+        $endMem = static::$marks[$end]['memory'];
+
+        return [
+            'duration' => $endTime - $startTime,
+            'memory_diff' => $endMem - $startMem,
+        ];
+    }
+
+    /**
+     * Increment the count of this model being loaded
+     */
+    protected static function trackModelLoading(): void
+    {
+        $class = static::class;
+        if (!isset(self::$loadedModelsCount[$class])) {
+            self::$loadedModelsCount[$class] = 0;
+        }
+        self::$loadedModelsCount[$class]++;
+    }
+
+    /**
+     * Get all loaded model counts
+     */
+    public static function getLoadedModelStats(): array
+    {
+        return self::$loadedModelsCount;
     }
 }

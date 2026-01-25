@@ -79,6 +79,8 @@ abstract class PlugModel
         if (!$this->table) {
             $this->table = $this->getTableName();
         }
+
+        static::trackModelLoading();
     }
 
     protected function validateModelConfiguration(): void

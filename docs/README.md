@@ -21,6 +21,7 @@ Welcome to the official documentation for the **Plugs** framework. Plugs is a li
 - [Navigation](file:///docs/the-basics/navigation.md)
 - [Validation](file:///docs/the-basics/validation.md)
 - [Logging](file:///docs/the-basics/logging.md)
+- [Debugging & Performance](file:///docs/the-basics/debugging.md)
 - [Filesystem Storage](file:///docs/the-basics/storage.md)
 - [Flash Messages](file:///docs/features/flash-messages.md)
 - [Testing](file:///docs/testing.md)

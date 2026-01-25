@@ -200,8 +200,15 @@ trait HasQueryBuilder
     /**
      * Paginate results
      */
+    /**
+     * Paginate results (Production Ready)
+     */
     public static function paginate(int $perPage = 15, ?int $page = null, array $columns = ['*']): array
     {
+        // Enforce a sensible maximum to prevent DoS via per_page parameter
+        $maxPerPage = defined('static::MAX_PER_PAGE') ? static::MAX_PER_PAGE : 100;
+        $perPage = max(1, min($perPage, $maxPerPage));
+
         $page = $page ?? static::getCurrentPage();
         $page = max(1, $page);
 
@@ -217,6 +224,12 @@ trait HasQueryBuilder
         $data = array_map(fn($item) => new static($item), $items);
         $lastPage = (int) ceil($total / $perPage);
 
+        // Generate absolute URLs for links
+        $baseUrl = function_exists('currentUrl') ? currentUrl(includeQuery: false) : '';
+        $buildUrl = function ($p) use ($baseUrl) {
+            return $p ? $baseUrl . '?page=' . $p : null;
+        };
+
         return [
             'data' => $data,
             'meta' => [
@@ -224,16 +237,29 @@ trait HasQueryBuilder
                 'per_page' => $perPage,
                 'current_page' => $page,
                 'last_page' => $lastPage,
-                'from' => $offset + 1,
+                'from' => $total > 0 ? $offset + 1 : 0,
                 'to' => min($offset + $perPage, $total),
+                'path' => $baseUrl,
             ],
             'links' => [
-                'first' => '?page=1',
-                'last' => '?page=' . $lastPage,
-                'next' => $page < $lastPage ? '?page=' . ($page + 1) : null,
-                'prev' => $page > 1 ? '?page=' . ($page - 1) : null,
+                'first' => $buildUrl(1),
+                'last' => $buildUrl($lastPage),
+                'next' => $page < $lastPage ? $buildUrl($page + 1) : null,
+                'prev' => $page > 1 ? $buildUrl($page - 1) : null,
             ]
         ];
+    }
+
+    /**
+     * Get paginated results as a standardized API response.
+     */
+    public static function paginateResponse(int $perPage = 15, ?int $page = null, array $columns = ['*']): \Plugs\Http\StandardResponse
+    {
+        $paginated = static::paginate($perPage, $page, $columns);
+
+        return \Plugs\Http\StandardResponse::success($paginated['data'])
+            ->withMeta($paginated['meta'])
+            ->withLinks($paginated['links']);
     }
 
     /**
@@ -241,6 +267,10 @@ trait HasQueryBuilder
      */
     public static function simplePaginate(int $perPage = 15, ?int $page = null): array
     {
+        // Enforce a sensible maximum
+        $maxPerPage = defined('static::MAX_PER_PAGE') ? static::MAX_PER_PAGE : 100;
+        $perPage = max(1, min($perPage, $maxPerPage));
+
         $page = $page ?? static::getCurrentPage();
         $page = max(1, $page);
 
@@ -259,13 +289,26 @@ trait HasQueryBuilder
 
         $data = array_map(fn($item) => new static($item), $items);
 
+        // Generate absolute URLs for links
+        $baseUrl = function_exists('currentUrl') ? currentUrl(includeQuery: false) : '';
+        $buildUrl = function ($p) use ($baseUrl) {
+            return $p ? $baseUrl . '?page=' . $p : null;
+        };
+
         return [
             'data' => $data,
-            'per_page' => $perPage,
-            'current_page' => $page,
-            'has_more' => $hasMore,
-            'from' => $offset + 1,
-            'to' => $offset + count($data),
+            'meta' => [
+                'per_page' => $perPage,
+                'current_page' => $page,
+                'from' => count($data) > 0 ? $offset + 1 : 0,
+                'to' => $offset + count($data),
+                'has_more' => $hasMore,
+                'path' => $baseUrl,
+            ],
+            'links' => [
+                'next' => $hasMore ? $buildUrl($page + 1) : null,
+                'prev' => $page > 1 ? $buildUrl($page - 1) : null,
+            ]
         ];
     }
 
@@ -331,8 +374,11 @@ trait HasQueryBuilder
     {
         $params = $params ?? $_GET ?? $_REQUEST ?? [];
 
+        // Enforce a sensible maximum
+        $maxPerPage = defined('static::MAX_PER_PAGE') ? static::MAX_PER_PAGE : 100;
         $perPage = (int) ($params['per_page'] ?? 15);
-        $perPage = max(1, min($perPage, 100)); // Limit between 1 and 100
+        $perPage = max(1, min($perPage, $maxPerPage));
+
         $page = (int) ($params['page'] ?? 1);
         $page = max(1, $page);
 
@@ -349,6 +395,12 @@ trait HasQueryBuilder
         $data = array_map(fn($item) => new static($item), $items);
         $lastPage = (int) ceil($total / $perPage);
 
+        // Generate absolute URLs for links
+        $baseUrl = function_exists('currentUrl') ? currentUrl(includeQuery: false) : '';
+        $buildUrl = function ($p) use ($baseUrl) {
+            return $p ? $baseUrl . '?page=' . $p : null;
+        };
+
         return [
             'data' => $data,
             'meta' => [
@@ -356,14 +408,27 @@ trait HasQueryBuilder
                 'per_page' => $perPage,
                 'current_page' => $page,
                 'last_page' => $lastPage,
+                'filters' => array_filter($params, fn($k) => !in_array($k, ['page', 'per_page']), ARRAY_FILTER_USE_KEY),
+                'path' => $baseUrl,
             ],
             'links' => [
-                'first' => '?page=1',
-                'last' => '?page=' . $lastPage,
-                'next' => $page < $lastPage ? '?page=' . ($page + 1) : null,
-                'prev' => $page > 1 ? '?page=' . ($page - 1) : null,
+                'first' => $buildUrl(1),
+                'last' => $buildUrl($lastPage),
+                'next' => $page < $lastPage ? $buildUrl($page + 1) : null,
+                'prev' => $page > 1 ? $buildUrl($page - 1) : null,
             ],
-            'filters' => array_filter($params, fn($k) => !in_array($k, ['page', 'per_page']), ARRAY_FILTER_USE_KEY),
         ];
+    }
+
+    /**
+     * Search and paginate results as a standardized API response.
+     */
+    public static function searchResponse(?array $params = null): \Plugs\Http\StandardResponse
+    {
+        $paginated = static::search($params);
+
+        return \Plugs\Http\StandardResponse::success($paginated['data'])
+            ->withMeta($paginated['meta'])
+            ->withLinks($paginated['links']);
     }
 }

@@ -94,6 +94,8 @@ class StandardResponse implements JsonSerializable
             $response['debug'] = [
                 'memory' => memory_get_peak_usage(true),
                 'php_version' => PHP_VERSION,
+                'models' => \Plugs\Base\Model\PlugModel::getLoadedModelStats(),
+                'execution' => microtime(true) - ($_SERVER['REQUEST_TIME_FLOAT'] ?? microtime(true)),
             ];
         }
 
