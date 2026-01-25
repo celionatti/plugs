@@ -483,14 +483,6 @@ if (!function_exists('mask')) {
     }
 }
 
-if (!function_exists('url')) {
-    function url(string $path = ''): string
-    {
-        $base = rtrim(env('APP_URL', 'http://localhost'), '/');
-
-        return $base . '/' . ltrim($path, '/');
-    }
-}
 
 if (!function_exists('now')) {
     function now(): int
