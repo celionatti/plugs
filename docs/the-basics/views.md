@@ -1,111 +1,185 @@
 # Views & Components
 
-Views contain the HTML served by your application and separate your controller/application logic from your presentation logic.
+Views contain the HTML served by your application and separate your controller/application logic from your presentation logic. The Plugs View Engine is a powerful, lightweight templating engine that compiles to native PHP code.
 
-## Creating & Rendering Views
+## Basic Usage
 
-Views are stored in the `resources/views` directory. A simple view might look like this:
+Views are stored in the `resources/views` directory. A simple view file `welcome.plug.php`:
 
 ```html
-<!-- View stored in resources/views/greeting.plug.php -->
-<html>
-    <body>
-        <h1>Hello, {{ $name }}</h1>
-    </body>
-</html>
+<!-- resources/views/welcome.plug.php -->
+<h1>Hello, {{ $name }}!</h1>
 ```
 
-Since this view is stored at `resources/views/greeting.plug.php`, we may return it using the global `view` helper like so:
+Render it from a controller or route using the global `view` helper:
 
 ```php
 $router->get('/', function () {
-    return view('greeting', ['name' => 'James']);
+    return view('welcome', ['name' => 'Plugs']);
 });
 ```
 
-## Directives
+---
+
+## 🧩 Directives
 
 The Plugs view engine provides several directives for common PHP operations:
 
 ### Echoing Data
-
 ```html
-{{ $variable }}        <!-- Escaped -->
-{{{ $rawVariable }}}   <!-- Unescaped -->
+{{ $variable }}        <!-- Escaped (XSS Protection) -->
+{!! $rawVariable !!}   <!-- Unescaped (Use for trusted content only) -->
 ```
 
-### Control Structures
-
+### Conditionals
 ```html
-@if($condition)
-    // ...
-@elseif($anotherCondition)
-    // ...
+@if($user->isAdmin())
+    <button>Delete</button>
+@elseif($user->isEditor())
+    <button>Edit</button>
 @else
-    // ...
+    <span>View Only</span>
 @endif
 
+<!-- Semantic Helpers -->
+@auth
+    User is logged in.
+@endauth
+
+@guest
+    Please login.
+@endguest
+```
+
+### Loops
+The `@foreach` directive provides a `$loop` variable for easy iteration control.
+
+```html
 @foreach($users as $user)
-    <p>This is user {{ $user->id }}</p>
+    <div class="{{ $loop->first() ? 'bg-primary' : '' }}">
+        {{ $loop->iteration }}. {{ $user->name }}
+    </div>
 @endforeach
 ```
 
-## Layouts & Inheritance
+**Loop Properties:**
+- `$loop->index`: 0-based index
+- `$loop->iteration`: 1-based iteration counter
+- `$loop->remaining()`: Items remaining in loop
+- `$loop->count`: Total items
+- `$loop->first()` / `$loop->last()`: Booleans
+- `$loop->even()` / `$loop->odd()`: Booleans
+
+### Form Helpers
+Simplified form attribute handling:
+
+```html
+<input type="checkbox" name="active" @checked($user->isActive)>
+<option value="admin" @selected($role == 'admin')>Admin</option>
+<button @disabled($isProcessing)>Submit</button>
+<input type="text" value="@old('username')">
+```
+
+### Session & Flash
+```html
+@session('success')
+    <div class="alert alert-success">
+        @flash('success')
+    </div>
+@endsession
+
+@error('email')
+    <span class="error text-danger">{{ $errors->first('email') }}</span>
+@enderror
+```
+
+---
+
+## 🏗️ Layouts & Inheritance
 
 ### Defining A Layout
-
 ```html
 <!-- resources/views/layouts/app.plug.php -->
 <html>
-    <head>
-        <title>App Name - @yield('title')</title>
-    </head>
-    <body>
-        <div class="container">
-            @yield('content')
-        </div>
-    </body>
+<head>
+    <title>@yield('title', 'My App')</title>
+</head>
+<body>
+    <div class="container">
+        @yield('content')
+    </div>
+    
+    <x-flash />
+</body>
 </html>
 ```
 
 ### Extending A Layout
-
 ```html
 <!-- resources/views/child.plug.php -->
 @extends('layouts.app')
 
-@section('title', 'Page Title')
+@section('title', 'Home Page')
 
 @section('content')
     <p>This is my body content.</p>
 @endsection
 ```
 
-## Components
+---
 
-Components and slots provide similar benefits to sections and layouts; however, some may find the mental model of components and slots easier to understand.
+## 📦 Components
+
+Components allow you to reuse UI elements. They live in `resources/views/components`.
 
 ### Creating A Component
-
 ```html
 <!-- resources/views/components/alert.plug.php -->
-<div class="alert alert-{{ $type }}">
+<div class="alert alert-{{ $type }}" role="alert">
+    <strong>{{ $title }}</strong>
     {{ $slot }}
 </div>
 ```
 
-### Displaying A Component
+### Using A Component
+Use the `x-` syntax:
 
 ```html
-<Alert type="danger">
-    <strong>Whoops!</strong> Something went wrong!
-</Alert>
+<x-alert type="danger" title="Whoops!">
+    Something went wrong.
+</x-alert>
 ```
 
-### Passing Data To Components
-
-You may pass data to components using HTML attributes. Plain strings are passed as-is, while PHP variables should be prefixed with `$`:
+### Passing Data
+You may pass data using HTML attributes. Plain strings are passed as-is, while PHP variables should be prefixed with `:`:
 
 ```html
-<Alert type="info" :message=$message />
+<x-button class="btn-lg" type="submit">Save</x-button>
+<x-user-profile :user=$user />
 ```
+
+---
+
+## 🛡️ Security
+
+### XSS Protection
+By default, `{{ $variable }}` is automatically escaped using `htmlspecialchars`. 
+
+### Content Security Policy (CSP)
+The engine supports injecting a CSP nonce into scripts.
+```php
+// In a middleware
+$viewEngine->setCspNonce($nonce);
+```
+
+---
+
+## 💡 Advanced Directives
+
+| Directive | Description |
+|-----------|-------------|
+| `@inject('service', 'Class')` | Inject a service directly into the view. |
+| `@asset('path')` | Link to an asset with automatic cache busting. |
+| `@style([...])` | Dynamically bind inline styles. |
+| `@json($data)` | Output data as a JSON string. |
+| `@production` ... `@endproduction` | Render content only in production. |

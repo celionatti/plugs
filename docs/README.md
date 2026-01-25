@@ -17,6 +17,7 @@ Welcome to the official documentation for the **Plugs** framework. Plugs is a li
 - [Controllers](file:///docs/the-basics/controllers.md)
 - [Requests & Responses](file:///docs/the-basics/requests.md)
 - [Views & Components](file:///docs/the-basics/views.md)
+- [Navigation](file:///docs/the-basics/navigation.md)
 - [Validation](file:///docs/the-basics/validation.md)
 - [Logging](file:///docs/the-basics/logging.md)
 - [Filesystem Storage](file:///docs/the-basics/storage.md)
