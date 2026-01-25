@@ -56,6 +56,20 @@ class Csrf
     private const TOKEN_LENGTH = 32;
 
     /**
+     * Validation status constants
+     */
+    public const STATUS_VALID = 'valid';
+    public const STATUS_MISSING = 'missing';
+    public const STATUS_MISMATCH = 'mismatch';
+    public const STATUS_EXPIRED = 'expired';
+    public const STATUS_CONTEXT_MISMATCH = 'context_mismatch';
+
+    /**
+     * Last validation error
+     */
+    private static string $lastError = self::STATUS_VALID;
+
+    /**
      * Configuration options
      */
     private static array $config = [
@@ -63,6 +77,8 @@ class Csrf
         'use_per_request_tokens' => false,
         'regenerate_on_verify' => false,
         'strict_mode' => true,
+        'use_masking' => true, // New: Enable token masking for BREACH protection
+        'context_bound' => true, // New: Bind token to session/UA
     ];
 
     /**
@@ -101,9 +117,21 @@ class Csrf
      * @return string The CSRF token
      * @throws \RuntimeException If random bytes generation fails
      */
+    /**
+     * Get the current CSRF token (masked if enabled)
+     *
+     * @return string The CSRF token
+     * @throws \RuntimeException If random bytes generation fails
+     */
     public static function token(): string
     {
-        return self::generate();
+        $token = self::generate();
+
+        if (self::$config['use_masking']) {
+            return self::getMaskedToken($token);
+        }
+
+        return $token;
     }
 
     /**
@@ -132,6 +160,10 @@ class Csrf
         // Clear old per-request tokens when regenerating master token
         if (isset($_SESSION[self::REQUEST_TOKENS_KEY])) {
             unset($_SESSION[self::REQUEST_TOKENS_KEY]);
+        }
+
+        if (self::$config['context_bound']) {
+            $_SESSION['_csrf_context'] = self::getContextFingerprint();
         }
 
         return $token;
@@ -183,7 +215,7 @@ class Csrf
      */
     public static function verify(?string $token = null, bool $consumeRequestToken = true): bool
     {
-        self::ensureSessionStarted();
+        self::$lastError = self::STATUS_VALID;
 
         // Auto-detect token if not provided
         if ($token === null) {
@@ -191,15 +223,33 @@ class Csrf
         }
 
         if ($token === null || $token === '') {
+            self::$lastError = self::STATUS_MISSING;
             return false;
+        }
+
+        // Unmask if it looks like a masked token
+        if (self::$config['use_masking']) {
+            $unmasked = self::unmaskToken($token);
+            if ($unmasked !== null) {
+                $token = $unmasked;
+            }
         }
 
         // Check master token first
         $sessionToken = $_SESSION[self::TOKEN_KEY] ?? null;
 
         if ($sessionToken !== null && self::constantTimeCompare($sessionToken, $token)) {
+            // Check context if enabled
+            if (self::$config['context_bound'] && isset($_SESSION['_csrf_context'])) {
+                if (!self::constantTimeCompare($_SESSION['_csrf_context'], self::getContextFingerprint())) {
+                    self::$lastError = self::STATUS_CONTEXT_MISMATCH;
+                    return false;
+                }
+            }
+
             // Check if token has expired
             if (self::$config['strict_mode'] && self::isTokenExpired()) {
+                self::$lastError = self::STATUS_EXPIRED;
                 self::regenerate();
 
                 return false;
@@ -239,7 +289,18 @@ class Csrf
             }
         }
 
+        self::$lastError = self::STATUS_MISMATCH;
         return false;
+    }
+
+    /**
+     * Get the last validation error
+     *
+     * @return string One of the STATUS_* constants
+     */
+    public static function getLastError(): string
+    {
+        return self::$lastError;
     }
 
     /**
@@ -362,6 +423,70 @@ class Csrf
     }
 
     /**
+     * Mask a CSRF token to prevent BREACH attacks
+     *
+     * @param string $token The raw token
+     * @return string The masked token
+     */
+    public static function getMaskedToken(string $token): string
+    {
+        // Generate random XOR mask
+        $mask = random_bytes(self::TOKEN_LENGTH);
+
+        // XOR the token with the mask
+        $masked = $token ^ $mask;
+
+        // Return mask + masked token, hex encoded
+        return bin2hex($mask . $masked);
+    }
+
+    /**
+     * Unmask a CSRF token
+     *
+     * @param string $maskedToken The masked token
+     * @return string|null The raw token or null if invalid
+     */
+    public static function unmaskToken(string $maskedToken): ?string
+    {
+        // Masked token is hex(mask[32] + masked[32]) = 128 chars
+        if (strlen($maskedToken) !== self::TOKEN_LENGTH * 4) {
+            return null;
+        }
+
+        $decoded = hex2bin($maskedToken);
+        if (!$decoded) {
+            return null;
+        }
+
+        $maskSize = self::TOKEN_LENGTH;
+        $mask = substr($decoded, 0, $maskSize);
+        $masked = substr($decoded, $maskSize);
+
+        return $masked ^ $mask;
+    }
+
+    /**
+     * Set the XSRF-TOKEN cookie for AJAX applications
+     *
+     * @return void
+     */
+    public static function setXsrftokenCookie(): void
+    {
+        self::ensureSessionStarted();
+
+        $token = self::generate(); // Use raw token for the cookie
+
+        setcookie('XSRF-TOKEN', $token, [
+            'expires' => time() + self::$config['token_lifetime'],
+            'path' => '/',
+            'domain' => '',
+            'secure' => isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on',
+            'httponly' => false,
+            'samesite' => 'Lax'
+        ]);
+    }
+
+    /**
      * Ensure session is started
      *
      * @return void
@@ -418,6 +543,20 @@ class Csrf
         $age = time() - $_SESSION[self::TOKEN_TIMESTAMP_KEY];
 
         return $age > self::$config['token_lifetime'];
+    }
+
+    /**
+     * Get the context fingerprint for the current request
+     *
+     * @return string Fingerprint
+     */
+    private static function getContextFingerprint(): string
+    {
+        self::ensureSessionStarted();
+        $sessionId = session_id();
+        $userAgent = $_SERVER['HTTP_USER_AGENT'] ?? 'unknown';
+
+        return hash('sha256', $sessionId . '|' . $userAgent);
     }
 
     /**
@@ -529,6 +668,7 @@ class Csrf
     public static function verifyRequest($request, bool $consumeRequestToken = true): bool
     {
         self::ensureSessionStarted();
+        self::$lastError = self::STATUS_VALID;
 
         $token = null;
 

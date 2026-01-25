@@ -125,7 +125,12 @@ class CsrfMiddleware implements MiddlewareInterface
 
         // Only validate state-changing methods
         if (!in_array($method, self::PROTECTED_METHODS, true)) {
-            return $this->handleSuccess($request, $handler);
+            $response = $this->handleSuccess($request, $handler);
+
+            // Add XSRF-TOKEN cookie for GET/HEAD requests
+            Csrf::setXsrftokenCookie();
+
+            return $response;
         }
 
         // Check if route is excluded
@@ -144,7 +149,12 @@ class CsrfMiddleware implements MiddlewareInterface
         }
 
         // Token is valid - proceed
-        return $this->handleSuccess($request, $handler);
+        $response = $this->handleSuccess($request, $handler);
+
+        // Add XSRF-TOKEN cookie for all successful requests
+        Csrf::setXsrftokenCookie();
+
+        return $response;
     }
 
     /**
@@ -357,6 +367,7 @@ class CsrfMiddleware implements MiddlewareInterface
             'uri' => (string) $request->getUri(),
             'user_agent' => $request->getHeaderLine('User-Agent'),
             'referer' => $request->getHeaderLine('Referer'),
+            'reason' => Csrf::getLastError(),
         ];
 
         // Use error_log if available
