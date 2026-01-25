@@ -123,15 +123,44 @@ class ViewCompiler
         $attributesArray = $this->parseAttributes($attributes);
         $dataPhp = $this->buildDataArray($attributesArray);
 
+        $slots = [];
+        $defaultSlot = $slotContent;
+
+        // Parse named slots: <x-slot name="header">...</x-slot>
+        // Supports: <x-slot name="header">, <x-slot:header>
+        // Use a loop to find all occurrences
+        if (str_contains($slotContent, '<x-slot')) {
+            $defaultSlot = preg_replace_callback(
+                '/<x-slot(?:\s+name=["\']([^"\']+)["\']|:([\w-]+))(.*?)>(.*?)<\/x-slot>/s',
+                function ($matches) use (&$slots) {
+                    $name = !empty($matches[1]) ? $matches[1] : $matches[2];
+                    $slotAttr = $matches[3]; // unused for now, could be passed as slot attributes
+                    $content = $matches[4];
+
+                    // Compile the slot content immediately so it's ready for inclusion
+                    $slots[$name] = $this->compileNonComponentContent($content);
+
+                    // Remove from default slot
+                    return '';
+                },
+                $slotContent
+            );
+        }
+
         $dataArray = $dataPhp;
 
-        if (!empty(trim($slotContent))) {
-            $compiledSlot = $this->compileNonComponentContent($slotContent);
+        // Add Default Slot
+        if (!empty(trim($defaultSlot))) {
+            $compiledSlot = $this->compileNonComponentContent($defaultSlot);
             $dataArray .= (empty($dataArray) ? '' : ', ') . sprintf("'slot' => '%s'", addslashes($compiledSlot));
         }
 
+        // Add Named Slots
+        foreach ($slots as $name => $content) {
+            $dataArray .= (empty($dataArray) ? '' : ', ') . sprintf("'%s' => '%s'", addslashes($name), addslashes($content));
+        }
+
         // Inject ComponentAttributes bag
-        // We pass the same data array to the attributes constructor
         $attributesConstruction = sprintf("new \Plugs\View\ComponentAttributes([%s])", $dataPhp);
         $dataArray .= (empty($dataArray) ? '' : ', ') . "'attributes' => " . $attributesConstruction;
 
@@ -889,6 +918,7 @@ class ViewCompiler
         $content = $this->compileJsonScript($content);
         $content = $this->compileClass($content);
         $content = $this->compileStyle($content);
+        $content = $this->compileVite($content);
 
         return $content;
     }
@@ -1445,6 +1475,74 @@ class ViewCompiler
                     return $base . \'/\' . ltrim($p, \'/\') . $version;
                 })(\'%s\'); ?>',
                     addslashes($path)
+                );
+            },
+            $content
+        );
+    }
+
+    /*
+     * @vite(['resources/css/app.css', 'resources/js/app.js'])
+     * @vite('resources/js/app.js')
+     * Generate Vite scripts/styles with Hot Module Replacement support
+     */
+    private function compileVite(string $content): string
+    {
+        return preg_replace_callback(
+            '/@vite\s*\((.+?)\)/s',
+            function ($matches) {
+                $entry = $matches[1];
+
+                return sprintf(
+                    '<?php echo (function($entry) {
+                    $hotFile = public_path("hot");
+                    
+                    // Dev Mode
+                    if (file_exists($hotFile)) {
+                        $url = trim(file_get_contents($hotFile));
+                        $scripts = "";
+                        
+                        // Client script
+                        $scripts .= "<script type=\"module\" src=\"{$url}/@vite/client\"></script>";
+                        
+                        if (is_array($entry)) {
+                            foreach ($entry as $e) {
+                                $scripts .= "<script type=\"module\" src=\"{$url}/{$e}\"></script>";
+                            }
+                        } else {
+                            $scripts .= "<script type=\"module\" src=\"{$url}/{$entry}\"></script>";
+                        }
+                        return $scripts;
+                    }
+                    
+                    // Production Mode
+                    $manifestFile = public_path("build/manifest.json");
+                    if (!file_exists($manifestFile)) {
+                        return "<!-- Vite manifest not found -->";
+                    }
+                    
+                    $manifest = json_decode(file_get_contents($manifestFile), true);
+                    $output = "";
+                    $entries = is_array($entry) ? $entry : [$entry];
+                    
+                    foreach ($entries as $e) {
+                         if (isset($manifest[$e])) {
+                             $file = $manifest[$e]["file"];
+                             $css = $manifest[$e]["css"] ?? [];
+                             
+                             // Main script
+                             $output .= "<script type=\"module\" src=\"/build/{$file}\"></script>";
+                             
+                             // Associated CSS
+                             foreach ($css as $c) {
+                                 $output .= "<link rel=\"stylesheet\" href=\"/build/{$c}\">";
+                             }
+                         }
+                    }
+                    
+                    return $output;
+                })(%s); ?>',
+                    $entry
                 );
             },
             $content

@@ -43,6 +43,7 @@ class Plugs
 
         $this->dispatcher = new MiddlewareDispatcher();
         $this->dispatcher->add(new \Plugs\Http\Middleware\PreventRequestsDuringMaintenance()); // Global middleware
+        $this->dispatcher->add(new \Plugs\Http\Middleware\ShareErrorsFromSession()); // Errors middleware
 
         $this->fallbackHandler = function (ServerRequestInterface $request) {
             $body = new Stream(fopen('php://temp', 'w+'));

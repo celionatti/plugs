@@ -178,16 +178,18 @@ class ViewEngine
             return "<?php endif; ?>";
         });
 
-        $this->directive('auth', function () {
-            return "<?php if (function_exists('auth') && auth()->check()): ?>";
+        $this->directive('auth', function ($expression) {
+            $guards = $expression ? "{$expression}" : '';
+            return "<?php if (function_exists('auth') && auth()->check($guards)): ?>";
         });
 
         $this->directive('endauth', function () {
             return "<?php endif; ?>";
         });
 
-        $this->directive('guest', function () {
-            return "<?php if (function_exists('auth') && !auth()->check()): ?>";
+        $this->directive('guest', function ($expression) {
+            $guards = $expression ? "{$expression}" : '';
+            return "<?php if (function_exists('auth') && !auth()->check($guards)): ?>";
         });
 
         $this->directive('endguest', function () {
