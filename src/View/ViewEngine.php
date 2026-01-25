@@ -33,7 +33,7 @@ class ViewEngine
 
     private ?string $cspNonce = null;
     private array $compilationAttempts = [];
-    private const MAX_COMPILATIONS_PER_MINUTE = 100;
+
     private array $composers = [];
 
     public function __construct(string $viewPath, string $cachePath, bool $cacheEnabled = false)
@@ -87,18 +87,34 @@ class ViewEngine
 
     private function checkCompilationRateLimit(): void
     {
-        $minute = (int) floor(time() / 60);
+        // Rate limiting removed to prevent production issues during high load/deployments
+    }
 
-        if (!isset($this->compilationAttempts[$minute])) {
-            // Clean old entries
-            $this->compilationAttempts = [$minute => 0];
+    /**
+     * Garbage collect old cache files
+     * @param int $hours Cache age in hours (default 24*30 = 1 month)
+     */
+    public function gc(int $hours = 720): int
+    {
+        if (!$this->cacheEnabled || !is_dir($this->cachePath)) {
+            return 0;
         }
 
-        $this->compilationAttempts[$minute]++;
+        $count = 0;
+        $now = time();
+        $files = glob($this->cachePath . DIRECTORY_SEPARATOR . '*.php');
 
-        if ($this->compilationAttempts[$minute] > self::MAX_COMPILATIONS_PER_MINUTE) {
-            throw new RuntimeException('View compilation rate limit exceeded');
+        foreach ($files as $file) {
+            if (is_file($file)) {
+                $mtime = filemtime($file);
+                if ($now - $mtime > ($hours * 3600)) {
+                    @unlink($file);
+                    $count++;
+                }
+            }
         }
+
+        return $count;
     }
 
     public function composer(string|array $views, callable $callback): void
@@ -408,7 +424,7 @@ class ViewEngine
 
         try {
             include $compiled;
-            $childContent = ob_get_clean();
+            $childContent = ob_get_clean() ?: '';
             error_reporting($previousErrorLevel);
 
             /** @phpstan-ignore-next-line */
@@ -445,7 +461,7 @@ class ViewEngine
                 // Include layout information for SPA to detect if a full reload is needed
                 /** @phpstan-ignore-next-line */
                 if (isset($__extends) && $__extends) {
-                    $output = "<meta name=\"plugs-layout\" content=\"{$__extends}\">\n" . $output;
+                    $output = "<meta name=\"plugs-layout\" content=\"{$__extends}\">\n" . (string) $output;
                 }
 
                 return $output;
@@ -492,7 +508,7 @@ class ViewEngine
 
         try {
             eval ('?>' . $compiledContent);
-            $childContent = ob_get_clean();
+            $childContent = ob_get_clean() ?: '';
             error_reporting($previousErrorLevel);
 
             /** @phpstan-ignore-next-line */
@@ -529,7 +545,7 @@ class ViewEngine
                 // Include layout information for SPA to detect if a full reload is needed
                 /** @phpstan-ignore-next-line */
                 if (isset($__extends) && $__extends) {
-                    $output = "<meta name=\"plugs-layout\" content=\"{$__extends}\">\n" . $output;
+                    $output = "<meta name=\"plugs-layout\" content=\"{$__extends}\">\n" . (string) $output;
                 }
 
                 return $output;

@@ -133,7 +133,7 @@ class Plugs
         $engine = new \Plugs\View\ViewEngine(
             $config['views'],
             $config['cache'],
-            !self::isProduction()
+            self::isProduction()
         );
 
         $container->instance(\Plugs\View\ViewEngine::class, $engine);
