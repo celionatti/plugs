@@ -251,6 +251,15 @@ trait HasQueryBuilder
     }
 
     /**
+     * Paginate results and return a Pagination object
+     */
+    public static function paginateLinks(int $perPage = 15, ?int $page = null, array $columns = ['*']): \Plugs\Paginator\Pagination
+    {
+        $paginated = static::paginate($perPage, $page, $columns);
+        return \Plugs\Paginator\Pagination::fromArray($paginated);
+    }
+
+    /**
      * Get paginated results as a standardized API response.
      */
     public static function paginateResponse(int $perPage = 15, ?int $page = null, array $columns = ['*']): \Plugs\Http\StandardResponse

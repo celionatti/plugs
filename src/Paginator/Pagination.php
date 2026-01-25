@@ -13,18 +13,14 @@ use Plugs\Database\Collection;
  * Fully compatible with PlugModel pagination.
  *
  * @example
- * // Basic pagination
- * $users = User::paginate(15, 1);
+ * // Render with a custom view template (e.g. for Tailwind or Bootstrap)
+ * echo $users['paginator']->links('pagination.tailwind');
+ *
+ * // Standard render (Shades of Green)
  * echo $users['paginator']->render();
  *
  * // Load more style
  * echo $users['paginator']->renderLoadMore();
- *
- * // Simple prev/next
- * echo $users['paginator']->renderSimple();
- *
- * // Numbers with ellipsis
- * echo $users['paginator']->renderWithEllipsis();
  */
 class Pagination
 {
@@ -37,6 +33,7 @@ class Pagination
     protected int $to;
     protected ?string $path = null;
     protected array $query = [];
+    protected $presenter;
     protected array $options = [
         // Display options
         'show_numbers' => true,
@@ -46,51 +43,60 @@ class Pagination
         'ellipsis_enabled' => true,
 
         // CSS Classes
-        'container_class' => 'pagination-container',
-        'pagination_class' => 'pagination',
-        'link_class' => 'page-link',
+        'container_class' => 'plugs-pagination-container',
+        'pagination_class' => 'plugs-pagination',
+        'link_class' => 'plugs-page-link',
         'active_class' => 'active',
         'disabled_class' => 'disabled',
-        'info_class' => 'pagination-info',
-        'ellipsis_class' => 'page-ellipsis',
+        'info_class' => 'plugs-pagination-info',
+        'ellipsis_class' => 'plugs-page-ellipsis',
 
-        // Text/Icons
-        'prev_text' => '&laquo; Previous',
-        'next_text' => 'Next &raquo;',
-        'first_text' => '&laquo;&laquo; First',
-        'last_text' => 'Last &raquo;&raquo;',
+        // Text/Icons (SVG Icons for modern look)
+        'prev_text' => '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path fill-rule="evenodd" d="M11.354 1.646a.5.5 0 0 1 0 .708L5.707 8l5.647 5.646a.5.5 0 0 1-.708.708l-6-6a.5.5 0 0 1 0-.708l6-6a.5.5 0 0 1 .708 0z"/></svg>',
+        'next_text' => '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path fill-rule="evenodd" d="M4.646 1.646a.5.5 0 0 1 .708 0l6 6a.5.5 0 0 1 0 .708l-6 6a.5.5 0 0 1-.708-.708L10.293 8 4.646 2.354a.5.5 0 0 1 0-.708z"/></svg>',
+        'first_text' => '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path fill-rule="evenodd" d="M8.354 1.646a.5.5 0 0 1 0 .708L2.707 8l5.647 5.646a.5.5 0 0 1-.708.708l-6-6a.5.5 0 0 1 0-.708l6-6a.5.5 0 0 1 .708 0z"/><path fill-rule="evenodd" d="M12.354 1.646a.5.5 0 0 1 0 .708L6.707 8l5.647 5.646a.5.5 0 0 1-.708.708l-6-6a.5.5 0 0 1 0-.708l6-6a.5.5 0 0 1 .708 0z"/></svg>',
+        'last_text' => '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path fill-rule="evenodd" d="M3.646 1.646a.5.5 0 0 1 .708 0l6 6a.5.5 0 0 1 0 .708l-6 6a.5.5 0 0 1-.708-.708L9.293 8 3.646 2.354a.5.5 0 0 1 0-.708z"/><path fill-rule="evenodd" d="M7.646 1.646a.5.5 0 0 1 .708 0l6 6a.5.5 0 0 1 0 .708l-6 6a.5.5 0 0 1-.708-.708L13.293 8 7.646 2.354a.5.5 0 0 1 0-.708z"/></svg>',
         'ellipsis_text' => '...',
         'load_more_text' => 'Load More',
         'loading_text' => 'Loading...',
 
+        // Styling options
+        'theme' => 'green', // green, dark, minimalist
+        'rounded' => true,
+        'shadow' => true,
+        'animated' => true,
+
         // Info format
-        'info_format' => 'Showing {from} to {to} of {total} results',
-        'info_format_single' => 'Showing {total} result',
+        'info_format' => 'Showing <strong>{from}</strong> to <strong>{to}</strong> of <strong>{total}</strong> results',
+        'info_format_single' => 'Showing <strong>{total}</strong> result',
         'info_format_empty' => 'No results found',
 
         // AJAX options
         'ajax_enabled' => false,
         'ajax_container' => '#results-container',
         'ajax_loader' => '.loader',
+
+        // New Features
+        'show_goto' => false,
+        'goto_text' => 'Go to page',
     ];
 
     /**
      * Constructor
      */
-    public function __construct(array $items, int $perPage = 15, int $currentPage = 1, ?int $total = null)
+    public function __construct(array|Collection $items, int $perPage = 15, int $currentPage = 1, ?int $total = null)
     {
+        $this->items = $items instanceof Collection ? $items->all() : $items;
         $this->perPage = max(1, $perPage);
         $this->currentPage = max(1, $currentPage);
-        $this->total = $total ?? count($items);
+        $this->total = $total ?? count($this->items);
         $this->lastPage = (int) ceil($this->total / $this->perPage);
         $this->currentPage = min($this->currentPage, max(1, $this->lastPage));
 
         $offset = ($this->currentPage - 1) * $this->perPage;
 
-        if ($total !== null) {
-            $this->items = $items;
-        } else {
-            $this->items = array_slice($items, $offset, $this->perPage);
+        if ($total === null) {
+            $this->items = array_slice($this->items, $offset, $this->perPage);
         }
 
         $this->from = $this->total > 0 ? $offset + 1 : 0;
@@ -109,33 +115,29 @@ class Pagination
         $offset = ($currentPage - 1) * $perPage;
         $collection = $query->offset($offset)->limit($perPage)->get();
 
-        $items = [];
-        foreach ($collection as $item) {
-            $items[] = $item;
-        }
-
-        return new self($items, $perPage, $currentPage, $total);
+        return new self($collection, $perPage, $currentPage, $total);
     }
 
     /**
-     * Create paginator from array data in PlugModel format
+     * Create paginator from array data (supports PlugModel pagination format)
      */
     public static function fromArray(array $paginationData): self
     {
         $data = $paginationData['data'] ?? [];
 
-        // Handle Collection objects
-        if ($data instanceof Collection) {
-            $items = $data->all();
+        // Handle meta structure from PlugModel
+        if (isset($paginationData['meta'])) {
+            $meta = $paginationData['meta'];
+            $perPage = $meta['per_page'] ?? 15;
+            $currentPage = $meta['current_page'] ?? 1;
+            $total = $meta['total'] ?? (is_countable($data) ? count($data) : 0);
         } else {
-            $items = is_array($data) ? $data : [];
+            $perPage = $paginationData['per_page'] ?? 15;
+            $currentPage = $paginationData['current_page'] ?? 1;
+            $total = $paginationData['total'] ?? (is_countable($data) ? count($data) : 0);
         }
 
-        $perPage = $paginationData['per_page'] ?? 15;
-        $currentPage = $paginationData['current_page'] ?? 1;
-        $total = $paginationData['total'] ?? count($items);
-
-        return new self($items, $perPage, $currentPage, $total);
+        return new self($data, $perPage, $currentPage, $total);
     }
 
     /**
@@ -165,6 +167,15 @@ class Pagination
     {
         $this->query = array_merge($this->query, $query);
 
+        return $this;
+    }
+
+    /**
+     * Set a custom presenter for rendering
+     */
+    public function setPresenter(callable $presenter): self
+    {
+        $this->presenter = $presenter;
         return $this;
     }
 
@@ -252,6 +263,17 @@ class Pagination
         return $this->path . ($queryString ? '?' . $queryString : '');
     }
 
+    public function previousPageUrl(): ?string
+    {
+        return $this->hasPreviousPage() ? $this->url($this->previousPage()) : null;
+    }
+
+    public function nextPageUrl(): ?string
+    {
+        return $this->hasNextPage() ? $this->url($this->nextPage()) : null;
+    }
+
+
     /**
      * Get page range with ellipsis support
      */
@@ -309,6 +331,10 @@ class Pagination
      */
     protected function getCurrentPath(): string
     {
+        if (isset($_SERVER['PHP_SELF']) && strpos($_SERVER['PHP_SELF'], 'index.php') !== false) {
+            $path = $_SERVER['REQUEST_URI'] ?? '/';
+            return strtok($path, '?');
+        }
         return strtok($_SERVER['REQUEST_URI'] ?? '/', '?');
     }
 
@@ -320,13 +346,20 @@ class Pagination
         $query = $_GET;
         unset($query['page']);
 
+        // Sanitize query to avoid XSS
+        foreach ($query as $key => $value) {
+            if (is_string($value)) {
+                $query[$key] = htmlspecialchars($value, ENT_QUOTES, 'UTF-8');
+            }
+        }
+
         return $query;
     }
 
     /**
      * Render info text
      */
-    protected function renderInfo(): string
+    public function renderInfo(): string
     {
         if ($this->total === 0) {
             return sprintf(
@@ -354,48 +387,140 @@ class Pagination
      */
     public function render(): string
     {
+        if (isset($this->presenter)) {
+            return ($this->presenter)($this);
+        }
+
+        return $this->renderWithEllipsis();
+    }
+
+    /**
+     * Render the pagination links using a view template or default renderer.
+     *
+     * @param string|null $view Template name
+     * @param array $data Extra data for the view
+     * @return string
+     */
+    public function links(?string $view = null, array $data = []): string
+    {
+        if ($view) {
+            return view($view, array_merge([
+                'paginator' => $this,
+                'elements' => $this->elements()
+            ], $data));
+        }
+
+        return $this->render();
+    }
+
+    /**
+     * Get the elements for the pagination (useful for custom views)
+     *
+     * @return array
+     */
+    public function elements(): array
+    {
+        $range = $this->getPageRangeWithEllipsis();
+        $elements = [];
+
+        // First page
+        $elements[] = [
+            'type' => 'page',
+            'page' => 1,
+            'url' => $this->url(1),
+            'is_active' => $this->currentPage === 1
+        ];
+
+        if ($range['show_first_ellipsis']) {
+            $elements[] = ['type' => 'ellipsis'];
+        }
+
+        foreach ($range['pages'] as $page) {
+            $elements[] = [
+                'type' => 'page',
+                'page' => $page,
+                'url' => $this->url($page),
+                'is_active' => $this->currentPage === $page
+            ];
+        }
+
+        if ($range['show_last_ellipsis']) {
+            $elements[] = ['type' => 'ellipsis'];
+        }
+
+        if ($this->lastPage > 1) {
+            $elements[] = [
+                'type' => 'page',
+                'page' => $this->lastPage,
+                'url' => $this->url($this->lastPage),
+                'is_active' => $this->currentPage === $this->lastPage
+            ];
+        }
+
+        return $elements;
+    }
+
+    /**
+     * Render floating style pagination (modern centered look)
+     */
+    public function renderFloating(): string
+    {
         if (!$this->hasPages()) {
             return $this->renderInfo();
         }
 
-        $html = '<div class="' . $this->options['container_class'] . '">';
-        $html .= $this->renderInfo();
+        $range = $this->getPageRangeWithEllipsis();
+
+        $html = '<div class="' . $this->options['container_class'] . ' plugs-pagination-floating ' . $this->getThemeClasses() . '">';
         $html .= '<nav aria-label="Page navigation">';
         $html .= '<ul class="' . $this->options['pagination_class'] . '">';
 
-        // First
-        if ($this->options['show_first_last']) {
-            $html .= $this->renderFirstLink();
-        }
-
         // Previous
-        if ($this->options['show_prev_next']) {
-            $html .= $this->renderPrevLink();
+        $html .= $this->renderPrevLink();
+
+        // First page
+        $html .= $this->currentPage === 1
+            ? $this->renderActiveLink(1)
+            : $this->renderPageLink(1);
+
+        // First ellipsis
+        if ($range['show_first_ellipsis']) {
+            $html .= $this->renderEllipsis();
         }
 
-        // Numbers
-        if ($this->options['show_numbers']) {
-            foreach ($this->getPageRange() as $page) {
-                $html .= $page === $this->currentPage
-                    ? $this->renderActiveLink($page)
-                    : $this->renderPageLink($page);
-            }
+        // Middle pages
+        foreach ($range['pages'] as $page) {
+            $html .= $page === $this->currentPage
+                ? $this->renderActiveLink($page)
+                : $this->renderPageLink($page);
+        }
+
+        // Last ellipsis
+        if ($range['show_last_ellipsis']) {
+            $html .= $this->renderEllipsis();
+        }
+
+        // Last page
+        if ($this->lastPage > 1) {
+            $html .= $this->currentPage === $this->lastPage
+                ? $this->renderActiveLink($this->lastPage)
+                : $this->renderPageLink($this->lastPage);
         }
 
         // Next
-        if ($this->options['show_prev_next']) {
-            $html .= $this->renderNextLink();
+        $html .= $this->renderNextLink();
+
+        $html .= '</ul>';
+
+        if ($this->options['show_goto']) {
+            $html .= $this->renderGoto();
         }
 
-        // Last
-        if ($this->options['show_first_last']) {
-            $html .= $this->renderLastLink();
-        }
-
-        $html .= '</ul></nav></div>';
+        $html .= '</nav></div>';
 
         return $html;
     }
+
 
     /**
      * Render pagination with ellipsis (1 ... 5 6 7 ... 20)
@@ -408,7 +533,7 @@ class Pagination
 
         $range = $this->getPageRangeWithEllipsis();
 
-        $html = '<div class="' . $this->options['container_class'] . '">';
+        $html = '<div class="' . $this->options['container_class'] . ' ' . $this->getThemeClasses() . '">';
         $html .= $this->renderInfo();
         $html .= '<nav aria-label="Page navigation">';
         $html .= '<ul class="' . $this->options['pagination_class'] . '">';
@@ -452,7 +577,13 @@ class Pagination
             $html .= $this->renderNextLink();
         }
 
-        $html .= '</ul></nav></div>';
+        $html .= '</ul>';
+
+        if ($this->options['show_goto']) {
+            $html .= $this->renderGoto();
+        }
+
+        $html .= '</nav></div>';
 
         return $html;
     }
@@ -552,24 +683,26 @@ class Pagination
     /**
      * Individual link renderers
      */
-    protected function renderPageLink(int $page): string
+    protected function renderPageLink(int $page, ?string $text = null): string
     {
+        $text = $text ?? (string) $page;
         return sprintf(
-            '<li class="page-item"><a href="%s" class="%s" aria-label="Page %d">%d</a></li>',
+            '<li class="plugs-page-item"><a href="%s" class="%s" aria-label="Page %d">%s</a></li>',
             $this->url($page),
             $this->options['link_class'],
             $page,
-            $page
+            $text
         );
     }
 
     protected function renderActiveLink(int $page): string
     {
         return sprintf(
-            '<li class="page-item %s"><a href="%s" class="%s" aria-current="page">%d</a></li>',
+            '<li class="plugs-page-item %s"><a href="%s" class="%s" aria-current="page" aria-label="Current page, Page %d">%d</a></li>',
             $this->options['active_class'],
             $this->url($page),
             $this->options['link_class'],
+            $page,
             $page
         );
     }
@@ -580,7 +713,7 @@ class Pagination
 
         if (!$this->hasPreviousPage()) {
             return sprintf(
-                '<li class="page-item %s"><span class="%s">%s</span></li>',
+                '<li class="plugs-page-item %s"><span class="%s">%s</span></li>',
                 $this->options['disabled_class'],
                 $this->options['link_class'],
                 $text
@@ -588,7 +721,7 @@ class Pagination
         }
 
         return sprintf(
-            '<li class="page-item"><a href="%s" class="%s" rel="prev" aria-label="Previous page">%s</a></li>',
+            '<li class="plugs-page-item"><a href="%s" class="%s" rel="prev" aria-label="Previous page">%s</a></li>',
             $this->url($this->previousPage()),
             $this->options['link_class'],
             $text
@@ -601,7 +734,7 @@ class Pagination
 
         if (!$this->hasNextPage()) {
             return sprintf(
-                '<li class="page-item %s"><span class="%s">%s</span></li>',
+                '<li class="plugs-page-item %s"><span class="%s">%s</span></li>',
                 $this->options['disabled_class'],
                 $this->options['link_class'],
                 $text
@@ -609,7 +742,7 @@ class Pagination
         }
 
         return sprintf(
-            '<li class="page-item"><a href="%s" class="%s" rel="next" aria-label="Next page">%s</a></li>',
+            '<li class="plugs-page-item"><a href="%s" class="%s" rel="next" aria-label="Next page">%s</a></li>',
             $this->url($this->nextPage()),
             $this->options['link_class'],
             $text
@@ -622,12 +755,7 @@ class Pagination
             return '';
         }
 
-        return sprintf(
-            '<li class="page-item"><a href="%s" class="%s" aria-label="First page">%s</a></li>',
-            $this->url(1),
-            $this->options['link_class'],
-            $this->options['first_text']
-        );
+        return $this->renderPageLink(1, $this->options['first_text']);
     }
 
     protected function renderLastLink(): string
@@ -636,22 +764,218 @@ class Pagination
             return '';
         }
 
-        return sprintf(
-            '<li class="page-item"><a href="%s" class="%s" aria-label="Last page">%s</a></li>',
-            $this->url($this->lastPage),
-            $this->options['link_class'],
-            $this->options['last_text']
-        );
+        return $this->renderPageLink($this->lastPage, $this->options['last_text']);
     }
 
     protected function renderEllipsis(): string
     {
         return sprintf(
-            '<li class="page-item %s"><span class="%s">%s</span></li>',
+            '<li class="plugs-page-item %s"><span class="%s">%s</span></li>',
             $this->options['ellipsis_class'],
             $this->options['link_class'],
             $this->options['ellipsis_text']
         );
+    }
+
+
+    /**
+     * Render JSON-LD metadata for search engines
+     */
+    public function renderJsonLd(): string
+    {
+        $data = [
+            '@context' => 'https://schema.org',
+            '@type' => 'SearchResultsPage',
+            'mainEntity' => [
+                '@type' => 'ItemList',
+                'itemListElement' => [],
+            ],
+            'pagination' => [
+                '@type' => 'DataFeed',
+                'totalItems' => $this->total,
+                'itemsPerPage' => $this->perPage,
+                'currentPage' => $this->currentPage,
+                'totalPages' => $this->lastPage,
+            ]
+        ];
+
+        // Add typical list items if data available
+        $position = 1;
+        foreach ($this->items as $item) {
+            $data['mainEntity']['itemListElement'][] = [
+                '@type' => 'ListItem',
+                'position' => $position++,
+                'url' => method_exists($item, 'url') ? $item->url() : null,
+                'name' => $item->name ?? $item->title ?? null,
+            ];
+        }
+
+        return '<script type="application/ld+json">' . json_encode($data, JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT) . '</script>';
+    }
+
+    /**
+     * Render Go to Page input
+     */
+    protected function renderGoto(): string
+    {
+        return sprintf(
+            '<div class="plugs-pagination-goto">
+                <span>%s</span>
+                <input type="number" min="1" max="%d" value="%d" onchange="window.location.href=\'%s\'.replace(\'PAGE_PLACEHOLDER\', this.value)">
+            </div>',
+            $this->options['goto_text'],
+            $this->lastPage,
+            $this->currentPage,
+            str_replace('page=999999', 'page=PAGE_PLACEHOLDER', $this->url(999999))
+        );
+    }
+
+    /**
+     * Get theme classes
+     */
+    protected function getThemeClasses(): string
+    {
+        $classes = 'plugs-theme-' . $this->options['theme'];
+        if ($this->options['rounded'])
+            $classes .= ' plugs-rounded';
+        if ($this->options['shadow'])
+            $classes .= ' plugs-shadow';
+        if ($this->options['animated'])
+            $classes .= ' plugs-animated';
+        return $classes;
+    }
+
+    /**
+     * Get standard CSS for the pagination
+     */
+    public static function getStyles(): string
+    {
+        return <<<'CSS'
+<style>
+.plugs-pagination-container {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1rem 0;
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+}
+
+.plugs-pagination-info {
+    font-size: 0.875rem;
+    color: #6b7280;
+}
+
+.plugs-pagination {
+    display: flex;
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    gap: 0.25rem;
+}
+
+.plugs-page-link {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 2.25rem;
+    height: 2.25rem;
+    padding: 0 0.75rem;
+    font-size: 0.875rem;
+    font-weight: 500;
+    text-decoration: none;
+    border-radius: 0.375rem;
+    transition: all 0.2s ease;
+}
+
+/* Green Theme */
+.plugs-theme-green .plugs-page-link {
+    color: #2d6a4f;
+    background: #f0fdf4;
+    border: 1px solid #dcfce7;
+}
+
+.plugs-theme-green .plugs-page-link:hover:not(.disabled) {
+    background: #dcfce7;
+    border-color: #bbf7d0;
+    transform: translateY(-1px);
+}
+
+.plugs-theme-green .active .plugs-page-link {
+    background: #2d6a4f;
+    color: white;
+    border-color: #2d6a4f;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+}
+
+.plugs-theme-green .disabled .plugs-page-link {
+    color: #9ca3af;
+    background: #f9fafb;
+    border-color: #f3f4f6;
+    cursor: not-allowed;
+}
+
+/* Floating Style */
+.plugs-pagination-floating {
+    justify-content: center;
+    background: rgba(255, 255, 255, 0.8);
+    backdrop-filter: blur(8px);
+    border-radius: 1rem !important;
+    padding: 0.75rem !important;
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+}
+
+.plugs-pagination-floating .plugs-pagination-info {
+    display: none;
+}
+
+/* Go to Page */
+.plugs-pagination-goto {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-left: 1rem;
+    font-size: 0.875rem;
+    color: #6b7280;
+}
+
+.plugs-pagination-goto input {
+    width: 3.5rem;
+    padding: 0.25rem 0.5rem;
+    border: 1px solid #d1d5db;
+    border-radius: 0.25rem;
+    outline: none;
+}
+
+.plugs-pagination-goto input:focus {
+    border-color: #2d6a4f;
+    ring: 2px solid rgba(45, 106, 79, 0.2);
+}
+
+/* Animated */
+.plugs-animated .plugs-page-link {
+    transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275), background-color 0.2s;
+}
+
+.plugs-animated .plugs-page-link:hover:not(.disabled) {
+    transform: scale(1.1);
+}
+
+/* Rounded */
+.plugs-rounded .plugs-page-link {
+    border-radius: 9999px;
+}
+
+/* Shadow */
+.plugs-shadow .plugs-pagination {
+    filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.05));
+}
+
+/* SVG Icon alignment */
+.plugs-page-link svg {
+    display: block;
+}
+</style>
+CSS;
     }
 
     /**
@@ -680,7 +1004,12 @@ document.addEventListener('DOMContentLoaded', function() {
             .then(html => {
                 const parser = new DOMParser();
                 const doc = parser.parseFromString(html, 'text/html');
-                const newItems = doc.querySelector(this.dataset.container).innerHTML;
+                const newItemsContainer = doc.querySelector(this.dataset.container);
+                if (!newItemsContainer) {
+                    console.error('AJAX Container not found in response');
+                    return;
+                }
+                const newItems = newItemsContainer.innerHTML;
                 const newBtn = doc.querySelector('.btn-load-more');
                 
                 if (container) {
@@ -707,6 +1036,7 @@ document.addEventListener('DOMContentLoaded', function() {
 </script>
 JS;
     }
+
 
     /**
      * Convert to array
