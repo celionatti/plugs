@@ -386,7 +386,14 @@ class ViewCompiler
 
     private function compileRawEchos(string $content): string
     {
-        // Raw output: {{{ $var }}}
+        // Raw output: {!! $var !!}
+        $content = preg_replace(
+            '/\{\!\!\s*(.+?)\s*\!\!\}/s',
+            '<?php echo $1; ?>',
+            $content
+        );
+
+        // Legacy Raw output: {{{ $var }}}
         return preg_replace(
             '/\{\{\{\s*(.+?)\s*\}\}\}/s',
             '<?php echo $1; ?>',
