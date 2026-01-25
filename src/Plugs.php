@@ -37,6 +37,7 @@ class Plugs
         $this->bootstrapView();
         $this->bootstrapDatabase();
         $this->bootstrapSocialite();
+        $this->bootstrapPdf();
 
         $this->registerConfiguredProviders();
         $this->bootConfiguredProviders();
@@ -165,6 +166,14 @@ class Plugs
 
         $socialite = new \Plugs\Security\OAuth\SocialiteManager($container);
         $container->instance('socialite', $socialite);
+    }
+
+    private function bootstrapPdf(): void
+    {
+        $container = \Plugs\Container\Container::getInstance();
+
+        $pdf = new \Plugs\Pdf\PdfServiceProvider($container);
+        $pdf->register();
     }
 
     public function pipe(MiddlewareInterface $middleware): self
