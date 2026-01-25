@@ -70,6 +70,9 @@ class ConsoleKernel
 
         'serve' => ServeCommand::class,
         'cache:clear' => CacheClearCommand::class,
+        'config:cache' => \Plugs\Console\Commands\ConfigCacheCommand::class,
+        'config:clear' => \Plugs\Console\Commands\ConfigClearCommand::class,
+        'optimize' => \Plugs\Console\Commands\OptimizeCommand::class,
 
         'migrate' => MigrateCommand::class,
         'migrate:rollback' => MigrateRollbackCommand::class,
@@ -102,6 +105,7 @@ class ConsoleKernel
         'route:show' => 'route:list',
         's' => 'serve',
         'cc' => 'cache:clear',
+        'oc' => 'optimize',
         'i' => 'inspire',
         'm' => 'migrate',
         'm:r' => 'migrate:rollback',
@@ -128,7 +132,7 @@ class ConsoleKernel
             'make:api-request',
         ],
         'Routes' => ['route:list', 'route:cache', 'route:clear', 'route:test'],
-        'Utility' => ['serve', 'cache:clear', 'queue:work', 'health', 'storage:link'],
+        'Utility' => ['serve', 'cache:clear', 'config:cache', 'optimize', 'queue:work', 'health', 'storage:link'],
         'Scheduling' => ['schedule:run', 'schedule:list'],
         'Database' => ['migrate', 'migrate:rollback', 'migrate:status', 'migrate:reset', 'make:migration'],
     ];

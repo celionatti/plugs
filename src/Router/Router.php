@@ -965,9 +965,16 @@ class Router
         $this->routeCache[$key] = $route;
     }
 
-    public function clearCache(): void
+    public function clearCache(bool $physical = false): void
     {
         $this->routeCache = [];
+
+        if ($physical) {
+            $file = $this->getPersistentCachePath();
+            if (file_exists($file)) {
+                @unlink($file);
+            }
+        }
     }
 
     public function setCacheEnabled(bool $enabled): void
@@ -976,6 +983,109 @@ class Router
 
         if (!$enabled) {
             $this->clearCache();
+        }
+    }
+
+    /**
+     * Cache all registered routes to a physical file
+     */
+    public function cacheRoutes(): bool
+    {
+        $data = [
+            'routes' => [],
+            'namedRoutes' => []
+        ];
+
+        foreach ($this->routes as $method => $routes) {
+            foreach ($routes as $route) {
+                $routeData = $route->toArray();
+
+                // We must handle the handler separately as it might be a closure
+                $handler = $route->getHandler();
+                if ($handler instanceof \Closure) {
+                    throw new RuntimeException("Route [{$route->getPath()}] uses a closure and cannot be cached. Use controller actions instead.");
+                }
+
+                $routeData['handler'] = $handler;
+                $data['routes'][$method][] = $routeData;
+
+                if ($route->isNamed()) {
+                    $data['namedRoutes'][$route->getName()] = [
+                        'method' => $method,
+                        'index' => count($data['routes'][$method]) - 1
+                    ];
+                }
+            }
+        }
+
+        $cacheFile = $this->getPersistentCachePath();
+        $this->ensureCacheDirectoryExists(dirname($cacheFile));
+
+        $content = '<?php return ' . var_export($data, true) . ';';
+        return file_put_contents($cacheFile, $content) !== false;
+    }
+
+    /**
+     * Load routes from the physical cache file
+     */
+    public function loadFromPersistentCache(): bool
+    {
+        $cacheFile = $this->getPersistentCachePath();
+        if (!file_exists($cacheFile)) {
+            return false;
+        }
+
+        $data = require $cacheFile;
+
+        foreach ($data['routes'] as $method => $routesData) {
+            foreach ($routesData as $routeData) {
+                $handler = $routeData['handler'];
+                unset($routeData['handler']);
+
+                $route = new Route(
+                    $routeData['method'],
+                    $routeData['path'],
+                    $handler,
+                    $routeData['middleware'],
+                    $this
+                );
+
+                if ($routeData['name']) {
+                    $route->name($routeData['name']);
+                }
+
+                if (!empty($routeData['where'])) {
+                    $route->where($routeData['where']);
+                }
+
+                if (!empty($routeData['defaults'])) {
+                    $route->defaults($routeData['defaults']);
+                }
+
+                if ($routeData['domain']) {
+                    $route->domain($routeData['domain']);
+                }
+
+                if ($routeData['scheme']) {
+                    $route->scheme($routeData['scheme']);
+                }
+
+                $this->routes[$method][] = $route;
+            }
+        }
+
+        return true;
+    }
+
+    private function getPersistentCachePath(): string
+    {
+        return BASE_PATH . 'storage/framework/routes.php';
+    }
+
+    private function ensureCacheDirectoryExists(string $path): void
+    {
+        if (!is_dir($path)) {
+            mkdir($path, 0755, true);
         }
     }
 

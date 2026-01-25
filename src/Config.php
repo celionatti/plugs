@@ -170,6 +170,11 @@ class Config
         }
 
         $cacheFile = self::getCachePath();
+        $cacheDir = dirname($cacheFile);
+        if (!is_dir($cacheDir)) {
+            mkdir($cacheDir, 0755, true);
+        }
+
         $content = '<?php return ' . var_export($allConfig, true) . ';';
 
         return file_put_contents($cacheFile, $content) !== false;
@@ -183,12 +188,14 @@ class Config
         $cacheFile = self::getCachePath();
 
         if (file_exists($cacheFile)) {
-            self::$config = require $cacheFile;
-            foreach (self::$config as $file => $values) {
-                self::$loaded[$file] = true;
+            $cached = require $cacheFile;
+            if (is_array($cached)) {
+                self::$config = $cached;
+                foreach (self::$config as $file => $values) {
+                    self::$loaded[$file] = true;
+                }
+                return true;
             }
-
-            return true;
         }
 
         return false;

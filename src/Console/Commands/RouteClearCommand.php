@@ -11,7 +11,7 @@ namespace Plugs\Console\Commands;
 */
 
 use Plugs\Console\Command;
-use Plugs\Console\Support\Filesystem;
+use Plugs\Router\Router;
 
 class RouteClearCommand extends Command
 {
@@ -21,17 +21,11 @@ class RouteClearCommand extends Command
     {
         $this->title('Clear Route Cache');
 
-        $cachePath = getcwd() . '/storage/cache/routes.cache';
+        $router = app(Router::class);
 
-        if (!Filesystem::exists($cachePath)) {
-            $this->info('Route cache does not exist.');
-
-            return 0;
-        }
-
-        $this->task('Removing route cache', function () use ($cachePath) {
-            Filesystem::delete($cachePath);
-            usleep(200000);
+        $this->task('Removing route cache', function () use ($router) {
+            $router->clearCache(true);
+            return true;
         });
 
         $this->success('Route cache cleared successfully!');
