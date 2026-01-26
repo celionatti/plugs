@@ -34,17 +34,24 @@ class MigrateStatusCommand extends Command
             }
 
             $this->info("Migration Status:");
-            $this->line(str_repeat('-', 60));
-            $this->line(sprintf("%-40s | %-10s | %-5s", "Migration", "Ran?", "Batch"));
-            $this->line(str_repeat('-', 60));
+            $this->line(str_repeat('-', 85));
+            $this->line(sprintf("%-45s | %-6s | %-5s | %-20s | %-8s", "Migration", "Ran?", "Batch", "Ran At", "Status"));
+            $this->line(str_repeat('-', 85));
 
             foreach ($status as $item) {
                 $ranLabel = $item['ran'] ? '<success>Yes</success>' : '<error>No</error>';
                 $batchLabel = $item['batch'] ?? '-';
-                $this->line(sprintf("%-40s | %-10s | %-5s", $item['migration'], $ranLabel, $batchLabel));
+                $ranAt = $item['migrated_at'] ?? '-';
+                $statusLabel = 'Pending';
+
+                if ($item['ran']) {
+                    $statusLabel = $item['modified'] ? '<warning>Modified</warning>' : '<success>Intact</success>';
+                }
+
+                $this->line(sprintf("%-45s | %-6s | %-5s | %-20s | %-8s", $item['migration'], $ranLabel, $batchLabel, $ranAt, $statusLabel));
             }
 
-            $this->line(str_repeat('-', 60));
+            $this->line(str_repeat('-', 85));
         } catch (\Exception $e) {
             $this->error($e->getMessage());
 

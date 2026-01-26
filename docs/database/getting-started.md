@@ -73,3 +73,11 @@ DB::transaction(function () {
 
 > [!TIP]
 > If an exception is thrown within the transaction closure, the transaction will automatically be rolled back and the exception will be re-thrown.
+
+## Next Steps
+
+Now that you understand the basics of interacting with your database, you may want to learn more about:
+
+- [Database Migrations](file:///docs/database/migrations.md)
+- [Fluent Query Builder](file:///docs/database/query-builder.md)
+- [PlugModel ORM](file:///docs/database/models.md)

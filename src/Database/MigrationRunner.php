@@ -19,6 +19,7 @@ class MigrationRunner
     private $connection;
     private $migrationPath;
     private $migrationsTable = 'migrations';
+    private $logsTable = 'migration_logs';
 
     public function __construct(Connection $connection, string $migrationPath)
     {
@@ -39,7 +40,25 @@ class MigrationRunner
                 $table->id();
                 $table->string('migration');
                 $table->integer('batch');
+                $table->string('checksum')->nullable();
                 $table->timestamp('migrated_at')->useCurrent();
+            });
+        } elseif (!Schema::hasColumn($this->migrationsTable, 'checksum')) {
+            Schema::table($this->migrationsTable, function (Blueprint $table) {
+                $table->string('checksum')->nullable()->after('batch');
+            });
+        }
+
+        if (!Schema::hasTable($this->logsTable)) {
+            Schema::create($this->logsTable, function (Blueprint $table) {
+                $table->id();
+                $table->integer('migration_id');
+                $table->string('migration');
+                $table->string('action'); // 'up' or 'down'
+                $table->text('sql_queries')->nullable();
+                $table->float('duration')->nullable(); // in seconds
+                $table->integer('memory_used')->nullable(); // in bytes
+                $table->timestamp('executed_at')->useCurrent();
             });
         }
     }
@@ -52,7 +71,7 @@ class MigrationRunner
         $migrations = $this->getPendingMigrations();
 
         if (empty($migrations)) {
-            return ['message' => 'Nothing to migrate.', 'migrations' => []];
+            return ['status' => 'success', 'message' => 'Nothing to migrate.', 'migrations' => []];
         }
 
         if ($steps !== null) {
@@ -68,6 +87,7 @@ class MigrationRunner
         }
 
         return [
+            'status' => 'success',
             'message' => 'Migration completed successfully.',
             'migrations' => $ran,
             'batch' => $batch,
@@ -75,14 +95,14 @@ class MigrationRunner
     }
 
     /**
-     * Rollback the last batch of migrations
+     * Rollback migrations
      */
     public function rollback(?int $steps = null): array
     {
         $migrations = $this->getLastBatchMigrations();
 
         if (empty($migrations)) {
-            return ['message' => 'Nothing to rollback.', 'migrations' => []];
+            return ['status' => 'success', 'message' => 'Nothing to rollback.', 'migrations' => []];
         }
 
         if ($steps !== null) {
@@ -97,20 +117,21 @@ class MigrationRunner
         }
 
         return [
+            'status' => 'success',
             'message' => 'Rollback completed successfully.',
             'migrations' => $rolledBack,
         ];
     }
 
     /**
-     * Reset all migrations (rollback everything)
+     * Reset all migrations
      */
     public function reset(): array
     {
         $migrations = $this->getRanMigrations();
 
         if (empty($migrations)) {
-            return ['message' => 'Nothing to reset.', 'migrations' => []];
+            return ['status' => 'success', 'message' => 'Nothing to reset.', 'migrations' => []];
         }
 
         $rolledBack = [];
@@ -121,13 +142,14 @@ class MigrationRunner
         }
 
         return [
+            'status' => 'success',
             'message' => 'Database reset successfully.',
             'migrations' => $rolledBack,
         ];
     }
 
     /**
-     * Refresh the database (reset + run)
+     * Refresh migrations (reset + run)
      */
     public function refresh(): array
     {
@@ -141,10 +163,12 @@ class MigrationRunner
     }
 
     /**
-     * Get migration status
+     * Get migration status with modification detection
      */
     public function status(): array
     {
+        $this->ensureMigrationTableExists();
+
         $allMigrations = $this->getAllMigrationFiles();
         $ranMigrations = $this->getRanMigrations();
 
@@ -155,10 +179,17 @@ class MigrationRunner
 
         $status = [];
         foreach ($allMigrations as $migration) {
+            $ran = isset($ranMap[$migration]);
+            $currentChecksum = $this->calculateChecksum($migration);
+            $storedChecksum = $ranMap[$migration]['checksum'] ?? null;
+            $modified = $ran && $storedChecksum && $storedChecksum !== $currentChecksum;
+
             $status[] = [
                 'migration' => $migration,
-                'ran' => isset($ranMap[$migration]),
+                'ran' => $ran,
                 'batch' => $ranMap[$migration]['batch'] ?? null,
+                'migrated_at' => $ranMap[$migration]['migrated_at'] ?? null,
+                'modified' => $modified,
             ];
         }
 
@@ -171,16 +202,30 @@ class MigrationRunner
     private function runMigration(string $migration, int $batch): void
     {
         $instance = $this->resolveMigration($migration);
+        $checksum = $this->calculateChecksum($migration);
 
-        // Run the migration within a transaction
+        $startTime = microtime(true);
+        $startMemory = memory_get_usage();
+
+        $this->connection->clearQueryLog();
+        $this->connection->enableQueryLog();
+
         $this->connection->beginTransaction();
 
         try {
             $instance->up();
 
-            // Record the migration
-            $sql = "INSERT INTO {$this->migrationsTable} (migration, batch) VALUES (?, ?)";
-            $this->connection->execute($sql, [$migration, $batch]);
+            $sqlInsert = "INSERT INTO {$this->migrationsTable} (migration, batch, checksum) VALUES (?, ?, ?)";
+            $this->connection->execute($sqlInsert, [$migration, $batch, $checksum]);
+            $migrationId = (int) $this->connection->getLastInsertId();
+
+            $executedQueries = $this->connection->getQueryLog();
+            $this->connection->disableQueryLog();
+
+            $duration = microtime(true) - $startTime;
+            $memoryUsed = memory_get_usage() - $startMemory;
+
+            $this->logMigration($migrationId, $migration, 'up', $executedQueries, $duration, $memoryUsed);
 
             if ($this->connection->inTransaction()) {
                 $this->connection->commit();
@@ -205,15 +250,31 @@ class MigrationRunner
     {
         $instance = $this->resolveMigration($migration);
 
-        // Rollback within a transaction
+        $startTime = microtime(true);
+        $startMemory = memory_get_usage();
+
+        $this->connection->clearQueryLog();
+        $this->connection->enableQueryLog();
+
         $this->connection->beginTransaction();
 
         try {
+            $sqlGetId = "SELECT id FROM {$this->migrationsTable} WHERE migration = ?";
+            $migrationData = $this->connection->fetch($sqlGetId, [$migration]);
+            $migrationId = $migrationData ? (int) $migrationData['id'] : 0;
+
             $instance->down();
 
-            // Remove the migration record
-            $sql = "DELETE FROM {$this->migrationsTable} WHERE migration = ?";
-            $this->connection->execute($sql, [$migration]);
+            $sqlDelete = "DELETE FROM {$this->migrationsTable} WHERE migration = ?";
+            $this->connection->execute($sqlDelete, [$migration]);
+
+            $executedQueries = $this->connection->getQueryLog();
+            $this->connection->disableQueryLog();
+
+            $duration = microtime(true) - $startTime;
+            $memoryUsed = memory_get_usage() - $startMemory;
+
+            $this->logMigration($migrationId, $migration, 'down', $executedQueries, $duration, $memoryUsed);
 
             if ($this->connection->inTransaction()) {
                 $this->connection->commit();
@@ -229,6 +290,25 @@ class MigrationRunner
                 $e
             );
         }
+    }
+
+    /**
+     * Calculate checksum for a migration file
+     */
+    private function calculateChecksum(string $migration): string
+    {
+        $file = $this->migrationPath . '/' . $migration . '.php';
+        return file_exists($file) ? md5_file($file) : '';
+    }
+
+    /**
+     * Log migration execution details
+     */
+    private function logMigration(int $migrationId, string $migration, string $action, array $queries, float $duration, int $memory): void
+    {
+        $sqlQueries = json_encode($queries);
+        $sql = "INSERT INTO {$this->logsTable} (migration_id, migration, action, sql_queries, duration, memory_used) VALUES (?, ?, ?, ?, ?, ?)";
+        $this->connection->execute($sql, [$migrationId, $migration, $action, $sqlQueries, $duration, $memory]);
     }
 
     /**
@@ -270,7 +350,18 @@ class MigrationRunner
      */
     private function getRanMigrations(): array
     {
-        $sql = "SELECT migration, batch FROM {$this->migrationsTable} ORDER BY id DESC";
+        if (!Schema::hasTable($this->migrationsTable)) {
+            return [];
+        }
+
+        // Get columns to check for migrated_at
+        $columns = Schema::getColumns($this->migrationsTable);
+        $columnNames = array_map(function ($col) {
+            return $col['Field'] ?? $col['field'] ?? '';
+        }, $columns);
+
+        $orderBy = in_array('migrated_at', $columnNames) ? 'migrated_at' : 'id';
+        $sql = "SELECT * FROM {$this->migrationsTable} ORDER BY {$orderBy} DESC";
 
         return $this->connection->fetchAll($sql);
     }
@@ -297,6 +388,10 @@ class MigrationRunner
      */
     private function getLastBatchNumber(): int
     {
+        if (!Schema::hasTable($this->migrationsTable)) {
+            return 0;
+        }
+
         $sql = "SELECT MAX(batch) as batch FROM {$this->migrationsTable}";
         $result = $this->connection->fetch($sql);
 
@@ -324,13 +419,8 @@ class MigrationRunner
 
         require_once $file;
 
-        // Extract class name from migration filename
-        // Format: 2024_01_01_000000_create_users_table.php
         $parts = explode('_', $migration);
 
-        // Remove timestamp parts (first 4 elements: YYYY_MM_DD_HHMMSS)
-        // Adjusting logic: usually timestamp is 4 parts if joined by _ (YYYY, MM, DD, TIME)
-        // Let's be smart about it. We look for the part that doesn't look like a number/timestamp.
         $classParts = [];
         $foundStart = false;
         foreach ($parts as $part) {
@@ -343,11 +433,8 @@ class MigrationRunner
         }
 
         $className = implode('_', $classParts);
-
-        // Convert to StudlyCase
         $className = str_replace('_', '', ucwords($className, '_'));
 
-        // Try to find the class
         if (!class_exists($className)) {
             throw new \RuntimeException("Migration class not found: {$className}");
         }

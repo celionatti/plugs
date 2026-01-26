@@ -36,10 +36,34 @@ Run your database migrations:
 php theplugs migrate
 ```
 
+Check the status of your migrations:
+
+```bash
+php theplugs migrate:status
+```
+
 Rollback the last migration:
 
 ```bash
 php theplugs migrate:rollback
+```
+
+Reset all migrations (rollback everything):
+
+```bash
+php theplugs migrate:reset
+```
+
+Fresh migration (drop all tables and re-run all):
+
+```bash
+php theplugs migrate:fresh
+```
+
+Validate migration integrity:
+
+```bash
+php theplugs migrate:validate
 ```
 
 ### Generators

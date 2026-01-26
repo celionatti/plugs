@@ -119,10 +119,17 @@ class Schema
     public static function hasColumn(string $table, string $column): bool
     {
         $connection = self::getConnection();
-        $sql = "SHOW COLUMNS FROM `{$table}` LIKE ?";
-        $result = $connection->fetch($sql, [$column]);
+        $sql = "SHOW COLUMNS FROM `{$table}`";
+        $columns = $connection->fetchAll($sql);
 
-        return $result !== null;
+        foreach ($columns as $col) {
+            $field = $col['Field'] ?? $col['field'] ?? null;
+            if ($field === $column) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /**

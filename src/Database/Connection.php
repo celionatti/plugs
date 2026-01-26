@@ -44,6 +44,7 @@ class Connection
     ];
 
     private $pdo;
+    private $readPdo;
     private $connectionName;
     private $lastActivityTime;
     private $isHealthy = true;
@@ -51,66 +52,91 @@ class Connection
     private $poolId;
     private $connectionAttempts = 0;
     private $maxRetries = 3;
+    private $queryLog = [];
+    private $loggingQueries = false;
+
+    // Security & Advanced Features
+    private $sticky = false;
+    private $lastWriteTimestamp = 0;
+    private static $auditLogPath = 'storage/logs/security_audit.log';
 
     private function __construct(array $config, string $name = 'default')
     {
         $this->connectionName = $name;
-        // $this->poolId = uniqid('conn_', true);
         $this->poolId = bin2hex(random_bytes(16));
+        $this->sticky = $config['sticky'] ?? false;
         self::$config[$name] = $config;
         $this->connect($config);
     }
 
     private function connect(array $config): void
     {
-        $driver = $config['driver'] ?? 'mysql';
-        $this->connectionAttempts++;
-
-        try {
-            if ($driver === 'sqlite') {
-                $dsn = "sqlite:{$config['database']}";
-                $this->pdo = new PDO($dsn);
-            } else {
-                $dsn = $this->buildDsn($config);
-                $options = $this->buildOptions($config);
-
-                $this->pdo = new PDO(
-                    $dsn,
-                    $config['username'] ?? '',
-                    $config['password'] ?? '',
-                    $options
-                );
-            }
-
-            // CRITICAL: Disable emulated prepares for security
-            $this->pdo->setAttribute(PDO::ATTR_EMULATE_PREPARES, false);
-            $this->pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-            $this->pdo->setAttribute(PDO::ATTR_DEFAULT_FETCH_MODE, PDO::FETCH_ASSOC);
-
-            $this->lastActivityTime = time();
-            $this->isHealthy = true;
-            $this->connectionAttempts = 0;
-        } catch (PDOException $e) {
-            $this->isHealthy = false;
-
-            if ($this->connectionAttempts < $this->maxRetries) {
-                usleep(100000 * $this->connectionAttempts);
-                $this->connect($config);
-
-                return;
-            }
-
-            throw new \RuntimeException(
-                "Database connection failed after {$this->maxRetries} attempts: " . $e->getMessage()
-            );
+        // Handle Read/Write Splitting
+        if (isset($config['read']) || isset($config['write'])) {
+            $this->pdo = $this->createPdo(array_merge($config, $config['write'] ?? []));
+            $this->readPdo = $this->createPdo(array_merge($config, $config['read'] ?? []));
+        } else {
+            $this->pdo = $this->createPdo($config);
+            $this->readPdo = &$this->pdo;
         }
+
+        $this->lastActivityTime = time();
+        $this->isHealthy = true;
+        $this->connectionAttempts = 0;
+    }
+
+    private function createPdo(array $config): PDO
+    {
+        $driver = $config['driver'] ?? 'mysql';
+        $attempt = 0;
+
+        while ($attempt < $this->maxRetries) {
+            $attempt++;
+            try {
+                if ($driver === 'sqlite') {
+                    $database = $config['database'];
+                    $dsn = "sqlite:{$database}";
+                    $pdo = new PDO($dsn);
+                } else {
+                    $dsn = $this->buildDsn($config);
+                    $options = $this->buildOptions($config);
+
+                    $pdo = new PDO(
+                        $dsn,
+                        $config['username'] ?? '',
+                        $config['password'] ?? '',
+                        $options
+                    );
+                }
+
+                // Security Best Practices
+                $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+                $pdo->setAttribute(PDO::ATTR_DEFAULT_FETCH_MODE, PDO::FETCH_ASSOC);
+                $pdo->setAttribute(PDO::ATTR_EMULATE_PREPARES, false);
+
+                return $pdo;
+            } catch (PDOException $e) {
+                if ($attempt === $this->maxRetries) {
+                    $this->auditLog("Connection failure for [{$this->connectionName}]: " . $e->getMessage(), 'CRITICAL');
+                    throw new \RuntimeException("Database connection failed: " . $e->getMessage());
+                }
+                usleep(100000 * $attempt);
+            }
+        }
+
+        throw new \RuntimeException("Failed to create PDO instance.");
     }
 
     private function buildDsn(array $config): string
     {
         $driver = $config['driver'];
         $host = $config['host'];
-        $port = $config['port'];
+
+        if (is_array($host)) {
+            $host = $host[array_rand($host)];
+        }
+
+        $port = $config['port'] ?? ($driver === 'mysql' ? 3306 : 5432);
         $database = $config['database'];
 
         if ($driver === 'mysql') {
@@ -368,6 +394,10 @@ class Connection
     {
         $this->ensureConnectionHealth();
         $this->lastActivityTime = time();
+        $pdo = $this->getPdoForQuery($sql);
+
+        // Security: Query Guard - Alert on updates/deletes without WHERE
+        $this->guardQuery($sql);
 
         $startTime = microtime(true);
         $backtrace = null;
@@ -377,7 +407,7 @@ class Connection
         }
 
         try {
-            $stmt = $this->preparePooled($sql);
+            $stmt = $pdo->prepare($sql);
             $stmt->execute($params);
 
             $executionTime = microtime(true) - $startTime;
@@ -386,17 +416,24 @@ class Connection
                 $this->analyzeQuery($sql, $params, $executionTime, $backtrace);
             }
 
+            if ($this->loggingQueries) {
+                $this->queryLog[] = [
+                    'query' => $sql,
+                    'params' => $params,
+                    'time' => $executionTime,
+                    'connection' => ($pdo === $this->pdo ? 'write' : 'read')
+                ];
+            }
+
             return $stmt;
         } catch (PDOException $e) {
             // Try to reconnect once on connection errors
             if ($this->isConnectionError($e)) {
                 $this->reconnect();
-                $stmt = $this->preparePooled($sql);
-                $stmt->execute($params);
-
-                return $stmt;
+                return $this->query($sql, $params);
             }
 
+            $this->auditLog("Query error: " . $e->getMessage() . " | SQL: " . $sql, 'WARNING');
             throw $e;
         }
     }
@@ -770,5 +807,104 @@ class Connection
         self::$instances = [];
         self::$connectionPools = [];
         self::$statementPool = [];
+    }
+
+    /**
+     * Enable query logging
+     */
+    public function enableQueryLog(): void
+    {
+        $this->loggingQueries = true;
+    }
+
+    /**
+     * Disable query logging
+     */
+    public function disableQueryLog(): void
+    {
+        $this->loggingQueries = false;
+    }
+
+    /**
+     * Get the logged queries
+     */
+    public function getQueryLog(): array
+    {
+        return $this->queryLog;
+    }
+
+    /**
+     * Clear the query log
+     */
+    public function clearQueryLog(): void
+    {
+        $this->queryLog = [];
+    }
+
+    /**
+     * Get the last inserted ID
+     */
+    public function getLastInsertId(): string
+    {
+        return $this->pdo->lastInsertId();
+    }
+
+    /**
+     * Determine which PDO instance to use for a query
+     */
+    private function getPdoForQuery(string $sql): PDO
+    {
+        if ($this->shouldUseWritePdo($sql)) {
+            return $this->pdo;
+        }
+
+        return $this->readPdo;
+    }
+
+    /**
+     * Determine if the given SQL statement is a write operation
+     */
+    private function shouldUseWritePdo(string $sql): bool
+    {
+        $trimmedSql = ltrim($sql);
+        $isWrite = !preg_match('/^(select|show|describe|explain)\b/i', $trimmedSql);
+
+        if ($isWrite) {
+            $this->lastWriteTimestamp = microtime(true);
+            return true;
+        }
+
+        // Handle stickiness: if we just wrote, read from the same connection for a short window
+        if ($this->sticky && (microtime(true) - $this->lastWriteTimestamp) < 0.5) {
+            return true;
+        }
+
+        return false;
+    }
+
+    /**
+     * Guard against dangerous queries (e.g. DELETE/UPDATE without WHERE)
+     */
+    private function guardQuery(string $sql): void
+    {
+        if (preg_match('/^\s*(update|delete)\b/i', $sql) && !stripos($sql, 'where')) {
+            $this->auditLog("DANGEROUS QUERY DETECTED (No WHERE clause): " . trim($sql), 'ALERT');
+        }
+    }
+
+    /**
+     * Audit log message to file
+     */
+    private function auditLog(string $message, string $level = 'INFO'): void
+    {
+        $date = date('Y-m-d H:i:s');
+        $log = "[{$date}] [{$level}] {$message}" . PHP_EOL;
+
+        $logDir = dirname(BASE_PATH . self::$auditLogPath);
+        if (!is_dir($logDir)) {
+            @mkdir($logDir, 0755, true);
+        }
+
+        @file_put_contents(BASE_PATH . self::$auditLogPath, $log, FILE_APPEND);
     }
 }

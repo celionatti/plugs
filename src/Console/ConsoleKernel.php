@@ -26,6 +26,8 @@ use Plugs\Console\Commands\MigrateCommand;
 use Plugs\Console\Commands\MigrateResetCommand;
 use Plugs\Console\Commands\MigrateRollbackCommand;
 use Plugs\Console\Commands\MigrateStatusCommand;
+use Plugs\Console\Commands\MigrateFreshCommand;
+use Plugs\Console\Commands\MigrateValidateCommand;
 use Plugs\Console\Commands\QueueWorkCommand;
 use Plugs\Console\Commands\RouteCacheCommand;
 use Plugs\Console\Commands\RouteClearCommand;
@@ -81,6 +83,8 @@ class ConsoleKernel
         'migrate' => MigrateCommand::class,
         'migrate:rollback' => MigrateRollbackCommand::class,
         'migrate:status' => MigrateStatusCommand::class,
+        'migrate:fresh' => MigrateFreshCommand::class,
+        'migrate:validate' => MigrateValidateCommand::class,
         'migrate:reset' => MigrateResetCommand::class,
         'queue:work' => QueueWorkCommand::class,
         'health' => HealthCommand::class,
@@ -140,7 +144,7 @@ class ConsoleKernel
         'Routes' => ['route:list', 'route:cache', 'route:clear', 'route:test'],
         'Utility' => ['serve', 'cache:clear', 'config:cache', 'optimize', 'queue:work', 'health', 'storage:link'],
         'Scheduling' => ['schedule:run', 'schedule:list'],
-        'Database' => ['migrate', 'migrate:rollback', 'migrate:status', 'migrate:reset', 'make:migration'],
+        'Database' => ['migrate', 'migrate:rollback', 'migrate:status', 'migrate:fresh', 'migrate:validate', 'migrate:reset', 'make:migration'],
     ];
 
     public function commands(): array
