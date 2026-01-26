@@ -28,7 +28,7 @@ class FlutterwaveAdapter implements PaymentAdapterInterface
     /**
      * Initialize a payment charge
      */
-    public function charge(array $data)
+    public function charge(array $data): array
     {
         $paymentData = [
             'tx_ref' => $data['reference'] ?? $this->generateReference(),
@@ -54,7 +54,7 @@ class FlutterwaveAdapter implements PaymentAdapterInterface
     /**
      * Create a subscription plan
      */
-    public function createSubscription(array $data)
+    public function createSubscription(array $data): array
     {
         // First, create or use existing payment plan
         $planData = [
@@ -88,7 +88,7 @@ class FlutterwaveAdapter implements PaymentAdapterInterface
     /**
      * Cancel a subscription
      */
-    public function cancelSubscription(string $subscriptionId)
+    public function cancelSubscription(string $subscriptionId): array
     {
         return $this->makeRequest("/subscriptions/{$subscriptionId}/cancel", [], 'PUT');
     }
@@ -96,7 +96,7 @@ class FlutterwaveAdapter implements PaymentAdapterInterface
     /**
      * Transfer funds to a recipient
      */
-    public function transfer(array $data)
+    public function transfer(array $data): array
     {
         $transferData = [
             'account_bank' => $data['bank_code'] ?? '',
@@ -126,7 +126,7 @@ class FlutterwaveAdapter implements PaymentAdapterInterface
     /**
      * Withdraw to bank account
      */
-    public function withdraw(array $data)
+    public function withdraw(array $data): array
     {
         $withdrawalData = [
             'account_bank' => $data['bank_code'],
@@ -145,7 +145,7 @@ class FlutterwaveAdapter implements PaymentAdapterInterface
     /**
      * Refund a transaction
      */
-    public function refund(array $data)
+    public function refund(array $data): array
     {
         $refundData = [
             'id' => $data['transaction_id'],
@@ -161,7 +161,7 @@ class FlutterwaveAdapter implements PaymentAdapterInterface
     /**
      * Verify a transaction
      */
-    public function verify(string $reference)
+    public function verify(string $reference): array
     {
         return $this->makeRequest("/transactions/verify_by_reference?tx_ref={$reference}", [], 'GET');
     }
@@ -169,7 +169,7 @@ class FlutterwaveAdapter implements PaymentAdapterInterface
     /**
      * Get transaction details
      */
-    public function getTransaction(string $transactionId)
+    public function getTransaction(string $transactionId): array
     {
         return $this->makeRequest("/transactions/{$transactionId}/verify", [], 'GET');
     }
@@ -177,7 +177,7 @@ class FlutterwaveAdapter implements PaymentAdapterInterface
     /**
      * List all transactions
      */
-    public function listTransactions(array $filters)
+    public function listTransactions(array $filters): array
     {
         $params = [
             'from' => $filters['start_date'] ?? '',
@@ -195,7 +195,7 @@ class FlutterwaveAdapter implements PaymentAdapterInterface
     /**
      * Get account balance
      */
-    public function getBalance()
+    public function getBalance(): array
     {
         return $this->makeRequest('/balances', [], 'GET');
     }
@@ -203,7 +203,7 @@ class FlutterwaveAdapter implements PaymentAdapterInterface
     /**
      * Create a transfer recipient
      */
-    public function createRecipient(array $data)
+    public function createRecipient(array $data): array
     {
         $recipientData = [
             'type' => $data['type'] ?? 'nuban',
@@ -238,7 +238,7 @@ class FlutterwaveAdapter implements PaymentAdapterInterface
     /**
      * Process webhook payload
      */
-    public function processWebhook(array $payload)
+    public function processWebhook(array $payload): array
     {
         $event = $payload['event'] ?? '';
         $data = $payload['data'] ?? [];

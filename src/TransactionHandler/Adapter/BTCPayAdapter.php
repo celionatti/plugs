@@ -31,10 +31,10 @@ class BTCPayAdapter implements PaymentAdapterInterface
     /**
      * Create an invoice (charge)
      */
-    public function charge(array $data)
+    public function charge(array $data): array
     {
         $invoiceData = [
-            'amount' => (string)$data['amount'],
+            'amount' => (string) $data['amount'],
             'currency' => $data['currency'] ?? 'USD',
             'metadata' => [
                 'buyerEmail' => $data['email'] ?? '',
@@ -65,12 +65,12 @@ class BTCPayAdapter implements PaymentAdapterInterface
     /**
      * Create subscription (recurring invoice)
      */
-    public function createSubscription(array $data)
+    public function createSubscription(array $data): array
     {
         // BTCPay doesn't have native subscriptions, but we can create recurring invoices
         $pullPaymentData = [
             'name' => $data['plan_name'] ?? 'Subscription',
-            'amount' => (string)$data['amount'],
+            'amount' => (string) $data['amount'],
             'currency' => $data['currency'] ?? 'USD',
             'period' => $this->convertIntervalToSeconds($data['interval'] ?? 'monthly'),
             'BOLT11Expiration' => 30 * 24 * 60 * 60, // 30 days
@@ -89,7 +89,7 @@ class BTCPayAdapter implements PaymentAdapterInterface
     /**
      * Cancel subscription
      */
-    public function cancelSubscription(string $subscriptionId)
+    public function cancelSubscription(string $subscriptionId): array
     {
         // Archive the pull payment (BTCPay's subscription equivalent)
         return $this->makeRequest(
@@ -102,11 +102,11 @@ class BTCPayAdapter implements PaymentAdapterInterface
     /**
      * Transfer funds (payout)
      */
-    public function transfer(array $data)
+    public function transfer(array $data): array
     {
         $payoutData = [
             'destination' => $data['recipient'], // Crypto address
-            'amount' => (string)$data['amount'],
+            'amount' => (string) $data['amount'],
             'paymentMethod' => $data['payment_method'] ?? 'BTC',
             'metadata' => array_merge([
                 'reason' => $data['reason'] ?? 'Transfer',
@@ -123,14 +123,14 @@ class BTCPayAdapter implements PaymentAdapterInterface
     /**
      * Withdraw to external wallet
      */
-    public function withdraw(array $data)
+    public function withdraw(array $data): array
     {
         // Create an on-chain withdrawal
         $withdrawalData = [
             'destinations' => [
                 [
                     'destination' => $data['address'],
-                    'amount' => (string)$data['amount'],
+                    'amount' => (string) $data['amount'],
                 ],
             ],
             'paymentMethod' => $data['crypto_currency'] ?? 'BTC',
@@ -150,7 +150,7 @@ class BTCPayAdapter implements PaymentAdapterInterface
     /**
      * Refund transaction
      */
-    public function refund(array $data)
+    public function refund(array $data): array
     {
         $refundData = [
             'name' => 'Refund for ' . $data['transaction_id'],
@@ -159,7 +159,7 @@ class BTCPayAdapter implements PaymentAdapterInterface
         ];
 
         if (isset($data['amount'])) {
-            $refundData['customAmount'] = (string)$data['amount'];
+            $refundData['customAmount'] = (string) $data['amount'];
         }
 
         return $this->makeRequest(
@@ -172,7 +172,7 @@ class BTCPayAdapter implements PaymentAdapterInterface
     /**
      * Verify transaction
      */
-    public function verify(string $reference)
+    public function verify(string $reference): array
     {
         return $this->getTransaction($reference);
     }
@@ -180,7 +180,7 @@ class BTCPayAdapter implements PaymentAdapterInterface
     /**
      * Get transaction details
      */
-    public function getTransaction(string $transactionId)
+    public function getTransaction(string $transactionId): array
     {
         return $this->makeRequest(
             "/api/v1/stores/{$this->storeId}/invoices/{$transactionId}",
@@ -192,7 +192,7 @@ class BTCPayAdapter implements PaymentAdapterInterface
     /**
      * List transactions
      */
-    public function listTransactions(array $filters)
+    public function listTransactions(array $filters): array
     {
         $params = [
             'skip' => $filters['skip'] ?? 0,
@@ -215,7 +215,7 @@ class BTCPayAdapter implements PaymentAdapterInterface
     /**
      * Get wallet balance
      */
-    public function getBalance()
+    public function getBalance(): array
     {
         $wallets = $this->makeRequest(
             "/api/v1/stores/{$this->storeId}/payment-methods/onchain",
@@ -239,7 +239,7 @@ class BTCPayAdapter implements PaymentAdapterInterface
     /**
      * Create recipient (not applicable for crypto, returns address validation)
      */
-    public function createRecipient(array $data)
+    public function createRecipient(array $data): array
     {
         // For crypto, we just validate the address format
         // BTCPay doesn't have a recipient management system
@@ -280,7 +280,7 @@ class BTCPayAdapter implements PaymentAdapterInterface
     /**
      * Process webhook
      */
-    public function processWebhook(array $payload)
+    public function processWebhook(array $payload): array
     {
         $event = $payload['type'] ?? '';
         $invoiceId = $payload['invoiceId'] ?? '';

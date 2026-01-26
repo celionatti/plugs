@@ -30,7 +30,7 @@ class StripeAdapter implements PaymentAdapterInterface
     /**
      * Create a payment intent (charge)
      */
-    public function charge(array $data)
+    public function charge(array $data): array
     {
         $paymentData = [
             'amount' => $data['amount'], // Amount in cents
@@ -57,7 +57,7 @@ class StripeAdapter implements PaymentAdapterInterface
     /**
      * Create a subscription
      */
-    public function createSubscription(array $data)
+    public function createSubscription(array $data): array
     {
         // First, create or retrieve customer
         $customer = $this->createOrGetCustomer($data['email'], $data['customer_name'] ?? '');
@@ -83,7 +83,7 @@ class StripeAdapter implements PaymentAdapterInterface
     /**
      * Cancel a subscription
      */
-    public function cancelSubscription(string $subscriptionId)
+    public function cancelSubscription(string $subscriptionId): array
     {
         return $this->makeRequest("/subscriptions/{$subscriptionId}", [], 'DELETE');
     }
@@ -91,7 +91,7 @@ class StripeAdapter implements PaymentAdapterInterface
     /**
      * Transfer funds (payout)
      */
-    public function transfer(array $data)
+    public function transfer(array $data): array
     {
         $transferData = [
             'amount' => $data['amount'],
@@ -107,7 +107,7 @@ class StripeAdapter implements PaymentAdapterInterface
     /**
      * Withdraw to bank account (payout)
      */
-    public function withdraw(array $data)
+    public function withdraw(array $data): array
     {
         $payoutData = [
             'amount' => $data['amount'],
@@ -130,7 +130,7 @@ class StripeAdapter implements PaymentAdapterInterface
     /**
      * Refund a payment
      */
-    public function refund(array $data)
+    public function refund(array $data): array
     {
         $refundData = [
             'payment_intent' => $data['transaction_id'],
@@ -148,7 +148,7 @@ class StripeAdapter implements PaymentAdapterInterface
     /**
      * Verify a payment intent
      */
-    public function verify(string $reference)
+    public function verify(string $reference): array
     {
         return $this->makeRequest("/payment_intents/{$reference}", [], 'GET');
     }
@@ -156,7 +156,7 @@ class StripeAdapter implements PaymentAdapterInterface
     /**
      * Get payment intent or charge details
      */
-    public function getTransaction(string $transactionId)
+    public function getTransaction(string $transactionId): array
     {
         // Try payment intent first
         try {
@@ -170,7 +170,7 @@ class StripeAdapter implements PaymentAdapterInterface
     /**
      * List payment intents or charges
      */
-    public function listTransactions(array $filters)
+    public function listTransactions(array $filters): array
     {
         $params = [
             'limit' => $filters['limit'] ?? 10,
@@ -190,7 +190,7 @@ class StripeAdapter implements PaymentAdapterInterface
     /**
      * Get account balance
      */
-    public function getBalance()
+    public function getBalance(): array
     {
         return $this->makeRequest('/balance', [], 'GET');
     }
@@ -198,7 +198,7 @@ class StripeAdapter implements PaymentAdapterInterface
     /**
      * Create a recipient (external account or bank account)
      */
-    public function createRecipient(array $data)
+    public function createRecipient(array $data): array
     {
         // Create a customer with external account
         $accountData = [
@@ -258,7 +258,7 @@ class StripeAdapter implements PaymentAdapterInterface
     /**
      * Process webhook event
      */
-    public function processWebhook(array $payload)
+    public function processWebhook(array $payload): array
     {
         $event = $payload['type'] ?? '';
         $data = $payload['data']['object'] ?? [];

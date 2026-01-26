@@ -74,24 +74,31 @@ Run `composer dump-autoload` after updating.
 
 ## Quick Start
 
-### Initialize a Payment
+### Initialize and Process a Payment (Fluent Interface)
+
+The new fluent interface makes it easier to build and process transactions:
 
 ```php
 use Plugs\TransactionHandler\PaymentConfig;
 
 // Create payment handler from .env
-$payment = PaymentConfig::create('paystack'); // or 'flutterwave'
+$payment = PaymentConfig::create();
 
-// Process payment
-$result = $payment->processOneTimePayment([
-    'amount' => 5000,  // Amount in smallest unit (kobo, cents, etc.)
-    'email' => 'customer@example.com',
-    'currency' => 'NGN',
-    'callback_url' => 'https://yoursite.com/payment/callback'
-]);
+// Process payment fluently
+$result = $payment->amount(5000)
+    ->currency('NGN')
+    ->email('customer@example.com')
+    ->description('Order #1234')
+    ->callback('https://yoursite.com/payment/callback')
+    ->pay();
 
-// Get payment link
-$paymentUrl = $result['data']['authorization_url'];
+if ($result->isSuccessful()) {
+    // Get payment link for checkout
+    $paymentUrl = $result->getData()['authorization_url'];
+    echo "Redirecting to: " . $paymentUrl;
+} else {
+    echo "Error: " . $result->getMessage();
+}
 ```
 
 ### Verify Payment
@@ -101,46 +108,47 @@ $paymentUrl = $result['data']['authorization_url'];
 $reference = $_GET['reference'];
 
 // Verify transaction
-$verification = $payment->verifyTransaction($reference);
+$result = $payment->verify($reference);
 
-if ($verification['verified']) {
-    // Payment successful
-    $amount = $verification['data']['amount'];
-    $status = $verification['data']['status'];
+if ($result->isSuccessful()) {
+    // Payment verified
+    $data = $result->getData();
+    echo "Transaction Status: " . $result->getStatus();
 }
 ```
 
-### Handle Webhook
+### Webhook Handling with Logging
 
 ```php
 // webhook.php
 $payload = json_decode(file_get_contents('php://input'), true);
 
-$payment = PaymentConfig::create('paystack');
+$payment = PaymentConfig::create();
 $result = $payment->handleWebhook($payload);
 
-// Process webhook event
-if ($result['status'] === 'success') {
-    // Update your database
+// Logging is automatic if configured, or manually check result
+if ($result->isSuccessful()) {
+    $event = $result->getData()['event'];
+    // Update your database based on $event
 }
 ```
 
-## Available Methods
+## Available Methods (Modern API)
 
 ### Payment Operations
 
 ```php
-// One-time payment
-$payment->processOneTimePayment(array $data);
+// Build and pay (Fluent)
+$payment->amount(100.50)->email('user@test.com')->pay();
 
-// Verify transaction
-$payment->verifyTransaction(string $reference);
+// Verify transaction (Standardized Result)
+$payment->verify(string $reference);
 
 // Get transaction details
-$payment->getTransactionDetails(string $transactionId);
+$payment->getTransaction(string $transactionId);
 
 // List transactions
-$payment->listTransactions(array $filters);
+$payment->list(array $filters);
 ```
 
 ### Subscriptions

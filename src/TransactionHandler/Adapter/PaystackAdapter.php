@@ -23,17 +23,17 @@ class PaystackAdapter implements PaymentAdapterInterface
         $this->secretKey = $config['secret_key'];
     }
 
-    public function charge(array $data)
+    public function charge(array $data): array
     {
         return $this->makeRequest('/transaction/initialize', $data);
     }
 
-    public function createSubscription(array $data)
+    public function createSubscription(array $data): array
     {
         return $this->makeRequest('/subscription', $data);
     }
 
-    public function cancelSubscription(string $subscriptionId)
+    public function cancelSubscription(string $subscriptionId): array
     {
         return $this->makeRequest("/subscription/disable", [
             'code' => $subscriptionId,
@@ -41,44 +41,44 @@ class PaystackAdapter implements PaymentAdapterInterface
         ], 'POST');
     }
 
-    public function transfer(array $data)
+    public function transfer(array $data): array
     {
         return $this->makeRequest('/transfer', $data);
     }
 
-    public function withdraw(array $data)
+    public function withdraw(array $data): array
     {
         return $this->makeRequest('/transfer', $data);
     }
 
-    public function refund(array $data)
+    public function refund(array $data): array
     {
         return $this->makeRequest('/refund', $data);
     }
 
-    public function verify(string $reference)
+    public function verify(string $reference): array
     {
         return $this->makeRequest("/transaction/verify/{$reference}", [], 'GET');
     }
 
-    public function getTransaction(string $transactionId)
+    public function getTransaction(string $transactionId): array
     {
         return $this->makeRequest("/transaction/{$transactionId}", [], 'GET');
     }
 
-    public function listTransactions(array $filters)
+    public function listTransactions(array $filters): array
     {
         $query = http_build_query($filters);
 
         return $this->makeRequest("/transaction?{$query}", [], 'GET');
     }
 
-    public function getBalance()
+    public function getBalance(): array
     {
         return $this->makeRequest('/balance', [], 'GET');
     }
 
-    public function createRecipient(array $data)
+    public function createRecipient(array $data): array
     {
         return $this->makeRequest('/transferrecipient', $data);
     }
@@ -91,7 +91,7 @@ class PaystackAdapter implements PaymentAdapterInterface
         return $signature === $hash;
     }
 
-    public function processWebhook(array $payload)
+    public function processWebhook(array $payload): array
     {
         return $payload;
     }

@@ -41,6 +41,7 @@ Welcome to the official documentation for the **Plugs** framework. Plugs is a li
 - [Cache System](file:///docs/advanced/cache.md)
 - [Queues](file:///docs/advanced/queues.md)
 - [Form Builder](file:///docs/advanced/form-builder.md)
+- [Payments & Transactions](file:///docs/features/payments.md)
 - [Inertia / SPA Mode](file:///docs/advanced/inertia-spa.md)
 - [Task Scheduling](file:///docs/advanced/scheduling.md)
 - [CLI Tool (theplugs)](file:///docs/advanced/cli-commands.md)

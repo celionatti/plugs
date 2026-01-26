@@ -18,48 +18,59 @@ class PayoneerAdapter implements PaymentAdapterInterface
     {
     }
 
-    public function charge(array $data)
+    public function charge(array $data): array
     {
+        return [];
     }
 
-    public function createSubscription(array $data)
+    public function createSubscription(array $data): array
     {
+        return [];
     }
 
-    public function cancelSubscription(string $subscriptionId)
+    public function cancelSubscription(string $subscriptionId): array
     {
+        return [];
     }
 
-    public function transfer(array $data)
+    public function transfer(array $data): array
     {
+        return [];
     }
 
-    public function withdraw(array $data)
+    public function withdraw(array $data): array
     {
+        return [];
     }
 
-    public function refund(array $data)
+    public function refund(array $data): array
     {
+        return [];
     }
 
-    public function verify(string $reference)
+    public function verify(string $reference): array
     {
+        return [];
     }
 
-    public function getTransaction(string $transactionId)
+    public function getTransaction(string $transactionId): array
     {
+        return [];
     }
 
-    public function listTransactions(array $filters)
+    public function listTransactions(array $filters): array
     {
+        return [];
     }
 
-    public function getBalance()
+    public function getBalance(): array
     {
+        return [];
     }
 
-    public function createRecipient(array $data)
+    public function createRecipient(array $data): array
     {
+        return [];
     }
 
     public function verifyWebhookSignature(array $payload): bool
@@ -67,7 +78,7 @@ class PayoneerAdapter implements PaymentAdapterInterface
         return true;
     }
 
-    public function processWebhook(array $payload)
+    public function processWebhook(array $payload): array
     {
         return $payload;
     }

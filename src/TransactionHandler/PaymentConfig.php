@@ -19,11 +19,12 @@ class PaymentConfig
     /**
      * Create a payment transaction handler from environment variables
      *
-     * @param string $platform Payment platform (paystack, flutterwave, stripe, etc.)
+     * @param string|null $platform Payment platform (paystack, flutterwave, stripe, etc.)
+     * @param \Psr\Log\LoggerInterface|null $logger
      * @return PaymentTransactionHandler
      * @throws Exception
      */
-    public static function create(string $platform = null): PaymentTransactionHandler
+    public static function create(string $platform = null, ?\Psr\Log\LoggerInterface $logger = null): PaymentTransactionHandler
     {
         // Use default platform if not specified
         if ($platform === null) {
@@ -33,7 +34,7 @@ class PaymentConfig
         $platform = strtolower($platform);
         $config = self::getConfig($platform);
 
-        return new PaymentTransactionHandler($platform, $config);
+        return new PaymentTransactionHandler($platform, $config, $logger);
     }
 
     /**

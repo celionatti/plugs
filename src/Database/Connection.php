@@ -60,6 +60,13 @@ class Connection
     private $lastWriteTimestamp = 0;
     private static $auditLogPath = 'storage/logs/security_audit.log';
 
+    /**
+     * The number of active transactions.
+     *
+     * @var int
+     */
+    protected $transactions = 0;
+
     private function __construct(array $config, string $name = 'default')
     {
         $this->connectionName = $name;
@@ -740,22 +747,105 @@ class Connection
     {
         $this->ensureConnectionHealth();
 
-        return $this->pdo->beginTransaction();
+        if ($this->transactions === 0) {
+            $result = $this->pdo->beginTransaction();
+        } else {
+            $this->pdo->exec("SAVEPOINT trans{$this->transactions}");
+            $result = true;
+        }
+
+        $this->transactions++;
+
+        return $result;
     }
 
     public function commit(): bool
     {
-        return $this->pdo->commit();
+        $this->transactions--;
+
+        if ($this->transactions === 0) {
+            return $this->pdo->commit();
+        }
+
+        $this->pdo->exec("RELEASE SAVEPOINT trans{$this->transactions}");
+        return true;
     }
 
     public function rollBack(): bool
     {
-        return $this->pdo->rollBack();
+        if ($this->transactions === 0) {
+            return false;
+        }
+
+        $this->transactions--;
+
+        if ($this->transactions === 0) {
+            return $this->pdo->rollBack();
+        }
+
+        $this->pdo->exec("ROLLBACK TO SAVEPOINT trans{$this->transactions}");
+        return true;
     }
 
     public function inTransaction(): bool
     {
-        return $this->pdo->inTransaction();
+        return $this->transactions > 0 || $this->pdo->inTransaction();
+    }
+
+    /**
+     * Execute a Closure within a transaction.
+     *
+     * @param \Closure $callback
+     * @param int $attempts
+     * @return mixed
+     *
+     * @throws \Throwable
+     */
+    public function transaction(\Closure $callback, int $attempts = 1)
+    {
+        for ($currentAttempt = 1; $currentAttempt <= $attempts; $currentAttempt++) {
+            $this->beginTransaction();
+
+            try {
+                $result = $callback($this);
+                $this->commit();
+                return $result;
+            } catch (\Throwable $e) {
+                $this->rollBack();
+
+                if ($this->isDeadlock($e) && $currentAttempt < $attempts) {
+                    continue;
+                }
+
+                throw $e;
+            }
+        }
+    }
+
+    /**
+     * Determine if the given exception was caused by a deadlock.
+     *
+     * @param \Throwable $e
+     * @return bool
+     */
+    protected function isDeadlock(\Throwable $e): bool
+    {
+        $message = $e->getMessage();
+
+        return str_contains($message, 'Deadlock found when trying to get lock') ||
+            str_contains($message, 'database is locked') ||
+            str_contains($message, 'Lock wait timeout exceeded') ||
+            str_contains($message, 'Transaction rollback: serialization failure');
+    }
+
+    /**
+     * Get the number of active transactions.
+     *
+     * @return int
+     */
+    public function transactionLevel(): int
+    {
+        return $this->transactions;
     }
 
     public function getStats(): array

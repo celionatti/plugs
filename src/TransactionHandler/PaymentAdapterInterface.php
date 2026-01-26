@@ -12,29 +12,80 @@ namespace Plugs\TransactionHandler;
 
 interface PaymentAdapterInterface
 {
-    public function charge(array $data);
+    /**
+     * @param array $data
+     * @return array
+     */
+    public function charge(array $data): array;
 
-    public function createSubscription(array $data);
+    /**
+     * @param array $data
+     * @return array
+     */
+    public function createSubscription(array $data): array;
 
-    public function cancelSubscription(string $subscriptionId);
+    /**
+     * @param string $subscriptionId
+     * @return array
+     */
+    public function cancelSubscription(string $subscriptionId): array;
 
-    public function transfer(array $data);
+    /**
+     * @param array $data
+     * @return array
+     */
+    public function transfer(array $data): array;
 
-    public function withdraw(array $data);
+    /**
+     * @param array $data
+     * @return array
+     */
+    public function withdraw(array $data): array;
 
-    public function refund(array $data);
+    /**
+     * @param array $data
+     * @return array
+     */
+    public function refund(array $data): array;
 
-    public function verify(string $reference);
+    /**
+     * @param string $reference
+     * @return array
+     */
+    public function verify(string $reference): array;
 
-    public function getTransaction(string $transactionId);
+    /**
+     * @param string $transactionId
+     * @return array
+     */
+    public function getTransaction(string $transactionId): array;
 
-    public function listTransactions(array $filters);
+    /**
+     * @param array $filters
+     * @return array
+     */
+    public function listTransactions(array $filters): array;
 
-    public function getBalance();
+    /**
+     * @return array
+     */
+    public function getBalance(): array;
 
-    public function createRecipient(array $data);
+    /**
+     * @param array $data
+     * @return array
+     */
+    public function createRecipient(array $data): array;
 
+    /**
+     * @param array $payload
+     * @return bool
+     */
     public function verifyWebhookSignature(array $payload): bool;
 
-    public function processWebhook(array $payload);
+    /**
+     * @param array $payload
+     * @return array
+     */
+    public function processWebhook(array $payload): array;
 }

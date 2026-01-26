@@ -48,6 +48,20 @@ class DatabaseManager
     }
 
     /**
+     * Execute a Closure within a transaction.
+     *
+     * @param \Closure $callback
+     * @param int $attempts
+     * @return mixed
+     *
+     * @throws \Throwable
+     */
+    public function transaction(\Closure $callback, int $attempts = 1)
+    {
+        return $this->connection->transaction($callback, $attempts);
+    }
+
+    /**
      * Get the connection instance.
      *
      * @return Connection

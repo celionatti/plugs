@@ -17,12 +17,24 @@ use Plugs\TransactionHandler\Adapter\PayoneerAdapter;
 use Plugs\TransactionHandler\Adapter\PayPalAdapter;
 use Plugs\TransactionHandler\Adapter\PaystackAdapter;
 use Plugs\TransactionHandler\Adapter\StripeAdapter;
+use Psr\Log\LoggerInterface;
 
 class PaymentTransactionHandler
 {
-    private $platform;
-    private $config;
-    private $adapter;
+    private string $platform;
+    private array $config;
+    private PaymentAdapterInterface $adapter;
+    private ?LoggerInterface $logger;
+
+    // Fluent context
+    private float $amount = 0.0;
+    private string $currency = 'NGN';
+    private string $email = '';
+    private ?string $reference = null;
+    private array $metadata = [];
+    private ?string $callbackUrl = null;
+    private ?string $description = null;
+    private array $extraData = [];
 
     // Transaction types
     public const TYPE_ONE_TIME = 'one_time';
@@ -50,72 +62,133 @@ class PaymentTransactionHandler
      *
      * @param string $platform Payment platform name
      * @param array $config Platform configuration
+     * @param LoggerInterface|null $logger
      */
-    public function __construct(string $platform, array $config)
+    public function __construct(string $platform, array $config, ?LoggerInterface $logger = null)
     {
         $this->platform = strtolower($platform);
         $this->config = $config;
+        $this->logger = $logger ?? (function_exists('app') ? app('log') : null);
         $this->initializeAdapter();
     }
 
     /**
      * Initialize the appropriate payment adapter
      */
-    private function initializeAdapter()
+    private function initializeAdapter(): void
     {
         switch ($this->platform) {
             case self::PLATFORM_PAYSTACK:
                 $this->adapter = new PaystackAdapter($this->config);
-
                 break;
             case self::PLATFORM_STRIPE:
                 $this->adapter = new StripeAdapter($this->config);
-
                 break;
             case self::PLATFORM_PAYPAL:
                 $this->adapter = new PayPalAdapter();
-
                 break;
             case self::PLATFORM_FLUTTERWAVE:
                 $this->adapter = new FlutterwaveAdapter($this->config);
-
                 break;
             case self::PLATFORM_PAYONEER:
                 $this->adapter = new PayoneerAdapter();
-
                 break;
             case self::PLATFORM_BTCPAY:
                 $this->adapter = new BTCPayAdapter($this->config);
-
                 break;
             default:
                 throw new Exception("Unsupported platform: {$this->platform}");
         }
     }
 
-    /**
-     * Process a one-time payment
-     *
-     * @param array $data Payment data
-     * @return array Transaction result
-     */
-    public function processOneTimePayment(array $data): array
+    // --- Fluent Interface building methods ---
+
+    public function amount(float $amount): self
     {
-        $this->validatePaymentData($data);
+        $this->amount = $amount;
+        return $this;
+    }
+
+    public function currency(string $currency): self
+    {
+        $this->currency = strtoupper($currency);
+        return $this;
+    }
+
+    public function email(string $email): self
+    {
+        $this->email = $email;
+        return $this;
+    }
+
+    public function reference(string $reference): self
+    {
+        $this->reference = $reference;
+        return $this;
+    }
+
+    public function metadata(array $metadata): self
+    {
+        $this->metadata = $metadata;
+        return $this;
+    }
+
+    public function callback(string $url): self
+    {
+        $this->callbackUrl = $url;
+        return $this;
+    }
+
+    public function description(string $description): self
+    {
+        $this->description = $description;
+        return $this;
+    }
+
+    public function with(array $data): self
+    {
+        $this->extraData = array_merge($this->extraData, $data);
+        return $this;
+    }
+
+    // --- Processing methods ---
+
+    /**
+     * Process a one-time payment using fluent context or provided data
+     *
+     * @param array $data Optional data override
+     * @return TransactionResult
+     */
+    public function pay(array $data = []): TransactionResult
+    {
+        $payload = array_merge([
+            'amount' => $this->amount,
+            'currency' => $this->currency,
+            'email' => $this->email,
+            'reference' => $this->reference ?? $this->generateReference(),
+            'metadata' => $this->metadata,
+            'callback_url' => $this->callbackUrl,
+            'description' => $this->description,
+        ], $this->extraData, $data);
+
+        $this->validatePaymentData($payload);
+
+        $this->logInfo("Initiating payment of {$payload['amount']} {$payload['currency']} for {$payload['email']}", [
+            'reference' => $payload['reference'],
+            'platform' => $this->platform
+        ]);
 
         try {
-            $result = $this->adapter->charge([
-                'amount' => $data['amount'],
-                'currency' => $data['currency'] ?? 'USD',
-                'email' => $data['email'],
-                'reference' => $data['reference'] ?? $this->generateReference(),
-                'metadata' => $data['metadata'] ?? [],
-                'callback_url' => $data['callback_url'] ?? null,
-            ]);
+            $result = $this->adapter->charge($payload);
 
-            return $this->formatResponse($result, self::TYPE_ONE_TIME);
+            $transactionResult = TransactionResult::success($result, self::TYPE_ONE_TIME, $this->platform);
+
+            $this->logInfo("Payment initiated successfully", ['reference' => $transactionResult->getReference()]);
+
+            return $transactionResult;
         } catch (Exception $e) {
-            return $this->handleError($e, self::TYPE_ONE_TIME);
+            $this->logError("Payment failed: " . $e->getMessage(), ['payload' => $payload]);
+            return TransactionResult::failed($e->getMessage(), self::TYPE_ONE_TIME, $this->platform);
         }
     }
 
@@ -123,26 +196,25 @@ class PaymentTransactionHandler
      * Create a subscription
      *
      * @param array $data Subscription data
-     * @return array Transaction result
+     * @return TransactionResult
      */
-    public function createSubscription(array $data): array
+    public function subscribe(array $data = []): TransactionResult
     {
-        $this->validateSubscriptionData($data);
+        $payload = array_merge([
+            'email' => $this->email,
+            'amount' => $this->amount,
+            'currency' => $this->currency,
+            'metadata' => $this->metadata,
+        ], $this->extraData, $data);
+
+        $this->validateSubscriptionData($payload);
 
         try {
-            $result = $this->adapter->createSubscription([
-                'plan_code' => $data['plan_code'],
-                'customer_email' => $data['email'],
-                'amount' => $data['amount'],
-                'currency' => $data['currency'] ?? 'USD',
-                'interval' => $data['interval'] ?? 'monthly',
-                'start_date' => $data['start_date'] ?? date('Y-m-d'),
-                'metadata' => $data['metadata'] ?? [],
-            ]);
-
-            return $this->formatResponse($result, self::TYPE_SUBSCRIPTION);
+            $result = $this->adapter->createSubscription($payload);
+            return TransactionResult::success($result, self::TYPE_SUBSCRIPTION, $this->platform);
         } catch (Exception $e) {
-            return $this->handleError($e, self::TYPE_SUBSCRIPTION);
+            $this->logError("Subscription failed: " . $e->getMessage(), ['payload' => $payload]);
+            return TransactionResult::failed($e->getMessage(), self::TYPE_SUBSCRIPTION, $this->platform);
         }
     }
 
@@ -150,20 +222,15 @@ class PaymentTransactionHandler
      * Cancel a subscription
      *
      * @param string $subscriptionId Subscription ID
-     * @return array Transaction result
+     * @return TransactionResult
      */
-    public function cancelSubscription(string $subscriptionId): array
+    public function cancel(string $subscriptionId): TransactionResult
     {
         try {
             $result = $this->adapter->cancelSubscription($subscriptionId);
-
-            return [
-                'status' => self::STATUS_SUCCESS,
-                'message' => 'Subscription cancelled successfully',
-                'data' => $result,
-            ];
+            return TransactionResult::success($result, self::TYPE_SUBSCRIPTION, $this->platform);
         } catch (Exception $e) {
-            return $this->handleError($e, self::TYPE_SUBSCRIPTION);
+            return TransactionResult::failed($e->getMessage(), self::TYPE_SUBSCRIPTION, $this->platform);
         }
     }
 
@@ -171,25 +238,24 @@ class PaymentTransactionHandler
      * Transfer funds to another account
      *
      * @param array $data Transfer data
-     * @return array Transaction result
+     * @return TransactionResult
      */
-    public function transferFunds(array $data): array
+    public function transfer(array $data = []): TransactionResult
     {
-        $this->validateTransferData($data);
+        $payload = array_merge([
+            'amount' => $this->amount,
+            'currency' => $this->currency,
+            'reference' => $this->reference ?? $this->generateReference(),
+            'metadata' => $this->metadata,
+        ], $this->extraData, $data);
+
+        $this->validateTransferData($payload);
 
         try {
-            $result = $this->adapter->transfer([
-                'amount' => $data['amount'],
-                'currency' => $data['currency'] ?? 'USD',
-                'recipient' => $data['recipient'],
-                'reason' => $data['reason'] ?? 'Fund Transfer',
-                'reference' => $data['reference'] ?? $this->generateReference(),
-                'metadata' => $data['metadata'] ?? [],
-            ]);
-
-            return $this->formatResponse($result, self::TYPE_TRANSFER);
+            $result = $this->adapter->transfer($payload);
+            return TransactionResult::success($result, self::TYPE_TRANSFER, $this->platform);
         } catch (Exception $e) {
-            return $this->handleError($e, self::TYPE_TRANSFER);
+            return TransactionResult::failed($e->getMessage(), self::TYPE_TRANSFER, $this->platform);
         }
     }
 
@@ -197,26 +263,23 @@ class PaymentTransactionHandler
      * Withdraw funds to bank account
      *
      * @param array $data Withdrawal data
-     * @return array Transaction result
+     * @return TransactionResult
      */
-    public function withdrawFunds(array $data): array
+    public function withdraw(array $data = []): TransactionResult
     {
-        $this->validateWithdrawalData($data);
+        $payload = array_merge([
+            'amount' => $this->amount,
+            'currency' => $this->currency,
+            'reference' => $this->reference ?? $this->generateReference(),
+        ], $this->extraData, $data);
+
+        $this->validateWithdrawalData($payload);
 
         try {
-            $result = $this->adapter->withdraw([
-                'amount' => $data['amount'],
-                'currency' => $data['currency'] ?? 'USD',
-                'bank_code' => $data['bank_code'],
-                'account_number' => $data['account_number'],
-                'account_name' => $data['account_name'],
-                'reference' => $data['reference'] ?? $this->generateReference(),
-                'narration' => $data['narration'] ?? 'Withdrawal',
-            ]);
-
-            return $this->formatResponse($result, self::TYPE_WITHDRAWAL);
+            $result = $this->adapter->withdraw($payload);
+            return TransactionResult::success($result, self::TYPE_WITHDRAWAL, $this->platform);
         } catch (Exception $e) {
-            return $this->handleError($e, self::TYPE_WITHDRAWAL);
+            return TransactionResult::failed($e->getMessage(), self::TYPE_WITHDRAWAL, $this->platform);
         }
     }
 
@@ -224,22 +287,17 @@ class PaymentTransactionHandler
      * Process a refund
      *
      * @param array $data Refund data
-     * @return array Transaction result
+     * @return TransactionResult
      */
-    public function refundTransaction(array $data): array
+    public function refund(array $data): TransactionResult
     {
         $this->validateRefundData($data);
 
         try {
-            $result = $this->adapter->refund([
-                'transaction_id' => $data['transaction_id'],
-                'amount' => $data['amount'] ?? null,
-                'reason' => $data['reason'] ?? 'Customer request',
-            ]);
-
-            return $this->formatResponse($result, self::TYPE_REFUND);
+            $result = $this->adapter->refund($data);
+            return TransactionResult::success($result, self::TYPE_REFUND, $this->platform);
         } catch (Exception $e) {
-            return $this->handleError($e, self::TYPE_REFUND);
+            return TransactionResult::failed($e->getMessage(), self::TYPE_REFUND, $this->platform);
         }
     }
 
@@ -247,24 +305,15 @@ class PaymentTransactionHandler
      * Verify a transaction
      *
      * @param string $reference Transaction reference
-     * @return array Verification result
+     * @return TransactionResult
      */
-    public function verifyTransaction(string $reference): array
+    public function verify(string $reference): TransactionResult
     {
         try {
             $result = $this->adapter->verify($reference);
-
-            return [
-                'status' => self::STATUS_SUCCESS,
-                'verified' => true,
-                'data' => $result,
-            ];
+            return TransactionResult::success($result, 'verify', $this->platform);
         } catch (Exception $e) {
-            return [
-                'status' => self::STATUS_FAILED,
-                'verified' => false,
-                'message' => $e->getMessage(),
-            ];
+            return TransactionResult::failed($e->getMessage(), 'verify', $this->platform);
         }
     }
 
@@ -274,18 +323,9 @@ class PaymentTransactionHandler
      * @param string $transactionId Transaction ID
      * @return array Transaction details
      */
-    public function getTransactionDetails(string $transactionId): array
+    public function getTransaction(string $transactionId): array
     {
-        try {
-            $result = $this->adapter->getTransaction($transactionId);
-
-            return [
-                'status' => self::STATUS_SUCCESS,
-                'data' => $result,
-            ];
-        } catch (Exception $e) {
-            return $this->handleError($e, 'fetch');
-        }
+        return $this->adapter->getTransaction($transactionId);
     }
 
     /**
@@ -294,18 +334,9 @@ class PaymentTransactionHandler
      * @param array $filters Optional filters
      * @return array List of transactions
      */
-    public function listTransactions(array $filters = []): array
+    public function list(array $filters = []): array
     {
-        try {
-            $result = $this->adapter->listTransactions($filters);
-
-            return [
-                'status' => self::STATUS_SUCCESS,
-                'data' => $result,
-            ];
-        } catch (Exception $e) {
-            return $this->handleError($e, 'list');
-        }
+        return $this->adapter->listTransactions($filters);
     }
 
     /**
@@ -315,16 +346,7 @@ class PaymentTransactionHandler
      */
     public function getBalance(): array
     {
-        try {
-            $result = $this->adapter->getBalance();
-
-            return [
-                'status' => self::STATUS_SUCCESS,
-                'data' => $result,
-            ];
-        } catch (Exception $e) {
-            return $this->handleError($e, 'balance');
-        }
+        return $this->adapter->getBalance();
     }
 
     /**
@@ -335,47 +357,29 @@ class PaymentTransactionHandler
      */
     public function createRecipient(array $data): array
     {
-        try {
-            $result = $this->adapter->createRecipient([
-                'type' => $data['type'] ?? 'nuban',
-                'name' => $data['name'],
-                'account_number' => $data['account_number'],
-                'bank_code' => $data['bank_code'],
-                'currency' => $data['currency'] ?? 'USD',
-                'metadata' => $data['metadata'] ?? [],
-            ]);
-
-            return [
-                'status' => self::STATUS_SUCCESS,
-                'data' => $result,
-            ];
-        } catch (Exception $e) {
-            return $this->handleError($e, 'recipient');
-        }
+        return $this->adapter->createRecipient($data);
     }
 
     /**
      * Webhook handler
      *
      * @param array $payload Webhook payload
-     * @return array Processing result
+     * @return TransactionResult
      */
-    public function handleWebhook(array $payload): array
+    public function handleWebhook(array $payload): TransactionResult
     {
         try {
-            // Verify webhook signature
             if (!$this->adapter->verifyWebhookSignature($payload)) {
                 throw new Exception('Invalid webhook signature');
             }
 
             $result = $this->adapter->processWebhook($payload);
+            $this->logInfo("Webhook processed", ['event' => $result['event'] ?? 'unknown']);
 
-            return [
-                'status' => self::STATUS_SUCCESS,
-                'data' => $result,
-            ];
+            return TransactionResult::success($result, 'webhook', $this->platform);
         } catch (Exception $e) {
-            return $this->handleError($e, 'webhook');
+            $this->logError("Webhook processing failed: " . $e->getMessage());
+            return TransactionResult::failed($e->getMessage(), 'webhook', $this->platform);
         }
     }
 
@@ -390,39 +394,23 @@ class PaymentTransactionHandler
     }
 
     /**
-     * Format response
-     *
-     * @param mixed $result
-     * @param string $type
-     * @return array
+     * Helper for logging info
      */
-    private function formatResponse($result, string $type): array
+    private function logInfo(string $message, array $context = []): void
     {
-        return [
-            'status' => self::STATUS_SUCCESS,
-            'type' => $type,
-            'platform' => $this->platform,
-            'data' => $result,
-            'timestamp' => date('Y-m-d H:i:s'),
-        ];
+        if ($this->logger) {
+            $this->logger->info("[Payment] " . $message, $context);
+        }
     }
 
     /**
-     * Handle errors
-     *
-     * @param Exception $e
-     * @param string $type
-     * @return array
+     * Helper for logging errors
      */
-    private function handleError(Exception $e, string $type): array
+    private function logError(string $message, array $context = []): void
     {
-        return [
-            'status' => self::STATUS_FAILED,
-            'type' => $type,
-            'platform' => $this->platform,
-            'message' => $e->getMessage(),
-            'timestamp' => date('Y-m-d H:i:s'),
-        ];
+        if ($this->logger) {
+            $this->logger->error("[Payment] " . $message, $context);
+        }
     }
 
     /**
@@ -440,8 +428,8 @@ class PaymentTransactionHandler
 
     private function validateSubscriptionData(array $data): void
     {
-        if (empty($data['plan_code'])) {
-            throw new Exception('Plan code is required');
+        if (empty($data['plan_code']) && empty($data['price_id'])) {
+            throw new Exception('Plan code or Price ID is required');
         }
         if (empty($data['email'])) {
             throw new Exception('Email is required');
@@ -453,8 +441,8 @@ class PaymentTransactionHandler
         if (empty($data['amount']) || !is_numeric($data['amount'])) {
             throw new Exception('Valid amount is required');
         }
-        if (empty($data['recipient'])) {
-            throw new Exception('Recipient is required');
+        if (empty($data['recipient']) && empty($data['account_number'])) {
+            throw new Exception('Recipient or Account details required');
         }
     }
 
@@ -466,9 +454,6 @@ class PaymentTransactionHandler
         if (empty($data['account_number'])) {
             throw new Exception('Account number is required');
         }
-        if (empty($data['bank_code'])) {
-            throw new Exception('Bank code is required');
-        }
     }
 
     private function validateRefundData(array $data): void
@@ -476,5 +461,48 @@ class PaymentTransactionHandler
         if (empty($data['transaction_id'])) {
             throw new Exception('Transaction ID is required');
         }
+    }
+
+    /**
+     * Compatibility methods for legacy code
+     */
+    public function processOneTimePayment(array $data): array
+    {
+        return $this->pay($data)->toArray();
+    }
+
+    public function createSubscription(array $data): array
+    {
+        return $this->subscribe($data)->toArray();
+    }
+
+    public function transferFunds(array $data): array
+    {
+        return $this->transfer($data)->toArray();
+    }
+
+    public function withdrawFunds(array $data): array
+    {
+        return $this->withdraw($data)->toArray();
+    }
+
+    public function refundTransaction(array $data): array
+    {
+        return $this->refund($data)->toArray();
+    }
+
+    public function verifyTransaction(string $reference): array
+    {
+        return $this->verify($reference)->toArray();
+    }
+
+    public function getTransactionDetails(string $transactionId): array
+    {
+        return $this->getTransaction($transactionId);
+    }
+
+    public function listTransactions(array $filters = []): array
+    {
+        return $this->list($filters);
     }
 }
