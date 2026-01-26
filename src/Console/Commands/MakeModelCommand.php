@@ -598,7 +598,7 @@ class MakeModelCommand extends Command
 
     private function getDefaultTemplate(string $templateName): string
     {
-        return match($templateName) {
+        return match ($templateName) {
             'model.stub' => $this->getModelTemplate(),
             'migration.stub' => $this->getMigrationTemplate(),
             'migration.pivot.stub' => $this->getPivotMigrationTemplate(),
@@ -614,33 +614,69 @@ class MakeModelCommand extends Command
     private function getModelTemplate(): string
     {
         return <<<'STUB'
-        <?php
+<?php
 
-        declare(strict_types=1);
+declare(strict_types=1);
 
-        namespace App\Models;
+namespace App\Models;
 
-        {{imports}}
-        use Plugs\Base\Model;
+{{imports}}
+use Plugs\Base\Model\PlugModel;
 
-        class {{class}} extends Model
-        {
-            {{traits}}
-            
-            protected string $table = '{{table}}';
-            
-            protected string $connection = '{{connection}}';
-            
-            public bool $timestamps = {{timestamps}};
-            
-            protected array $fillable = {{fillable}};
-            
-            protected array $hidden = {{hidden}};
-            
-            protected array $casts = {{casts}};
-        }
+class {{class}} extends PlugModel
+{
+    {{traits}}
+    
+    /**
+     * The table associated with the model.
+     *
+     * @var string
+     */
+    protected $table = '{{table}}';
 
-        STUB;
+    /**
+     * The primary key associated with the table.
+     *
+     * @var string
+     */
+    protected $primaryKey = 'id';
+
+    /**
+     * The connection name for the model.
+     *
+     * @var string
+     */
+    protected $connection = '{{connection}}';
+
+    /**
+     * Indicates if the model should be timestamped.
+     *
+     * @var bool
+     */
+    public $timestamps = {{timestamps}};
+
+    /**
+     * The attributes that are mass assignable.
+     *
+     * @var array
+     */
+    protected $fillable = {{fillable}};
+
+    /**
+     * The attributes that should be hidden for arrays.
+     *
+     * @var array
+     */
+    protected $hidden = {{hidden}};
+
+    /**
+     * The attributes that should be cast to native types.
+     *
+     * @var array
+     */
+    protected $casts = {{casts}};
+}
+STUB;
     }
 
     private function getMigrationTemplate(): string
