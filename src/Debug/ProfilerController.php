@@ -211,6 +211,7 @@ class ProfilerController
             'database' => 'Database (' . ($profile['database']['query_count'] ?? 0) . ')',
             'timeline' => 'Timeline',
             'app' => 'Application',
+            'files' => 'Files (' . ($profile['files']['count'] ?? 0) . ')',
             'config' => 'Framework',
         ];
 
@@ -224,6 +225,18 @@ class ProfilerController
             $tabNav .= sprintf('<button class="tab-btn" onclick="openTab(\'%s\')">%s</button>', $id, $label);
         }
 
+        $gitBadge = '';
+        if (!empty($profile['git']['branch'])) {
+            $gitBadge = sprintf(
+                '<div class="git-badge" style="display:inline-flex; align-items:center; background:rgba(255,255,255,0.1); padding:4px 10px; border-radius:6px; font-size:12px; color:#cbd5e1; font-family:monospace; margin-left:12px;">
+                    <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="margin-right:6px"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 8v8m-4-5v5m-4-2v2m-2 4h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+                    %s <span style="opacity:0.6; margin-left:6px">#%s</span>
+                </div>',
+                htmlspecialchars($profile['git']['branch']),
+                htmlspecialchars($profile['git']['short_hash'] ?? '')
+            );
+        }
+
         return $this->getBaseHtml('Profile: ' . $profile['request']['path'], sprintf(
             '
             <div class="profile-header animate-fade-in">
@@ -231,6 +244,7 @@ class ProfilerController
                 <div class="profile-title">
                     <span class="method-badge method-%s">%s</span>
                     <h1>%s</h1>
+                    %s
                 </div>
                 <div class="profile-meta">
                     <span class="meta-item">%s</span>
@@ -278,6 +292,7 @@ class ProfilerController
             strtolower((string) ($profile['request']['method'] ?? 'GET')),
             htmlspecialchars((string) ($profile['request']['method'] ?? 'GET')),
             htmlspecialchars((string) ($profile['request']['path'] ?? '/')),
+            $gitBadge,
             htmlspecialchars((string) ($profile['datetime'] ?? '')),
             $this->getStatusClass((int) ($profile['request']['status_code'] ?? 200)),
             $profile['request']['status_code'] ?? 200,
@@ -303,11 +318,50 @@ class ProfilerController
                 return $this->renderTimelineTab($profile);
             case 'app':
                 return $this->renderAppTab($profile);
+            case 'files':
+                return $this->renderFilesTab($profile);
             case 'config':
                 return $this->renderConfigTab($profile);
             default:
                 return '';
         }
+    }
+
+    private function renderFilesTab(array $profile): string
+    {
+        $files = $profile['files']['list'] ?? [];
+        if (empty($files)) {
+            return '<div class="empty-state"><p>No file list captured.</p></div>';
+        }
+
+        $html = '<div class="file-list-wrapper">';
+        $html .= '<input type="text" placeholder="Filter files..." id="files-search" class="search-input" style="width:100%; padding:12px; margin-bottom:20px; background:var(--bg-card); border:1px solid var(--border-color); color:var(--text-primary); border-radius:8px;">';
+        $html .= '<div class="files-container" style="max-height:600px; overflow-y:auto;">';
+
+        $basePath = defined('BASE_PATH') ? BASE_PATH : '';
+
+        foreach ($files as $file) {
+            $displayFile = $basePath ? str_replace($basePath, '', $file) : $file;
+            $isVendor = str_contains($displayFile, 'vendor');
+
+            $html .= sprintf(
+                '<div class="file-item" style="padding:8px 12px; border-bottom:1px solid var(--border-color); color:%s; font-family:\'JetBrains Mono\', monospace; font-size:13px;">%s</div>',
+                $isVendor ? 'var(--text-muted)' : 'var(--text-primary)',
+                htmlspecialchars($displayFile)
+            );
+        }
+        $html .= '</div>';
+        $html .= '<script>
+            document.getElementById("files-search").addEventListener("input", function(e) {
+                const val = e.target.value.toLowerCase();
+                document.querySelectorAll(".file-item").forEach(el => {
+                    el.style.display = el.textContent.toLowerCase().includes(val) ? "block" : "none";
+                });
+            });
+        </script>';
+        $html .= '</div>';
+
+        return $html;
     }
 
     private function renderRequestTab(array $profile): string
@@ -402,7 +456,7 @@ class ProfilerController
         $totalDuration = max($profile['duration'] ?? 1, 1);
 
         foreach ($timeline as $name => $segment) {
-            if ($segment['duration'] === null) {
+            if (($segment['duration'] ?? null) === null) {
                 continue;
             }
             $percentage = min(100, ($segment['duration'] / $totalDuration) * 100);
@@ -468,6 +522,15 @@ class ProfilerController
 
     private function renderConfigTab(array $profile): string
     {
+        $gitInfo = '';
+        if (isset($profile['git']['branch'])) {
+            $gitInfo = '<div class="info-group"><h3>Source Control</h3>' . $this->renderTable([
+                'Branch' => $profile['git']['branch'],
+                'Commit' => $profile['git']['hash'],
+                'Short Commit' => $profile['git']['short_hash'],
+            ]) . '</div>';
+        }
+
         return '<div class="tab-grid">
             <div class="info-group"><h3>Environment</h3>' . $this->renderTable([
                         'PHP Version' => $profile['php']['version'] ?? PHP_VERSION,
@@ -475,6 +538,7 @@ class ProfilerController
                         'Server' => $_SERVER['SERVER_SOFTWARE'] ?? 'Unknown',
                         'Memory Limit' => ini_get('memory_limit'),
                     ]) . '</div>
+            ' . $gitInfo . '
         </div>';
     }
 

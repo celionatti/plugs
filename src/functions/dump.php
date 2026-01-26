@@ -121,6 +121,148 @@ if (!function_exists('dm')) {
     }
 }
 
+if (!function_exists('de')) {
+    /**
+     * Dump Exception - Show exception with beautiful stack trace
+     *
+     * @param Throwable $exception Exception to dump
+     * @param bool $die Whether to terminate execution
+     * @return void
+     */
+    function de(Throwable $exception, bool $die = true): void
+    {
+        $data = [
+            'exception' => $exception,
+            'class' => get_class($exception),
+            'message' => $exception->getMessage(),
+            'code' => $exception->getCode(),
+            'file' => $exception->getFile(),
+            'line' => $exception->getLine(),
+            'trace' => $exception->getTrace(),
+            'previous' => $exception->getPrevious(),
+        ];
+
+        plugs_dump([$data], $die, 'exception');
+    }
+}
+
+if (!function_exists('dh')) {
+    /**
+     * Dump HTTP - Show HTTP response with headers, body, and timing
+     *
+     * @param mixed $response HTTP response object or array
+     * @param bool $die Whether to terminate execution
+     * @return void
+     */
+    function dh($response, bool $die = true): void
+    {
+        $data = [];
+
+        if (is_object($response)) {
+            // Handle Plugs HTTPResponse
+            if (method_exists($response, 'getStatusCode')) {
+                $data['status_code'] = $response->getStatusCode();
+            }
+            if (method_exists($response, 'getHeaders')) {
+                $data['headers'] = $response->getHeaders();
+            }
+            if (method_exists($response, 'getBody')) {
+                $body = $response->getBody();
+                $data['body'] = $body;
+                // Try to detect and parse JSON
+                if (is_string($body)) {
+                    $decoded = json_decode($body, true);
+                    if (json_last_error() === JSON_ERROR_NONE) {
+                        $data['body_parsed'] = $decoded;
+                    }
+                }
+            }
+            if (method_exists($response, 'getReasonPhrase')) {
+                $data['reason'] = $response->getReasonPhrase();
+            }
+            if (method_exists($response, 'getRequestTime')) {
+                $data['request_time'] = $response->getRequestTime();
+            }
+            if (method_exists($response, 'getUrl')) {
+                $data['url'] = $response->getUrl();
+            }
+            $data['response_class'] = get_class($response);
+        } else {
+            $data = ['response' => $response];
+        }
+
+        plugs_dump([$data], $die, 'http');
+    }
+}
+
+if (!function_exists('dp')) {
+    /**
+     * Dump Profile - Profile a callback and dump results with query stats
+     *
+     * @param callable $callback The code to profile
+     * @param bool $die Whether to terminate execution
+     * @return void
+     */
+    function dp(callable $callback, bool $die = true): void
+    {
+        $modelClass = 'Plugs\\Base\\Model\\PlugModel';
+
+        if (class_exists($modelClass) && method_exists($modelClass, 'profile')) {
+            $profile = call_user_func([$modelClass, 'profile'], $callback);
+            plugs_dump([$profile], $die, 'profile');
+        } else {
+            // Fallback basic profiling
+            $startTime = microtime(true);
+            $startMemory = memory_get_usage(true);
+
+            $result = $callback();
+
+            $endTime = microtime(true);
+            $endMemory = memory_get_usage(true);
+
+            $profile = [
+                'result' => $result,
+                'execution_time' => $endTime - $startTime,
+                'execution_time_ms' => ($endTime - $startTime) * 1000,
+                'memory_used' => $endMemory - $startMemory,
+                'queries' => [],
+                'query_count' => 0,
+            ];
+
+            plugs_dump([$profile], $die, 'profile');
+        }
+    }
+}
+
+// Global theme setting
+global $plugs_debug_theme;
+$plugs_debug_theme = 'dark';
+
+if (!function_exists('dt')) {
+    /**
+     * Set Debug Theme
+     *
+     * @param string $theme Theme name: 'dark', 'light', 'dracula', 'monokai'
+     * @return void
+     */
+    function dt(string $theme): void
+    {
+        global $plugs_debug_theme;
+        $validThemes = ['dark', 'light', 'dracula', 'monokai'];
+        if (in_array($theme, $validThemes)) {
+            $plugs_debug_theme = $theme;
+        }
+    }
+}
+
+/**
+ * Render profile dump
+ */
+function plugs_dump_profile(array $profile, bool $die = false): void
+{
+    plugs_dump([$profile], $die, 'profile');
+}
+
 /**
  * Core dump function with Laravel 12 styling
  */
@@ -140,8 +282,14 @@ function plugs_dump(array $vars, bool $die = false, string $mode = 'default'): v
     $executionTime = microtime(true) - ($_SERVER['REQUEST_TIME_FLOAT'] ?? microtime(true));
     $queryStats = plugs_get_query_stats();
 
-    echo plugs_render_styles();
-    echo '<div class="plugs-debug-wrapper">';
+    global $plugs_debug_theme;
+    $theme = $plugs_debug_theme ?? 'dark';
+
+    echo plugs_render_styles(!$die);
+    echo '<div class="plugs-debug-wrapper" data-theme="' . $theme . '">';
+    if ($die) {
+        echo '<script>document.body.setAttribute("data-theme", "' . $theme . '");</script>';
+    }
     echo plugs_render_header($file, $line, $memoryUsage, $peakMemory, $executionTime, $queryStats);
     echo '<div class="plugs-debug-content">';
 
@@ -149,6 +297,12 @@ function plugs_dump(array $vars, bool $die = false, string $mode = 'default'): v
         echo plugs_render_queries($vars[0]);
     } elseif ($mode === 'model') {
         echo plugs_render_model($vars[0]);
+    } elseif ($mode === 'exception') {
+        echo plugs_render_exception($vars[0]);
+    } elseif ($mode === 'http') {
+        echo plugs_render_http($vars[0]);
+    } elseif ($mode === 'profile') {
+        echo plugs_render_profile($vars[0]);
     } else {
         echo plugs_render_variables($vars);
     }
@@ -158,6 +312,17 @@ function plugs_dump(array $vars, bool $die = false, string $mode = 'default'): v
 
     echo <<<'JS'
 <script>
+    // Tab Switching
+    function switchTab(btn, tabId) {
+        // Remove active class from all buttons and content
+        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+        document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+
+        // Add active class to clicked button and target content
+        btn.classList.add('active');
+        document.getElementById(tabId).classList.add('active');
+    }
+
     // Toggle collapsible variable view
     function toggleVar(header) {
         const body = header.nextElementSibling;
@@ -169,15 +334,18 @@ function plugs_dump(array $vars, bool $die = false, string $mode = 'default'): v
     // Global toggle (Expand/Collapse All)
     function toggleAll(expand) {
         document.querySelectorAll('.var-body').forEach(body => {
-            body.style.display = expand ? 'block' : 'none';
-            body.previousElementSibling.style.opacity = expand ? '1' : '0.7';
+            // Only toggle visible tabs
+            if (body.closest('.tab-content.active')) {
+                body.style.display = expand ? 'block' : 'none';
+                body.previousElementSibling.style.opacity = expand ? '1' : '0.7';
+            }
         });
     }
 
     // Search & Filter
     document.getElementById('debug-search').addEventListener('input', (e) => {
         const query = e.target.value.toLowerCase();
-        document.querySelectorAll('.var-item').forEach(item => {
+        document.querySelectorAll('.tab-content.active .var-item').forEach(item => {
             const text = item.innerText.toLowerCase();
             item.classList.toggle('hidden', !text.includes(query));
         });
@@ -186,7 +354,6 @@ function plugs_dump(array $vars, bool $die = false, string $mode = 'default'): v
     // Copy to Clipboard
     function copyValue(icon) {
         const container = icon.parentElement;
-        // Try to get data-full-value from string spans, otherwise use textContent
         const stringSpan = container.querySelector('.syntax-string');
         const textToCopy = stringSpan ? stringSpan.getAttribute('data-full-value') : container.innerText.trim();
         
@@ -230,7 +397,7 @@ function plugs_dump(array $vars, bool $die = false, string $mode = 'default'): v
         }
     });
 
-    // Handle string truncation toggle (optional improvement)
+    // Handle string truncation toggle
     document.querySelectorAll('.syntax-string').forEach(span => {
         if (span.innerText.endsWith('..."')) {
             span.style.cursor = 'pointer';
@@ -277,17 +444,22 @@ function plugs_get_query_stats(): array
 }
 
 /**
- * Render CSS styles (Plugs Dark Premium)
+ * Render CSS styles (Plugs Debug - Multi-theme)
  */
-function plugs_render_styles(): string
+function plugs_render_styles(bool $scoped = false): string
 {
-    return <<<'HTML'
+    global $plugs_debug_theme;
+    $theme = $plugs_debug_theme ?? 'dark';
+
+    // Core variables (Always included, but maybe scoped if needed. Keeping global for now as variables don't hurt)
+    $css = <<<HTML
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <style>
     @import url("https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Dancing+Script:wght@700&display=swap");
 
-    :root {
+    /* Dark Theme (Default) */
+    :root, [data-theme="dark"] {
         --bg-body: #0a0f1d;
         --bg-card: rgba(30, 41, 59, 0.7);
         --border-color: rgba(51, 65, 85, 0.5);
@@ -304,6 +476,65 @@ function plugs_render_styles(): string
         --glow: 0 0 20px rgba(168, 85, 247, 0.15);
     }
 
+    /* Light Theme */
+    [data-theme="light"] {
+        --bg-body: #f8fafc;
+        --bg-card: rgba(255, 255, 255, 0.9);
+        --border-color: rgba(148, 163, 184, 0.3);
+        --text-primary: #1e293b;
+        --text-secondary: #475569;
+        --text-muted: #64748b;
+        --accent-primary: #7c3aed;
+        --accent-secondary: #4f46e5;
+        --danger: #dc2626;
+        --warning: #d97706;
+        --success: #059669;
+        --code-bg: #f1f5f9;
+        --glass-bg: rgba(255, 255, 255, 0.8);
+        --glow: 0 0 20px rgba(124, 58, 237, 0.1);
+    }
+
+    /* Dracula Theme */
+    [data-theme="dracula"] {
+        --bg-body: #282a36;
+        --bg-card: rgba(68, 71, 90, 0.7);
+        --border-color: rgba(98, 114, 164, 0.5);
+        --text-primary: #f8f8f2;
+        --text-secondary: #bd93f9;
+        --text-muted: #6272a4;
+        --accent-primary: #ff79c6;
+        --accent-secondary: #8be9fd;
+        --danger: #ff5555;
+        --warning: #ffb86c;
+        --success: #50fa7b;
+        --code-bg: #1e1f29;
+        --glass-bg: rgba(40, 42, 54, 0.8);
+        --glow: 0 0 20px rgba(255, 121, 198, 0.15);
+    }
+
+    /* Monokai Theme */
+    [data-theme="monokai"] {
+        --bg-body: #272822;
+        --bg-card: rgba(61, 61, 52, 0.7);
+        --border-color: rgba(117, 113, 94, 0.5);
+        --text-primary: #f8f8f2;
+        --text-secondary: #e6db74;
+        --text-muted: #75715e;
+        --accent-primary: #f92672;
+        --accent-secondary: #66d9ef;
+        --danger: #f92672;
+        --warning: #e6db74;
+        --success: #a6e22e;
+        --code-bg: #1e1f1c;
+        --glass-bg: rgba(39, 40, 34, 0.8);
+        --glow: 0 0 20px rgba(249, 38, 114, 0.15);
+    }
+HTML
+        . "\n    body[data-theme=\"{$theme}\"], body.theme-{$theme} { }";
+
+    if (!$scoped) {
+        $css .= <<<'HTML'
+
     * { box-sizing: border-box; margin: 0; padding: 0; }
     
     body {
@@ -313,6 +544,31 @@ function plugs_render_styles(): string
         line-height: 1.6;
         font-size: 15px;
     }
+HTML;
+    } else {
+        $css .= <<<'HTML'
+
+    /* Scoped Reset */
+    .plugs-debug-wrapper, #plugs-profiler-modal, #plugs-profiler-bar {
+        font-family: 'Outfit', sans-serif;
+        color: var(--text-primary);
+        line-height: 1.6;
+        font-size: 15px;
+    }
+    
+    .plugs-debug-wrapper *, #plugs-profiler-modal *, #plugs-profiler-bar * {
+        box-sizing: border-box;
+    }
+    
+    #plugs-profiler-modal {
+        /* Ensure modal text color is correct against dark bg if not inherited */
+        color: var(--text-primary);
+    }
+HTML;
+    }
+
+    $css .= <<<'HTML'
+
     
     .plugs-debug-wrapper {
         min-height: 100vh;
@@ -381,6 +637,52 @@ function plugs_render_styles(): string
         display: flex;
         align-items: center;
         gap: 16px;
+    }
+
+    .tabs-nav {
+        display: flex;
+        gap: 2px;
+        background: rgba(15, 23, 42, 0.5);
+        padding: 4px;
+        border-radius: 12px;
+        margin-top: 24px;
+        border: 1px solid var(--border-color);
+    }
+
+    .tab-btn {
+        background: transparent;
+        border: none;
+        color: var(--text-muted);
+        padding: 10px 20px;
+        border-radius: 8px;
+        cursor: pointer;
+        font-family: inherit;
+        font-weight: 600;
+        font-size: 13px;
+        transition: all 0.2s;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .tab-btn:hover {
+        color: var(--text-primary);
+        background: rgba(255, 255, 255, 0.05);
+    }
+
+    .tab-btn.active {
+        background: var(--accent-primary);
+        color: white;
+        box-shadow: 0 4px 12px rgba(168, 85, 247, 0.3);
+    }
+
+    .tab-content {
+        display: none;
+        animation: fadeIn 0.3s ease-out;
+    }
+
+    .tab-content.active {
+        display: block;
     }
 
     .search-input {
@@ -689,6 +991,8 @@ function plugs_render_styles(): string
     }
 </style>
 HTML;
+
+    return $css;
 }
 
 /**
@@ -973,6 +1277,266 @@ function plugs_render_model(array $data): string
         $html .= '<div class="alert alert-info">';
         $html .= '<div class="alert-title">ℹ️ Query Count</div>';
         $html .= 'This model executed ' . count($queries) . ' database queries.';
+        $html .= '</div>';
+        $html .= '</div>';
+    }
+
+    $html .= '</div>';
+
+    return $html;
+}
+
+/**
+ * Render exception dump
+ */
+function plugs_render_exception(array $data): string
+{
+    $exception = $data['exception'] ?? null;
+    $class = $data['class'] ?? 'Exception';
+    $message = $data['message'] ?? 'Unknown error';
+    $code = $data['code'] ?? 0;
+    $file = $data['file'] ?? 'unknown';
+    $line = $data['line'] ?? 0;
+    $trace = $data['trace'] ?? [];
+    $previous = $data['previous'] ?? null;
+
+    $html = '<div style="padding: 32px;">';
+
+    // Exception header
+    $html .= '<div class="alert alert-danger" style="margin-bottom: 24px;">';
+    $html .= '<div class="alert-title">💥 ' . htmlspecialchars($class) . '</div>';
+    $html .= '<div style="font-size: 18px; margin-top: 8px;">' . htmlspecialchars($message) . '</div>';
+    if ($code) {
+        $html .= '<div style="margin-top: 8px; opacity: 0.8;">Code: ' . $code . '</div>';
+    }
+    $html .= '</div>';
+
+    // Location
+    $html .= '<div class="stats-grid" style="margin-bottom: 24px;">';
+    $html .= '<div class="stat-card"><div class="stat-label">📍 File</div><div class="stat-value" style="font-size: 13px;">' . htmlspecialchars(basename($file)) . '</div></div>';
+    $html .= '<div class="stat-card"><div class="stat-label">📍 Line</div><div class="stat-value">' . $line . '</div></div>';
+    $html .= '<div class="stat-card"><div class="stat-label">📍 Full Path</div><div class="stat-value" style="font-size: 11px; word-break: break-all;">' . htmlspecialchars($file) . '</div></div>';
+    $html .= '</div>';
+
+    // Code snippet
+    if (file_exists($file)) {
+        $html .= '<div class="section-title">📄 Code Context</div>';
+        $html .= '<div class="code-block" style="margin-bottom: 24px;">';
+        $lines = file($file);
+        $start = max(0, $line - 6);
+        $end = min(count($lines), $line + 5);
+        for ($i = $start; $i < $end; $i++) {
+            $lineNum = $i + 1;
+            $isErrorLine = $lineNum === $line;
+            $lineContent = htmlspecialchars($lines[$i] ?? '');
+            $style = $isErrorLine ? 'background: rgba(239, 68, 68, 0.2); display: block; padding: 2px 8px; margin: 0 -8px; border-radius: 4px;' : '';
+            $html .= '<span style="color: var(--text-muted); margin-right: 16px;">' . str_pad((string) $lineNum, 4, ' ', STR_PAD_LEFT) . '</span>';
+            $html .= '<span style="' . $style . '">' . $lineContent . '</span>';
+        }
+        $html .= '</div>';
+    }
+
+    // Stack trace
+    if (!empty($trace)) {
+        $html .= '<div class="section-title">📚 Stack Trace</div>';
+        foreach ($trace as $index => $frame) {
+            $frameFile = $frame['file'] ?? 'unknown';
+            $frameLine = $frame['line'] ?? 0;
+            $frameClass = $frame['class'] ?? '';
+            $frameType = $frame['type'] ?? '';
+            $frameFunction = $frame['function'] ?? '';
+            $call = $frameClass . $frameType . $frameFunction . '()';
+
+            $html .= '<div class="var-item" style="margin-bottom: 8px;">';
+            $html .= '<div class="var-header" onclick="toggleVar(this)">';
+            $html .= '<div class="var-title"><span>#' . $index . '</span> <code style="color: var(--accent-secondary);">' . htmlspecialchars($call) . '</code></div>';
+            $html .= '<div class="var-badges"><span class="badge">' . htmlspecialchars(basename($frameFile)) . ':' . $frameLine . '</span></div>';
+            $html .= '</div>';
+            $html .= '<div class="var-body" style="display: none; padding: 16px; font-size: 12px; color: var(--text-muted);">';
+            $html .= htmlspecialchars($frameFile);
+            $html .= '</div>';
+            $html .= '</div>';
+        }
+    }
+
+    // Previous exception
+    if ($previous) {
+        $html .= '<div style="margin-top: 24px;">';
+        $html .= '<div class="section-title">🔗 Previous Exception</div>';
+        $html .= '<div class="alert alert-warning">';
+        $html .= '<div class="alert-title">' . get_class($previous) . '</div>';
+        $html .= htmlspecialchars($previous->getMessage());
+        $html .= '</div>';
+        $html .= '</div>';
+    }
+
+    $html .= '</div>';
+
+    return $html;
+}
+
+/**
+ * Render HTTP response dump
+ */
+function plugs_render_http(array $data): string
+{
+    $html = '<div style="padding: 32px;">';
+    $html .= '<div class="section-title" style="margin-bottom: 24px; font-size: 18px; color: var(--text-primary);">🌐 HTTP Response</div>';
+
+    // Status
+    $statusCode = $data['status_code'] ?? 0;
+    $statusClass = $statusCode >= 200 && $statusCode < 300 ? 'alert-success' : ($statusCode >= 400 ? 'alert-danger' : 'alert-warning');
+
+    $html .= '<div class="alert ' . $statusClass . '" style="margin-bottom: 24px;">';
+    $html .= '<div class="alert-title">Status: ' . $statusCode . ' ' . ($data['reason'] ?? '') . '</div>';
+    if (isset($data['url'])) {
+        $html .= '<div style="margin-top: 8px;">' . htmlspecialchars($data['url']) . '</div>';
+    }
+    $html .= '</div>';
+
+    // Stats
+    $html .= '<div class="stats-grid" style="margin-bottom: 24px;">';
+    if (isset($data['status_code'])) {
+        $html .= '<div class="stat-card"><div class="stat-label">Status</div><div class="stat-value">' . $data['status_code'] . '</div></div>';
+    }
+    if (isset($data['request_time'])) {
+        $html .= '<div class="stat-card"><div class="stat-label">⏱️ Time</div><div class="stat-value">' . number_format($data['request_time'] * 1000, 2) . ' ms</div></div>';
+    }
+    if (isset($data['response_class'])) {
+        $html .= '<div class="stat-card"><div class="stat-label">Class</div><div class="stat-value" style="font-size: 12px;">' . $data['response_class'] . '</div></div>';
+    }
+    $html .= '</div>';
+
+    // Headers
+    if (isset($data['headers']) && !empty($data['headers'])) {
+        $html .= '<div class="section-title">📋 Headers</div>';
+        $html .= '<div class="code-block" style="margin-bottom: 24px;">';
+        foreach ($data['headers'] as $name => $value) {
+            $val = is_array($value) ? implode(', ', $value) : $value;
+            $html .= '<span class="syntax-key">' . htmlspecialchars($name) . '</span>: <span class="syntax-string">' . htmlspecialchars($val) . '</span><br>';
+        }
+        $html .= '</div>';
+    }
+
+    // Body
+    if (isset($data['body_parsed'])) {
+        $html .= '<div class="section-title">📄 Body (JSON)</div>';
+        $html .= '<div class="code-block">';
+        $html .= plugs_format_value($data['body_parsed'], 0);
+        $html .= '</div>';
+    } elseif (isset($data['body'])) {
+        $html .= '<div class="section-title">📄 Body</div>';
+        $html .= '<div class="code-block">';
+        $body = $data['body'];
+        if (is_string($body) && strlen($body) > 2000) {
+            $html .= htmlspecialchars(substr($body, 0, 2000)) . '... (truncated)';
+        } else {
+            $html .= htmlspecialchars(is_string($body) ? $body : print_r($body, true));
+        }
+        $html .= '</div>';
+    }
+
+    $html .= '</div>';
+
+    return $html;
+}
+
+/**
+ * Render profile dump
+ */
+function plugs_render_profile(array $data): string
+{
+    $html = '<div style="padding: 32px;">';
+    $html .= '<div class="section-title" style="margin-bottom: 24px; font-size: 18px; color: var(--text-primary);">⚡ Performance Profile</div>';
+
+    // Stats cards
+    $html .= '<div class="stats-grid" style="margin-bottom: 32px;">';
+
+    $html .= '<div class="stat-card" style="background: linear-gradient(145deg, rgba(16, 185, 129, 0.1), transparent);">';
+    $html .= '<div class="stat-label">⏱️ Execution Time</div>';
+    $html .= '<div class="stat-value">' . number_format(($data['execution_time_ms'] ?? ($data['execution_time'] ?? 0) * 1000), 2) . ' ms</div>';
+    $html .= '</div>';
+
+    $html .= '<div class="stat-card" style="background: linear-gradient(145deg, rgba(99, 102, 241, 0.1), transparent);">';
+    $html .= '<div class="stat-label">🧠 Memory Used</div>';
+    $html .= '<div class="stat-value">' . ($data['memory_formatted'] ?? plugs_format_bytes($data['memory_used'] ?? 0)) . '</div>';
+    $html .= '</div>';
+
+    $html .= '<div class="stat-card" style="background: linear-gradient(145deg, rgba(168, 85, 247, 0.1), transparent);">';
+    $html .= '<div class="stat-label">🔍 Query Count</div>';
+    $html .= '<div class="stat-value">' . ($data['query_count'] ?? 0) . '</div>';
+    $html .= '</div>';
+
+    $html .= '<div class="stat-card">';
+    $html .= '<div class="stat-label">⚙️ Query Time</div>';
+    $html .= '<div class="stat-value">' . number_format(($data['query_time_ms'] ?? ($data['query_time'] ?? 0) * 1000), 2) . ' ms</div>';
+    $html .= '</div>';
+
+    $html .= '</div>';
+
+    // Performance assessment
+    $execTime = $data['execution_time_ms'] ?? ($data['execution_time'] ?? 0) * 1000;
+    $queryCount = $data['query_count'] ?? 0;
+
+    if ($execTime > 1000 || $queryCount > 20) {
+        $html .= '<div class="alert alert-danger" style="margin-bottom: 24px;">';
+        $html .= '<div class="alert-title">🔥 Performance Warning</div>';
+        if ($execTime > 1000) {
+            $html .= 'Execution time exceeds 1 second. Consider optimizing your code.<br>';
+        }
+        if ($queryCount > 20) {
+            $html .= 'High query count (' . $queryCount . '). Use eager loading with with() to reduce queries.';
+        }
+        $html .= '</div>';
+    } elseif ($execTime > 500 || $queryCount > 10) {
+        $html .= '<div class="alert alert-warning" style="margin-bottom: 24px;">';
+        $html .= '<div class="alert-title">⚡ Optimization Recommended</div>';
+        $html .= 'Consider reviewing performance. ';
+        if ($queryCount > 10) {
+            $html .= 'Multiple queries detected.';
+        }
+        $html .= '</div>';
+    } else {
+        $html .= '<div class="alert alert-success" style="margin-bottom: 24px;">';
+        $html .= '<div class="alert-title">✅ Performance Good</div>';
+        $html .= 'Execution time and query count are within acceptable limits.';
+        $html .= '</div>';
+    }
+
+    // Queries
+    $queries = $data['queries'] ?? [];
+    if (!empty($queries)) {
+        $html .= '<div class="section-title">🔮 Queries Executed</div>';
+        foreach ($queries as $index => $query) {
+            $time = $query['time'] ?? 0;
+            $ms = number_format($time * 1000, 2);
+            $isSlow = $time > 0.05;
+
+            $html .= '<div class="var-item" style="margin-bottom: 8px;">';
+            $html .= '<div class="var-header" onclick="toggleVar(this)">';
+            $html .= '<div class="var-title"><span>#' . ($index + 1) . '</span> <code style="color: var(--accent-secondary);">' . substr(htmlspecialchars($query['query'] ?? ''), 0, 60) . (strlen($query['query'] ?? '') > 60 ? '...' : '') . '</code></div>';
+            $html .= '<div class="var-badges">';
+            if ($isSlow)
+                $html .= '<span class="badge" style="background: rgba(239, 68, 68, 0.1); color: var(--danger);">SLOW</span>';
+            $html .= '<span class="badge">' . $ms . ' ms</span>';
+            $html .= '</div>';
+            $html .= '</div>';
+            $html .= '<div class="var-body" style="display: none;">';
+            $html .= '<div class="code-block"><code class="syntax-string">' . htmlspecialchars($query['query'] ?? '') . '</code></div>';
+            if (!empty($query['bindings'])) {
+                $html .= '<div style="margin-top: 12px; font-size: 13px; color: var(--text-muted);">Bindings: <code>' . json_encode($query['bindings']) . '</code></div>';
+            }
+            $html .= '</div>';
+            $html .= '</div>';
+        }
+    }
+
+    // Result
+    if (isset($data['result'])) {
+        $html .= '<div style="margin-top: 24px;">';
+        $html .= '<div class="section-title">📦 Result</div>';
+        $html .= '<div class="code-block">';
+        $html .= plugs_format_value($data['result'], 0);
         $html .= '</div>';
         $html .= '</div>';
     }

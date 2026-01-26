@@ -91,12 +91,20 @@ class StandardResponse implements JsonSerializable
 
         // In non-production, we might want to add more debug info
         if (!Plugs::isProduction()) {
-            $response['debug'] = [
-                'memory' => memory_get_peak_usage(true),
+            $debugParams = [
+                'memory' => memory_get_usage(true),
+                'peak_memory' => memory_get_peak_usage(true),
                 'php_version' => PHP_VERSION,
                 'models' => \Plugs\Base\Model\PlugModel::getLoadedModelStats(),
-                'execution' => microtime(true) - ($_SERVER['REQUEST_TIME_FLOAT'] ?? microtime(true)),
+                'execution_time' => microtime(true) - ($_SERVER['REQUEST_TIME_FLOAT'] ?? microtime(true)),
             ];
+
+            // Add query stats if available
+            if (method_exists(\Plugs\Base\Model\PlugModel::class, 'getDebugStats')) {
+                $debugParams['queries'] = \Plugs\Base\Model\PlugModel::getDebugStats();
+            }
+
+            $response['debug'] = $debugParams;
         }
 
         return $response;

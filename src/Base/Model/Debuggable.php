@@ -203,6 +203,8 @@ trait Debuggable
      */
     public static function profile(callable $callback): array
     {
+        // Ensure query logging is enabled BEFORE flushing
+        static::enableQueryLog();
         static::flushQueryLog();
         static::enableDebug();
 
@@ -219,11 +221,44 @@ trait Debuggable
         return [
             'result' => $result,
             'execution_time' => $endTime - $startTime,
+            'execution_time_ms' => ($endTime - $startTime) * 1000,
             'memory_used' => $endMemory - $startMemory,
+            'memory_formatted' => static::formatBytes($endMemory - $startMemory),
             'queries' => $stats['queries'],
             'query_count' => $stats['total_queries'],
             'query_time' => $stats['total_time'],
+            'query_time_ms' => $stats['total_time'] * 1000,
         ];
+    }
+
+    /**
+     * Profile a callback and dump the results
+     */
+    public static function profileAndDump(callable $callback, bool $die = true): void
+    {
+        $profile = static::profile($callback);
+
+        if (function_exists('plugs_dump_profile')) {
+            plugs_dump_profile($profile, $die);
+        } else {
+            if ($die) {
+                dd($profile);
+            } else {
+                d($profile);
+            }
+        }
+    }
+
+    /**
+     * Format bytes to human readable
+     */
+    protected static function formatBytes(int $bytes): string
+    {
+        $units = ['B', 'KB', 'MB', 'GB'];
+        for ($i = 0; $bytes > 1024 && $i < count($units) - 1; $i++) {
+            $bytes /= 1024;
+        }
+        return round($bytes, 2) . ' ' . $units[$i];
     }
 
     /**

@@ -10,7 +10,7 @@ use Plugs\Database\Connection;
  * Performance Profiler
  *
  * Collects and stores performance metrics for debugging and optimization.
- * Tracks request timing, memory usage, database queries, and custom events.
+ * Tracks request timing, memory usage, database queries, included files, and custom events.
  */
 class Profiler
 {
@@ -33,6 +33,37 @@ class Profiler
     {
         $this->startTime = microtime(true);
         $this->startMemory = memory_get_usage(true);
+    }
+
+    /**
+     * Get the current Git info (branch and commit)
+     */
+    public static function getGitInfo(): array
+    {
+        $basePath = defined('BASE_PATH') ? BASE_PATH : dirname(__DIR__, 3) . '/';
+        $headFile = $basePath . '.git/HEAD';
+
+        if (!file_exists($headFile)) {
+            return [];
+        }
+
+        $headContent = trim((string) file_get_contents($headFile));
+
+        if (str_starts_with($headContent, 'ref: ')) {
+            $branch = substr($headContent, 5);
+            $hashFile = $basePath . '.git/' . $branch;
+            $hash = file_exists($hashFile) ? trim((string) file_get_contents($hashFile)) : '';
+            $branchName = basename($branch);
+        } else {
+            $branchName = 'Detached';
+            $hash = $headContent;
+        }
+
+        return [
+            'branch' => $branchName,
+            'hash' => $hash,
+            'short_hash' => substr($hash, 0, 7)
+        ];
     }
 
     public static function getInstance(): self
@@ -115,7 +146,9 @@ class Profiler
             'models' => $this->models,
             'files' => [
                 'count' => count(get_included_files()),
+                'list' => get_included_files(),
             ],
+            'git' => self::getGitInfo(),
             'php' => [
                 'version' => PHP_VERSION,
                 'sapi' => PHP_SAPI,
@@ -254,7 +287,7 @@ class Profiler
         $files = glob($storageDir . '*.json');
 
         // Sort by modification time (newest first)
-        usort($files, fn ($a, $b) => filemtime($b) <=> filemtime($a));
+        usort($files, fn($a, $b) => filemtime($b) <=> filemtime($a));
 
         $profiles = [];
         foreach (array_slice($files, 0, $limit) as $file) {
@@ -279,6 +312,10 @@ class Profiler
         $file = $storageDir . $id . '.json';
 
         if (!file_exists($file)) {
+            // Check if it's in the current instance
+            if (self::$instance && self::$instance->currentProfile && self::$instance->currentProfile['id'] === $id) {
+                return self::$instance->currentProfile;
+            }
             return null;
         }
 
