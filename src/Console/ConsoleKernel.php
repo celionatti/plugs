@@ -31,6 +31,8 @@ use Plugs\Console\Commands\RouteCacheCommand;
 use Plugs\Console\Commands\RouteClearCommand;
 use Plugs\Console\Commands\RouteListCommand;
 use Plugs\Console\Commands\RouteTestCommand;
+use Plugs\Console\Commands\MakePaginationTemplateCommand;
+use Plugs\Console\Commands\MakePdfTemplateCommand;
 use Plugs\Console\Commands\ServeCommand;
 use Plugs\Console\Commands\StorageLinkCommand;
 
@@ -62,6 +64,8 @@ class ConsoleKernel
         'make:repository' => MakeRepositoryCommand::class,
         'make:connector' => MakeConnectorCommand::class,
         'make:api-request' => MakeApiRequestCommand::class,
+        'make:pdf-template' => MakePdfTemplateCommand::class,
+        'make:pagination-template' => MakePaginationTemplateCommand::class,
 
         'route:list' => RouteListCommand::class,
         'route:cache' => RouteCacheCommand::class,
@@ -130,6 +134,8 @@ class ConsoleKernel
             'make:repository',
             'make:connector',
             'make:api-request',
+            'make:pdf-template',
+            'make:pagination-template',
         ],
         'Routes' => ['route:list', 'route:cache', 'route:clear', 'route:test'],
         'Utility' => ['serve', 'cache:clear', 'config:cache', 'optimize', 'queue:work', 'health', 'storage:link'],
