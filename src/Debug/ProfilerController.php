@@ -42,9 +42,13 @@ class ProfilerController
      */
     public function destroy(ServerRequestInterface $request, string $id)
     {
-        Profiler::deleteProfile($id);
+        $deleted = Profiler::deleteProfile($id);
 
-        return ResponseFactory::json(['success' => true, 'message' => 'Profile deleted']);
+        if ($deleted) {
+            return ResponseFactory::json(['success' => true, 'message' => 'Profile deleted']);
+        }
+
+        return ResponseFactory::json(['success' => false, 'message' => 'Profile not found or could not be deleted'], 404);
     }
 
     /**
@@ -54,7 +58,11 @@ class ProfilerController
     {
         $count = Profiler::clearProfiles();
 
-        return ResponseFactory::json(['success' => true, 'deleted' => $count]);
+        return ResponseFactory::json([
+            'success' => true,
+            'message' => sprintf('Successfully cleared %d profiles', $count),
+            'deleted' => $count
+        ]);
     }
 
     /**
@@ -80,7 +88,7 @@ class ProfilerController
 
             $profileRows .= sprintf(
                 '
-                <tr class="profile-row" onclick="window.location.href=\'/plugs/profiler/%s\'">
+                <tr class="profile-row" onclick="window.location.href=\'%s\'">
                     <td class="col-time">%s</td>
                     <td class="col-method"><span class="method-badge method-%s">%s</span></td>
                     <td class="col-path">%s</td>
@@ -96,7 +104,7 @@ class ProfilerController
                         </button>
                     </td>
                 </tr>',
-                htmlspecialchars((string) $profile['id']),
+                url('plugs/profiler/' . $profile['id']),
                 htmlspecialchars((string) $profile['datetime']),
                 strtolower((string) ($profile['request']['method'] ?? 'GET')),
                 htmlspecialchars((string) ($profile['request']['method'] ?? 'GET')),
@@ -152,34 +160,42 @@ class ProfilerController
             
             <script>
                 const csrfToken = document.querySelector(\'meta[name="csrf-token"]\')?.getAttribute(\'content\');
+                const baseUrl = "%s";
 
                 async function deleteProfile(id) {
                     if (!confirm("Delete this profile?")) return;
                     try {
-                        const response = await fetch("/plugs/profiler/" + id, { 
+                        const response = await fetch(baseUrl + "/" + id, { 
                             method: "DELETE",
                             headers: { "X-CSRF-TOKEN": csrfToken, "Accept": "application/json" }
                         });
                         if (response.ok) { location.reload(); }
-                        else { alert("Failed to delete"); }
+                        else { 
+                            const data = await response.json();
+                            alert("Failed to delete: " + (data.message || "Unknown error")); 
+                        }
                     } catch (e) { alert(e.message); }
                 }
                 
                 async function clearAllProfiles() {
                     if (!confirm("Delete all profiles?")) return;
                     try {
-                        const response = await fetch("/plugs/profiler/clear", { 
+                        const response = await fetch(baseUrl + "/clear", { 
                             method: "POST",
                             headers: { "X-CSRF-TOKEN": csrfToken, "Accept": "application/json" }
                         });
                         if (response.ok) { location.reload(); }
-                        else { alert("Failed to clear"); }
+                        else { 
+                            const data = await response.json();
+                            alert("Failed to clear: " + (data.message || "Unknown error")); 
+                        }
                     } catch (e) { alert(e.message); }
                 }
             </script>',
             count($profiles),
             $profileRows,
-            empty($profiles) ? '<div class="empty-state"><p>No profiles recorded yet.</p></div>' : ''
+            empty($profiles) ? '<div class="empty-state"><p>No profiles recorded yet.</p></div>' : '',
+            url('plugs/profiler')
         ));
     }
 
@@ -211,7 +227,7 @@ class ProfilerController
         return $this->getBaseHtml('Profile: ' . $profile['request']['path'], sprintf(
             '
             <div class="profile-header animate-fade-in">
-                <a href="/plugs/profiler" class="back-link">← Back to Dashboard</a>
+                <a href="%s" class="back-link">← Back to Dashboard</a>
                 <div class="profile-title">
                     <span class="method-badge method-%s">%s</span>
                     <h1>%s</h1>
@@ -258,6 +274,7 @@ class ProfilerController
                 const savedTab = localStorage.getItem("plugs_profiler_tab") || "request";
                 openTab(savedTab);
             </script>',
+            url('plugs/profiler'),
             strtolower((string) ($profile['request']['method'] ?? 'GET')),
             htmlspecialchars((string) ($profile['request']['method'] ?? 'GET')),
             htmlspecialchars((string) ($profile['request']['path'] ?? '/')),
@@ -495,13 +512,13 @@ class ProfilerController
      */
     private function render404(): string
     {
-        return $this->getBaseHtml('Profile Not Found', '
+        return $this->getBaseHtml('Profile Not Found', sprintf('
             <div class="error-page animate-fade-in">
                 <h1>Profile Not Found</h1>
                 <p>The requested profile could not be found.</p>
-                <a href="/plugs/profiler" class="btn btn-primary">Back to Dashboard</a>
+                <a href="%s" class="btn btn-primary">Back to Dashboard</a>
             </div>
-        ');
+        ', url('plugs/profiler')));
     }
 
     private function getStatusClass(int $status): string
@@ -533,6 +550,8 @@ class ProfilerController
 
     private function getBaseHtml(string $title, string $content): string
     {
+        $dashboardUrl = url('plugs/profiler');
+
         return '<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -658,7 +677,7 @@ class ProfilerController
     <header class="header">
         <a href="/" class="brand">Plugs</a>
         <nav>
-            <a href="/plugs/profiler" style="color: var(--text-secondary); text-decoration: none; font-weight: 500;">Profiler Dashboard</a>
+            <a href="' . $dashboardUrl . '" style="color: var(--text-secondary); text-decoration: none; font-weight: 500;">Profiler Dashboard</a>
         </nav>
     </header>
     <main class="main-content">
