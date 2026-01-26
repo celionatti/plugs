@@ -265,6 +265,19 @@ abstract class PlugModel
         return $clone;
     }
 
+    public function instanceJoin(string $table, string $first, string $operator, string $second, string $type = 'INNER')
+    {
+        $clone = $this->cloneQuery();
+        $clone->query['joins'][] = compact('table', 'first', 'operator', 'second', 'type');
+
+        return $clone;
+    }
+
+    public function instanceLeftJoin(string $table, string $first, string $operator, string $second)
+    {
+        return $this->instanceJoin($table, $first, $operator, $second, 'LEFT');
+    }
+
     protected function sanitizeRawSql(string $sql): void
     {
         if (
@@ -655,54 +668,59 @@ abstract class PlugModel
 
     // ==================== MAGIC METHODS ====================
 
-    /**
-     * Override __call to return relationship proxy or forward calls
-     */
     public function __call($method, $parameters)
     {
         $class = static::class;
 
-        if (!isset(self::$relationTypes[$class][$method])) {
-            if (method_exists($this, $method)) {
-                $reflection = new \ReflectionMethod($this, $method);
-                $code = $this->getMethodCode($reflection);
-
-                self::$relationTypes[$class][$method] = strpos($code, 'belongsToMany') !== false
-                    ? 'belongsToMany'
-                    : 'other';
-            } else {
-                self::$relationTypes[$class][$method] = null;
-            }
-        }
-
-        if (self::$relationTypes[$class][$method] === 'belongsToMany') {
-            return $this->getBelongsToManyRelation($method);
-        }
-
-        // Check if it's a belongsToMany relationship (fallback)
+        // 1. Check if the method exists on this instance
         if (method_exists($this, $method)) {
-            $reflection = new \ReflectionMethod($this, $method);
-            $code = $this->getMethodCode($reflection);
+            $result = call_user_func_array([$this, $method], $parameters);
 
-            if (strpos($code, 'belongsToMany') !== false) {
-                return $this->getBelongsToManyRelation($method);
+            // If it returns a relationship proxy, return it
+            if ($this->isRelationshipProxy($result)) {
+                return $result;
             }
+
+            return $result;
         }
 
-        // Handle instance method calls that should use instance variants
+        // 2. Handle instance method variants (e.g. instanceWhere)
         $instanceMethod = 'instance' . ucfirst($method);
         if (method_exists($this, $instanceMethod)) {
             return call_user_func_array([$this, $instanceMethod], $parameters);
         }
 
+        // 3. Handle model scopes (e.g. scopeActive)
         $scopeMethod = 'scope' . ucfirst($method);
         if (method_exists($this, $scopeMethod)) {
             array_unshift($parameters, $this);
-
             return call_user_func_array([$this, $scopeMethod], $parameters);
         }
 
-        throw new BadMethodCallException("Method {$method} does not exist.");
+        throw new BadMethodCallException("Method {$method} does not exist on " . get_class($this));
+    }
+
+    private function isRelationshipProxy($object): bool
+    {
+        if (!is_object($object)) {
+            return false;
+        }
+
+        $proxies = [
+            \Plugs\Database\Relations\HasOneProxy::class,
+            \Plugs\Database\Relations\HasManyProxy::class,
+            \Plugs\Database\Relations\BelongsToProxy::class,
+            \Plugs\Database\Relations\HasManyThroughProxy::class,
+            \Plugs\Database\BelongsToManyProxy::class,
+        ];
+
+        foreach ($proxies as $proxy) {
+            if ($object instanceof $proxy) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     public static function __callStatic($method, $parameters)

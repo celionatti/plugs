@@ -215,6 +215,24 @@ public function roles()
 }
 ```
 
+### Has Many Through
+
+```php
+public function posts()
+{
+    return $this->hasManyThrough(Post::class, User::class);
+}
+```
+
+### Has One Through
+
+```php
+public function owner()
+{
+    return $this->hasOneThrough(User::class, Account::class);
+}
+```
+
 ### Polymorphic Relationships
 
 #### One To Many (Polymorphic)
@@ -235,6 +253,58 @@ class Comment extends PlugModel
         return $this->morphTo();
     }
 }
+```
+
+## Relationship Proxies & Chaining
+
+Relationship methods in Plugs models return **Relationship Proxies** (e.g., `HasManyProxy`, `HasOneProxy`). These proxies act as a wrapper around the Query Builder, allowing you to chain additional constraints before executing the query.
+
+### Fluent Chaining
+
+You can chain any Query Builder method onto a relationship:
+
+```php
+// Get only published posts for a user
+$publishedPosts = $user->posts()->where('status', 'published')->latest()->get();
+
+// Find a specific comment on a post
+$comment = $post->comments()->find(5);
+```
+
+### Relationship Persistence
+
+Proxies also provide convenient methods for creating and saving related models:
+
+```php
+// Create a new post for a user
+$post = $user->posts()->create([
+    'title' => 'My New Post',
+    'content' => '...'
+]);
+
+// Associate a profile with a user
+$profile->user()->associate($user)->save();
+
+// Dissociate a relationship
+$profile->user()->dissociate()->save();
+```
+
+### Many-to-Many Syncing
+
+The `BelongsToManyProxy` provides powerful methods for managing pivot table records:
+
+```php
+// Sync roles: only these IDs will remain in the pivot table
+$user->roles()->sync([1, 2, 3]);
+
+// Attach a role without removing existing ones
+$user->roles()->attach(4);
+
+// Detach a specific role
+$user->roles()->detach(2);
+
+// Toggle a role: attach if missing, detach if present
+$user->roles()->toggle(5);
 ```
 
 ## Serialization

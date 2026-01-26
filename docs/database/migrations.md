@@ -79,6 +79,12 @@ php theplugs migrate:fresh
 > [!WARNING]
 > The `migrate:fresh` command will drop all of your tables regardless of their prefix. This command should be used with caution when developing on a database that is shared with other applications.
 
+In production environments, this command requires the `--force` flag:
+
+```bash
+php theplugs migrate:fresh --force
+```
+
 ## Checking Migration Status
 
 The `migrate:status` command provides a summary of which migrations have been run and which are pending:
@@ -92,7 +98,7 @@ The enhanced status output includes:
 - **Ran?**: Whether the migration has been executed.
 - **Batch**: The batch number the migration was run in.
 - **Ran At**: The exact timestamp when the migration was executed.
-- **Status**: Whether the migration file is "Intact" or "Modified" since it was run.
+- **Status**: Whether the migration file is "Intact" or "Modified" (detected via SHA-256 checksums).
 
 ## Migration Integrity
 
@@ -106,8 +112,9 @@ php theplugs migrate:validate
 
 ## Execution Logging
 
-Every migration action is logged in the `migration_logs` table. This log includes:
-- The exact SQL queries executed.
-- The duration of the execution in seconds.
-- Memory usage during the migration.
-- The action performed (`up` or `down`).
+Every migration action is logged in the `migration_logs` table. This log allows you to audit internal schema changes and includes:
+- **Query**: The exact SQL queries executed.
+- **Duration**: The duration of the execution in milliseconds.
+- **Memory**: Memory usage during the migration.
+- **Action**: The action performed (`up` or `down`).
+- **Batch**: The migration batch associated with the log.
