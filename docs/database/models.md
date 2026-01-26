@@ -359,3 +359,172 @@ class User extends PlugModel
     protected $appends = ['is_admin'];
 }
 ```
+
+## Advanced Retrieval Methods
+
+### Finding a Single Record
+
+Use the `sole` method when you expect exactly one result. It throws an exception if zero or more than one record is found:
+
+```php
+// Get the only active admin user
+$admin = User::where('role', 'admin')
+             ->where('status', 'active')
+             ->sole();
+```
+
+> [!WARNING]
+> `sole()` will throw an exception if no records or multiple records are found. Use `first()` if you expect potentially zero results.
+
+### First Or Fail
+
+Get the first result or throw an exception if none found:
+
+```php
+$user = User::where('email', 'john@example.com')->firstOrFail();
+```
+
+### Find Many
+
+Retrieve multiple models by their primary keys:
+
+```php
+$users = User::findMany([1, 2, 3]);
+```
+
+## Chunking Results
+
+When you need to process a large number of records, use the `chunk` method to work with a small batch at a time:
+
+```php
+User::chunk(100, function ($users) {
+    foreach ($users as $user) {
+        // Process each user
+        $user->sendNotification();
+    }
+});
+```
+
+You can stop chunking by returning `false` from the callback:
+
+```php
+User::chunk(100, function ($users) {
+    foreach ($users as $user) {
+        if ($user->shouldStop()) {
+            return false; // Stop processing
+        }
+    }
+});
+```
+
+> [!TIP]
+> Chunking is memory-efficient for processing thousands of records without loading them all into memory at once.
+
+## API Responses
+
+### Model to Response
+
+Convert a single model to a standardized API response:
+
+```php
+$user = User::find(1);
+return $user->toResponse(200, 'User retrieved successfully');
+```
+
+### Collection to Response
+
+Convert a collection of models to an API response:
+
+```php
+$users = User::all();
+return $users->toResponse(200, 'Users retrieved successfully');
+```
+
+### Paginated Response
+
+Get paginated results as a standardized API response with metadata:
+
+```php
+return User::paginateResponse(15);
+// Returns: { success, status, data, meta: { total, per_page, current_page, ... }, links: { first, last, next, prev } }
+```
+
+### Search Response
+
+Combine filtering, sorting, and pagination:
+
+```php
+return User::searchResponse($_GET);
+// Supports: ?search=john&status=active&sort=name&direction=asc&page=1&per_page=10
+```
+
+## Collections
+
+Model query results are returned as `Collection` instances, providing many helpful methods:
+
+```php
+$users = User::all();
+
+// Filter
+$activeUsers = $users->where('status', 'active');
+
+// Pluck values
+$emails = $users->pluck('email');
+
+// First matching
+$admin = $users->firstWhere('role', 'admin');
+
+// Sort
+$sorted = $users->sortBy('name');
+
+// Group
+$byRole = $users->groupBy('role');
+
+// Convert to response
+return $users->toResponse();
+```
+
+## Debugging Models
+
+When using `dd()` on a model, you'll see a clean, focused output:
+
+```php
+dd(User::first());
+
+// Output shows only essential data:
+// - attributes: The model's current data
+// - original: Original values from database
+// - relations: Loaded relationships
+// - exists: Whether model exists in DB
+// - table: The database table name
+```
+
+> [!TIP]
+> The `dd()` function respects the model's `__debugInfo()` method, ensuring you only see relevant information without internal framework noise.
+
+### Query Debugging
+
+Enable query logging to see all database queries:
+
+```php
+User::enableQueryLog();
+
+$users = User::where('status', 'active')->get();
+$posts = Post::with('author')->get();
+
+// Dump all executed queries
+dq();
+```
+
+### Performance Profiling
+
+Profile a block of code:
+
+```php
+$result = User::profile(function() {
+    return User::with('posts', 'comments')->get();
+});
+
+// Returns: execution_time, memory_used, query_count, query_time, queries
+```
+
