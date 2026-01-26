@@ -1040,14 +1040,33 @@ function plugs_format_value($value, int $depth = 0, array $path = []): string
         $html = '<span class="syntax-object">Object(' . $className . ')</span> {<br>';
 
         try {
-            $reflection = new \ReflectionClass($value);
-            $properties = $reflection->getProperties();
-            foreach ($properties as $property) {
-                $property->setAccessible(true);
-                $name = $property->getName();
-                $val = $property->getValue($value);
-                $currentPath = array_merge($path, [$name]);
-                $html .= $indent . '  <span class="syntax-key" data-path="' . implode(' → ', $currentPath) . '">' . htmlspecialchars($name) . '</span> => ' . plugs_format_value($val, $depth + 1, $currentPath) . '<br>';
+            // Check if object has __debugInfo() method - use it for cleaner output
+            if (method_exists($value, '__debugInfo')) {
+                $debugData = $value->__debugInfo();
+                foreach ($debugData as $name => $val) {
+                    $currentPath = array_merge($path, [$name]);
+                    $isSecret = is_string($name) && preg_match('/(password|secret|key|token|auth|pass|cred)/i', $name);
+
+                    $html .= $indent . '  <span class="syntax-key" data-path="' . implode(' → ', $currentPath) . '">' . htmlspecialchars($name) . '</span> => ';
+
+                    if ($isSecret && !empty($val)) {
+                        $html .= '<span class="masked-secret" onclick="revealSecret(this)" data-secret="' . htmlspecialchars(is_string($val) ? (string) $val : json_encode($val)) . '">🔒 [masked secret]</span>';
+                    } else {
+                        $html .= plugs_format_value($val, $depth + 1, $currentPath);
+                    }
+                    $html .= '<br>';
+                }
+            } else {
+                // Fallback to reflection for objects without __debugInfo
+                $reflection = new \ReflectionClass($value);
+                $properties = $reflection->getProperties();
+                foreach ($properties as $property) {
+                    $property->setAccessible(true);
+                    $name = $property->getName();
+                    $val = $property->getValue($value);
+                    $currentPath = array_merge($path, [$name]);
+                    $html .= $indent . '  <span class="syntax-key" data-path="' . implode(' → ', $currentPath) . '">' . htmlspecialchars($name) . '</span> => ' . plugs_format_value($val, $depth + 1, $currentPath) . '<br>';
+                }
             }
         } catch (\Exception $e) {
             $html .= $indent . '  <span class="syntax-null">Unable to reflect</span><br>';

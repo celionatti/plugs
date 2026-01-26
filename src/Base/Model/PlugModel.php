@@ -36,22 +36,9 @@ abstract class PlugModel
     protected $table;
     protected $primaryKey = 'id';
 
-    // Query Builder Properties
-    protected $query = [
-        'select' => ['*'],
-        'where' => [],
-        'joins' => [],
-        'orderBy' => [],
-        'groupBy' => [],
-        'having' => [],
-        'limit' => null,
-        'offset' => null,
-        'withTrashed' => false,
-        'distinct' => false,
-    ];
+    protected $exists = false;
 
-    // Separate bindings for better memory management
-    protected $bindings = [];
+    // Static Query Logging and Caching
     protected static $queryLog = [];
     protected static $enableQueryLog = false;
     protected static $queryCache = [];
@@ -63,10 +50,6 @@ abstract class PlugModel
     // Transaction tracking
     protected static $transactionDepth = 0;
     protected static $transactionConnection = null;
-
-    protected $allowedRawFunctions = ['RAND', 'COUNT', 'SUM', 'AVG', 'MAX', 'MIN'];
-    protected $allowRawQueries = false; // Default to secure
-    protected $exists = false;
 
     public function __construct(array|object $attributes = [])
     {
@@ -192,201 +175,12 @@ abstract class PlugModel
         return static::create($attributes);
     }
 
-    // ==================== QUERY BUILDER ENHANCEMENTS (That use instance state) ====================
-
-    protected function cloneQuery()
+    /**
+     * Get a new query builder for the model's table.
+     */
+    public function newQuery()
     {
-        $clone = clone $this;
-        $clone->query = $this->query;
-        $clone->bindings = $this->bindings;
-
-        return $clone;
-    }
-
-    public function instanceWhere(string $column, $operator, $value = null)
-    {
-        if ($value === null) {
-            $value = $operator;
-            $operator = '=';
-        }
-
-        $clone = $this->cloneQuery();
-        $clone->query['where'][] = [
-            'type' => 'basic',
-            'column' => $column,
-            'operator' => $operator,
-            'value' => $value,
-            'boolean' => 'AND',
-        ];
-
-        // Add binding
-        $clone->bindings[] = $value;
-
-        return $clone;
-    }
-
-    public function instanceOrWhere(string $column, $operator, $value = null)
-    {
-        if ($value === null) {
-            $value = $operator;
-            $operator = '=';
-        }
-
-        $clone = $this->cloneQuery();
-        $clone->query['where'][] = [
-            'type' => 'basic',
-            'column' => $column,
-            'operator' => $operator,
-            'value' => $value,
-            'boolean' => 'OR',
-        ];
-
-        // Add binding
-        $clone->bindings[] = $value;
-
-        return $clone;
-    }
-
-    public function instanceWhereIn(string $column, array $values)
-    {
-        $clone = $this->cloneQuery();
-
-        $clone->query['where'][] = [
-            'type' => 'in',
-            'column' => $column,
-            'values' => $values,
-            'boolean' => 'AND',
-        ];
-
-        foreach ($values as $value) {
-            $clone->bindings[] = $value;
-        }
-
-        return $clone;
-    }
-
-    public function instanceJoin(string $table, string $first, string $operator, string $second, string $type = 'INNER')
-    {
-        $clone = $this->cloneQuery();
-        $clone->query['joins'][] = compact('table', 'first', 'operator', 'second', 'type');
-
-        return $clone;
-    }
-
-    public function instanceLeftJoin(string $table, string $first, string $operator, string $second)
-    {
-        return $this->instanceJoin($table, $first, $operator, $second, 'LEFT');
-    }
-
-    protected function sanitizeRawSql(string $sql): void
-    {
-        if (
-            strpos(strtoupper($sql), 'DROP ') !== false ||
-            strpos(strtoupper($sql), 'DELETE ') !== false ||
-            strpos(strtoupper($sql), 'TRUNCATE ') !== false ||
-            strpos(strtoupper($sql), 'UPDATE ') !== false ||
-            strpos(strtoupper($sql), 'ALTER ') !== false
-        ) {
-
-            if (!$this->allowRawQueries) {
-                throw new Exception("Potentially unsafe raw SQL detected");
-            }
-        }
-    }
-
-    public function distinct()
-    {
-        $clone = $this->cloneQuery();
-        $clone->query['distinct'] = true;
-
-        return $clone;
-    }
-
-    public function whereBetween(string $column, array $values)
-    {
-        if (count($values) !== 2) {
-            throw new Exception('whereBetween requires exactly 2 values');
-        }
-
-        return $this->instanceWhere($column, '>=', $values[0])
-            ->instanceWhere($column, '<=', $values[1]);
-    }
-
-    public function whereNotBetween(string $column, array $values)
-    {
-        if (count($values) !== 2) {
-            throw new Exception('whereNotBetween requires exactly 2 values');
-        }
-
-        return $this->instanceWhere($column, '<', $values[0])
-            ->instanceOrWhere($column, '>', $values[1]);
-    }
-
-    public function whereDate(string $column, string $date)
-    {
-        return $this->instanceWhere($column, '=', $date);
-    }
-
-    public function whereYear(string $column, int $year)
-    {
-        return $this->instanceWhere("YEAR({$column})", $year);
-    }
-
-    public function whereMonth(string $column, int $month)
-    {
-        return $this->instanceWhere("MONTH({$column})", $month);
-    }
-
-    public function whereDay(string $column, int $day)
-    {
-        return $this->instanceWhere("DAY({$column})", $day);
-    }
-
-    public function whereLike(string $column, string $value)
-    {
-        return $this->instanceWhere($column, 'LIKE', $value);
-    }
-
-    public function orWhereLike(string $column, string $value)
-    {
-        return $this->instanceOrWhere($column, 'LIKE', $value);
-    }
-
-    public function inRandomOrder()
-    {
-        return $this->orderByRaw('RAND()');
-    }
-
-    public function random(int $count = 1)
-    {
-        return $this->inRandomOrder()->limit($count)->get();
-    }
-
-    public function orderByRaw(string $expression, array $bindings = [])
-    {
-        // More strict validation
-        $this->sanitizeRawSql($expression);
-
-        // Only allow specific function patterns
-        if (preg_match('/^([A-Z_]+)\s*\(/', $expression, $matches)) {
-            if (!in_array($matches[1], $this->allowedRawFunctions)) {
-                throw new \InvalidArgumentException("Function '{$matches[1]}' not allowed in ORDER BY");
-            }
-        }
-
-        // Validate entire expression more strictly
-        if (!preg_match('/^[a-zA-Z0-9_\(\)\s,\.]+$/', $expression)) {
-            throw new \InvalidArgumentException("Invalid ORDER BY expression");
-        }
-
-        $clone = $this->cloneQuery();
-        $clone->query['orderBy'][] = [
-            'type' => 'raw',
-            'expression' => $expression,
-        ];
-        $clone->bindings = array_merge($clone->bindings, $bindings);
-
-        return $clone;
+        return static::query();
     }
 
     // ==================== CACHE & LOGGING ====================
@@ -670,34 +464,20 @@ abstract class PlugModel
 
     public function __call($method, $parameters)
     {
-        $class = static::class;
-
         // 1. Check if the method exists on this instance
         if (method_exists($this, $method)) {
-            $result = call_user_func_array([$this, $method], $parameters);
-
-            // If it returns a relationship proxy, return it
-            if ($this->isRelationshipProxy($result)) {
-                return $result;
-            }
-
-            return $result;
+            return call_user_func_array([$this, $method], $parameters);
         }
 
-        // 2. Handle instance method variants (e.g. instanceWhere)
-        $instanceMethod = 'instance' . ucfirst($method);
-        if (method_exists($this, $instanceMethod)) {
-            return call_user_func_array([$this, $instanceMethod], $parameters);
-        }
-
-        // 3. Handle model scopes (e.g. scopeActive)
+        // 2. Handle model scopes (e.g. scopeActive)
         $scopeMethod = 'scope' . ucfirst($method);
         if (method_exists($this, $scopeMethod)) {
-            array_unshift($parameters, $this);
+            array_unshift($parameters, $this->newQuery());
             return call_user_func_array([$this, $scopeMethod], $parameters);
         }
 
-        throw new BadMethodCallException("Method {$method} does not exist on " . get_class($this));
+        // 3. Delegate to QueryBuilder
+        return call_user_func_array([$this->newQuery(), $method], $parameters);
     }
 
     private function isRelationshipProxy($object): bool
@@ -760,9 +540,9 @@ abstract class PlugModel
         return [
             'attributes' => $this->attributes,
             'original' => $this->original,
-            'relations' => $this->relations,
+            'relations' => $this->relations ?? [],
             'exists' => $this->exists,
-            'table' => $this->table,
+            'table' => $this->getTable(),
         ];
     }
 }

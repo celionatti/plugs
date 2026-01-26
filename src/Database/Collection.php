@@ -99,7 +99,7 @@ class Collection implements \ArrayAccess, \Iterator, \Countable, \JsonSerializab
     public function first(?callable $callback = null, $default = null)
     {
         if (is_null($callback)) {
-            return reset($this->items) ?: $default;
+            return !empty($this->items) ? reset($this->items) : $default;
         }
 
         foreach ($this->items as $key => $item) {
@@ -109,6 +109,14 @@ class Collection implements \ArrayAccess, \Iterator, \Countable, \JsonSerializab
         }
 
         return $default;
+    }
+
+    /**
+     * Convert the collection to a standardized API response.
+     */
+    public function toResponse(int $status = 200, ?string $message = null): \Plugs\Http\StandardResponse
+    {
+        return new \Plugs\Http\StandardResponse($this->jsonSerialize(), true, $status, $message);
     }
 
     /**
@@ -1412,12 +1420,5 @@ class Collection implements \ArrayAccess, \Iterator, \Countable, \JsonSerializab
     public function __toString(): string
     {
         return $this->toJson();
-    }
-    /**
-     * Convert collection to standardized API response
-     */
-    public function toResponse(int $status = 200, ?string $message = null): \Plugs\Http\StandardResponse
-    {
-        return new \Plugs\Http\StandardResponse($this->jsonSerialize(), true, $status, $message);
     }
 }

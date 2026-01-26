@@ -29,7 +29,7 @@ trait HasQueryBuilder
         return is_array($results) ? new Collection($results) : $results;
     }
 
-    public static function all(array $columns = ['*']): array|Collection
+    public static function all(array $columns = ['*']): Collection
     {
         return static::get($columns);
     }
@@ -126,7 +126,7 @@ trait HasQueryBuilder
         return $result;
     }
 
-    public static function insert(array|object $data)
+    public static function insert(array|object $data): Collection|self
     {
         $data = (new static())->parseAttributes($data);
 
@@ -145,6 +145,23 @@ trait HasQueryBuilder
         }, $data);
 
         return new Collection($models);
+    }
+
+    /**
+     * Get the only record that matches the criteria.
+     * Throws exception if no record found or more than one record found.
+     */
+    public static function sole(array $columns = ['*']): self
+    {
+        return static::query()->sole($columns);
+    }
+
+    /**
+     * Chunk the results of the query.
+     */
+    public static function chunk(int $count, callable $callback): bool
+    {
+        return static::query()->chunk($count, $callback);
     }
 
     public static function where(string $column, string $operator, $value = null): QueryBuilder

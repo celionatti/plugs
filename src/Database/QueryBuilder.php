@@ -214,7 +214,7 @@ class QueryBuilder
         return $this;
     }
 
-    public function get(array $columns = ['*']): array
+    public function get(array $columns = ['*']): array|Collection
     {
         if ($columns !== ['*']) {
             $this->select($columns);
@@ -224,16 +224,16 @@ class QueryBuilder
         $results = $this->connection->fetchAll($sql, $this->params);
 
         if ($this->model && !empty($results)) {
-            $models = array_map(fn ($item) => new $this->model($item), $results);
+            $models = array_map(fn($item) => new $this->model($item), $results);
 
             if (!empty($this->with)) {
                 $collection = new Collection($models);
                 $this->model::loadRelations($collection, $this->with);
 
-                return $collection->all();
+                return $collection;
             }
 
-            return $models;
+            return new Collection($models);
         }
 
         return $results;
@@ -265,6 +265,54 @@ class QueryBuilder
     public function exists(): bool
     {
         return $this->first() !== null;
+    }
+
+    /**
+     * Get the only record that matches the criteria.
+     */
+    public function sole(array $columns = ['*'])
+    {
+        $results = $this->limit(2)->get($columns);
+
+        $count = count($results);
+
+        if ($count === 0) {
+            throw new \Exception("No records found.");
+        }
+
+        if ($count > 1) {
+            throw new \Exception("Multiple records found.");
+        }
+
+        return $results[0];
+    }
+
+    /**
+     * Chunk the results of the query.
+     */
+    public function chunk(int $count, callable $callback): bool
+    {
+        $page = 1;
+
+        do {
+            $results = $this->offset(($page - 1) * $count)->limit($count)->get();
+
+            $countResults = count($results);
+
+            if ($countResults == 0) {
+                break;
+            }
+
+            if ($callback($results, $page) === false) {
+                return false;
+            }
+
+            unset($results);
+
+            $page++;
+        } while ($countResults == $count);
+
+        return true;
     }
 
     public function insert(array $data): bool
