@@ -1295,6 +1295,15 @@ class Router
     }
 
     /**
+     * Load internal framework routes
+     */
+    public function loadInternalRoutes(): void
+    {
+        $router = $this;
+        require __DIR__ . '/internal_routes.php';
+    }
+
+    /**
      * Macro support - Add custom methods to router
      */
     private array $macros = [];
