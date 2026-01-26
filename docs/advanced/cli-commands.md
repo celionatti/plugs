@@ -51,7 +51,29 @@ php theplugs make:controller UserController
 php theplugs make:model Post -m  # With migration
 php theplugs make:middleware AuthMiddleware
 php theplugs make:migration create_posts_table
+php theplugs make:pdf-template invoice
+php theplugs make:pagination-template tailwind
 ```
+
+### PDF Templates
+
+Generate professional, pre-designed PDF templates:
+
+```bash
+php theplugs make:pdf-template [type]
+```
+
+**Types:** `invoice`, `receipt`, `ticket`, `booking`, `certificate`, `cv`.
+
+### Pagination Templates
+
+Generate modern pagination templates:
+
+```bash
+php theplugs make:pagination-template [type]
+```
+
+**Types:** `tailwind`, `bootstrap`, `simple`.
 
 ```bash
 php theplugs queue:work
