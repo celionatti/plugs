@@ -335,9 +335,9 @@ function plugs_dump(array $vars, bool $die = false, string $mode = 'default'): v
 
     // Global toggle (Expand/Collapse All)
     function toggleAll(expand) {
-        document.querySelectorAll('.var-body').forEach(body => {
+        document.querySelectorAll('.plugs-var-body').forEach(body => {
             // Only toggle visible tabs
-            if (body.closest('.tab-content.active')) {
+            if (body.closest('.plugs-tab-content.active')) {
                 body.style.display = expand ? 'block' : 'none';
                 body.previousElementSibling.style.opacity = expand ? '1' : '0.7';
             }
@@ -347,7 +347,7 @@ function plugs_dump(array $vars, bool $die = false, string $mode = 'default'): v
     // Search & Filter
     document.getElementById('debug-search').addEventListener('input', (e) => {
         const query = e.target.value.toLowerCase();
-        document.querySelectorAll('.tab-content.active .var-item').forEach(item => {
+        document.querySelectorAll('.plugs-tab-content.active .plugs-var-item').forEach(item => {
             const text = item.innerText.toLowerCase();
             item.classList.toggle('hidden', !text.includes(query));
         });
@@ -356,7 +356,7 @@ function plugs_dump(array $vars, bool $die = false, string $mode = 'default'): v
     // Copy to Clipboard
     function copyValue(icon) {
         const container = icon.parentElement;
-        const stringSpan = container.querySelector('.syntax-string');
+        const stringSpan = container.querySelector('.plugs-syntax-string');
         const textToCopy = stringSpan ? stringSpan.getAttribute('data-full-value') : container.innerText.trim();
         
         navigator.clipboard.writeText(textToCopy).then(() => {
@@ -378,7 +378,7 @@ function plugs_dump(array $vars, bool $die = false, string $mode = 'default'): v
     function revealSecret(el) {
         const secret = el.getAttribute('data-secret');
         el.innerText = secret;
-        el.classList.remove('masked-secret');
+        el.classList.remove('plugs-masked-secret');
         el.style.color = '#10b981';
         el.style.fontStyle = 'normal';
         el.style.background = 'rgba(16, 185, 129, 0.1)';
@@ -387,20 +387,20 @@ function plugs_dump(array $vars, bool $die = false, string $mode = 'default'): v
     // Breadcrumbs on hover
     const breadcrumbBar = document.getElementById('breadcrumb-bar');
     document.addEventListener('mouseover', (e) => {
-        const keySpan = e.target.closest('.syntax-key');
+        const keySpan = e.target.closest('.plugs-syntax-key');
         if (keySpan) {
             const path = keySpan.getAttribute('data-path');
             if (path) {
-                breadcrumbBar.innerHTML = 'Current Path: <span class="breadcrumb-item">' + path + '</span>';
+                breadcrumbBar.innerHTML = 'Current Path: <span class="plugs-breadcrumb-item">' + path + '</span>';
                 breadcrumbBar.style.display = 'block';
             }
-        } else if (!e.target.closest('.breadcrumbs')) {
+        } else if (!e.target.closest('.plugs-breadcrumbs')) {
             breadcrumbBar.style.display = 'none';
         }
     });
 
     // Handle string truncation toggle
-    document.querySelectorAll('.syntax-string').forEach(span => {
+    document.querySelectorAll('.plugs-syntax-string').forEach(span => {
         if (span.innerText.endsWith('..."')) {
             span.style.cursor = 'pointer';
             span.title = 'Click to show full string';
@@ -606,7 +606,7 @@ HTML;
         background: linear-gradient(90deg, var(--accent-primary), var(--accent-secondary));
     }
     
-    .header-top {
+    .plugs-header-top {
         display: flex;
         justify-content: space-between;
         align-items: center;
@@ -615,13 +615,13 @@ HTML;
         border-bottom: 1px solid var(--border-color);
     }
     
-    .logo-section {
+    .plugs-logo-section {
         display: flex;
         align-items: center;
         gap: 16px;
     }
     
-    .brand {
+    .plugs-brand {
         font-family: "Dancing Script", cursive;
         font-size: 2.25rem;
         font-weight: 700;
@@ -633,14 +633,14 @@ HTML;
         background-clip: text;
     }
     
-    .logo-text p {
+    .plugs-logo-text p {
         font-size: 14px;
         color: var(--text-muted);
         font-weight: 500;
         margin-top: -8px;
     }
 
-    .header-controls {
+    .plugs-header-controls {
         display: flex;
         align-items: center;
         gap: 16px;
@@ -710,12 +710,12 @@ HTML;
         box-shadow: 0 0 0 2px rgba(139, 92, 246, 0.2);
     }
 
-    .global-actions {
+    .plugs-global-actions {
         display: flex;
         gap: 8px;
     }
 
-    .action-btn {
+    .plugs-action-btn {
         background: rgba(255, 255, 255, 0.05);
         border: 1px solid var(--border-color);
         color: var(--text-secondary);
@@ -735,7 +735,7 @@ HTML;
         color: var(--text-primary);
     }
     
-    .status-badge {
+    .plugs-status-badge {
         background: rgba(16, 185, 129, 0.1);
         color: var(--success);
         padding: 8px 16px;
@@ -745,13 +745,13 @@ HTML;
         border: 1px solid rgba(16, 185, 129, 0.2);
     }
     
-    .stats-grid {
+    .plugs-stats-grid {
         display: grid;
         grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
         gap: 20px;
     }
     
-    .stat-card {
+    .plugs-stat-card {
         background: rgba(15, 23, 42, 0.3);
         border: 1px solid var(--border-color);
         border-radius: 12px;
@@ -764,7 +764,7 @@ HTML;
         background: rgba(15, 23, 42, 0.5);
     }
     
-    .stat-label {
+    .plugs-stat-label {
         font-size: 11px;
         font-weight: 700;
         text-transform: uppercase;
@@ -776,7 +776,7 @@ HTML;
         gap: 8px;
     }
     
-    .stat-value {
+    .plugs-stat-value {
         font-size: 18px;
         font-weight: 600;
         color: var(--text-primary);
@@ -833,7 +833,7 @@ HTML;
         gap: 8px;
     }
     
-    .badge {
+    .plugs-badge {
         background: rgba(139, 92, 246, 0.1);
         color: var(--accent-primary);
         padding: 4px 12px;
@@ -859,7 +859,7 @@ HTML;
         letter-spacing: 0.1em;
     }
     
-    .code-block {
+    .plugs-code-block {
         background: var(--code-bg);
         border: 1px solid var(--border-color);
         color: var(--text-primary);
@@ -872,16 +872,16 @@ HTML;
         position: relative;
     }
     
-    .syntax-key { color: var(--accent-primary); font-weight: 500; cursor: help; }
-    .syntax-key:hover { text-decoration: underline; }
-    .syntax-string { color: var(--success); }
-    .syntax-number { color: var(--accent-secondary); }
-    .syntax-bool { color: var(--warning); }
-    .syntax-null { color: var(--danger); }
-    .syntax-array { color: var(--text-secondary); opacity: 0.8; }
-    .syntax-object { color: var(--accent-secondary); font-weight: 600; }
+    .plugs-syntax-key { color: var(--accent-primary); font-weight: 500; cursor: help; }
+    .plugs-syntax-key:hover { text-decoration: underline; }
+    .plugs-syntax-string { color: var(--success); }
+    .plugs-syntax-number { color: var(--accent-secondary); }
+    .plugs-syntax-bool { color: var(--warning); }
+    .plugs-syntax-null { color: var(--danger); }
+    .plugs-syntax-array { color: var(--text-secondary); opacity: 0.8; }
+    .plugs-syntax-object { color: var(--accent-secondary); font-weight: 600; }
     
-    .copy-icon {
+    .plugs-copy-icon {
         position: absolute;
         right: 12px;
         top: 12px;
@@ -902,7 +902,7 @@ HTML;
         background: rgba(255, 255, 255, 0.05);
     }
 
-    .masked-secret {
+    .plugs-masked-secret {
         background: rgba(239, 68, 68, 0.1);
         color: var(--danger);
         padding: 2px 6px;
@@ -936,7 +936,7 @@ HTML;
         font-weight: 600;
     }
 
-    .alert {
+    .plugs-alert {
         padding: 16px 20px;
         margin-top: 20px;
         border-radius: 12px;
@@ -946,11 +946,11 @@ HTML;
         gap: 8px;
     }
     
-    .alert-warning { background: rgba(245, 158, 11, 0.1); border: 1px solid rgba(245, 158, 11, 0.2); color: #fbbf24; }
-    .alert-danger { background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.2); color: #f87171; }
-    .alert-success { background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.2); color: #34d399; }
+    .plugs-alert-warning { background: rgba(245, 158, 11, 0.1); border: 1px solid rgba(245, 158, 11, 0.2); color: #fbbf24; }
+    .plugs-alert-danger { background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.2); color: #f87171; }
+    .plugs-alert-success { background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.2); color: #34d399; }
     
-    .alert-title {
+    .plugs-alert-title {
         font-weight: 700;
         text-transform: uppercase;
         font-size: 12px;
@@ -1011,30 +1011,30 @@ function plugs_render_header(string $file, $line, int $memoryUsage, int $peakMem
     $queryTime = $queryStats['time'] ?? 0;
 
     $html = '<div class="plugs-debug-header">';
-    $html .= '<div class="header-top">';
-    $html .= '<div class="logo-section">';
-    $html .= '<div class="brand">Plugs</div>';
-    $html .= '<div class="logo-text"><p>Debug Console</p></div>';
+    $html .= '<div class="plugs-header-top">';
+    $html .= '<div class="plugs-logo-section">';
+    $html .= '<div class="plugs-brand">Plugs</div>';
+    $html .= '<div class="plugs-logo-text"><p>Debug Console</p></div>';
     $html .= '</div>';
 
-    $html .= '<div class="header-controls">';
+    $html .= '<div class="plugs-header-controls">';
     $html .= '<input type="text" class="search-input" id="debug-search" placeholder="Search variables, keys, values...">';
-    $html .= '<div class="global-actions">';
-    $html .= '<button class="action-btn" onclick="toggleAll(true)"><span>Expand</span> ⊞</button>';
-    $html .= '<button class="action-btn" onclick="toggleAll(false)"><span>Collapse</span> ⊟</button>';
+    $html .= '<div class="plugs-global-actions">';
+    $html .= '<button class="plugs-action-btn" onclick="toggleAll(true)"><span>Expand</span> ⊞</button>';
+    $html .= '<button class="plugs-action-btn" onclick="toggleAll(false)"><span>Collapse</span> ⊟</button>';
     $html .= '</div>';
-    $html .= '<div class="status-badge">Live Debugging</div>';
+    $html .= '<div class="plugs-status-badge">Live Debugging</div>';
     $html .= '</div>';
     $html .= '</div>';
 
-    $html .= '<div class="stats-grid">';
-    $html .= '<div class="stat-card"><div class="stat-label">Location</div><div class="stat-value" style="font-size: 13px;">' . htmlspecialchars(basename($file)) . ':' . $line . '</div></div>';
-    $html .= '<div class="stat-card"><div class="stat-label">Memory</div><div class="stat-value">' . plugs_format_bytes($memoryUsage) . '</div></div>';
-    $html .= '<div class="stat-card"><div class="stat-label">Execution</div><div class="stat-value">' . number_format($executionTime * 1000, 2) . ' ms</div></div>';
+    $html .= '<div class="plugs-stats-grid">';
+    $html .= '<div class="plugs-stat-card"><div class="plugs-stat-label">Location</div><div class="plugs-stat-value" style="font-size: 13px;">' . htmlspecialchars(basename($file)) . ':' . $line . '</div></div>';
+    $html .= '<div class="plugs-stat-card"><div class="plugs-stat-label">Memory</div><div class="plugs-stat-value">' . plugs_format_bytes($memoryUsage) . '</div></div>';
+    $html .= '<div class="plugs-stat-card"><div class="plugs-stat-label">Execution</div><div class="plugs-stat-value">' . number_format($executionTime * 1000, 2) . ' ms</div></div>';
     if ($queryCount > 0) {
-        $html .= '<div class="stat-card"><div class="stat-label">Queries</div><div class="stat-value">' . $queryCount . ' (' . number_format($queryTime * 1000, 1) . 'ms)</div></div>';
+        $html .= '<div class="plugs-stat-card"><div class="plugs-stat-label">Queries</div><div class="plugs-stat-value">' . $queryCount . ' (' . number_format($queryTime * 1000, 1) . 'ms)</div></div>';
     }
-    $html .= '<div class="stat-card"><div class="stat-label">Time</div><div class="stat-value">' . date('H:i:s') . '</div></div>';
+    $html .= '<div class="plugs-stat-card"><div class="plugs-stat-label">Time</div><div class="plugs-stat-value">' . date('H:i:s') . '</div></div>';
     $html .= '</div>';
     $html .= '</div>';
 
@@ -1080,15 +1080,15 @@ function plugs_render_variable($var, int $index): string
     $html .= '<span>Variable #' . ($index + 1) . '</span>';
     $html .= '</div>';
     $html .= '<div class="var-badges">';
-    $html .= '<span class="badge">' . $type . '</span>';
-    $html .= '<span class="badge">' . plugs_format_bytes($size) . '</span>';
+    $html .= '<span class="plugs-badge">' . $type . '</span>';
+    $html .= '<span class="plugs-badge">' . plugs_format_bytes($size) . '</span>';
     $html .= '</div>';
     $html .= '</div>';
 
     $html .= '<div class="var-body">';
     $html .= '<div class="section-title">📄 Value</div>';
-    $html .= '<div class="code-block">';
-    $html .= '<div class="copy-icon" title="Copy to clipboard" onclick="copyValue(this)">📋</div>';
+    $html .= '<div class="plugs-code-block">';
+    $html .= '<div class="plugs-copy-icon" title="Copy to clipboard" onclick="copyValue(this)">📋</div>';
     $html .= plugs_format_value($var, 0);
     $html .= '</div>';
 
@@ -1123,13 +1123,13 @@ function plugs_render_variable($var, int $index): string
 
     // Warnings
     if ($size > 5 * 1024 * 1024) {
-        $html .= '<div class="alert alert-danger">';
-        $html .= '<div class="alert-title">❌ Critical Memory Warning</div>';
+        $html .= '<div class="plugs-alert plugs-alert-danger">';
+        $html .= '<div class="plugs-alert-title">❌ Critical Memory Warning</div>';
         $html .= 'Variable size is extremely large (' . plugs_format_bytes($size) . '). Consider pagination or chunking.';
         $html .= '</div>';
     } elseif ($size > 1 * 1024 * 1024) {
-        $html .= '<div class="alert alert-warning">';
-        $html .= '<div class="alert-title">⚠️ Large Variable</div>';
+        $html .= '<div class="plugs-alert plugs-alert-warning">';
+        $html .= '<div class="plugs-alert-title">⚠️ Large Variable</div>';
         $html .= 'Variable size is significant (' . plugs_format_bytes($size) . '). Monitor memory usage.';
         $html .= '</div>';
     }
@@ -1152,21 +1152,21 @@ function plugs_render_queries(array $data): string
     $html .= '<div class="section-title" style="margin-bottom: 24px; font-size: 18px; color: var(--text-primary);">📊 Query Insights</div>';
 
     // Stats cards
-    $html .= '<div class="stats-grid" style="margin-bottom: 32px;">';
+    $html .= '<div class="plugs-stats-grid" style="margin-bottom: 32px;">';
 
-    $html .= '<div class="stat-card" style="background: linear-gradient(145deg, rgba(168, 85, 247, 0.1), transparent);">';
-    $html .= '<div class="stat-label">✨ Total Queries</div>';
-    $html .= '<div class="stat-value">' . ($stats['total_queries'] ?? 0) . '</div>';
+    $html .= '<div class="plugs-stat-card" style="background: linear-gradient(145deg, rgba(168, 85, 247, 0.1), transparent);">';
+    $html .= '<div class="plugs-stat-label">✨ Total Queries</div>';
+    $html .= '<div class="plugs-stat-value">' . ($stats['total_queries'] ?? 0) . '</div>';
     $html .= '</div>';
 
-    $html .= '<div class="stat-card" style="background: linear-gradient(145deg, rgba(99, 102, 241, 0.1), transparent);">';
-    $html .= '<div class="stat-label">⏱️ Total Time</div>';
-    $html .= '<div class="stat-value">' . number_format(($stats['total_time'] ?? 0) * 1000, 2) . ' ms</div>';
+    $html .= '<div class="plugs-stat-card" style="background: linear-gradient(145deg, rgba(99, 102, 241, 0.1), transparent);">';
+    $html .= '<div class="plugs-stat-label">⏱️ Total Time</div>';
+    $html .= '<div class="plugs-stat-value">' . number_format(($stats['total_time'] ?? 0) * 1000, 2) . ' ms</div>';
     $html .= '</div>';
 
-    $html .= '<div class="stat-card">';
-    $html .= '<div class="stat-label">🧠 Memory Peak</div>';
-    $html .= '<div class="stat-value">' . plugs_format_bytes($stats['peak_memory'] ?? memory_get_peak_usage(true)) . '</div>';
+    $html .= '<div class="plugs-stat-card">';
+    $html .= '<div class="plugs-stat-label">🧠 Memory Peak</div>';
+    $html .= '<div class="plugs-stat-value">' . plugs_format_bytes($stats['peak_memory'] ?? memory_get_peak_usage(true)) . '</div>';
     $html .= '</div>';
 
     $html .= '</div>';
@@ -1174,13 +1174,13 @@ function plugs_render_queries(array $data): string
     // Performance assessment
     $totalQueries = $stats['total_queries'] ?? 0;
     if ($totalQueries > 20) {
-        $html .= '<div class="alert alert-danger" style="animation: pulse 2s infinite;">';
-        $html .= '<div class="alert-title">🔥 Critical Warning</div>';
+        $html .= '<div class="plugs-alert plugs-alert-danger" style="animation: pulse 2s infinite;">';
+        $html .= '<div class="plugs-alert-title">🔥 Critical Warning</div>';
         $html .= "High query volume ({$totalQueries}). This will significantly slow down production response times.";
         $html .= '</div>';
     } elseif ($totalQueries > 10) {
-        $html .= '<div class="alert alert-warning">';
-        $html .= '<div class="alert-title">⚡ Optimization Recommended</div>';
+        $html .= '<div class="plugs-alert plugs-alert-warning">';
+        $html .= '<div class="plugs-alert-title">⚡ Optimization Recommended</div>';
         $html .= "Multiple queries detected. Use eager loading (with()) to reduce database roundtrips.";
         $html .= '</div>';
     }
@@ -1199,12 +1199,12 @@ function plugs_render_queries(array $data): string
         $html .= '<div class="var-title"><span>#' . ($index + 1) . '</span> <code style="color: var(--accent-secondary);">' . substr(htmlspecialchars($query['query']), 0, 60) . (strlen($query['query']) > 60 ? '...' : '') . '</code></div>';
         $html .= '<div class="var-badges">';
         if ($isSlow)
-            $html .= '<span class="badge" style="background: rgba(239, 68, 68, 0.1); color: var(--danger);">SLOW</span>';
-        $html .= '<span class="badge">' . $ms . ' ms</span>';
+            $html .= '<span class="plugs-badge" style="background: rgba(239, 68, 68, 0.1); color: var(--danger);">SLOW</span>';
+        $html .= '<span class="plugs-badge">' . $ms . ' ms</span>';
         $html .= '</div>';
         $html .= '</div>';
         $html .= '<div class="var-body" style="display: none;">';
-        $html .= '<div class="code-block">';
+        $html .= '<div class="plugs-code-block">';
         $html .= '<code class="syntax-string">' . htmlspecialchars($query['query']) . '</code>';
         $html .= '</div>';
         if (!empty($query['bindings'])) {
@@ -1246,7 +1246,7 @@ function plugs_render_model(array $data): string
 
     if ($model) {
         $html .= '<div class="section-title">📦 Model Data</div>';
-        $html .= '<div class="code-block">';
+        $html .= '<div class="plugs-code-block">';
         $html .= plugs_format_value($model, 0);
         $html .= '</div>';
 
@@ -1281,8 +1281,8 @@ function plugs_render_model(array $data): string
     if (!empty($queries)) {
         $html .= '<div style="margin-top: 24px;">';
         $html .= '<div class="section-title">🔍 Related Queries</div>';
-        $html .= '<div class="alert alert-info">';
-        $html .= '<div class="alert-title">ℹ️ Query Count</div>';
+        $html .= '<div class="plugs-alert plugs-alert-info">';
+        $html .= '<div class="plugs-alert-title">ℹ️ Query Count</div>';
         $html .= 'This model executed ' . count($queries) . ' database queries.';
         $html .= '</div>';
         $html .= '</div>';
@@ -1310,8 +1310,8 @@ function plugs_render_exception(array $data): string
     $html = '<div style="padding: 32px;">';
 
     // Exception header
-    $html .= '<div class="alert alert-danger" style="margin-bottom: 24px;">';
-    $html .= '<div class="alert-title">💥 ' . htmlspecialchars($class) . '</div>';
+    $html .= '<div class="plugs-alert plugs-alert-danger" style="margin-bottom: 24px;">';
+    $html .= '<div class="plugs-alert-title">💥 ' . htmlspecialchars($class) . '</div>';
     $html .= '<div style="font-size: 18px; margin-top: 8px;">' . htmlspecialchars($message) . '</div>';
     if ($code) {
         $html .= '<div style="margin-top: 8px; opacity: 0.8;">Code: ' . $code . '</div>';
@@ -1357,7 +1357,7 @@ function plugs_render_exception(array $data): string
             $html .= '<div class="var-item" style="margin-bottom: 8px;">';
             $html .= '<div class="var-header" onclick="toggleVar(this)">';
             $html .= '<div class="var-title"><span>#' . $index . '</span> <code style="color: var(--accent-secondary);">' . htmlspecialchars($call) . '</code></div>';
-            $html .= '<div class="var-badges"><span class="badge">' . htmlspecialchars(basename($frameFile)) . ':' . $frameLine . '</span></div>';
+            $html .= '<div class="var-badges"><span class="plugs-badge">' . htmlspecialchars(basename($frameFile)) . ':' . $frameLine . '</span></div>';
             $html .= '</div>';
             $html .= '<div class="var-body" style="display: none; padding: 16px; font-size: 12px; color: var(--text-muted);">';
             $html .= htmlspecialchars($frameFile);
@@ -1370,8 +1370,8 @@ function plugs_render_exception(array $data): string
     if ($previous) {
         $html .= '<div style="margin-top: 24px;">';
         $html .= '<div class="section-title">🔗 Previous Exception</div>';
-        $html .= '<div class="alert alert-warning">';
-        $html .= '<div class="alert-title">' . get_class($previous) . '</div>';
+        $html .= '<div class="plugs-alert plugs-alert-warning">';
+        $html .= '<div class="plugs-alert-title">' . get_class($previous) . '</div>';
         $html .= htmlspecialchars($previous->getMessage());
         $html .= '</div>';
         $html .= '</div>';
@@ -1392,10 +1392,10 @@ function plugs_render_http(array $data): string
 
     // Status
     $statusCode = $data['status_code'] ?? 0;
-    $statusClass = $statusCode >= 200 && $statusCode < 300 ? 'alert-success' : ($statusCode >= 400 ? 'alert-danger' : 'alert-warning');
+    $statusClass = $statusCode >= 200 && $statusCode < 300 ? 'plugs-alert-success' : ($statusCode >= 400 ? 'plugs-alert-danger' : 'plugs-alert-warning');
 
-    $html .= '<div class="alert ' . $statusClass . '" style="margin-bottom: 24px;">';
-    $html .= '<div class="alert-title">Status: ' . $statusCode . ' ' . ($data['reason'] ?? '') . '</div>';
+    $html .= '<div class="plugs-alert ' . $statusClass . '" style="margin-bottom: 24px;">';
+    $html .= '<div class="plugs-alert-title">Status: ' . $statusCode . ' ' . ($data['reason'] ?? '') . '</div>';
     if (isset($data['url'])) {
         $html .= '<div style="margin-top: 8px;">' . htmlspecialchars($data['url']) . '</div>';
     }
@@ -1404,13 +1404,13 @@ function plugs_render_http(array $data): string
     // Stats
     $html .= '<div class="stats-grid" style="margin-bottom: 24px;">';
     if (isset($data['status_code'])) {
-        $html .= '<div class="stat-card"><div class="stat-label">Status</div><div class="stat-value">' . $data['status_code'] . '</div></div>';
+        $html .= '<div class="plugs-stat-card"><div class="plugs-stat-label">Status</div><div class="plugs-stat-value">' . $data['status_code'] . '</div></div>';
     }
     if (isset($data['request_time'])) {
-        $html .= '<div class="stat-card"><div class="stat-label">⏱️ Time</div><div class="stat-value">' . number_format($data['request_time'] * 1000, 2) . ' ms</div></div>';
+        $html .= '<div class="plugs-stat-card"><div class="plugs-stat-label">⏱️ Time</div><div class="plugs-stat-value">' . number_format($data['request_time'] * 1000, 2) . ' ms</div></div>';
     }
     if (isset($data['response_class'])) {
-        $html .= '<div class="stat-card"><div class="stat-label">Class</div><div class="stat-value" style="font-size: 12px;">' . $data['response_class'] . '</div></div>';
+        $html .= '<div class="plugs-stat-card"><div class="plugs-stat-label">Class</div><div class="plugs-stat-value" style="font-size: 12px;">' . $data['response_class'] . '</div></div>';
     }
     $html .= '</div>';
 
@@ -1428,12 +1428,12 @@ function plugs_render_http(array $data): string
     // Body
     if (isset($data['body_parsed'])) {
         $html .= '<div class="section-title">📄 Body (JSON)</div>';
-        $html .= '<div class="code-block">';
+        $html .= '<div class="plugs-code-block">';
         $html .= plugs_format_value($data['body_parsed'], 0);
         $html .= '</div>';
     } elseif (isset($data['body'])) {
         $html .= '<div class="section-title">📄 Body</div>';
-        $html .= '<div class="code-block">';
+        $html .= '<div class="plugs-code-block">';
         $body = $data['body'];
         if (is_string($body) && strlen($body) > 2000) {
             $html .= htmlspecialchars(substr($body, 0, 2000)) . '... (truncated)';
@@ -1457,26 +1457,26 @@ function plugs_render_profile(array $data): string
     $html .= '<div class="section-title" style="margin-bottom: 24px; font-size: 18px; color: var(--text-primary);">⚡ Performance Profile</div>';
 
     // Stats cards
-    $html .= '<div class="stats-grid" style="margin-bottom: 32px;">';
+    $html .= '<div class="plugs-stats-grid" style="margin-bottom: 32px;">';
 
-    $html .= '<div class="stat-card" style="background: linear-gradient(145deg, rgba(16, 185, 129, 0.1), transparent);">';
-    $html .= '<div class="stat-label">⏱️ Execution Time</div>';
-    $html .= '<div class="stat-value">' . number_format(($data['execution_time_ms'] ?? ($data['execution_time'] ?? 0) * 1000), 2) . ' ms</div>';
+    $html .= '<div class="plugs-stat-card" style="background: linear-gradient(145deg, rgba(16, 185, 129, 0.1), transparent);">';
+    $html .= '<div class="plugs-stat-label">⏱️ Execution Time</div>';
+    $html .= '<div class="plugs-stat-value">' . number_format(($data['execution_time_ms'] ?? ($data['execution_time'] ?? 0) * 1000), 2) . ' ms</div>';
     $html .= '</div>';
 
-    $html .= '<div class="stat-card" style="background: linear-gradient(145deg, rgba(99, 102, 241, 0.1), transparent);">';
-    $html .= '<div class="stat-label">🧠 Memory Used</div>';
-    $html .= '<div class="stat-value">' . ($data['memory_formatted'] ?? plugs_format_bytes($data['memory_used'] ?? 0)) . '</div>';
+    $html .= '<div class="plugs-stat-card" style="background: linear-gradient(145deg, rgba(99, 102, 241, 0.1), transparent);">';
+    $html .= '<div class="plugs-stat-label">🧠 Memory Used</div>';
+    $html .= '<div class="plugs-stat-value">' . ($data['memory_formatted'] ?? plugs_format_bytes($data['memory_used'] ?? 0)) . '</div>';
     $html .= '</div>';
 
-    $html .= '<div class="stat-card" style="background: linear-gradient(145deg, rgba(168, 85, 247, 0.1), transparent);">';
-    $html .= '<div class="stat-label">🔍 Query Count</div>';
-    $html .= '<div class="stat-value">' . ($data['query_count'] ?? 0) . '</div>';
+    $html .= '<div class="plugs-stat-card" style="background: linear-gradient(145deg, rgba(168, 85, 247, 0.1), transparent);">';
+    $html .= '<div class="plugs-stat-label">🔍 Query Count</div>';
+    $html .= '<div class="plugs-stat-value">' . ($data['query_count'] ?? 0) . '</div>';
     $html .= '</div>';
 
-    $html .= '<div class="stat-card">';
-    $html .= '<div class="stat-label">⚙️ Query Time</div>';
-    $html .= '<div class="stat-value">' . number_format(($data['query_time_ms'] ?? ($data['query_time'] ?? 0) * 1000), 2) . ' ms</div>';
+    $html .= '<div class="plugs-stat-card">';
+    $html .= '<div class="plugs-stat-label">⚙️ Query Time</div>';
+    $html .= '<div class="plugs-stat-value">' . number_format(($data['query_time_ms'] ?? ($data['query_time'] ?? 0) * 1000), 2) . ' ms</div>';
     $html .= '</div>';
 
     $html .= '</div>';
@@ -1486,8 +1486,8 @@ function plugs_render_profile(array $data): string
     $queryCount = $data['query_count'] ?? 0;
 
     if ($execTime > 1000 || $queryCount > 20) {
-        $html .= '<div class="alert alert-danger" style="margin-bottom: 24px;">';
-        $html .= '<div class="alert-title">🔥 Performance Warning</div>';
+        $html .= '<div class="plugs-alert plugs-alert-danger" style="margin-bottom: 24px;">';
+        $html .= '<div class="plugs-alert-title">🔥 Performance Warning</div>';
         if ($execTime > 1000) {
             $html .= 'Execution time exceeds 1 second. Consider optimizing your code.<br>';
         }
@@ -1496,16 +1496,16 @@ function plugs_render_profile(array $data): string
         }
         $html .= '</div>';
     } elseif ($execTime > 500 || $queryCount > 10) {
-        $html .= '<div class="alert alert-warning" style="margin-bottom: 24px;">';
-        $html .= '<div class="alert-title">⚡ Optimization Recommended</div>';
+        $html .= '<div class="plugs-alert plugs-alert-warning" style="margin-bottom: 24px;">';
+        $html .= '<div class="plugs-alert-title">⚡ Optimization Recommended</div>';
         $html .= 'Consider reviewing performance. ';
         if ($queryCount > 10) {
             $html .= 'Multiple queries detected.';
         }
         $html .= '</div>';
     } else {
-        $html .= '<div class="alert alert-success" style="margin-bottom: 24px;">';
-        $html .= '<div class="alert-title">✅ Performance Good</div>';
+        $html .= '<div class="plugs-alert plugs-alert-success" style="margin-bottom: 24px;">';
+        $html .= '<div class="plugs-alert-title">✅ Performance Good</div>';
         $html .= 'Execution time and query count are within acceptable limits.';
         $html .= '</div>';
     }
@@ -1524,8 +1524,8 @@ function plugs_render_profile(array $data): string
             $html .= '<div class="var-title"><span>#' . ($index + 1) . '</span> <code style="color: var(--accent-secondary);">' . substr(htmlspecialchars($query['query'] ?? ''), 0, 60) . (strlen($query['query'] ?? '') > 60 ? '...' : '') . '</code></div>';
             $html .= '<div class="var-badges">';
             if ($isSlow)
-                $html .= '<span class="badge" style="background: rgba(239, 68, 68, 0.1); color: var(--danger);">SLOW</span>';
-            $html .= '<span class="badge">' . $ms . ' ms</span>';
+                $html .= '<span class="plugs-badge" style="background: rgba(239, 68, 68, 0.1); color: var(--danger);">SLOW</span>';
+            $html .= '<span class="plugs-badge">' . $ms . ' ms</span>';
             $html .= '</div>';
             $html .= '</div>';
             $html .= '<div class="var-body" style="display: none;">';
@@ -1542,7 +1542,7 @@ function plugs_render_profile(array $data): string
     if (isset($data['result'])) {
         $html .= '<div style="margin-top: 24px;">';
         $html .= '<div class="section-title">📦 Result</div>';
-        $html .= '<div class="code-block">';
+        $html .= '<div class="plugs-code-block">';
         $html .= plugs_format_value($data['result'], 0);
         $html .= '</div>';
         $html .= '</div>';
@@ -1559,30 +1559,30 @@ function plugs_render_profile(array $data): string
 function plugs_format_value($value, int $depth = 0, array $path = []): string
 {
     if ($depth > 12) {
-        return '<span class="syntax-null">... (depth limit)</span>';
+        return '<span class="plugs-syntax-null">... (depth limit)</span>';
     }
     $indent = str_repeat('  ', $depth);
 
     if (is_null($value)) {
-        return '<span class="syntax-null">null</span>';
+        return '<span class="plugs-syntax-null">null</span>';
     }
     if (is_bool($value)) {
-        return '<span class="syntax-bool">' . ($value ? 'true' : 'false') . '</span>';
+        return '<span class="plugs-syntax-bool">' . ($value ? 'true' : 'false') . '</span>';
     }
     if (is_int($value) || is_float($value)) {
-        return '<span class="syntax-number">' . $value . '</span>';
+        return '<span class="plugs-syntax-number">' . $value . '</span>';
     }
     if (is_string($value)) {
         $escaped = htmlspecialchars($value);
 
-        return '<span class="syntax-string" data-full-value="' . $escaped . '">"' . (strlen($value) > 200 ? substr($escaped, 0, 200) . '...' : $escaped) . '"</span>';
+        return '<span class="plugs-syntax-string" data-full-value="' . $escaped . '">"' . (strlen($value) > 200 ? substr($escaped, 0, 200) . '...' : $escaped) . '"</span>';
     }
 
     if (is_array($value)) {
         if (empty($value)) {
-            return '<span class="syntax-array">[]</span>';
+            return '<span class="plugs-syntax-array">[]</span>';
         }
-        $html = '<span class="syntax-array">Array(' . count($value) . ')</span> [<br>';
+        $html = '<span class="plugs-syntax-array">Array(' . count($value) . ')</span> [<br>';
         $isAssoc = array_keys($value) !== range(0, count($value) - 1);
 
         foreach ($value as $key => $val) {
@@ -1591,11 +1591,11 @@ function plugs_format_value($value, int $depth = 0, array $path = []): string
 
             $html .= $indent . '  ';
             if ($isAssoc) {
-                $html .= '<span class="syntax-key" data-path="' . implode(' → ', $currentPath) . '">' . (is_string($key) ? '"' . htmlspecialchars($key) . '"' : $key) . '</span> => ';
+                $html .= '<span class="plugs-syntax-key" data-path="' . implode(' → ', $currentPath) . '">' . (is_string($key) ? '"' . htmlspecialchars($key) . '"' : $key) . '</span> => ';
             }
 
             if ($isSecret && !empty($val)) {
-                $html .= '<span class="masked-secret" onclick="revealSecret(this)" data-secret="' . htmlspecialchars(is_string($val) ? (string) $val : json_encode($val)) . '">🔒 [masked secret]</span>';
+                $html .= '<span class="plugs-masked-secret" onclick="revealSecret(this)" data-secret="' . htmlspecialchars(is_string($val) ? (string) $val : json_encode($val)) . '">🔒 [masked secret]</span>';
             } else {
                 $html .= plugs_format_value($val, $depth + 1, $currentPath);
             }
@@ -1608,7 +1608,7 @@ function plugs_format_value($value, int $depth = 0, array $path = []): string
 
     if (is_object($value)) {
         $className = get_class($value);
-        $html = '<span class="syntax-object">Object(' . $className . ')</span> {<br>';
+        $html = '<span class="plugs-syntax-object">Object(' . $className . ')</span> {<br>';
 
         try {
             // Check if object has __debugInfo() method - use it for cleaner output
@@ -1618,10 +1618,10 @@ function plugs_format_value($value, int $depth = 0, array $path = []): string
                     $currentPath = array_merge($path, [$name]);
                     $isSecret = is_string($name) && preg_match('/(password|secret|key|token|auth|pass|cred)/i', $name);
 
-                    $html .= $indent . '  <span class="syntax-key" data-path="' . implode(' → ', $currentPath) . '">' . htmlspecialchars($name) . '</span> => ';
+                    $html .= $indent . '  <span class="plugs-syntax-key" data-path="' . implode(' → ', $currentPath) . '">' . htmlspecialchars($name) . '</span> => ';
 
                     if ($isSecret && !empty($val)) {
-                        $html .= '<span class="masked-secret" onclick="revealSecret(this)" data-secret="' . htmlspecialchars(is_string($val) ? (string) $val : json_encode($val)) . '">🔒 [masked secret]</span>';
+                        $html .= '<span class="plugs-masked-secret" onclick="revealSecret(this)" data-secret="' . htmlspecialchars(is_string($val) ? (string) $val : json_encode($val)) . '">🔒 [masked secret]</span>';
                     } else {
                         $html .= plugs_format_value($val, $depth + 1, $currentPath);
                     }
@@ -1636,18 +1636,18 @@ function plugs_format_value($value, int $depth = 0, array $path = []): string
                     $name = $property->getName();
                     $val = $property->getValue($value);
                     $currentPath = array_merge($path, [$name]);
-                    $html .= $indent . '  <span class="syntax-key" data-path="' . implode(' → ', $currentPath) . '">' . htmlspecialchars($name) . '</span> => ' . plugs_format_value($val, $depth + 1, $currentPath) . '<br>';
+                    $html .= $indent . '  <span class="plugs-syntax-key" data-path="' . implode(' → ', $currentPath) . '">' . htmlspecialchars($name) . '</span> => ' . plugs_format_value($val, $depth + 1, $currentPath) . '<br>';
                 }
             }
         } catch (\Exception $e) {
-            $html .= $indent . '  <span class="syntax-null">Unable to reflect</span><br>';
+            $html .= $indent . '  <span class="plugs-syntax-null">Unable to reflect</span><br>';
         }
         $html .= $indent . '}';
 
         return $html;
     }
 
-    return '<span class="syntax-null">' . htmlspecialchars(print_r($value, true)) . '</span>';
+    return '<span class="plugs-syntax-null">' . htmlspecialchars(print_r($value, true)) . '</span>';
 }
 
 /**

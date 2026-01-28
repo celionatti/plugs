@@ -194,8 +194,8 @@ class ProfilerBar
 
         // Header
         echo '<div class="plugs-debug-header">';
-        echo '<div class="header-top">';
-        echo '<div class="logo-section"><div class="brand">Plugs Profiler</div>';
+        echo '<div class="plugs-header-top">';
+        echo '<div class="plugs-logo-section"><div class="plugs-brand">Plugs Profiler</div>';
 
         // Git Info in Header
         if (!empty($profile['git']['branch'])) {
@@ -208,56 +208,56 @@ class ProfilerBar
         }
 
         echo '</div>'; // End Logo Section
-        echo '<div class="header-controls"><button class="action-btn" onclick="document.getElementById(\'plugs-profiler-modal\').classList.remove(\'active\')">Close ✕</button></div></div>';
+        echo '<div class="plugs-header-controls"><button class="plugs-action-btn" onclick="document.getElementById(\'plugs-profiler-modal\').classList.remove(\'active\')">Close ✕</button></div></div>';
 
         // Tabs
-        echo '<div class="tabs-nav">';
-        echo '<button class="tab-btn active" onclick="switchTab(this, \'tab-overview\')">📊 Overview</button>';
-        echo '<button class="tab-btn" onclick="switchTab(this, \'tab-timeline\')">⏱️ Timeline</button>';
-        echo '<button class="tab-btn" onclick="switchTab(this, \'tab-queries\')">🔮 Queries (' . count($data['queries']) . ')</button>';
-        echo '<button class="tab-btn" onclick="switchTab(this, \'tab-request\')">🌐 Request</button>';
-        echo '<button class="tab-btn" onclick="switchTab(this, \'tab-app\')">🧠 Application</button>';
-        echo '<button class="tab-btn" onclick="switchTab(this, \'tab-files\')">📂 Files (' . ($profile['files']['count'] ?? 0) . ')</button>';
-        echo '<button class="tab-btn" onclick="switchTab(this, \'tab-config\')">⚙️ Config</button>';
+        echo '<div class="plugs-tabs-nav">';
+        echo '<button class="plugs-tab-btn active" onclick="switchTab(this, \'tab-overview\')">📊 Overview</button>';
+        echo '<button class="plugs-tab-btn" onclick="switchTab(this, \'tab-timeline\')">⏱️ Timeline</button>';
+        echo '<button class="plugs-tab-btn" onclick="switchTab(this, \'tab-queries\')">🔮 Queries (' . count($data['queries']) . ')</button>';
+        echo '<button class="plugs-tab-btn" onclick="switchTab(this, \'tab-request\')">🌐 Request</button>';
+        echo '<button class="plugs-tab-btn" onclick="switchTab(this, \'tab-app\')">🧠 Application</button>';
+        echo '<button class="plugs-tab-btn" onclick="switchTab(this, \'tab-files\')">📂 Files (' . ($profile['files']['count'] ?? 0) . ')</button>';
+        echo '<button class="plugs-tab-btn" onclick="switchTab(this, \'tab-config\')">⚙️ Config</button>';
         echo '</div>';
         echo '</div>'; // End Header
 
         echo '<div class="plugs-debug-content">';
 
         // Tab: Overview
-        echo '<div id="tab-overview" class="tab-content active" style="padding: 32px;">';
+        echo '<div id="tab-overview" class="plugs-tab-content active" style="padding: 32px;">';
         echo plugs_render_profile($data);
         echo '</div>';
 
         // Tab: Timeline
-        echo '<div id="tab-timeline" class="tab-content" style="padding: 32px;">';
+        echo '<div id="tab-timeline" class="plugs-tab-content" style="padding: 32px;">';
         echo self::renderTimelineTab($profile);
         echo '</div>';
 
         // Tab: Queries
-        echo '<div id="tab-queries" class="tab-content" style="padding: 0;">';
+        echo '<div id="tab-queries" class="plugs-tab-content" style="padding: 0;">';
         echo plugs_render_queries($data);
         echo '</div>';
 
         // Tab: Request
-        echo '<div id="tab-request" class="tab-content" style="padding: 32px;">';
-        echo '<div class="code-block">';
+        echo '<div id="tab-request" class="plugs-tab-content" style="padding: 32px;">';
+        echo '<div class="plugs-code-block">';
         echo plugs_format_value($profile['request'] ?? [], 0);
         echo '</div>';
         echo '</div>';
 
         // Tab: App (Models & Views)
-        echo '<div id="tab-app" class="tab-content" style="padding: 32px;">';
-        echo '<div class="tab-grid" style="display:grid; gap:24px;">';
+        echo '<div id="tab-app" class="plugs-tab-content" style="padding: 32px;">';
+        echo '<div class="plugs-tab-grid" style="display:grid; gap:24px;">';
 
         // Models
-        echo '<div class="info-group"><h3>Model Events (' . count($profile['models'] ?? []) . ')</h3>';
+        echo '<div class="plugs-info-group"><h3>Model Events (' . count($profile['models'] ?? []) . ')</h3>';
         if (!empty($profile['models'])) {
-            echo '<table class="info-table" style="width:100%; border-collapse:collapse;">';
+            echo '<table class="plugs-info-table" style="width:100%; border-collapse:collapse;">';
             foreach ($profile['models'] as $m) {
                 echo '<tr style="border-bottom:1px solid rgba(255,255,255,0.05);">';
                 echo '<td style="padding:8px; color:#cbd5e1;">' . class_basename($m['model']) . '</td>';
-                echo '<td style="padding:8px;"><span class="badge" style="background:rgba(139,92,246,0.1); color:#a78bfa; padding:2px 6px; border-radius:4px; font-size:11px;">' . $m['event'] . '</span></td>';
+                echo '<td style="padding:8px;"><span class="plugs-badge" style="background:rgba(139,92,246,0.1); color:#a78bfa; padding:2px 6px; border-radius:4px; font-size:11px;">' . $m['event'] . '</span></td>';
                 echo '<td style="padding:8px; text-align:right; font-family:monospace;">+' . number_format($m['time_offset'], 2) . ' ms</td>';
                 echo '</tr>';
             }
@@ -268,9 +268,9 @@ class ProfilerBar
         echo '</div>';
 
         // Views
-        echo '<div class="info-group"><h3>Views Rendered (' . count($profile['views'] ?? []) . ')</h3>';
+        echo '<div class="plugs-info-group"><h3>Views Rendered (' . count($profile['views'] ?? []) . ')</h3>';
         if (!empty($profile['views'])) {
-            echo '<table class="info-table" style="width:100%; border-collapse:collapse;">';
+            echo '<table class="plugs-info-table" style="width:100%; border-collapse:collapse;">';
             foreach ($profile['views'] as $v) {
                 echo '<tr style="border-bottom:1px solid rgba(255,255,255,0.05);">';
                 echo '<td style="padding:8px; color:#cbd5e1;">' . htmlspecialchars($v['name']) . '</td>';
@@ -286,12 +286,12 @@ class ProfilerBar
         echo '</div></div>'; // End App Tab
 
         // Tab: Files
-        echo '<div id="tab-files" class="tab-content" style="padding: 32px;">';
+        echo '<div id="tab-files" class="plugs-tab-content" style="padding: 32px;">';
         echo self::renderFilesTab($profile);
         echo '</div>';
 
         // Tab: Config
-        echo '<div id="tab-config" class="tab-content" style="padding: 32px;">';
+        echo '<div id="tab-config" class="plugs-tab-content" style="padding: 32px;">';
         echo self::renderConfigTab($profile);
         echo '</div>';
 
@@ -303,8 +303,8 @@ class ProfilerBar
 <script>
     function switchTab(btn, tabId) {
         const modal = btn.closest('#plugs-profiler-modal');
-        modal.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-        modal.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+        modal.querySelectorAll('.plugs-tab-btn').forEach(b => b.classList.remove('active'));
+        modal.querySelectorAll('.plugs-tab-content').forEach(c => c.classList.remove('active'));
         btn.classList.add('active');
         modal.querySelector('#' + tabId).classList.add('active');
     }
@@ -370,9 +370,9 @@ JS;
             return '<div style="text-align:center; padding:20px; color:#94a3b8;">No file list captured.</div>';
         }
 
-        $html = '<div class="file-list">';
+        $html = '<div class="plugs-file-list">';
         $html .= '<input type="text" placeholder="Filter files..." id="plugs-file-filter" style="width:100%; padding:10px; margin-bottom:20px; background:rgba(0,0,0,0.2); border:1px solid rgba(255,255,255,0.1); color:white; border-radius:6px; font-family:monospace;">';
-        $html .= '<div class="files-container" style="max-height:600px; overflow-y:auto; font-family:monospace; font-size:13px;">';
+        $html .= '<div class="plugs-files-container" style="max-height:600px; overflow-y:auto; font-family:monospace; font-size:13px;">';
 
         $basePath = defined('BASE_PATH') ? BASE_PATH : '';
 
@@ -381,7 +381,7 @@ JS;
             $isVendor = str_contains($displayFile, 'vendor');
 
             $html .= sprintf(
-                '<div class="file-item" style="padding:6px 10px; border-bottom:1px solid rgba(255,255,255,0.05); color:%s;">%s</div>',
+                '<div class="plugs-file-item" style="padding:6px 10px; border-bottom:1px solid rgba(255,255,255,0.05); color:%s;">%s</div>',
                 $isVendor ? '#94a3b8' : '#e2e8f0',
                 htmlspecialchars($displayFile)
             );
@@ -390,7 +390,7 @@ JS;
         $html .= '<script>
             document.getElementById("plugs-file-filter").addEventListener("input", function(e) {
                 const val = e.target.value.toLowerCase();
-                document.querySelectorAll(".file-item").forEach(el => {
+                document.querySelectorAll(".plugs-file-item").forEach(el => {
                     el.style.display = el.textContent.toLowerCase().includes(val) ? "block" : "none";
                 });
             });
@@ -413,7 +413,7 @@ JS;
             'Memory Limit' => ini_get('memory_limit'),
         ];
 
-        $html = '<table class="info-table" style="width:100%; border-collapse:collapse;">';
+        $html = '<table class="plugs-info-table" style="width:100%; border-collapse:collapse;">';
         foreach ($data as $k => $v) {
             $html .= sprintf(
                 '<tr style="border-bottom:1px solid rgba(255,255,255,0.05);">
@@ -428,7 +428,7 @@ JS;
 
         if (isset($profile['git']['branch'])) {
             $html .= '<h3 style="margin:24px 0 12px; color:#cbd5e1; font-size:16px;">Source Control</h3>';
-            $html .= '<table class="info-table" style="width:100%; border-collapse:collapse;">';
+            $html .= '<table class="plugs-info-table" style="width:100%; border-collapse:collapse;">';
             $html .= '<tr><td style="padding:12px; color:#94a3b8; width:200px;">Branch</td><td style="padding:12px; color:#f8fafc; font-family:monospace;">' . htmlspecialchars($profile['git']['branch']) . '</td></tr>';
             $html .= '<tr><td style="padding:12px; color:#94a3b8; width:200px;">Commit</td><td style="padding:12px; color:#f8fafc; font-family:monospace;">' . htmlspecialchars($profile['git']['hash']) . '</td></tr>';
             $html .= '</table>';
