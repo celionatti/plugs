@@ -122,8 +122,16 @@ public function toArray(): array
 
 ### `whenLoaded()` - Include Relationships
 
-Only include relationships when they've been loaded on the model:
+Only include relationships when they've been eager loaded (e.g., using `with()` in your controller).
 
+**Controller:**
+```php
+// Load 'posts' and 'profile' relationships
+$user = User::with(['posts', 'profile'])->find(1);
+return UserResource::make($user);
+```
+
+**Resource (`UserResource.php`):**
 ```php
 public function toArray(): array
 {
@@ -131,11 +139,10 @@ public function toArray(): array
         'id' => $this->resource->id,
         'name' => $this->resource->name,
         
-        // Only included when relationship is eager loaded
-        'posts' => $this->whenLoaded('posts', function($posts) {
-            return PostResource::collection($posts);
-        }),
+        // 'posts' key will ONLY be present if $user->posts is loaded
+        'posts' => PostResource::collection($this->whenLoaded('posts')),
         
+        // Simple usage for single models
         'profile' => $this->whenLoaded('profile'),
     ];
 }
@@ -172,12 +179,26 @@ return UserResource::make($user)
 ```
 
 ## Collections with Pagination
-
+ 
+You can pass a `Plugs\Paginator\Paginator` instance directly to the collection method. Plugs will automatically extract the items, pagination meta data, and links (preserving query parameters).
+ 
 ```php
-$users = User::paginate(15);
-
-return UserResource::collection($users->items())
-    ->withPagination($users->total(), $users->perPage(), $users->currentPage(), '/api/users')
+public function index(Request $request)
+{
+    // Retrieve paginated users with relationships
+    $users = User::with('profile')->paginate(15);
+ 
+    // Pass the paginator directly - Plugs handles the rest!
+    return UserResource::collection($users)->toResponse();
+}
+```
+ 
+You can also append query parameters to the pagination links:
+ 
+```php
+$users = User::where('active', 1)->paginate(15);
+ 
+return UserResource::collection($users->appends($request->query()))
     ->toResponse();
 ```
 
@@ -240,10 +261,10 @@ class UserController extends Controller
 {
     public function index()
     {
+        // Paginator is automatically handled by the collection
         $users = User::with('profile')->paginate(15);
         
-        return UserResource::collection($users->items())
-            ->withPagination($users->total(), 15, $users->currentPage(), '/api/users')
+        return UserResource::collection($users)
             ->toResponse(200, 'Users retrieved');
     }
 

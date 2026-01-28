@@ -69,8 +69,15 @@ abstract class PlugResource implements JsonSerializable
     /**
      * Create a collection of resources
      */
-    public static function collection(Collection|array $resources): PlugResourceCollection
+    /**
+     * Create a collection of resources
+     */
+    public static function collection(mixed $resources): PlugResourceCollection|MissingValue
     {
+        if ($resources instanceof MissingValue) {
+            return $resources;
+        }
+
         return new AnonymousResourceCollection($resources, static::class);
     }
 

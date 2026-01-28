@@ -8,6 +8,7 @@ use JsonSerializable;
 use Plugs\Base\Model\PlugModel;
 use Plugs\Database\Collection;
 use Plugs\Http\StandardResponse;
+use Plugs\Paginator\Paginator;
 
 /**
  * PlugResourceCollection
@@ -62,9 +63,44 @@ class PlugResourceCollection implements JsonSerializable
     /**
      * Create a new resource collection
      */
-    public function __construct(Collection|array $resource, ?string $collects = null)
+    public function __construct(mixed $resource, ?string $collects = null)
     {
-        $this->collection = $resource instanceof Collection ? $resource : new Collection($resource);
+        if ($resource instanceof Paginator) {
+            $this->collection = $resource->items() instanceof Collection ? $resource->items() : new Collection($resource->items());
+
+            $this->withPagination(
+                $resource->total(),
+                $resource->perPage(),
+                $resource->currentPage(),
+                null // Path is handled by Paginator's url() method
+            );
+
+            // Copy query parameters if any (appends)
+            // Note: Paginator::appends() sets options on inner Pagination object
+            // We might need to manually sync links if appends were used, but withPagination regenerates them.
+            // However, Paginator already handles link generation with parameters. 
+            // Instead of regenerating links via withPagination's simple logic, 
+            // we should trust the Paginator's own link generation if possible, 
+            // OR pass the query params to withPagination if we want to stick to our simple generation.
+
+            // Better approach: Use the data from Paginator directly
+            // But withPagination sets $this->pagination array structure which toResponse() relies on.
+            // So we call withPagination to set up the structure.
+
+            // If the Paginator has appended query params, we might want to ensure they are preserved in the path
+            // or we overwrite $this->links with Paginator's links.
+            // Overwrite links with Paginator's generated links (preserves query params)
+            $this->links = [
+                'first' => $resource->url(1),
+                'last' => $resource->url($resource->lastPage()),
+                'prev' => $resource->previousPage() ? $resource->url($resource->previousPage()) : null,
+                'next' => $resource->nextPage() ? $resource->url($resource->nextPage()) : null,
+            ];
+
+        } else {
+            $this->collection = $resource instanceof Collection ? $resource : new Collection($resource);
+        }
+
         $this->collects = $collects ?? $this->detectCollects();
     }
 
