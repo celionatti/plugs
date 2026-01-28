@@ -8,41 +8,76 @@ use Plugs\Console\Command;
 
 class MakeProviderCommand extends Command
 {
-    protected string $signature = 'make:provider {name : The name of the provider}';
-    protected string $description = 'Create a new service provider class';
+    protected function defineArguments(): array
+    {
+        return [
+            'name' => 'The name of the provider class',
+        ];
+    }
 
     public function handle(): int
     {
-        $name = $this->argument('name');
+        $this->checkpoint('start');
+        $this->title('Provider Generator');
+
+        $name = $this->argument('0');
+        if (!$name) {
+            $name = $this->ask('Provider name', 'AppServiceProvider');
+        }
 
         if (!str_ends_with($name, 'Provider')) {
             $name .= 'Provider';
         }
 
-        $directory = base_path('app/Providers');
-        if (!is_dir($directory)) {
-            mkdir($directory, 0755, true);
-        }
+        $path = getcwd() . '/app/Providers/' . $name . '.php';
 
-        $path = $directory . '/' . $name . '.php';
+        $this->section('Configuration Summary');
+        $this->keyValue('Provider Name', $name);
+        $this->keyValue('Target Path', str_replace(getcwd() . '/', '', $path));
+        $this->newLine();
 
         if (file_exists($path)) {
             $this->error("Provider [{$name}] already exists!");
-
             return 1;
+        }
+
+        if (!$this->confirm('Proceed with generation?', true)) {
+            $this->warning('Provider generation cancelled.');
+            return 0;
+        }
+
+        $this->checkpoint('generating');
+
+        $directory = dirname($path);
+        if (!is_dir($directory)) {
+            mkdir($directory, 0755, true);
         }
 
         $stub = $this->getStub($name);
 
         if (file_put_contents($path, $stub)) {
-            $this->output->success("Provider [{$name}] created successfully.");
-            $this->info("Don't forget to register it in config/app.php!");
+            $this->checkpoint('finished');
+
+            $this->newLine();
+            $this->box(
+                "Provider '{$name}' generated successfully!\n\n" .
+                "Time: {$this->formatTime($this->elapsed())}",
+                "✅ Success",
+                "success"
+            );
+
+            $this->section('Next Steps');
+            $this->bulletList([
+                "Register it in config/app.php in the 'providers' array",
+                "Implement your bindings in the register() method",
+                "Implement your boot logic in the boot() method",
+            ]);
+            $this->newLine();
 
             return 0;
         }
 
         $this->error("Failed to create provider.");
-
         return 1;
     }
 

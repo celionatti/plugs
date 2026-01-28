@@ -12,16 +12,38 @@ class OptimizeCommand extends Command
 
     public function handle(): int
     {
+        $this->checkpoint('start');
         $this->title('Production Optimization');
 
-        $this->section('Optimizing Configuration');
-        $this->call('config:cache');
-
-        $this->section('Optimizing Routes');
-        $this->call('route:cache');
-
+        $this->info("Preparing framework for peak production performance...");
         $this->newLine();
-        $this->success('Framework optimized for production!');
+
+        $this->section('Task Execution');
+
+        $this->task('Caching configuration files', function () {
+            $this->call('config:cache');
+            usleep(100000);
+        });
+
+        $this->task('Caching application routes', function () {
+            $this->call('route:cache');
+            usleep(100000);
+        });
+
+        $this->checkpoint('finished');
+
+        $this->newLine(2);
+        $this->box(
+            "Framework successfully optimized for production!\n\n" .
+            "Actions: Config & Route Caching\n" .
+            "Time: {$this->formatTime($this->elapsed())}",
+            "✅ Optimization Complete",
+            "success"
+        );
+
+        if ($this->isVerbose()) {
+            $this->displayTimings();
+        }
 
         return 0;
     }

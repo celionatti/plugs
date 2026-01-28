@@ -374,7 +374,7 @@ class MakeModelCommand extends Command
 
         if ($options['soft_deletes']) {
             $traits[] = 'SoftDeletes';
-            $imports[] = 'use Illuminate\\Database\\Eloquent\\SoftDeletes;';
+            $imports[] = 'use Plugs\Database\Traits\SoftDeletes;';
         }
 
         $traitsString = !empty($traits) ? 'use ' . implode(', ', $traits) . ';' : '';
@@ -467,7 +467,7 @@ class MakeModelCommand extends Command
             }
         }
 
-        return implode("\n", $fields);
+        return !empty($fields) ? implode("\n", $fields) : "            // 'name' => \$this->faker->name(),";
     }
 
     private function displaySummary(string $name, array $options): void
@@ -868,50 +868,63 @@ STUB;
     private function getFactoryTemplate(): string
     {
         return <<<'STUB'
-        <?php
+<?php
 
-        declare(strict_types=1);
+declare(strict_types=1);
 
-        namespace Database\Factories;
+namespace Database\Factories;
 
-        use {{modelNamespace}};
-        use Plugs\Database\Factory\PlugFactory;
+use {{modelNamespace}};
+use Plugs\Database\Factory\PlugFactory;
 
-        class {{class}} extends PlugFactory
-        {
-            protected ?string $model = {{model}}::class;
-            
-            public function definition(): array
-            {
-                return [
-        {{definition}}
-                ];
-            }
-        }
+class {{class}} extends PlugFactory
+{
+    /**
+     * The associated model class.
+     *
+     * @var string
+     */
+    protected ?string $model = {{model}}::class;
 
-        STUB;
+    /**
+     * Define the model's default state.
+     *
+     * @return array
+     */
+    public function definition(): array
+    {
+        return [
+{{definition}}
+        ];
+    }
+}
+STUB;
     }
 
     private function getSeederTemplate(): string
     {
         return <<<'STUB'
-        <?php
+<?php
 
-        declare(strict_types=1);
+declare(strict_types=1);
 
-        namespace Database\Seeders;
+namespace Database\Seeders;
 
-        use {{modelNamespace}};
-        use Plugs\Database\Seeders\PlugSeeder;
+use {{modelNamespace}};
+use Plugs\Database\Seeders\PlugSeeder;
 
-        class {{class}} extends PlugSeeder
-        {
-            public function run(): void
-            {
-                {{model}}::factory()->count(10)->create();
-            }
-        }
-
-        STUB;
+class {{class}} extends PlugSeeder
+{
+    /**
+     * Run the database seeds.
+     *
+     * @return void
+     */
+    public function run(): void
+    {
+        {{model}}::factory()->count(10)->create();
+    }
+}
+STUB;
     }
 }

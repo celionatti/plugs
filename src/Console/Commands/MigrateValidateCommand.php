@@ -20,7 +20,10 @@ class MigrateValidateCommand extends Command
 
     public function handle(): int
     {
-        $this->info('Validating migrations integrity...');
+        $this->checkpoint('start');
+        $this->title('Migration Integrity Check');
+
+        $this->info('Validating database migrations integrity...');
 
         try {
             $connection = Connection::getInstance();
@@ -31,22 +34,39 @@ class MigrateValidateCommand extends Command
 
             $modified = array_filter($status, fn($item) => $item['modified']);
 
+            $this->checkpoint('finished');
+
             if (empty($modified)) {
-                $this->success('All ran migrations are intact.');
+                $this->newLine();
+                $this->success('All ran migrations are intact and consistent with their source files.');
+
+                $this->box(
+                    "Integrity check passed!\n\n" .
+                    "Total Checked: " . count($status) . "\n" .
+                    "Issues Found: 0\n" .
+                    "Time: {$this->formatTime($this->elapsed())}",
+                    "✅ System Healthy",
+                    "success"
+                );
+
                 return 0;
             }
 
-            $this->warning('The following ran migrations have been modified:');
+            $this->newLine();
+            $this->critical('INTEGRITY FAILURE: The following migrations have been modified!');
+
             foreach ($modified as $item) {
-                $this->line(" - <error>{$item['migration']}</error> (Modified after execution)");
+                $this->error("  ✗ {$item['migration']}");
             }
 
-            $this->note("\nModifying migrations after they have been run can lead to inconsistent database states.");
-            $this->note("Consider creating a new migration for changes instead.");
+            $this->newLine();
+            $this->warning('Why is this a problem?');
+            $this->note('Modifying migrations after they have been run can lead to inconsistent database states.');
+            $this->note('Consider creating a new migration for changes instead.');
 
             return 1;
         } catch (\Exception $e) {
-            $this->error($e->getMessage());
+            $this->error("Integrity check failed: " . $e->getMessage());
             return 1;
         }
     }

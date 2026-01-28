@@ -39,6 +39,7 @@ class MakeResourceCommand extends Command
 
     public function handle(): int
     {
+        $this->checkpoint('start');
         $this->title('API Resource Generator');
 
         $name = $this->argument('0');
@@ -111,13 +112,20 @@ class MakeResourceCommand extends Command
             $this->success("Collection created: {$collectionPath}");
         }
 
+        $this->checkpoint('finished');
+
         $this->newLine(2);
         $this->box(
             "Resource '{$name}' generated successfully!\n\n" .
-            "Files created: " . count($filesCreated),
+            "Files created: " . count($filesCreated) . "\n" .
+            "Time: {$this->formatTime($this->elapsed())}",
             "✅ Success",
             "success"
         );
+
+        if ($this->isVerbose()) {
+            $this->displayTimings();
+        }
 
         return 0;
     }

@@ -848,6 +848,14 @@ class Connection
         return $this->transactions;
     }
 
+    /**
+     * Get the connection name
+     */
+    public function getName(): string
+    {
+        return $this->connectionName;
+    }
+
     public function getStats(): array
     {
         return [

@@ -39,6 +39,7 @@ class MakeRepositoryCommand extends Command
 
     public function handle(): int
     {
+        $this->checkpoint('start');
         $this->title('Repository Generator');
 
         $name = $this->argument('0');
@@ -108,13 +109,13 @@ class MakeRepositoryCommand extends Command
             usleep(200000);
         });
 
-        $filesCreated[] = $path;
-        $this->success("Repository created: {$path}");
+        $this->checkpoint('finished');
 
         $this->newLine(2);
         $this->box(
             "Repository '{$name}' generated successfully!\n\n" .
-            "Files created: " . count($filesCreated),
+            "Files created: " . count($filesCreated) . "\n" .
+            "Time: {$this->formatTime($this->elapsed())}",
             "✅ Success",
             "success"
         );
@@ -126,6 +127,10 @@ class MakeRepositoryCommand extends Command
             "Bind interface to implementation in service container",
             $options['model'] ? "Ensure {$options['model']} model exists" : null,
         ]);
+
+        if ($this->isVerbose()) {
+            $this->displayTimings();
+        }
 
         return 0;
     }

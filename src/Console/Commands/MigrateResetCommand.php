@@ -20,11 +20,16 @@ class MigrateResetCommand extends Command
 
     public function handle(): int
     {
-        if (!$this->confirm('Are you sure you want to reset all migrations? This will drop ALL data!')) {
+        $this->checkpoint('start');
+        $this->title('Migration Reset');
+
+        $this->critical('CAUTION: This will rollback ALL migrations and delete ALL data!');
+        if (!$this->confirm('Are you sure you want to proceed?', false)) {
+            $this->warning('Operation cancelled.');
             return 0;
         }
 
-        $this->info('Resetting database...');
+        $this->info('Resetting database migrations...');
 
         try {
             $connection = Connection::getInstance();
@@ -33,23 +38,33 @@ class MigrateResetCommand extends Command
             $runner = new MigrationRunner($connection, $migrationPath);
             $result = $runner->reset();
 
-            if (empty($result['migrations'])) {
-                $this->note($result['message']);
+            $this->checkpoint('finished');
 
+            if (empty($result['migrations'])) {
+                $this->newLine();
+                $this->note($result['message'] ?? 'No migrations found to reset.');
                 return 0;
             }
 
+            $this->newLine();
+            $this->section('Rolled Back Files');
             foreach ($result['migrations'] as $migration) {
-                $this->warning("Rolled back: {$migration}");
+                $this->warning("  ✗ {$migration}");
             }
 
-            $this->success($result['message']);
-        } catch (\Exception $e) {
-            $this->error($e->getMessage());
+            $this->newLine();
+            $this->box(
+                "Database migrations reset successfully!\n\n" .
+                "Rolled Back: " . count($result['migrations']) . "\n" .
+                "Time: {$this->formatTime($this->elapsed())}",
+                "✅ Reset Complete",
+                "success"
+            );
 
+            return 0;
+        } catch (\Exception $e) {
+            $this->error("Reset failed: " . $e->getMessage());
             return 1;
         }
-
-        return 0;
     }
 }

@@ -20,6 +20,9 @@ class MigrateStatusCommand extends Command
 
     public function handle(): int
     {
+        $this->checkpoint('start');
+        $this->title('Migration Status');
+
         try {
             $connection = Connection::getInstance();
             $migrationPath = getcwd() . '/database/migrations';
@@ -28,33 +31,45 @@ class MigrateStatusCommand extends Command
             $status = $runner->status();
 
             if (empty($status)) {
-                $this->note('No migrations found.');
-
+                $this->note('No migrations found in the database.');
                 return 0;
             }
 
-            $this->info("Migration Status:");
-            $this->line(str_repeat('-', 85));
-            $this->line(sprintf("%-45s | %-6s | %-5s | %-20s | %-8s", "Migration", "Ran?", "Batch", "Ran At", "Status"));
-            $this->line(str_repeat('-', 85));
+            $this->section('Status Summary');
+            $this->keyValue('Database', $connection->getName());
+            $this->keyValue('Path', str_replace(getcwd() . '/', '', $migrationPath));
+            $this->newLine();
+
+            $headers = ['Migration', 'Ran?', 'Batch', 'Ran At', 'Status'];
+            $rows = [];
 
             foreach ($status as $item) {
-                $ranLabel = $item['ran'] ? '<success>Yes</success>' : '<error>No</error>';
-                $batchLabel = $item['batch'] ?? '-';
+                $ranLabel = $item['ran'] ? '✓ Yes' : '✗ No';
+                $batchLabel = (string) ($item['batch'] ?? '-');
                 $ranAt = $item['migrated_at'] ?? '-';
-                $statusLabel = 'Pending';
 
+                $statusText = 'Pending';
                 if ($item['ran']) {
-                    $statusLabel = $item['modified'] ? '<warning>Modified</warning>' : '<success>Intact</success>';
+                    $statusText = $item['modified'] ? 'Modified' : 'Intact';
                 }
 
-                $this->line(sprintf("%-45s | %-6s | %-5s | %-20s | %-8s", $item['migration'], $ranLabel, $batchLabel, $ranAt, $statusLabel));
+                $rows[] = [
+                    $item['migration'],
+                    $ranLabel,
+                    $batchLabel,
+                    $ranAt,
+                    $statusText
+                ];
             }
 
-            $this->line(str_repeat('-', 85));
-        } catch (\Exception $e) {
-            $this->error($e->getMessage());
+            $this->table($headers, $rows);
 
+            $this->checkpoint('finished');
+            $this->newLine();
+            $this->info("Total migrations: " . count($status));
+
+        } catch (\Exception $e) {
+            $this->error("Failed to retrieve status: " . $e->getMessage());
             return 1;
         }
 

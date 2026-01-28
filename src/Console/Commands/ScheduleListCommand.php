@@ -17,30 +17,57 @@ class ScheduleListCommand extends Command
 
     public function handle(): int
     {
+        $this->checkpoint('start');
+        $this->title('Scheduled Task List');
+
         $schedule = $this->resolveSchedule();
         $events = $schedule->events();
 
-        if (empty($events)) {
-            $this->warning('No scheduled tasks defined.');
+        $this->section('Status Overview');
+        $this->keyValue('Environment', getenv('APP_ENV') ?: 'local');
+        $this->keyValue('Total Tasks', (string) count($events));
+        $this->newLine();
 
+        if (empty($events)) {
+            $this->warning('No scheduled tasks defined in your Console Kernel.');
+            $this->checkpoint('finished');
             return 0;
         }
 
-        $this->info('Scheduled Tasks:');
-        $this->line('');
+        $this->checkpoint('listing');
+        $this->section('Task Definitions');
 
-        $headers = ['Command', 'Description', 'Next Due'];
+        $headers = ['Command/Description', 'Frequency', 'Expression', 'Next Due'];
         $rows = [];
 
         foreach ($events as $event) {
-            $command = $event->getCommand();
-            $description = $event->getDescription() ?? '-';
-            $isDue = $event->isDue() ? '✓ Now' : 'Not due';
+            $command = $event->getCommand() ?: $event->getDescription();
+            $frequency = $event->getExpression(); // Assuming Event has these getters
+            $isDue = $event->isDue() ? '✓ Now' : 'Pending';
 
-            $rows[] = [$command, $description, $isDue];
+            $rows[] = [
+                $this->truncate((string) $command, 40),
+                'Custom', // We might need more specific frequency detection
+                $frequency,
+                $isDue
+            ];
         }
 
         $this->table($headers, $rows);
+
+        $this->checkpoint('finished');
+
+        $this->newLine();
+        $this->box(
+            "Listed " . count($events) . " scheduled task(s).\n\n" .
+            "Time: {$this->formatTime($this->elapsed())}",
+            "📖 Inventory Complete",
+            "info"
+        );
+
+        if ($this->isVerbose()) {
+            $this->displayTimings();
+        }
 
         return 0;
     }

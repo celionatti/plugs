@@ -18,19 +18,47 @@ class ScheduleRunCommand extends Command
 
     public function handle(): int
     {
+        $this->checkpoint('start');
+        $this->title('Task Scheduler');
+
         $schedule = $this->resolveSchedule();
+        $dueEvents = $schedule->dueEvents();
+
+        $this->section('Status Check');
+        $this->keyValue('Scheduled Tools', (string) count($schedule->events()));
+        $this->keyValue('Due for Execution', (string) count($dueEvents));
+        $this->newLine();
+
+        if (count($dueEvents) === 0) {
+            $this->info('No scheduled commands are due at this time.');
+            $this->checkpoint('finished');
+            return 0;
+        }
+
+        $this->checkpoint('running');
+        $this->section('Task Execution');
 
         $eventsRan = 0;
 
-        foreach ($schedule->dueEvents() as $event) {
+        foreach ($dueEvents as $event) {
             $this->runEvent($event);
             $eventsRan++;
+            $this->newLine();
         }
 
-        if ($eventsRan === 0) {
-            $this->info('No scheduled commands are ready to run.');
-        } else {
-            $this->success("Ran {$eventsRan} scheduled command(s).");
+        $this->checkpoint('finished');
+
+        $this->newLine();
+        $this->box(
+            "Scheduler execution completed!\n\n" .
+            "Tasks Executed: {$eventsRan}\n" .
+            "Time: {$this->formatTime($this->elapsed())}",
+            "✅ Scheduler Finished",
+            "success"
+        );
+
+        if ($this->isVerbose()) {
+            $this->displayTimings();
         }
 
         return 0;

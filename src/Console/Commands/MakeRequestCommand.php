@@ -39,6 +39,7 @@ class MakeRequestCommand extends Command
 
     public function handle(): int
     {
+        $this->checkpoint('start');
         $this->title('Form Request Generator');
 
         $name = $this->argument('0');
@@ -47,7 +48,6 @@ class MakeRequestCommand extends Command
             $name = $this->ask('Request name', 'StoreUserRequest');
         }
 
-        // Ensure it ends with Request
         if (!str_ends_with($name, 'Request')) {
             $name .= 'Request';
         }
@@ -73,15 +73,21 @@ class MakeRequestCommand extends Command
 
         $path = $this->getRequestPath($name);
 
+        $this->section('Configuration Summary');
+        $this->keyValue('Request Name', $name);
+        $this->keyValue('Auth Method', $options['auth'] ? 'Yes' : 'No');
+        $this->keyValue('Rule Fields', $options['rules'] ?: 'Default');
+        $this->keyValue('Target Path', str_replace(getcwd() . '/', '', $path));
+        $this->newLine();
+
         if (Filesystem::exists($path) && !$options['force']) {
             if (!$this->confirm("Request {$name} already exists. Overwrite?", false)) {
                 $this->warning('Request generation cancelled.');
-
                 return 0;
             }
         }
 
-        $this->section('Generating Files');
+        $this->checkpoint('generating');
 
         $this->task('Creating form request class', function () use ($name, $options, $path) {
             $content = $this->generateRequestClass($name, $options);
@@ -89,15 +95,19 @@ class MakeRequestCommand extends Command
             usleep(200000);
         });
 
-        $this->success("Request created: {$path}");
+        $this->checkpoint('finished');
 
         $this->newLine(2);
         $this->box(
             "Form Request '{$name}' generated successfully!\n\n" .
-            "Path: app/Http/Requests/{$name}.php",
+            "Time: {$this->formatTime($this->elapsed())}",
             "✅ Success",
             "success"
         );
+
+        if ($this->isVerbose()) {
+            $this->displayTimings();
+        }
 
         return 0;
     }

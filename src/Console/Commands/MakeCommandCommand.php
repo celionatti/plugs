@@ -20,6 +20,9 @@ class MakeCommandCommand extends Command
 
     public function handle(): int
     {
+        $this->checkpoint('start');
+        $this->title('Console Command Generator');
+
         $name = $this->argument('0') ?? $this->ask('Command name', 'ExampleCommand');
 
         if (!str_ends_with($name, 'Command')) {
@@ -29,22 +32,47 @@ class MakeCommandCommand extends Command
         $commandName = $this->ask('Console command name', Str::kebab(str_replace('Command', '', $name)));
         $description = $this->ask('Command description', 'A custom console command');
 
-        $this->checkpoint('input_collected');
-
-        $content = $this->generateCommand($name, $commandName, $description);
         $path = $this->getCommandPath($name);
 
-        if (Filesystem::exists($path) && !$this->confirm('File exists. Overwrite?', false)) {
-            $this->warning('Operation cancelled');
+        $this->section('Configuration Summary');
+        $this->keyValue('Class Name', $name);
+        $this->keyValue('Signature', $commandName);
+        $this->keyValue('Description', $description);
+        $this->keyValue('Target Path', str_replace(getcwd() . '/', '', $path));
+        $this->newLine();
 
+        if (Filesystem::exists($path) && !$this->confirm('File already exists. Overwrite?', false)) {
+            $this->warning('Operation cancelled');
             return 0;
         }
 
+        $this->checkpoint('generating');
+
+        $content = $this->generateCommand($name, $commandName, $description);
         Filesystem::put($path, $content);
 
-        $this->success("Command created: {$path}");
-        $this->info("Register it in ConsoleKernel:");
-        $this->line("  '{$commandName}' => {$name}::class,");
+        $this->checkpoint('finished');
+
+        $this->newLine();
+        $this->box(
+            "Console command '{$name}' generated successfully!\n\n" .
+            "Signature: {$commandName}\n" .
+            "Time: {$this->formatTime($this->elapsed())}",
+            "✅ Success",
+            "success"
+        );
+
+        $this->section('Next Steps');
+        $this->bulletList([
+            "Register the command in src/Console/ConsoleKernel.php",
+            "Implement your logic in handle() method",
+            "Run it: php theplugs {$commandName}",
+        ]);
+        $this->newLine();
+
+        if ($this->isVerbose()) {
+            $this->displayTimings();
+        }
 
         return 0;
     }

@@ -31,11 +31,20 @@ class InspireCommand extends Command
 
     public function handle(): int
     {
+        $this->checkpoint('start');
+        $this->title('Framework Inspiration');
+
         $quote = $this->quotes[array_rand($this->quotes)];
 
         $this->newLine();
         $this->quote($quote[0], $quote[1]);
         $this->newLine();
+
+        $this->checkpoint('finished');
+
+        if ($this->isVerbose()) {
+            $this->displayTimings();
+        }
 
         return 0;
     }

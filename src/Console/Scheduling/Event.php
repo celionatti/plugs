@@ -39,6 +39,11 @@ class Event
         return $this->description;
     }
 
+    public function getExpression(): ?string
+    {
+        return $this->cronExpression;
+    }
+
     /**
      * Set a raw cron expression.
      */

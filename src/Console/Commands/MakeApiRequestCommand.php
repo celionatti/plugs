@@ -37,6 +37,7 @@ class MakeApiRequestCommand extends Command
 
     public function handle(): int
     {
+        $this->checkpoint('start');
         $this->title('API Request Generator');
 
         $name = $this->argument('0');
@@ -59,20 +60,44 @@ class MakeApiRequestCommand extends Command
         // Path: app/Http/Integrations/{Connector}/Requests/{Name}.php
         $path = getcwd() . "/app/Http/Integrations/{$connector}/Requests/{$name}.php";
 
-        if (Filesystem::exists($path) && !$this->isForce()) {
-            $this->error("Request already exists: {$path}");
+        $this->section('Configuration Summary');
+        $this->keyValue('Request Name', $name);
+        $this->keyValue('Connector', $connector);
+        $this->keyValue('Target Path', str_replace(getcwd() . '/', '', $path));
+        $this->newLine();
 
-            return 1;
+        if (Filesystem::exists($path) && !$this->isForce()) {
+            if (!$this->confirm("Request already exists at {$path}. Overwrite?", false)) {
+                $this->warning('API Request generation cancelled.');
+                return 0;
+            }
         }
+
+        $this->checkpoint('generating');
 
         $method = strtoupper($this->option('method') ?? 'GET');
         $endpoint = $this->option('endpoint') ?? '/';
 
-        $content = $this->generateContent($connector, $name, $method, $endpoint);
+        $this->task('Generating API Request class', function () use ($connector, $name, $method, $endpoint, $path) {
+            $content = $this->generateContent($connector, $name, $method, $endpoint);
+            Filesystem::put($path, $content);
+            usleep(200000);
+        });
 
-        Filesystem::put($path, $content);
+        $this->checkpoint('finished');
 
-        $this->success("API Request created: {$path}");
+        $this->newLine(2);
+        $this->box(
+            "API Request '{$name}' generated successfully!\n\n" .
+            "Connector: {$connector}\n" .
+            "Time: {$this->formatTime($this->elapsed())}",
+            "✅ Success",
+            "success"
+        );
+
+        if ($this->isVerbose()) {
+            $this->displayTimings();
+        }
 
         return 0;
     }

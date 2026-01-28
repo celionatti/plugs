@@ -34,11 +34,27 @@ class SeedCommand extends Command
 
     public function handle(): int
     {
+        $this->checkpoint('start');
+        $this->title('Database Seeder');
+
         if (!$this->confirmToProceed()) {
             return 1;
         }
 
-        $this->info('Seeding database...');
+        $class = $this->option('class') ?: 'DatabaseSeeder';
+
+        $this->section('Seeding Information');
+        $this->keyValue('Seeder Class', $class);
+        $this->keyValue('Environment', $this->isProduction() ? 'production' : 'development');
+        $this->newLine();
+
+        if (!$this->confirm("Run seeder [{$class}]?", true)) {
+            $this->warning('Seeding cancelled.');
+            return 0;
+        }
+
+        $this->checkpoint('seeding_started');
+        $this->info("Running seeder: {$class}...");
 
         try {
             $connection = Connection::getInstance();
@@ -46,19 +62,23 @@ class SeedCommand extends Command
 
             $runner = new SeederRunner($connection, $seederPath, $this->output);
 
-            $class = $this->option('class') ?: 'DatabaseSeeder';
-
             $result = $runner->run($class);
 
-            $this->success("Database seeding completed successfully.");
-            if ($this->isVerbose()) {
-                $this->note("Seeder: {$result['class']}");
-                $this->note("Time: " . number_format($result['time'], 2) . "s");
-            }
+            $this->checkpoint('finished');
+
+            $this->newLine();
+            $this->box(
+                "Database seeding completed successfully!\n\n" .
+                "Seeder: {$result['class']}\n" .
+                "Time: " . number_format($result['time'], 2) . "s\n" .
+                "Memory: " . $this->formatNumber(memory_get_peak_usage() / 1024 / 1024, 2) . " MB",
+                "✅ Success",
+                "success"
+            );
 
             return 0;
         } catch (\Exception $e) {
-            $this->error($e->getMessage());
+            $this->error("Seeding failed: " . $e->getMessage());
             return 1;
         }
     }

@@ -36,6 +36,9 @@ class MakeFactoryCommand extends Command
 
     public function handle(): int
     {
+        $this->checkpoint('start');
+        $this->title('Factory Generator');
+
         $name = $this->argument('0');
         if (!$name) {
             $name = $this->ask('Factory name', 'UserFactory');
@@ -54,10 +57,23 @@ class MakeFactoryCommand extends Command
 
         $path = getcwd() . '/database/factories/' . $name . '.php';
 
+        $this->section('Configuration Summary');
+        $this->keyValue('Factory Name', $name);
+        $this->keyValue('Target Model', $model);
+        $this->keyValue('Target Path', str_replace(getcwd() . '/', '', $path));
+        $this->newLine();
+
         if (Filesystem::exists($path) && !$this->isForce()) {
             $this->error("Factory [{$name}] already exists!");
             return 1;
         }
+
+        if (!$this->confirm('Proceed with generation?', true)) {
+            $this->warning('Factory generation cancelled.');
+            return 0;
+        }
+
+        $this->checkpoint('generating');
 
         $template = $this->getTemplate();
         $content = str_replace(
@@ -68,7 +84,24 @@ class MakeFactoryCommand extends Command
 
         Filesystem::put($path, $content);
 
-        $this->success("Factory created: {$name}");
+        $this->checkpoint('finished');
+
+        $this->newLine();
+        $this->box(
+            "Factory '{$name}' generated successfully!\n\n" .
+            "Model: {$model}\n" .
+            "Time: {$this->formatTime($this->elapsed())}",
+            "✅ Success",
+            "success"
+        );
+
+        $this->section('Next Steps');
+        $this->bulletList([
+            "Edit the definition in: database/factories/{$name}.php",
+            "Use it in seeders or tests: {$model}::factory()->create()",
+        ]);
+        $this->newLine();
+
         return 0;
     }
 

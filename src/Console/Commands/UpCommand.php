@@ -13,13 +13,36 @@ class UpCommand extends Command
 
     public function handle(): int
     {
+        $this->checkpoint('start');
+        $this->title('Maintenance Mode');
+
         $file = storage_path('framework/maintenance.json');
 
         if (file_exists($file)) {
-            unlink($file);
-            $this->output->success('Application is now live.');
+            $this->checkpoint('executing');
+            $this->task('Bringing application online', function () use ($file) {
+                if (!unlink($file)) {
+                    throw new \RuntimeException("Could not remove maintenance file: {$file}");
+                }
+                usleep(200000);
+            });
+
+            $this->checkpoint('finished');
+            $this->newLine();
+            $this->box(
+                "Application is now live and accepting requests!\n\n" .
+                "Status: Online\n" .
+                "Time: {$this->formatTime($this->elapsed())}",
+                "✅ System Up",
+                "success"
+            );
         } else {
-            $this->output->info('Application is already up.');
+            $this->info('Application is already live and functioning correctly.');
+            $this->checkpoint('finished');
+        }
+
+        if ($this->isVerbose()) {
+            $this->displayTimings();
         }
 
         return 0;

@@ -12,33 +12,56 @@ class StorageLinkCommand extends Command
 
     public function handle(): int
     {
+        $this->checkpoint('start');
+        $this->title('Storage Management');
+
         $target = storage_path('app/public');
         $link = public_path('storage');
 
+        $this->section('Configuration');
+        $this->keyValue('Target Path', str_replace(getcwd() . '/', '', $target));
+        $this->keyValue('Link Path', str_replace(getcwd() . '/', '', $link));
+        $this->newLine();
+
         if (file_exists($link)) {
             $this->error('The "public/storage" link already exists.');
-
+            $this->checkpoint('finished');
             return 1;
         }
 
+        $this->checkpoint('linking');
+
         if (!file_exists($target)) {
-            if (!mkdir($target, 0755, true)) {
-                $this->error("The target directory \"{$target}\" does not exist and could not be created.");
+            $this->task('Creating target directory', function () use ($target) {
+                if (!mkdir($target, 0755, true)) {
+                    throw new \RuntimeException("Could not create target directory: {$target}");
+                }
+                usleep(150000);
+            });
+        }
 
-                return 1;
+        $this->task('Creating symbolic link', function () use ($target, $link) {
+            if (!symlink($target, $link)) {
+                throw new \RuntimeException("Failed to create symbolic link.");
             }
+            usleep(200000);
+        });
+
+        $this->checkpoint('finished');
+
+        $this->newLine(2);
+        $this->box(
+            "Storage link created successfully!\n\n" .
+            "The \"public/storage\" directory has been linked to \"storage/app/public\".\n" .
+            "Time: {$this->formatTime($this->elapsed())}",
+            "✅ Link Established",
+            "success"
+        );
+
+        if ($this->isVerbose()) {
+            $this->displayTimings();
         }
 
-        $this->info("Creating link from \"{$link}\" to \"{$target}\"...");
-
-        if (symlink($target, $link)) {
-            $this->output->success('The "public/storage" link has been connected.');
-
-            return 0;
-        }
-
-        $this->error('Failed to create symbolic link.');
-
-        return 1;
+        return 0;
     }
 }

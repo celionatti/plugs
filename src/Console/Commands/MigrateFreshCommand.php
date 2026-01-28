@@ -21,26 +21,41 @@ class MigrateFreshCommand extends Command
 
     public function handle(): int
     {
-        if ($this->isProduction() && !$this->confirm('Application In Production! Do you really wish to run this command?')) {
-            return 1;
+        $this->checkpoint('start');
+        $this->title('Database Refresh');
+
+        if ($this->isProduction()) {
+            $this->critical('CAUTION: Application is in PRODUCTION mode!');
+            if (!$this->confirm('Do you really wish to run this destructive command?', false)) {
+                $this->warning('Operation cancelled.');
+                return 1;
+            }
         }
 
-        $this->info('Dropping all tables...');
+        $this->info('Initializing database refresh...');
 
         try {
             Schema::disableForeignKeyConstraints();
 
             $tables = Schema::getTables();
-            foreach ($tables as $table) {
-                Schema::drop($table);
-                $this->note("Dropped: {$table}");
+
+            if (!empty($tables)) {
+                $this->section('Dropping Tables');
+                foreach ($tables as $table) {
+                    $this->task("Dropping table: {$table}", function () use ($table) {
+                        Schema::drop($table);
+                    });
+                }
+            } else {
+                $this->note('No tables found in the database.');
             }
 
             Schema::enableForeignKeyConstraints();
 
-            $this->success('All tables dropped successfully.');
+            $this->newLine();
+            $this->checkpoint('tables_dropped');
 
-            $this->info('Running migrations...');
+            $this->info('Re-running all migrations...');
 
             $connection = Connection::getInstance();
             $migrationPath = getcwd() . '/database/migrations';
@@ -48,22 +63,31 @@ class MigrateFreshCommand extends Command
             $runner = new MigrationRunner($connection, $migrationPath);
             $result = $runner->run();
 
-            if (empty($result['migrations'])) {
-                $this->note($result['message'] ?? 'Nothing to migrate.');
-                return 0;
+            $this->checkpoint('finished');
+
+            if (!empty($result['migrations'])) {
+                $this->section('Migrated Files');
+                foreach ($result['migrations'] as $migration) {
+                    $this->success("  ✓ {$migration}");
+                }
             }
 
-            foreach ($result['migrations'] as $migration) {
-                $this->success("Migrated: {$migration}");
-            }
+            $this->newLine();
+            $this->box(
+                "Database fresh migration completed successfully!\n\n" .
+                "Dropped: " . count($tables) . " tables\n" .
+                "Migrated: " . count($result['migrations'] ?? []) . " files\n" .
+                "Batch: " . ($result['batch'] ?? 'N/A') . "\n" .
+                "Time: {$this->formatTime($this->elapsed())}",
+                "✅ Success",
+                "success"
+            );
 
-            $this->info('Database fresh migration completed successfully.');
+            return 0;
         } catch (\Exception $e) {
-            $this->error($e->getMessage());
+            $this->error("Fresh migration failed: " . $e->getMessage());
             return 1;
         }
-
-        return 0;
     }
 
     protected function isProduction(): bool

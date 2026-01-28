@@ -20,7 +20,10 @@ class MigrateRollbackCommand extends Command
 
     public function handle(): int
     {
-        $this->info('Rolling back migrations...');
+        $this->checkpoint('start');
+        $this->title('Migration Rollback');
+
+        $this->info('Initializing rollback...');
 
         try {
             $connection = Connection::getInstance();
@@ -28,26 +31,48 @@ class MigrateRollbackCommand extends Command
 
             $runner = new MigrationRunner($connection, $migrationPath);
 
-            $steps = $this->option('step');
-            $result = $runner->rollback($steps ? (int) $steps : null);
+            $this->section('Rollback Summary');
+            $this->keyValue('Database', $connection->getName());
+            $this->keyValue('Path', str_replace(getcwd() . '/', '', $migrationPath));
+            $this->newLine();
 
-            if (empty($result['migrations'])) {
-                $this->note($result['message']);
-
+            if (!$this->confirm('Rollback last migration batch?', true)) {
+                $this->warning('Rollback cancelled.');
                 return 0;
             }
 
-            foreach ($result['migrations'] as $migration) {
-                $this->warning("Rolled back: {$migration}");
+            $this->checkpoint('rolling_back');
+
+            $steps = $this->option('step');
+            $result = $runner->rollback($steps ? (int) $steps : null);
+
+            $this->checkpoint('finished');
+
+            if (empty($result['migrations'])) {
+                $this->newLine();
+                $this->note($result['message'] ?? 'No migrations found to rollback.');
+                return 0;
             }
 
-            $this->info($result['message']);
-        } catch (\Exception $e) {
-            $this->error($e->getMessage());
+            $this->newLine();
+            $this->section('Rolled Back Files');
+            foreach ($result['migrations'] as $migration) {
+                $this->warning("  ✗ {$migration}");
+            }
 
+            $this->newLine();
+            $this->box(
+                "Database rollback completed successfully!\n\n" .
+                "Rolled Back: " . count($result['migrations']) . "\n" .
+                "Time: {$this->formatTime($this->elapsed())}",
+                "✅ Rollback Complete",
+                "success"
+            );
+
+            return 0;
+        } catch (\Exception $e) {
+            $this->error("Rollback failed: " . $e->getMessage());
             return 1;
         }
-
-        return 0;
     }
 }

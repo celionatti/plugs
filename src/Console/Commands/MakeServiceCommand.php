@@ -40,6 +40,7 @@ class MakeServiceCommand extends Command
 
     public function handle(): int
     {
+        $this->checkpoint('start');
         $this->title('Service Generator');
 
         $name = $this->argument('0');
@@ -48,7 +49,6 @@ class MakeServiceCommand extends Command
             $name = $this->ask('Service name', 'UserService');
         }
 
-        // Ensure it ends with Service
         if (!str_ends_with($name, 'Service')) {
             $name .= 'Service';
         }
@@ -78,15 +78,22 @@ class MakeServiceCommand extends Command
 
         $path = $this->getServicePath($name);
 
+        $this->section('Configuration Summary');
+        $this->keyValue('Service Name', $name);
+        $this->keyValue('Model', $options['model'] ?: 'None');
+        $this->keyValue('Repository', $options['repository'] ? 'Yes' : 'No');
+        $this->keyValue('Interface', $options['interface'] ? 'Yes' : 'No');
+        $this->keyValue('Target Path', str_replace(getcwd() . '/', '', $path));
+        $this->newLine();
+
         if (Filesystem::exists($path) && !$options['force']) {
             if (!$this->confirm("Service {$name} already exists. Overwrite?", false)) {
                 $this->warning('Service generation cancelled.');
-
                 return 0;
             }
         }
 
-        $this->section('Generating Files');
+        $this->checkpoint('generating');
         $filesCreated = [];
 
         // Generate interface if requested
@@ -101,7 +108,6 @@ class MakeServiceCommand extends Command
             });
 
             $filesCreated[] = $interfacePath;
-            $this->success("Interface created: {$interfacePath}");
         }
 
         // Generate service
@@ -112,23 +118,28 @@ class MakeServiceCommand extends Command
         });
 
         $filesCreated[] = $path;
-        $this->success("Service created: {$path}");
+
+        $this->checkpoint('finished');
 
         $this->newLine(2);
         $this->box(
             "Service '{$name}' generated successfully!\n\n" .
-            "Files created: " . count($filesCreated),
+            "Files created: " . count($filesCreated) . "\n" .
+            "Time: {$this->formatTime($this->elapsed())}",
             "✅ Success",
             "success"
         );
 
-        $this->newLine();
         $this->section('Next Steps');
         $this->numberedList([
             "Implement business logic in {$name}",
             "Inject the service into your controllers",
             $options['model'] ? "Ensure {$options['model']} model exists" : null,
         ]);
+
+        if ($this->isVerbose()) {
+            $this->displayTimings();
+        }
 
         return 0;
     }

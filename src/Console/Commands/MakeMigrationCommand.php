@@ -20,18 +20,55 @@ class MakeMigrationCommand extends Command
 
     public function handle(): int
     {
-        $name = $this->argument('0') ?? $this->ask('Migration name', 'create_users_table');
+        $this->checkpoint('start');
+        $this->title('Migration Generator');
+
+        $name = $this->argument('0');
+
+        if (!$name) {
+            $name = $this->ask('Migration name', 'create_users_table');
+        }
 
         $timestamp = date('Y_m_d_His');
         $className = $this->generateClassName($name);
-
-        $content = $this->generateMigration($className, $name);
         $filename = $timestamp . '_' . $name . '.php';
         $path = $this->getMigrationPath($filename);
 
-        Filesystem::put($path, $content);
+        $this->section('Configuration Summary');
+        $this->keyValue('Migration Name', $name);
+        $this->keyValue('Class Name', $className);
+        $this->keyValue('Target File', $filename);
+        $this->newLine();
 
-        $this->success("Migration created: {$filename}");
+        if (Filesystem::exists($path) && !$this->isForce()) {
+            if (!$this->confirm("Migration already exists at {$path}. Overwrite?", false)) {
+                $this->warning('Migration generation cancelled.');
+                return 0;
+            }
+        }
+
+        $this->checkpoint('generating');
+
+        $this->task('Generating migration file', function () use ($className, $name, $path) {
+            $content = $this->generateMigration($className, $name);
+            Filesystem::put($path, $content);
+            usleep(200000);
+        });
+
+        $this->checkpoint('finished');
+
+        $this->newLine(2);
+        $this->box(
+            "Migration created successfully!\n\n" .
+            "Filename: {$filename}\n" .
+            "Time: {$this->formatTime($this->elapsed())}",
+            "✅ Success",
+            "success"
+        );
+
+        if ($this->isVerbose()) {
+            $this->displayTimings();
+        }
 
         return 0;
     }

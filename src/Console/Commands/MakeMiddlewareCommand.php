@@ -19,24 +19,53 @@ class MakeMiddlewareCommand extends Command
 
     public function handle(): int
     {
+        $this->checkpoint('start');
+        $this->title('Middleware Generator');
+
         $name = $this->argument('0') ?? $this->ask('Middleware name', 'AuthMiddleware');
 
         if (!str_ends_with($name, 'Middleware')) {
             $name .= 'Middleware';
         }
 
-        $content = $this->generateMiddleware($name);
         $path = $this->getMiddlewarePath($name);
 
-        if (Filesystem::exists($path) && !$this->confirm('File exists. Overwrite?', false)) {
-            $this->warning('Operation cancelled');
+        $this->section('Configuration Summary');
+        $this->keyValue('Middleware Name', $name);
+        $this->keyValue('Target Path', str_replace(getcwd() . '/', '', $path));
+        $this->newLine();
 
+        if (Filesystem::exists($path) && !$this->confirm('File already exists. Overwrite?', false)) {
+            $this->warning('Operation cancelled');
             return 0;
         }
 
+        $this->checkpoint('generating');
+
+        $content = $this->generateMiddleware($name);
         Filesystem::put($path, $content);
 
-        $this->success("Middleware created: {$path}");
+        $this->checkpoint('finished');
+
+        $this->newLine();
+        $this->box(
+            "Middleware '{$name}' generated successfully!\n\n" .
+            "Time: {$this->formatTime($this->elapsed())}",
+            "✅ Success",
+            "success"
+        );
+
+        $this->section('Next Steps');
+        $this->bulletList([
+            "Register the middleware in App\Http\Kernel.php",
+            "Implement your logic in the process() method",
+            "Apply it to your routes",
+        ]);
+        $this->newLine();
+
+        if ($this->isVerbose()) {
+            $this->displayTimings();
+        }
 
         return 0;
     }

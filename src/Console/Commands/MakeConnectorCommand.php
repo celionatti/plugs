@@ -34,6 +34,9 @@ class MakeConnectorCommand extends Command
 
     public function handle(): int
     {
+        $this->checkpoint('start');
+        $this->title('API Connector Generator');
+
         $name = $this->argument('0');
 
         if (!$name) {
@@ -45,33 +48,47 @@ class MakeConnectorCommand extends Command
         }
 
         $name = Str::studly($name);
-        // If name is StripeConnector, directory should be Stripe?
-        // Or if I name it Stripe, it becomes StripeConnector.
-
-        // Let's assume standard App\Http\Integrations\{Name}\{Name}Connector
-        // But maybe just App\Http\Integrations\{Name}Connector if it's simple.
-        // Saloon usually suggests Integrations/IntegrationName/Connector.
-
-        // Let's go with:
-        // app/Http/Integrations/Stripe/StripeConnector.php
-
         $integrationName = str_replace('Connector', '', $name);
 
         $path = getcwd() . "/app/Http/Integrations/{$integrationName}/{$name}.php";
 
-        if (Filesystem::exists($path) && !$this->isForce()) {
-            $this->error("Connector already exists: {$path}");
+        $this->section('Configuration Summary');
+        $this->keyValue('Connector Name', $name);
+        $this->keyValue('Integration', $integrationName);
+        $this->keyValue('Target Path', str_replace(getcwd() . '/', '', $path));
+        $this->newLine();
 
-            return 1;
+        if (Filesystem::exists($path) && !$this->isForce()) {
+            if (!$this->confirm("Connector already exists at {$path}. Overwrite?", false)) {
+                $this->warning('Connector generation cancelled.');
+                return 0;
+            }
         }
+
+        $this->checkpoint('generating');
 
         $baseUrl = $this->option('base-url') ?? '';
 
-        $content = $this->generateContent($integrationName, $name, $baseUrl);
+        $this->task('Generating API Connector class', function () use ($integrationName, $name, $baseUrl, $path) {
+            $content = $this->generateContent($integrationName, $name, $baseUrl);
+            Filesystem::put($path, $content);
+            usleep(200000);
+        });
 
-        Filesystem::put($path, $content);
+        $this->checkpoint('finished');
 
-        $this->success("Connector created: {$path}");
+        $this->newLine(2);
+        $this->box(
+            "API Connector '{$name}' generated successfully!\n\n" .
+            "Integration: {$integrationName}\n" .
+            "Time: {$this->formatTime($this->elapsed())}",
+            "✅ Success",
+            "success"
+        );
+
+        if ($this->isVerbose()) {
+            $this->displayTimings();
+        }
 
         return 0;
     }

@@ -35,6 +35,9 @@ class MakeSeederCommand extends Command
 
     public function handle(): int
     {
+        $this->checkpoint('start');
+        $this->title('Seeder Generator');
+
         $name = $this->argument('0');
         if (!$name) {
             $name = $this->ask('Seeder name', 'UserSeeder');
@@ -47,17 +50,45 @@ class MakeSeederCommand extends Command
 
         $path = getcwd() . '/database/seeders/' . $name . '.php';
 
+        $this->section('Configuration Summary');
+        $this->keyValue('Seeder Name', $name);
+        $this->keyValue('Target Path', str_replace(getcwd() . '/', '', $path));
+        $this->newLine();
+
         if (Filesystem::exists($path) && !$this->isForce()) {
             $this->error("Seeder [{$name}] already exists!");
             return 1;
         }
+
+        if (!$this->confirm('Proceed with generation?', true)) {
+            $this->warning('Seeder generation cancelled.');
+            return 0;
+        }
+
+        $this->checkpoint('generating');
 
         $template = $this->getTemplate();
         $content = str_replace('{{class}}', $name, $template);
 
         Filesystem::put($path, $content);
 
-        $this->success("Seeder created: {$name}");
+        $this->checkpoint('finished');
+
+        $this->newLine();
+        $this->box(
+            "Seeder '{$name}' generated successfully!\n\n" .
+            "Time: {$this->formatTime($this->elapsed())}",
+            "✅ Success",
+            "success"
+        );
+
+        $this->section('Next Steps');
+        $this->bulletList([
+            "Edit the run logic in: database/seeders/{$name}.php",
+            "Call it from DatabaseSeeder or run directly: php theplugs db:seed --class={$name}",
+        ]);
+        $this->newLine();
+
         return 0;
     }
 

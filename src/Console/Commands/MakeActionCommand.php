@@ -39,6 +39,7 @@ class MakeActionCommand extends Command
 
     public function handle(): int
     {
+        $this->checkpoint('start');
         $this->title('Action Generator');
 
         $name = $this->argument('0');
@@ -47,7 +48,6 @@ class MakeActionCommand extends Command
             $name = $this->ask('Action name', 'CreateUserAction');
         }
 
-        // Ensure it ends with Action
         if (!str_ends_with($name, 'Action')) {
             $name .= 'Action';
         }
@@ -75,15 +75,21 @@ class MakeActionCommand extends Command
 
         $path = $this->getActionPath($name);
 
+        $this->section('Configuration Summary');
+        $this->keyValue('Action Name', $name);
+        $this->keyValue('Model', $options['model'] ?: 'None');
+        $this->keyValue('Queued', $options['queued'] ? 'Yes' : 'No');
+        $this->keyValue('Target Path', str_replace(getcwd() . '/', '', $path));
+        $this->newLine();
+
         if (Filesystem::exists($path) && !$options['force']) {
             if (!$this->confirm("Action {$name} already exists. Overwrite?", false)) {
                 $this->warning('Action generation cancelled.');
-
                 return 0;
             }
         }
 
-        $this->section('Generating Files');
+        $this->checkpoint('generating');
 
         $this->task('Creating action class', function () use ($name, $options, $path) {
             $content = $this->generateActionClass($name, $options);
@@ -91,15 +97,19 @@ class MakeActionCommand extends Command
             usleep(200000);
         });
 
-        $this->success("Action created: {$path}");
+        $this->checkpoint('finished');
 
         $this->newLine(2);
         $this->box(
             "Action '{$name}' generated successfully!\n\n" .
-            "Path: app/Actions/{$name}.php",
+            "Time: {$this->formatTime($this->elapsed())}",
             "✅ Success",
             "success"
         );
+
+        if ($this->isVerbose()) {
+            $this->displayTimings();
+        }
 
         return 0;
     }
