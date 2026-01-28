@@ -286,7 +286,9 @@ function plugs_dump(array $vars, bool $die = false, string $mode = 'default'): v
     $theme = $plugs_debug_theme ?? 'dark';
 
     echo plugs_render_styles(!$die);
-    echo '<div class="plugs-debug-wrapper" data-theme="' . $theme . '">';
+    // Add plugs-safe-scope class if not dying (which implies we are injecting into an existing page)
+    $scopeClass = $die ? '' : 'plugs-safe-scope';
+    echo '<div class="plugs-debug-wrapper ' . $scopeClass . '" data-theme="' . $theme . '">';
     if ($die) {
         echo '<script>document.body.setAttribute("data-theme", "' . $theme . '");</script>';
     }
@@ -459,7 +461,7 @@ function plugs_render_styles(bool $scoped = false): string
     @import url("https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Dancing+Script:wght@700&display=swap");
 
     /* Dark Theme (Default) */
-    :root, [data-theme="dark"] {
+    :root, [data-theme="dark"], .plugs-safe-scope {
         --bg-body: #0a0f1d;
         --bg-card: rgba(30, 41, 59, 0.7);
         --border-color: rgba(51, 65, 85, 0.5);
@@ -531,6 +533,11 @@ function plugs_render_styles(bool $scoped = false): string
     }
 HTML
         . "\n    body[data-theme=\"{$theme}\"], body.theme-{$theme} { }";
+
+    // If scoped, override :root variables to be scoped
+    if ($scoped) {
+        $css = str_replace([':root', 'body'], '.plugs-safe-scope', $css);
+    }
 
     if (!$scoped) {
         $css .= <<<'HTML'

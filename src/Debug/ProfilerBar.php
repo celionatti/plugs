@@ -32,7 +32,7 @@ class ProfilerBar
         return '
 <!-- Plugs Profiler Bar -->
 ' . plugs_render_styles(true) . '
-<div id="plugs-profiler-bar" style="
+<div id="plugs-profiler-bar" class="plugs-safe-scope" style="
     position: fixed;
     bottom: 0;
     left: 0;
@@ -166,7 +166,7 @@ class ProfilerBar
 </div>
 
 <!-- Plugs Profiler Modal -->
-<div id="plugs-profiler-modal">
+<div id="plugs-profiler-modal" class="plugs-safe-scope">
     ' . $detailHtml . '
 </div>
 <!-- End Plugs Profiler Bar -->';
