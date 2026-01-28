@@ -21,6 +21,10 @@ class Faker
     private static array $countries = ['United States', 'United Kingdom', 'Canada', 'Australia', 'Germany', 'France', 'Japan', 'China', 'Brazil', 'Nigeria'];
     private static array $domains = ['example.com', 'test.org', 'sample.net', 'demo.io', 'plugs.dev'];
     private static array $words = ['lorem', 'ipsum', 'dolor', 'sit', 'amet', 'consectetur', 'adipiscing', 'elit', 'sed', 'do', 'eiusmod', 'tempor', 'incididunt', 'ut', 'labore', 'et', 'dolore', 'magna', 'aliqua'];
+    private static array $companies = ['Google', 'Microsoft', 'Apple', 'Meta', 'Amazon', 'Antigravity', 'Celionatti', 'Innovate', 'Pixel', 'Vertex', 'Cyberdyne', 'Umbrella', 'Stark', 'Wayne'];
+    private static array $companySuffixes = ['Inc', 'Corp', 'LLC', 'Group', 'Solutions', 'Tech', 'Ventures'];
+    private static array $jobTitles = ['Developer', 'Manager', 'Designer', 'Engineer', 'CEO', 'CTO', 'Analyst', 'Consultant', 'Architect'];
+    private static array $streets = ['Main St', 'High St', 'Broadway', 'Bridge Rd', 'Station Rd', 'Oxford St', 'Victoria Rd', 'London Rd', 'Church St', 'Park St'];
 
     protected bool $useUnique = false;
     protected array $uniqueValues = [];
@@ -56,6 +60,22 @@ class Faker
     public function lastName(): string
     {
         return $this->randomValue(self::$lastNames);
+    }
+
+    /**
+     * Generate a company name
+     */
+    public function company(): string
+    {
+        return $this->randomValue(self::$companies) . ' ' . $this->randomValue(self::$companySuffixes);
+    }
+
+    /**
+     * Generate a job title
+     */
+    public function jobTitle(): string
+    {
+        return $this->randomValue(self::$jobTitles);
     }
 
     /**
@@ -96,6 +116,30 @@ class Faker
     }
 
     /**
+     * Generate a street address
+     */
+    public function address(): string
+    {
+        return rand(100, 9999) . ' ' . $this->randomValue(self::$streets) . ', ' . $this->randomValue(self::$cities);
+    }
+
+    /**
+     * Generate a city
+     */
+    public function city(): string
+    {
+        return $this->randomValue(self::$cities);
+    }
+
+    /**
+     * Generate a country
+     */
+    public function country(): string
+    {
+        return $this->randomValue(self::$countries);
+    }
+
+    /**
      * Generate a random word
      */
     public function word(): string
@@ -118,6 +162,32 @@ class Faker
     }
 
     /**
+     * Generate a paragraph
+     */
+    public function paragraph(int $sentenceCount = 3): string
+    {
+        $sentences = [];
+        for ($i = 0; $i < $sentenceCount; $i++) {
+            $sentences[] = $this->sentence(rand(6, 12));
+        }
+
+        return implode(' ', $sentences);
+    }
+
+    /**
+     * Generate a slug from a sentence
+     */
+    public function slug(int $wordCount = 3): string
+    {
+        $words = [];
+        for ($i = 0; $i < $wordCount; $i++) {
+            $words[] = $this->word();
+        }
+
+        return implode('-', $words);
+    }
+
+    /**
      * Generate a number between range
      */
     public function numberBetween(int $min = 0, int $max = 100): int
@@ -126,11 +196,38 @@ class Faker
     }
 
     /**
+     * Generate a float between range
+     */
+    public function randomFloat(int $decimals = 2, float $min = 0, float $max = 100): float
+    {
+        $scale = pow(10, $decimals);
+        return rand((int) ($min * $scale), (int) ($max * $scale)) / $scale;
+    }
+
+    /**
      * Generate a boolean
      */
     public function boolean(int $chanceOfTrue = 50): bool
     {
         return rand(1, 100) <= $chanceOfTrue;
+    }
+
+    /**
+     * Generate a random date
+     */
+    public function date(string $format = 'Y-m-d'): string
+    {
+        $timestamp = rand(1, time());
+        return date($format, $timestamp);
+    }
+
+    /**
+     * Generate a random datetime
+     */
+    public function dateTime(string $format = 'Y-m-d H:i:s'): string
+    {
+        $timestamp = rand(1, time());
+        return date($format, $timestamp);
     }
 
     /**

@@ -174,11 +174,22 @@ php theplugs db:seed --class=UserSeeder
 The Plugs framework includes a built-in, zero-dependency Faker instance available within your factories. Common methods include:
 
 - `$this->faker->name()`
+- `$this->faker->firstName()`
+- `$this->faker->lastName()`
 - `$this->faker->email()`
 - `$this->faker->unique()->safeEmail()`
+- `$this->faker->company()`
+- `$this->faker->jobTitle()`
+- `$this->faker->address()`
+- `$this->faker->city()`
+- `$this->faker->country()`
 - `$this->faker->numberBetween(int $min, int $max)`
+- `$this->faker->randomFloat(int $decimals, float $min, float $max)`
+- `$this->faker->date()`
 - `$this->faker->dateTime()`
+- `$this->faker->word()`
 - `$this->faker->sentence()`
+- `$this->faker->paragraph()`
+- `$this->faker->slug()`
 - `$this->faker->boolean()`
-- `$this->faker->url()`
 - `$this->faker->uuid()`
