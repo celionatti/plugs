@@ -90,7 +90,7 @@ class ViewCompiler
         // Regex to match attributes while ignoring '>' inside quotes
         $attrRegex = '((?:\s+(?:[^>"\'\/]+|"[^"]*"|\'[^\']*\')*)*?)';
 
-        // Self-closing components: <ComponentName attr="value" />
+        // 1. Self-closing components: <ComponentName attr="value" />
         $content = preg_replace_callback(
             '/<([A-Z][a-zA-Z0-9]*)' . $attrRegex . '\/>/s',
             function ($matches) {
@@ -102,7 +102,7 @@ class ViewCompiler
             $content
         ) ?? $content;
 
-        // Components with content: <ComponentName>...</ComponentName>
+        // 2. Components with content: <ComponentName>...</ComponentName>
         $content = preg_replace_callback(
             '/<([A-Z][a-zA-Z0-9]*)' . $attrRegex . '>(.*?)<\/\1\s*>/s',
             function ($matches) {
@@ -115,7 +115,41 @@ class ViewCompiler
             $content
         ) ?? $content;
 
+        // 3. Documented x- prefix components: <x-header />
+        $content = preg_replace_callback(
+            '/<x-([\w-]+)' . $attrRegex . '\/>/s',
+            function ($matches) {
+                $componentName = $this->kebabToPascalCase($matches[1]);
+                $attributes = $matches[2];
+
+                return $this->createComponentPlaceholder($componentName, trim($attributes), '');
+            },
+            $content
+        ) ?? $content;
+
+        // 4. Documented x- prefix with slots: <x-alert>...</x-alert>
+        $content = preg_replace_callback(
+            '/<x-([\w-]+)' . $attrRegex . '>(.*?)<\/x-\1\s*>/s',
+            function ($matches) {
+                $componentName = $this->kebabToPascalCase($matches[1]);
+                $attributes = $matches[2];
+                $slotContent = $matches[3];
+
+                return $this->createComponentPlaceholder($componentName, trim($attributes), $slotContent);
+            },
+            $content
+        ) ?? $content;
+
         return $content;
+    }
+
+    /**
+     * Convert kebab-case or snake_case to PascalCase
+     */
+    private function kebabToPascalCase(string $input): string
+    {
+        $input = str_replace(['-', '_'], ' ', $input);
+        return str_replace(' ', '', ucwords($input));
     }
 
     private function createComponentPlaceholder(string $componentName, string $attributes, string $slotContent): string
