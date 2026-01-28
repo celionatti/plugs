@@ -530,6 +530,33 @@ abstract class PlugModel
         return new \Plugs\Http\StandardResponse($this->toArray(), true, $status, $message);
     }
 
+    /**
+     * Convert the model to an API resource
+     * 
+     * @param string|null $resourceClass The resource class to use (auto-detected if null)
+     * @return \Plugs\Http\Resources\PlugResource
+     */
+    public function resource(?string $resourceClass = null): \Plugs\Http\Resources\PlugResource
+    {
+        if ($resourceClass === null) {
+            // Try to auto-detect resource class based on model name
+            $modelName = class_basename(static::class);
+            $resourceClass = "App\\Http\\Resources\\{$modelName}Resource";
+
+            if (!class_exists($resourceClass)) {
+                // Fall back to anonymous resource
+                return new class ($this) extends \Plugs\Http\Resources\PlugResource {
+                    public function toArray(): array
+                    {
+                        return $this->resource->toArray();
+                    }
+                };
+            }
+        }
+
+        return new $resourceClass($this);
+    }
+
     public function __toString(): string
     {
         return $this->toJson();

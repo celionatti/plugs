@@ -120,6 +120,17 @@ class Collection implements \ArrayAccess, \Iterator, \Countable, \JsonSerializab
     }
 
     /**
+     * Convert the collection to an API resource collection
+     * 
+     * @param string $resourceClass The resource class to use for each item
+     * @return \Plugs\Http\Resources\PlugResourceCollection
+     */
+    public function toResource(string $resourceClass): \Plugs\Http\Resources\PlugResourceCollection
+    {
+        return $resourceClass::collection($this);
+    }
+
+    /**
      * Get last item
      */
     public function last(?callable $callback = null, $default = null)

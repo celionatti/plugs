@@ -17,6 +17,7 @@ Welcome to the official documentation for the **Plugs** framework. Plugs is a li
 - [Controllers](file:///docs/the-basics/controllers.md)
 - [Requests & Responses](file:///docs/the-basics/requests.md)
 - [API Responses](file:///docs/the-basics/api-responses.md)
+- [API Resources](file:///docs/the-basics/api-resources.md)
 - [Views & Components](file:///docs/the-basics/views.md)
 - [Navigation](file:///docs/the-basics/navigation.md)
 - [Validation](file:///docs/the-basics/validation.md)
