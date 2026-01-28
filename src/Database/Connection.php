@@ -52,8 +52,8 @@ class Connection
     private $poolId;
     private $connectionAttempts = 0;
     private $maxRetries = 3;
-    private $queryLog = [];
-    private $loggingQueries = false;
+    private static $queryLog = [];
+    private static $loggingQueries = false;
 
     // Security & Advanced Features
     private $sticky = false;
@@ -384,6 +384,7 @@ class Connection
     public static function enableQueryAnalysis(bool $enable = true): void
     {
         self::$enableQueryAnalysis = $enable;
+        self::$loggingQueries = $enable; // Also enable logging for profiler
     }
 
     /**
@@ -423,10 +424,10 @@ class Connection
                 $this->analyzeQuery($sql, $params, $executionTime, $backtrace);
             }
 
-            if ($this->loggingQueries) {
-                $this->queryLog[] = [
+            if (self::$loggingQueries) {
+                self::$queryLog[] = [
                     'query' => $sql,
-                    'params' => $params,
+                    'bindings' => $params,
                     'time' => $executionTime,
                     'connection' => ($pdo === $this->pdo ? 'write' : 'read')
                 ];
@@ -558,14 +559,19 @@ class Connection
     {
         $report = [
             'total_queries' => 0,
+            'query_count' => 0,
             'unique_queries' => count(self::$queryStats),
+            'total_time' => 0,
+            'query_time_ms' => 0,
             'slow_queries' => [],
             'n_plus_one_suspects' => [],
             'most_frequent' => [],
+            'queries' => self::$queryLog,
         ];
 
         foreach (self::$queryStats as $sql => $stats) {
             $report['total_queries'] += $stats['count'];
+            $report['total_time'] += $stats['total_time'];
 
             $avgTime = $stats['total_time'] / $stats['count'];
 
@@ -596,6 +602,10 @@ class Connection
         });
 
         $report['most_frequent'] = array_slice($sortedStats, 0, 10, true);
+
+        // Map for profiler bar compatibility
+        $report['query_count'] = $report['total_queries'];
+        $report['query_time_ms'] = $report['total_time'] * 1000;
 
         return $report;
     }

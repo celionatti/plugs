@@ -128,15 +128,66 @@ HTML forms do not support `PUT`, `PATCH`, or `DELETE` actions. To use these meth
 </form>
 ```
 
-## Fallback Routes
-
-Using the `fallback` method, you may define a route that will be executed when no other route matches the incoming request:
-
 ```php
 $router->fallback(function () {
     return view('errors.404');
 });
 ```
+
+## Attribute-Based Routing
+
+In addition to defining routes in your route files, Plugs supports declarative routing using PHP 8 Attributes. This allows you to define routes directly on your controller methods.
+
+### Basic Usage
+
+Use the `#[Route]` attribute to define a route. You may also use the `#[Middleware]` attribute to assign middleware to a class or method.
+
+```php
+namespace App\Http\Controllers;
+
+use Plugs\Router\Attributes\Route;
+use Plugs\Http\Attributes\Middleware;
+use Plugs\Base\Controller\Controller;
+
+#[Middleware('web')]
+class UserController extends Controller
+{
+    #[Route(path: '/profile', name: 'profile.show')]
+    public function show()
+    {
+        // ...
+    }
+
+    #[Route(path: '/profile', methods: 'POST')]
+    #[Middleware('auth')]
+    public function update()
+    {
+        // ...
+    }
+}
+```
+
+### Registering Attribute Routes
+
+To enable attribute-based routing, you must tell the router which directories to scan for controllers. This is typically done in your `routes/web.php` or `routes/api.php` file:
+
+```php
+// routes/web.php
+
+$router->registerAttributes('App\\Http\\Controllers', base_path('app/Http/Controllers'));
+```
+
+The first argument is the root namespace of the controllers, and the second is the absolute path to the directory containing them.
+
+### Route Attribute Parameters
+
+The `#[Route]` attribute supports several parameters:
+
+- `path`: The URI of the route.
+- `methods`: A string or array of HTTP methods (default: `GET`).
+- `name`: The name of the route.
+- `middleware`: An array of middleware.
+- `where`: An array of regular expression constraints for parameters.
 
 ## API Routes
 

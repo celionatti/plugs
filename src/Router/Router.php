@@ -1304,6 +1304,82 @@ class Router
     }
 
     /**
+     * Register routes from attributes on controllers in a directory.
+     *
+     * @param string $namespace The namespace of the controllers
+     * @param string $directory The directory containing the controllers
+     */
+    public function registerAttributes(string $namespace, string $directory): void
+    {
+        if (!is_dir($directory)) {
+            return;
+        }
+
+        $files = new \RecursiveIteratorIterator(new \RecursiveDirectoryIterator($directory));
+        foreach ($files as $file) {
+            if ($file->isDir() || $file->getExtension() !== 'php') {
+                continue;
+            }
+
+            $relativePath = str_replace([$directory, '.php', '/'], ['', '', '\\'], $file->getPathname());
+            $className = $namespace . $relativePath;
+
+            if (class_exists($className)) {
+                $this->registerControllerAttributes($className);
+            }
+        }
+    }
+
+    /**
+     * Register routes from attributes on a specific controller.
+     */
+    public function registerControllerAttributes(string $controller): void
+    {
+        $reflection = new \ReflectionClass($controller);
+
+        // Get class-level middleware
+        $classMiddleware = [];
+        $middlewareAttributes = $reflection->getAttributes(\Plugs\Http\Attributes\Middleware::class);
+        foreach ($middlewareAttributes as $attribute) {
+            $mw = $attribute->newInstance()->middleware;
+            $classMiddleware = array_merge($classMiddleware, (array) $mw);
+        }
+
+        foreach ($reflection->getMethods(\ReflectionMethod::IS_PUBLIC) as $method) {
+            $routeAttributes = $method->getAttributes(\Plugs\Router\Attributes\Route::class);
+
+            foreach ($routeAttributes as $attribute) {
+                /** @var \Plugs\Router\Attributes\Route $routeAttr */
+                $routeAttr = $attribute->newInstance();
+
+                $methods = (array) $routeAttr->methods;
+                $path = $routeAttr->path;
+                $handler = [$controller, $method->getName()];
+
+                // Get method-level middleware
+                $methodMiddleware = [];
+                $methodMwAttributes = $method->getAttributes(\Plugs\Http\Attributes\Middleware::class);
+                foreach ($methodMwAttributes as $mwAttr) {
+                    $mw = $mwAttr->newInstance()->middleware;
+                    $methodMiddleware = array_merge($methodMiddleware, (array) $mw);
+                }
+
+                $middleware = array_merge($classMiddleware, $routeAttr->middleware, $methodMiddleware);
+
+                $route = $this->match($methods, $path, $handler, $middleware);
+
+                if ($routeAttr->name) {
+                    $route->name($routeAttr->name);
+                }
+
+                if ($routeAttr->where) {
+                    $route->where($routeAttr->where);
+                }
+            }
+        }
+    }
+
+    /**
      * Macro support - Add custom methods to router
      */
     private array $macros = [];

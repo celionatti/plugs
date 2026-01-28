@@ -26,21 +26,35 @@ class Plugs
     private $dispatcher;
     private $fallbackHandler;
 
+    /**
+     * The bootstrappers for the application.
+     *
+     * @var string[]
+     */
+    protected array $bootstrappers = [
+        'functions' => 'loadFunctions',
+        'logger' => 'bootstrapLogger',
+        'cache' => 'bootstrapCache',
+        'auth' => 'bootstrapAuth',
+        'queue' => 'bootstrapQueue',
+        'storage' => 'bootstrapStorage',
+        'view' => 'bootstrapView',
+        'database' => 'bootstrapDatabase',
+        'socialite' => 'bootstrapSocialite',
+        'pdf' => 'bootstrapPdf',
+        'providers' => 'bootstrapProviders',
+    ];
+
+    /**
+     * The service providers for the application.
+     *
+     * @var array
+     */
+    protected array $serviceProviders = [];
+
     public function __construct()
     {
-        $this->loadFunctions();
-        $this->bootstrapLogger();
-        $this->bootstrapCache();
-        $this->bootstrapAuth();
-        $this->bootstrapQueue();
-        $this->bootstrapStorage();
-        $this->bootstrapView();
-        $this->bootstrapDatabase();
-        $this->bootstrapSocialite();
-        $this->bootstrapPdf();
-
-        $this->registerConfiguredProviders();
-        $this->bootConfiguredProviders();
+        $this->bootstrap();
 
         $this->dispatcher = new MiddlewareDispatcher();
         $this->dispatcher->add(new \Plugs\Http\Middleware\PreventRequestsDuringMaintenance()); // Global middleware
@@ -53,6 +67,25 @@ class Plugs
 
             return new Response(404, $body, ['Content-Type' => 'text/plain']);
         };
+    }
+
+    /**
+     * Bootstrap the application.
+     */
+    protected function bootstrap(): void
+    {
+        foreach ($this->bootstrappers as $bootstrapper) {
+            $this->{$bootstrapper}();
+        }
+    }
+
+    /**
+     * Bootstrap the service providers.
+     */
+    protected function bootstrapProviders(): void
+    {
+        $this->registerConfiguredProviders();
+        $this->bootConfiguredProviders();
     }
 
     private function registerConfiguredProviders(): void

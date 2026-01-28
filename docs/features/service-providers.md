@@ -58,9 +58,24 @@ All service providers are registered in the `config/app.php` configuration file.
 ],
 ```
 
+## Deferred Providers
+
+If your provider is **only** registering bindings in the service container, you may choose to defer its registration until one of the registered bindings is actually needed.
+
+To defer the loading of a provider, set the `defer` property to `true` and define a `provides` method:
+
+```php
+protected bool $defer = true;
+
+public function provides(): array
+{
+    return [Connection::class];
+}
+```
+
 ## Generating Providers
 
-You can generate a new provider using the `make:provider` command:
+You can generate a new provider using the `theplugs` command-line tool:
 
 ```bash
 php theplugs make:provider PaymentServiceProvider

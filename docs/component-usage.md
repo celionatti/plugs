@@ -104,3 +104,56 @@ As observed in your recent issue, ensure that any complex logic in attributes is
 ```
 
 The system will now correctly handle quoted string attributes that contain expressions.
+
+## Reactive Components
+
+Reactive components are a special type of component that can maintain state between the server and the frontend. They are perfect for building interactive UIs like search bars, infinite scrollers, or real-time counters.
+
+### Creating a Reactive Component
+
+To create a reactive component, extend the `Plugs\View\ReactiveComponent` class. Public properties are automatically made available to the frontend.
+
+```php
+namespace App\View\Components;
+
+use Plugs\View\ReactiveComponent;
+
+class SearchBar extends ReactiveComponent
+{
+    public string $query = '';
+    public array $results = [];
+
+    public function render()
+    {
+        return view('components.search-bar');
+    }
+}
+```
+
+### State Dehydration
+
+The system automatically "dehydrates" your component state into a JSON object for the frontend. Complex types like `DateTime` are automatically handled. You can customize this by overriding the `dehydrate` method:
+
+```php
+protected function dehydrate(mixed $value): mixed
+{
+    if ($value instanceof User) {
+        return $value->only(['id', 'name']);
+    }
+
+    return parent::dehydrate($value);
+}
+```
+
+### JS Bridge Integration
+
+Each reactive component generates a JavaScript bridge to synchronize state. You can retrieve this script using the `getJavaScript()` method:
+
+```php
+// In your view or layout
+<script>
+    {{ $component->getJavaScript() }}
+</script>
+```
+
+This bridge allows you to interact with the component from your own custom JS logic or using Plugs's built-in reactivity scripts.

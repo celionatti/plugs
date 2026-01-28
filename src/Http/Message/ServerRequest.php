@@ -38,17 +38,6 @@ class ServerRequest implements ServerRequestInterface
 
     private const MAX_JSON_BODY_SIZE = 10485760;
 
-    private const VALID_HTTP_METHODS = [
-        'GET',
-        'POST',
-        'PUT',
-        'DELETE',
-        'PATCH',
-        'HEAD',
-        'OPTIONS',
-        'TRACE',
-        'CONNECT',
-    ];
 
     public function __construct(
         string $method,
@@ -366,7 +355,7 @@ class ServerRequest implements ServerRequestInterface
 
     private function validateMethod(string $method): void
     {
-        if (!in_array(strtoupper($method), self::VALID_HTTP_METHODS, true)) {
+        if (!\Plugs\Support\Enums\HttpMethod::tryFrom(strtoupper($method))) {
             throw new InvalidArgumentException(
                 sprintf('Invalid HTTP method: %s', $method)
             );

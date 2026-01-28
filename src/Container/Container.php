@@ -280,6 +280,27 @@ class Container
     }
 
     /**
+     * Remove a shared instance from the container.
+     *
+     * @param string $abstract
+     * @return void
+     */
+    public function forgetInstance(string $abstract): void
+    {
+        unset($this->instances[$abstract]);
+    }
+
+    /**
+     * Clear all shared instances from the container.
+     *
+     * @return void
+     */
+    public function forgetInstances(): void
+    {
+        $this->instances = [];
+    }
+
+    /**
      * Flush the container
      */
     public function flush(): void

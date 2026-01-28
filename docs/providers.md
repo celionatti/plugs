@@ -71,6 +71,53 @@ class AppServiceProvider extends ServiceProvider
 }
 ```
 
+## Deferred Providers
+
+If your provider is **only** registering bindings in the [service container](container.md), you may choose to defer its registration until one of the registered bindings is actually needed. Deferring the loading of such a provider will improve the performance of your application, as it is not loaded from the filesystem on every request.
+
+To defer the loading of a provider, set the `defer` property to `true` and define a `provides` method. The `provides` method should return the service container bindings registered by the provider:
+
+```php
+<?php
+
+namespace App\Providers;
+
+use App\Services\Riak\Connection;
+use Plugs\Support\ServiceProvider;
+
+class RiakServiceProvider extends ServiceProvider
+{
+    /**
+     * Indicates if loading of the provider is deferred.
+     *
+     * @var bool
+     */
+    protected bool $defer = true;
+
+    /**
+     * Register any application services.
+     *
+     * @return void
+     */
+    public function register()
+    {
+        $this->app->singleton(Connection::class, function ($app) {
+            return new Connection(config('riak'));
+        });
+    }
+
+    /**
+     * Get the services provided by the provider.
+     *
+     * @return array
+     */
+    public function provides(): array
+    {
+        return [Connection::class];
+    }
+}
+```
+
 ## Registering Providers
 
 All service providers are registered in the `config/app.php` configuration file. This file contains a `providers` array where you can list the class names of your service providers. By default, a set of Plugs core service providers are listed in this array. These providers bootstrap the core Plugs components, such as the mailer, queue, cache, and database.

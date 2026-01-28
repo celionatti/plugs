@@ -127,7 +127,7 @@ class Profiler
                 'used' => $memoryUsed,
                 'used_formatted' => $this->formatBytes($memoryUsed),
             ],
-            'request' => array_merge([
+            'request' => $this->filterRequestData(array_merge([
                 'method' => $_SERVER['REQUEST_METHOD'] ?? 'CLI',
                 'uri' => $_SERVER['REQUEST_URI'] ?? '',
                 'path' => parse_url($_SERVER['REQUEST_URI'] ?? '', PHP_URL_PATH) ?: '/',
@@ -135,7 +135,7 @@ class Profiler
                 'headers' => $this->getHeaders(),
                 'cookies' => $_COOKIE,
                 'session' => $_SESSION ?? [],
-            ], $requestInfo),
+            ], $requestInfo)),
             'response' => [
                 'headers' => $this->getResponseHeaders(),
             ],
@@ -159,6 +159,29 @@ class Profiler
         $this->save($profile);
 
         return $profile;
+    }
+
+    /**
+     * Filter sensitive data from request info
+     */
+    private function filterRequestData(array $data): array
+    {
+        $pattern = '/(password|secret|token|key|auth|cred|db|database|connection|csrf)/i';
+
+        foreach ($data as $key => &$value) {
+            if (preg_match($pattern, (string) $key)) {
+                $value = '******** [masked]';
+                continue;
+            }
+
+            if (is_array($value)) {
+                $value = $this->filterRequestData($value);
+            } elseif (is_object($value)) {
+                $value = 'Object(' . get_class($value) . ')';
+            }
+        }
+
+        return $data;
     }
 
     /**

@@ -205,3 +205,40 @@ public function index()
     return Post::paginateResponse(perPage: 15);
 }
 ```
+
+## Type-Safe Responses (Enums)
+
+For better type safety and code readability, Plugs provides Enums for HTTP methods and status codes.
+
+### HttpMethod Enum
+
+The `Plugs\Support\Enums\HttpMethod` Enum should be used when you need to refer to HTTP methods in your code:
+
+```php
+use Plugs\Support\Enums\HttpMethod;
+
+if ($request->getMethod() === HttpMethod::POST->value) {
+    // ...
+}
+
+// Check properties
+$isSafe = HttpMethod::from($method)->isSafe();
+```
+
+### HttpStatus Enum
+
+The `Plugs\Support\Enums\HttpStatus` Enum provides a way to handle status codes and their associated reason phrases:
+
+```php
+use Plugs\Support\Enums\HttpStatus;
+
+return api_response($data, HttpStatus::CREATED->value);
+
+// Get reason phrase
+echo HttpStatus::NOT_FOUND->reasonPhrase(); // "Not Found"
+
+// Validate status categories
+if (HttpStatus::from($code)->isError()) {
+    // ...
+}
+```

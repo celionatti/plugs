@@ -65,10 +65,33 @@ abstract class ReactiveComponent
         $state = [];
 
         foreach ($properties as $property) {
-            $state[$property->getName()] = $property->getValue($this);
+            $name = $property->getName();
+            $value = $property->getValue($this);
+
+            $state[$name] = $this->dehydrate($value);
         }
 
         return $state;
+    }
+
+    /**
+     * Dehydrate complex types for serialization
+     */
+    protected function dehydrate(mixed $value): mixed
+    {
+        if ($value instanceof \DateTimeInterface) {
+            return $value->format(\DateTimeInterface::ATOM);
+        }
+
+        if (is_array($value)) {
+            return array_map([$this, 'dehydrate'], $value);
+        }
+
+        if (is_object($value) && method_exists($value, 'toArray')) {
+            return $value->toArray();
+        }
+
+        return $value;
     }
 
     /**
@@ -94,6 +117,15 @@ abstract class ReactiveComponent
      * Render the component's view
      */
     abstract public function render();
+
+    /**
+     * Get the JS bridge script for this component
+     */
+    public function getJavaScript(): string
+    {
+        $state = json_encode($this->getState());
+        return "window.PlugsReactive.init('{$this->id}', '{$this->name}', {$state});";
+    }
 
     public function setId(string $id): void
     {

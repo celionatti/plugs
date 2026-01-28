@@ -184,8 +184,9 @@ class ProfilerBar
             'execution_time_ms' => $profile['duration'] ?? 0,
             'memory_formatted' => $profile['memory']['peak_formatted'] ?? '0 B',
             'query_count' => $profile['database']['query_count'] ?? 0,
-            'query_time_ms' => ($profile['database']['total_time'] ?? 0),
+            'query_time_ms' => ($profile['database']['query_time_ms'] ?? ($profile['database']['total_time'] ?? 0) * 1000),
             'queries' => $profile['database']['queries'] ?? [],
+            'stats' => $profile['database'], // Include database report as stats
             'result' => null
         ];
 

@@ -28,6 +28,31 @@ class UserController extends Controller
 }
 ```
 
+### Attribute-Based Routing
+
+You may also define routes directly on your controller methods using PHP 8 attributes. This is often cleaner than defining them in separate route files.
+
+```php
+namespace App\Http\Controllers;
+
+use Plugs\Router\Attributes\Route;
+use Plugs\Http\Attributes\Middleware;
+use Plugs\Base\Controller\Controller;
+
+#[Middleware('web')]
+class UserController extends Controller
+{
+    #[Route('/user/{id}', name: 'user.show')]
+    public function show(string $id)
+    {
+        // ...
+    }
+}
+```
+
+> [!NOTE]
+> Don't forget to register your controller directory in your route files using `$router->registerAttributes()`.
+
 ---
 
 ## 🛠️ Base Controller Features

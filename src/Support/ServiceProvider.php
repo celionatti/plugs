@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace Plugs\Support;
 
 use Plugs\Container\Container;
-
 abstract class ServiceProvider
 {
     /**
@@ -13,13 +12,19 @@ abstract class ServiceProvider
      *
      * @var \Plugs\Container\Container
      */
-    protected $app;
+    protected Container $app;
+
+    /**
+     * Indicates if loading of the provider is deferred.
+     *
+     * @var bool
+     */
+    protected bool $defer = false;
 
     /**
      * Create a new service provider instance.
      *
      * @param  \Plugs\Container\Container  $app
-     * @return void
      */
     public function __construct(Container $app)
     {
@@ -44,5 +49,35 @@ abstract class ServiceProvider
     public function boot()
     {
         //
+    }
+
+    /**
+     * Get the services provided by the provider.
+     *
+     * @return array
+     */
+    public function provides(): array
+    {
+        return [];
+    }
+
+    /**
+     * Get the application instance.
+     *
+     * @return \Plugs\Container\Container
+     */
+    public function app(): Container
+    {
+        return $this->app;
+    }
+
+    /**
+     * Determine if the provider is deferred.
+     *
+     * @return bool
+     */
+    public function isDeferred(): bool
+    {
+        return $this->defer;
     }
 }
