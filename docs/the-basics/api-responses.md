@@ -33,7 +33,9 @@ All standardized responses follow this JSON structure:
 The `api_response()` helper is the easiest way to create a standardized response.
 
 ```php
-return api_response(['user' => $user], 200, 'User retrieved successfully');
+use Plugs\Support\Enums\HttpStatus;
+
+return api_response(['user' => $user], HttpStatus::OK->value, 'User retrieved successfully');
 ```
 
 In production mode (`APP_ENV=production`), sensitive debug information is automatically stripped from the response.
@@ -105,6 +107,7 @@ namespace App\Http\Controllers;
 
 use App\Models\User;
 use Plugs\Http\StandardResponse;
+use Plugs\Support\Enums\HttpStatus;
 
 class UserController extends Controller
 {
@@ -123,7 +126,7 @@ class UserController extends Controller
     public function show($id)
     {
         // Efficiently fetch and respond with 404 handling
-        return User::findResponse($id, ['id', 'name', 'email'], 200, 'User profile found');
+        return User::findResponse($id, ['id', 'name', 'email'], HttpStatus::OK->value, 'User profile found');
     }
 
     /**
@@ -133,7 +136,7 @@ class UserController extends Controller
     {
         $user = User::create(request()->all());
 
-        return $user->toResponse(201, 'Account created successfully')
+        return $user->toResponse(HttpStatus::CREATED->value, 'Account created successfully')
             ->withHeader('X-Registration-Source', 'Web');
     }
 }
@@ -160,8 +163,10 @@ return $response;
 Standardized errors can be generated manually:
 
 ```php
+use Plugs\Support\Enums\HttpStatus;
+
 if (!$paymentSuccessful) {
-    return StandardResponse::error('Transaction failed', 402)
+    return StandardResponse::error('Transaction failed', HttpStatus::PAYMENT_REQUIRED->value)
         ->withMeta(['reason' => 'insufficient_funds']);
 }
 ```
