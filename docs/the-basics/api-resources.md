@@ -13,24 +13,45 @@ Use the `make:resource` command to generate a new resource:
 php theplugs make:resource UserResource --model=User
 ```
 
-This creates a resource at `app/Http/Resources/UserResource.php`:
+### Subdirectories & Namespaces
+You can organize your resources into subdirectories. Plugs will automatically create the folders and adjust the namespace:
+
+```bash
+php theplugs make:resource V1/UserResource
+```
+This creates `app/Http/Resources/V1/UserResource.php` with the namespace `App\Http\Resources\V1`.
+
+### Collection Detection
+The command is smart enough to detect if you want a collection based on the name:
+- `php theplugs make:resource UserResource` -> Standard resource.
+- `php theplugs make:resource UserCollection` -> Resource collection.
+- `php theplugs make:resource User --collection` -> Generates both `UserResource` and `UserCollection`.
+
+## Data Formatting
+
+By default, Plugs auto-converts your `snake_case` array keys to `camelCase` for JSON responses, matching modern API standards.
+
+### Toggling camelCase
+You can disable this globally for a resource class:
 
 ```php
-namespace App\Http\Resources;
-
-use Plugs\Http\Resources\PlugResource;
-
 class UserResource extends PlugResource
 {
-    public function toArray(): array
-    {
-        return [
-            'id' => $this->resource->id,
-            'name' => $this->resource->name,
-            'email' => $this->resource->email,
-            'created_at' => $this->resource->created_at,
-        ];
-    }
+    public static bool $camelCase = false;
+}
+```
+
+### Preserving Specific Keys
+Use `$preserveKeys` to prevent conversion for a specific instance:
+
+```php
+public function toArray(): array
+{
+    $this->preserveKeys = true;
+    
+    return [
+        'user_id' => $this->resource->id,
+    ];
 }
 ```
 

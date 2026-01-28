@@ -48,18 +48,28 @@ class MakeResourceCommand extends Command
             $name = $this->ask('Resource name', 'UserResource');
         }
 
-        // Ensure it ends with Resource
-        if (!str_ends_with($name, 'Resource') && !str_ends_with($name, 'Collection')) {
-            $name .= 'Resource';
+        // Parse path and name
+        $rawName = str_replace('\\', '/', $name);
+        $segments = explode('/', $rawName);
+        $className = array_pop($segments);
+        $subDir = implode('/', $segments);
+
+        // Ensure proper suffix and detect collection intent
+        $isCollection = str_ends_with($className, 'Collection');
+
+        if (!$isCollection && !str_ends_with($className, 'Resource')) {
+            $className .= 'Resource';
         }
 
-        $name = Str::studly($name);
+        $className = Str::studly($className);
+        $fullPathName = ($subDir ? $subDir . '/' : '') . $className;
 
         $options = [
             'model' => $this->option('model'),
-            'collection' => $this->hasOption('collection'),
+            'collection' => $this->hasOption('collection') || $isCollection,
             'force' => $this->isForce(),
             'strict' => $this->hasOption('strict'),
+            'subDir' => $subDir,
         ];
 
         // Interactive mode
@@ -67,17 +77,20 @@ class MakeResourceCommand extends Command
             $this->section('Configuration');
 
             if ($this->confirm('Associate with a model?', true)) {
-                $modelName = $this->ask('Model name', str_replace(['Resource', 'Collection'], '', $name));
+                $baseName = str_replace(['Resource', 'Collection'], '', $className);
+                $modelName = $this->ask('Model name', $baseName);
                 $options['model'] = Str::studly($modelName);
             }
 
-            $options['collection'] = $this->confirm('Generate collection resource too?', false);
+            if (!$isCollection) {
+                $options['collection'] = $this->confirm('Generate a corresponding Collection class?', false);
+            }
         }
 
-        $path = $this->getResourcePath($name);
+        $path = $this->getResourcePath($fullPathName);
 
         if (Filesystem::exists($path) && !$options['force']) {
-            if (!$this->confirm("Resource {$name} already exists. Overwrite?", false)) {
+            if (!$this->confirm("Resource {$className} already exists. Overwrite?", false)) {
                 $this->warning('Resource generation cancelled.');
 
                 return 0;
@@ -88,8 +101,8 @@ class MakeResourceCommand extends Command
         $filesCreated = [];
 
         // Generate main resource
-        $this->task('Creating resource class', function () use ($name, $options, $path) {
-            $content = $this->generateResourceClass($name, $options);
+        $this->task('Creating resource class', function () use ($className, $options, $path) {
+            $content = $this->generateResourceClass($className, $options);
             Filesystem::put($path, $content);
             usleep(200000);
         });
@@ -99,11 +112,12 @@ class MakeResourceCommand extends Command
 
         // Generate collection if requested
         if ($options['collection']) {
-            $collectionName = str_replace('Resource', 'Collection', $name);
-            $collectionPath = $this->getResourcePath($collectionName);
+            $collectionName = str_replace('Resource', 'Collection', $className);
+            $fullCollectionPathName = ($options['subDir'] ? $options['subDir'] . '/' : '') . $collectionName;
+            $collectionPath = $this->getResourcePath($fullCollectionPathName);
 
-            $this->task('Creating collection class', function () use ($collectionName, $name, $options, $collectionPath) {
-                $content = $this->generateCollectionClass($collectionName, $name, $options);
+            $this->task('Creating collection class', function () use ($collectionName, $className, $options, $collectionPath) {
+                $content = $this->generateCollectionClass($collectionName, $className, $options);
                 Filesystem::put($collectionPath, $content);
                 usleep(150000);
             });
@@ -116,7 +130,7 @@ class MakeResourceCommand extends Command
 
         $this->newLine(2);
         $this->box(
-            "Resource '{$name}' generated successfully!\n\n" .
+            "Resource '{$className}' generated successfully!\n\n" .
             "Files created: " . count($filesCreated) . "\n" .
             "Time: {$this->formatTime($this->elapsed())}",
             "✅ Success",
@@ -139,11 +153,12 @@ class MakeResourceCommand extends Command
     {
         $strict = $options['strict'] ? "declare(strict_types=1);\n\n" : '';
         $model = $options['model'] ?? 'Model';
+        $subNamespace = $options['subDir'] ? '\\' . str_replace('/', '\\', $options['subDir']) : '';
 
         return <<<PHP
 <?php
 
-{$strict}namespace App\Http\Resources;
+{$strict}namespace App\Http\Resources{$subNamespace};
 
 use Plugs\Http\Resources\PlugResource;
 
@@ -161,6 +176,10 @@ class {$name} extends PlugResource
      * Transform the resource into an array.
      * 
      * Use \$this->resource to access the underlying model/data.
+     * 
+     * Available properties:
+     *   - public static bool \$camelCase = true; - Auto conversion to camelCase
+     *   - public bool \$preserveKeys = false; - Keep original keys
      * 
      * Available helpers:
      *   - \$this->when(\$condition, \$value, \$default) - Conditional attributes
@@ -199,11 +218,12 @@ PHP;
     private function generateCollectionClass(string $collectionName, string $resourceName, array $options): string
     {
         $strict = $options['strict'] ? "declare(strict_types=1);\n\n" : '';
+        $subNamespace = $options['subDir'] ? '\\' . str_replace('/', '\\', $options['subDir']) : '';
 
         return <<<PHP
 <?php
 
-{$strict}namespace App\Http\Resources;
+{$strict}namespace App\Http\Resources{$subNamespace};
 
 use Plugs\Http\Resources\PlugResourceCollection;
 
@@ -228,7 +248,13 @@ class {$collectionName} extends PlugResourceCollection
      */
     // public function toArray(): array
     // {
-    //     return parent::toArray();
+    //     return [
+    //         'data' => \$this->collection,
+    //         'count' => \$this->count(),
+    //         'meta' => [
+    //             'version' => '1.0.0',
+    //         ],
+    //     ];
     // }
 }
 

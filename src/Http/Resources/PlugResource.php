@@ -8,6 +8,7 @@ use JsonSerializable;
 use Plugs\Base\Model\PlugModel;
 use Plugs\Database\Collection;
 use Plugs\Http\StandardResponse;
+use Plugs\Utils\Str;
 
 /**
  * PlugResource
@@ -33,6 +34,16 @@ abstract class PlugResource implements JsonSerializable
      * The wrapper key for the resource data (null = no wrapper)
      */
     public static ?string $wrap = 'data';
+
+    /**
+     * Whether to automatically convert snake_case keys to camelCase
+     */
+    public static bool $camelCase = true;
+
+    /**
+     * Whether to preserve original keys (overrides camelCase)
+     */
+    public bool $preserveKeys = false;
 
     /**
      * Response callback for customizing the HTTP response
@@ -208,7 +219,33 @@ abstract class PlugResource implements JsonSerializable
     {
         $data = $this->toArray();
 
-        return $this->filter($data);
+        $data = $this->filter($data);
+
+        if (static::$camelCase && !$this->preserveKeys) {
+            return $this->convertKeysToCamelCase($data);
+        }
+
+        return $data;
+    }
+
+    /**
+     * Recursively convert array keys to camelCase
+     */
+    protected function convertKeysToCamelCase(array $data): array
+    {
+        $result = [];
+
+        foreach ($data as $key => $value) {
+            $newKey = is_string($key) ? Str::camel($key) : $key;
+
+            if (is_array($value)) {
+                $value = $this->convertKeysToCamelCase($value);
+            }
+
+            $result[$newKey] = $value;
+        }
+
+        return $result;
     }
 
     /**
