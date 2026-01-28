@@ -67,22 +67,29 @@ class MakeControllerCommand extends Command
             $name = $this->ask('Controller name', 'UserController');
         }
 
+        // Parse path and name
+        $rawName = str_replace('\\', '/', $name);
+        $segments = explode('/', $rawName);
+        $className = array_pop($segments);
+        $subDir = implode('/', $segments);
+
         // Ensure it ends with Controller
-        if (!str_ends_with($name, 'Controller')) {
-            $name .= 'Controller';
+        if (!str_ends_with($className, 'Controller')) {
+            $className .= 'Controller';
         }
 
-        $name = Str::studly($name);
+        $className = Str::studly($className);
+        $fullPathName = ($subDir ? $subDir . '/' : '') . $className;
 
         $this->checkpoint('name_collected');
 
         // Gather options
-        $options = $this->gatherOptions($name);
+        $options = $this->gatherOptions($className, $subDir);
 
         $this->checkpoint('options_collected');
 
         // Display summary
-        $this->displaySummary($name, $options);
+        $this->displaySummary($className, $options);
 
         if (!$this->confirm('Proceed with generation?', true)) {
             $this->warning('Controller generation cancelled.');
@@ -94,7 +101,7 @@ class MakeControllerCommand extends Command
         $this->section('Generating Files');
 
         // Generate controller
-        $controllerPath = $this->generateController($name, $options);
+        $controllerPath = $this->generateController($className, $options);
 
         $this->checkpoint('controller_generated');
 
@@ -102,19 +109,19 @@ class MakeControllerCommand extends Command
 
         // Generate related files
         if ($options['requests']) {
-            $requestPaths = $this->generateRequests($name, $options);
+            $requestPaths = $this->generateRequests($className, $options);
             $filesCreated = array_merge($filesCreated, $requestPaths);
         }
 
         if ($options['test']) {
-            $testPath = $this->generateTest($name, $options);
+            $testPath = $this->generateTest($className, $options);
             $filesCreated[] = $testPath;
         }
 
         $this->checkpoint('all_generated');
 
         // Display results
-        $this->displayResults($name, $filesCreated, $options);
+        $this->displayResults($className, $filesCreated, $options);
 
         if ($this->isVerbose()) {
             $this->displayTimings();
@@ -123,7 +130,7 @@ class MakeControllerCommand extends Command
         return 0;
     }
 
-    private function gatherOptions(string $name): array
+    private function gatherOptions(string $className, string $subDir): array
     {
         $options = [
             'type' => $this->determineType(),
@@ -138,6 +145,7 @@ class MakeControllerCommand extends Command
             'force' => $this->isForce(),
             'comments' => !$this->hasOption('no-comments'),
             'strict' => $this->hasOption('strict'),
+            'subDir' => $subDir,
         ];
 
         // Interactive mode if no significant options provided
@@ -154,7 +162,7 @@ class MakeControllerCommand extends Command
 
             if (in_array($options['type'], ['resource', 'api', 'singleton'])) {
                 if ($this->confirm('Associate with a model?', true)) {
-                    $modelName = $this->ask('Model name', str_replace('Controller', '', $name));
+                    $modelName = $this->ask('Model name', str_replace('Controller', '', $className));
                     $options['model'] = Str::studly($modelName);
                 }
 
@@ -249,7 +257,7 @@ class MakeControllerCommand extends Command
 
         // Store Request
         $storeRequestName = "Store{$baseName}Request";
-        $storeRequestPath = $this->getRequestPath($storeRequestName);
+        $storeRequestPath = $this->getRequestPath($storeRequestName, $options);
         $storeContent = $this->generateRequestClass($storeRequestName, $options);
         Filesystem::put($storeRequestPath, $storeContent);
         $paths[] = $storeRequestPath;
@@ -257,7 +265,7 @@ class MakeControllerCommand extends Command
 
         // Update Request
         $updateRequestName = "Update{$baseName}Request";
-        $updateRequestPath = $this->getRequestPath($updateRequestName);
+        $updateRequestPath = $this->getRequestPath($updateRequestName, $options);
         $updateContent = $this->generateRequestClass($updateRequestName, $options);
         Filesystem::put($updateRequestPath, $updateContent);
         $paths[] = $updateRequestPath;
@@ -275,7 +283,7 @@ class MakeControllerCommand extends Command
         });
 
         $testName = str_replace('Controller', '', $controllerName) . 'ControllerTest';
-        $path = $this->getTestPath($testName);
+        $path = $this->getTestPath($testName, $options);
 
         $template = $options['pest'] ? $this->getPestTestTemplate() : $this->getPhpUnitTestTemplate();
 
@@ -296,7 +304,7 @@ class MakeControllerCommand extends Command
 
     private function loadTemplate(array $options): string
     {
-        $templateName = match($options['type']) {
+        $templateName = match ($options['type']) {
             'invokable' => 'controller.invokable.stub',
             'api' => 'controller.api.stub',
             'resource' => 'controller.resource.stub',
@@ -346,7 +354,11 @@ class MakeControllerCommand extends Command
 
         $base = 'App\\Http\\Controllers';
 
-        if ($options['type'] === 'api') {
+        if ($options['subDir']) {
+            $base .= '\\' . str_replace('/', '\\', $options['subDir']);
+        }
+
+        if ($options['type'] === 'api' && !$options['subDir']) {
             return $base . '\\Api';
         }
 
@@ -380,7 +392,7 @@ class MakeControllerCommand extends Command
             return $this->buildCustomMethods($options['custom_methods'], $options);
         }
 
-        return match($options['type']) {
+        return match ($options['type']) {
             'invokable' => $this->buildInvokableMethod($options),
             'api' => $this->buildApiMethods($options),
             'resource' => $this->buildResourceMethods($options),
@@ -491,8 +503,10 @@ class MakeControllerCommand extends Command
     private function generateRequestClass(string $name, array $options): string
     {
         $template = $this->loadRequestTemplate();
+        $subNamespace = $options['subDir'] ? '\\' . str_replace('/', '\\', $options['subDir']) : '';
 
         $replacements = [
+            '{{namespace}}' => "App\\Http\\Requests{$subNamespace}",
             '{{class}}' => $name,
             '{{rules}}' => $this->buildValidationRules($options),
         ];
@@ -593,28 +607,35 @@ class MakeControllerCommand extends Command
         return false;
     }
 
-    private function getControllerPath(string $name, array $options): string
+    private function getControllerPath(string $className, array $options): string
     {
         $namespace = $this->buildNamespace($options);
-        $path = str_replace('App\\Http\\Controllers', 'app/Http/Controllers', $namespace);
-        $path = str_replace('\\', '/', $path);
+        $path = str_replace(['App\\Http\\Controllers', '\\'], ['app/Http/Controllers', '/'], $namespace);
 
+        return getcwd() . '/' . $path . '/' . $className . '.php';
+    }
+
+    private function getRequestPath(string $name, array $options): string
+    {
+        $path = 'app/Http/Requests';
+        if ($options['subDir']) {
+            $path .= '/' . $options['subDir'];
+        }
         return getcwd() . '/' . $path . '/' . $name . '.php';
     }
 
-    private function getRequestPath(string $name): string
+    private function getTestPath(string $name, array $options): string
     {
-        return getcwd() . '/app/Http/Requests/' . $name . '.php';
-    }
-
-    private function getTestPath(string $name): string
-    {
-        return getcwd() . '/tests/Feature/' . $name . '.php';
+        $path = 'tests/Feature';
+        if ($options['subDir']) {
+            $path .= '/' . $options['subDir'];
+        }
+        return getcwd() . '/' . $path . '/' . $name . '.php';
     }
 
     private function getDefaultTemplate(string $type): string
     {
-        return match($type) {
+        return match ($type) {
             'invokable' => $this->getInvokableTemplate(),
             'api' => $this->getApiTemplate(),
             'resource' => $this->getResourceTemplate(),
@@ -673,7 +694,7 @@ class MakeControllerCommand extends Command
 
         declare(strict_types=1);
 
-        namespace App\Http\Requests;
+        namespace {{namespace}};
 
         use Plugs\Http\Request;
 
