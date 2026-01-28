@@ -32,8 +32,8 @@ class SecurityShieldMiddleware implements MiddlewareInterface
     private Connection $db;
     private array $config;
     private array $rules;
-    private array $whitelistedIps = [];
-    private array $blacklistedIps = [];
+    private ?array $whitelistedIps = null;
+    private ?array $blacklistedIps = null;
 
     /**
      * Initialize SecurityShield Middleware
@@ -42,9 +42,19 @@ class SecurityShieldMiddleware implements MiddlewareInterface
      */
     public function __construct(array $config = [])
     {
+        // Connection is lazy, so this doesn't connect yet
         $this->db = Connection::getInstance();
         $this->config = array_merge($this->getDefaultConfig(), $config);
         $this->initializeRules();
+        // Removed eager loadWhitelistBlacklist()
+    }
+
+    private function ensureListsLoaded(): void
+    {
+        if ($this->whitelistedIps !== null) {
+            return;
+        }
+
         $this->loadWhitelistBlacklist();
     }
 
@@ -92,6 +102,8 @@ class SecurityShieldMiddleware implements MiddlewareInterface
             'checks_failed' => [],
             'timestamp' => time(),
         ];
+
+        $this->ensureListsLoaded();
 
         // Check whitelist first
         if ($this->isWhitelisted($requestData['ip'])) {

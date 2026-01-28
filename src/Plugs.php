@@ -111,9 +111,11 @@ class Plugs
     {
         $container = \Plugs\Container\Container::getInstance();
 
-        $queue = new \Plugs\Queue\QueueManager();
-        $queue->setDefaultDriver(config('queue.default', 'sync'));
-        $container->instance('queue', $queue);
+        $container->singleton('queue', function () {
+            $queue = new \Plugs\Queue\QueueManager();
+            $queue->setDefaultDriver(config('queue.default', 'sync'));
+            return $queue;
+        });
     }
 
     private function bootstrapStorage(): void
@@ -164,16 +166,20 @@ class Plugs
     {
         $container = \Plugs\Container\Container::getInstance();
 
-        $socialite = new \Plugs\Security\OAuth\SocialiteManager($container);
-        $container->instance('socialite', $socialite);
+        $container->singleton('socialite', function ($container) {
+            return new \Plugs\Security\OAuth\SocialiteManager($container);
+        });
     }
 
     private function bootstrapPdf(): void
     {
         $container = \Plugs\Container\Container::getInstance();
 
-        $pdf = new \Plugs\Pdf\PdfServiceProvider($container);
-        $pdf->register();
+        $container->singleton('pdf', function ($container) {
+            $pdf = new \Plugs\Pdf\PdfServiceProvider($container);
+            $pdf->register();
+            return $pdf;
+        });
     }
 
     public function pipe(MiddlewareInterface $middleware): self

@@ -73,7 +73,7 @@ class Connection
         $this->poolId = bin2hex(random_bytes(16));
         $this->sticky = $config['sticky'] ?? false;
         self::$config[$name] = $config;
-        $this->connect($config);
+        // Connection deferred until first query (Lazy Loading)
     }
 
     private function connect(array $config): void
@@ -624,6 +624,10 @@ class Connection
 
     private function ensureConnectionHealth(): void
     {
+        if ($this->pdo === null) {
+            return;
+        }
+
         $maxIdleTime = self::$config[$this->connectionName]['max_idle_time'] ?? 3600;
 
         if ((time() - $this->lastActivityTime) > $maxIdleTime) {
@@ -710,6 +714,10 @@ class Connection
 
     public function getPdo(): PDO
     {
+        if ($this->pdo === null) {
+            $this->connect(self::$config[$this->connectionName]);
+        }
+
         $this->ensureConnectionHealth();
         $this->lastActivityTime = time();
 
@@ -952,6 +960,10 @@ class Connection
      */
     private function getPdoForQuery(string $sql): PDO
     {
+        if ($this->pdo === null) {
+            $this->connect(self::$config[$this->connectionName]);
+        }
+
         if ($this->shouldUseWritePdo($sql)) {
             return $this->pdo;
         }

@@ -19,49 +19,7 @@ trait HasConnection
      */
     public static function setConnection(array $config): void
     {
-        $driver = $config['driver'] ?? 'mysql';
-        $host = $config['host'] ?? 'localhost';
-        $port = $config['port'] ?? 3306;
-        $database = $config['database'] ?? '';
-        $username = $config['username'] ?? 'root';
-        $password = $config['password'] ?? '';
-        $charset = $config['charset'] ?? 'utf8mb4';
-        $options = $config['options'] ?? [];
-
-        $defaultOptions = [
-            PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
-            PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
-            PDO::ATTR_EMULATE_PREPARES => false,
-        ];
-
-        $pdoOptions = array_merge($defaultOptions, $options);
-
-        try {
-            switch ($driver) {
-                case 'mysql':
-                    $dsn = "mysql:host={$host};port={$port};dbname={$database};charset={$charset}";
-
-                    break;
-                case 'pgsql':
-                    $dsn = "pgsql:host={$host};port={$port};dbname={$database}";
-
-                    break;
-                case 'sqlite':
-                    $dsn = "sqlite:{$database}";
-
-                    break;
-                case 'sqlsrv':
-                    $dsn = "sqlsrv:Server={$host},{$port};Database={$database}";
-
-                    break;
-                default:
-                    throw new Exception("Unsupported database driver: {$driver}");
-            }
-
-            static::$connection = new PDO($dsn, $username, $password, $pdoOptions);
-        } catch (PDOException $e) {
-            throw new Exception("Database connection failed: " . $e->getMessage());
-        }
+        static::$connection = $config;
     }
 
     /**
@@ -86,9 +44,16 @@ trait HasConnection
             return static::$connection;
         }
 
-        $connection = Connection::getInstance();
+        if (is_array(static::$connection)) {
+            $connection = Connection::getInstance(static::$connection, static::$connectionName);
+            static::$connection = $connection->getPdo();
 
-        return $connection instanceof PDO ? $connection : $connection->getPdo();
+            return static::$connection;
+        }
+
+        $connection = Connection::getInstance(null, static::$connectionName);
+
+        return $connection->getPdo();
     }
 
     /**

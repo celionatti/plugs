@@ -133,8 +133,18 @@ class PageRouter
         // Extract dynamic parameters
         $parameters = $this->extractParameters($relativePath);
 
-        // Determine if file defines a class
+        // Determine middleware if it's a class
         $isClass = $this->hasDefinedClass($filePath);
+        $middleware = [];
+        if ($isClass) {
+            if (file_exists($filePath)) {
+                require_once $filePath;
+            }
+            if (class_exists($className)) {
+                $pageInstance = new $className();
+                $middleware = $pageInstance->middleware();
+            }
+        }
 
         $this->discoveredRoutes[] = [
             'pattern' => $routePattern,
@@ -143,6 +153,7 @@ class PageRouter
             'is_class' => $isClass,
             'parameters' => $parameters,
             'is_catch_all' => $this->isCatchAllRoute($relativePath),
+            'middleware' => $middleware,
         ];
     }
 
@@ -152,8 +163,13 @@ class PageRouter
     private function hasDefinedClass(string $filePath): bool
     {
         $content = file_get_contents($filePath);
-        $tokens = token_get_all($content);
 
+        // Fast check before tokenizing
+        if (strpos($content, 'class ') === false) {
+            return false;
+        }
+
+        $tokens = token_get_all($content);
         foreach ($tokens as $token) {
             if (is_array($token) && $token[0] === T_CLASS) {
                 return true;
@@ -301,32 +317,9 @@ class PageRouter
     private function registerClassRoute(array $routeInfo): void
     {
         $className = $routeInfo['class'];
-
-        // Require the file to ensure class is loaded
-        if (file_exists($routeInfo['file'])) {
-            require_once $routeInfo['file'];
-        }
-
-        // Check if class exists
-        if (!class_exists($className)) {
-            return;
-        }
-
-        // Verify it extends Page
-        if (!is_subclass_of($className, Page::class)) {
-            // If it's a class but doesn't extend Page, we treat it as a class but skip validation?
-            // Or maybe user defined a helper class?
-            // For now, strict check: must extend Page
-            throw new RuntimeException(
-                "Page class {$className} must extend " . Page::class
-            );
-        }
-
-        // Get middleware from the page class
-        $pageInstance = new $className();
         $middleware = array_merge(
             $this->options['middleware'],
-            $pageInstance->middleware()
+            $routeInfo['middleware'] ?? []
         );
 
         // Register route
