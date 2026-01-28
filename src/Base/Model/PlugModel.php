@@ -19,6 +19,7 @@ use Plugs\Database\Traits\HasTimestamps;
 use Plugs\Database\Traits\HasValidation;
 use Plugs\Database\Traits\Searchable;
 use Plugs\Database\Traits\SoftDeletes;
+use Plugs\Database\Traits\HasFactory;
 
 abstract class PlugModel
 {
@@ -32,6 +33,7 @@ abstract class PlugModel
     use HasValidation;
     use HasTimestamps;
     use SoftDeletes;
+    use HasFactory;
 
     protected $table;
     protected $primaryKey = 'id';

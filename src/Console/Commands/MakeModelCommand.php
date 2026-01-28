@@ -875,11 +875,11 @@ STUB;
         namespace Database\Factories;
 
         use {{modelNamespace}};
-        use Plugs\Database\Factory;
+        use Plugs\Database\Factory\PlugFactory;
 
-        class {{class}} extends Factory
+        class {{class}} extends PlugFactory
         {
-            protected string $model = {{model}}::class;
+            protected ?string $model = {{model}}::class;
             
             public function definition(): array
             {
@@ -902,9 +902,9 @@ STUB;
         namespace Database\Seeders;
 
         use {{modelNamespace}};
-        use Plugs\Database\Seeder;
+        use Plugs\Database\Seeders\PlugSeeder;
 
-        class {{class}} extends Seeder
+        class {{class}} extends PlugSeeder
         {
             public function run(): void
             {

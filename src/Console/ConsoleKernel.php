@@ -16,12 +16,11 @@ use Plugs\Console\Commands\MakeConnectorCommand;
 use Plugs\Console\Commands\MakeControllerCommand;
 use Plugs\Console\Commands\MakeDTOCommand;
 use Plugs\Console\Commands\MakeMiddlewareCommand;
-use Plugs\Console\Commands\MakeMigrationCommand;
-use Plugs\Console\Commands\MakeModelCommand;
-use Plugs\Console\Commands\MakeRepositoryCommand;
-use Plugs\Console\Commands\MakeRequestCommand;
 use Plugs\Console\Commands\MakeResourceCommand;
 use Plugs\Console\Commands\MakeServiceCommand;
+use Plugs\Console\Commands\MakeFactoryCommand;
+use Plugs\Console\Commands\MakeSeederCommand;
+use Plugs\Console\Commands\SeedCommand;
 use Plugs\Console\Commands\MigrateCommand;
 use Plugs\Console\Commands\MigrateResetCommand;
 use Plugs\Console\Commands\MigrateRollbackCommand;
@@ -64,10 +63,14 @@ class ConsoleKernel
         'make:dto' => MakeDTOCommand::class,
         'make:resource' => MakeResourceCommand::class,
         'make:repository' => MakeRepositoryCommand::class,
+        'make:factory' => MakeFactoryCommand::class,
+        'make:seeder' => MakeSeederCommand::class,
         'make:connector' => MakeConnectorCommand::class,
         'make:api-request' => MakeApiRequestCommand::class,
         'make:pdf-template' => MakePdfTemplateCommand::class,
         'make:pagination-template' => MakePaginationTemplateCommand::class,
+
+        'db:seed' => SeedCommand::class,
 
         'route:list' => RouteListCommand::class,
         'route:cache' => RouteCacheCommand::class,
@@ -109,6 +112,9 @@ class ConsoleKernel
         'g:repo' => 'make:repository',
         'g:con' => 'make:connector',
         'g:areq' => 'make:api-request',
+        'g:fact' => 'make:factory',
+        'g:seed' => 'make:seeder',
+        'seed' => 'db:seed',
         'routes' => 'route:list',
         'route:show' => 'route:list',
         's' => 'serve',
@@ -136,6 +142,8 @@ class ConsoleKernel
             'make:dto',
             'make:resource',
             'make:repository',
+            'make:factory',
+            'make:seeder',
             'make:connector',
             'make:api-request',
             'make:pdf-template',
@@ -144,7 +152,7 @@ class ConsoleKernel
         'Routes' => ['route:list', 'route:cache', 'route:clear', 'route:test'],
         'Utility' => ['serve', 'cache:clear', 'config:cache', 'optimize', 'queue:work', 'health', 'storage:link'],
         'Scheduling' => ['schedule:run', 'schedule:list'],
-        'Database' => ['migrate', 'migrate:rollback', 'migrate:status', 'migrate:fresh', 'migrate:validate', 'migrate:reset', 'make:migration'],
+        'Database' => ['migrate', 'migrate:rollback', 'migrate:status', 'migrate:fresh', 'migrate:validate', 'migrate:reset', 'make:migration', 'db:seed'],
     ];
 
     public function commands(): array

@@ -26,12 +26,14 @@ Welcome to the official documentation for the **Plugs** framework. Plugs is a li
 - [Filesystem Storage](file:///docs/the-basics/storage.md)
 - [Flash Messages](file:///docs/features/flash-messages.md)
 - [Testing](file:///docs/testing.md)
+- [Factories & Seeders](file:///docs/database/factories-seeders.md)
 
 ### 🗄️ Database
 - [Getting Started](file:///docs/database/getting-started.md)
 - [Query Builder](file:///docs/database/query-builder.md)
 - [Migrations](file:///docs/database/migrations.md)
 - [Models](file:///docs/database/models.md)
+- [Factories & Seeders](file:///docs/database/factories-seeders.md)
 
 ### 🛡️ Security
 - [Authentication](file:///docs/security/authentication.md)
