@@ -175,6 +175,31 @@ To eager load nested relationships, you may use "dot" syntax. For example, let's
 $books = Book::with('author.contacts')->get();
 ```
 
+### Lazy Eager Loading
+
+Sometimes you may need to eager load a relationship after the parent model has already been retrieved. For example, this may be useful if you need to dynamically decide whether to load related models:
+
+```php
+$books = Book::all();
+
+if ($someCondition) {
+    $books->load('author', 'publisher');
+}
+```
+
+#### Load Missing Relationships
+
+If you want to load a relationship only when it has not already been loaded, use the `loadMissing` method. This handles multiple keys and nested relationships efficiently:
+
+```php
+public function format(Collection $users)
+{
+    $users->loadMissing('posts.comments');
+
+    return $users;
+}
+```
+
 ## Relationships
 
 Relationships are defined as methods on your model classes.

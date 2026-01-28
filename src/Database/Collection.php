@@ -1432,4 +1432,52 @@ class Collection implements \ArrayAccess, \Iterator, \Countable, \JsonSerializab
     {
         return $this->toJson();
     }
+
+    /**
+     * Load relationships for the models in the collection.
+     */
+    public function load($relations): self
+    {
+        if ($this->isNotEmpty() && $this->first() instanceof PlugModel) {
+            $modelClass = get_class($this->first());
+
+            // Check if loadRelations exists (it's in HasRelationships trait)
+            if (method_exists($modelClass, 'loadRelations')) {
+                $modelClass::loadRelations($this, $relations);
+            }
+        }
+
+        return $this;
+    }
+
+    /**
+     * Load relationships for the models in the collection if they are not already loaded.
+     */
+    public function loadMissing($relations): self
+    {
+        if ($this->isEmpty() || !($this->first() instanceof PlugModel)) {
+            return $this;
+        }
+
+        $relations = is_string($relations) ? func_get_args() : $relations;
+
+        foreach ($relations as $relation) {
+            // Handle nested relations (e.g. 'posts.comments') by just checking the top level 'posts'
+            $topLevelRelation = explode('.', $relation)[0];
+
+            // Filter models that need loading
+            $modelsToLoad = $this->filter(function ($model) use ($topLevelRelation) {
+                return !$model->relationLoaded($topLevelRelation);
+            });
+
+            if ($modelsToLoad->isNotEmpty()) {
+                $modelClass = get_class($this->first());
+                if (method_exists($modelClass, 'loadRelations')) {
+                    $modelClass::loadRelations($modelsToLoad, $relation);
+                }
+            }
+        }
+
+        return $this;
+    }
 }
