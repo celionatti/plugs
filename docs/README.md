@@ -12,6 +12,15 @@ Welcome to the official documentation for the **Plugs** framework. Plugs is a li
 - [Installation](file:///docs/getting-started/installation.md)
 - [Configuration](file:///docs/getting-started/configuration.md)
 
+### 🛠️ Building APIs (New)
+- [**Production API Guide**](file:///docs/api-guide/introduction.md)
+  - [Step 1: Modeling & Data](file:///docs/api-guide/step-1-modeling.md)
+  - [Step 2: Resources & Transformation](file:///docs/api-guide/step-2-resources.md)
+  - [Step 3: Validation & Requests](file:///docs/api-guide/step-3-requests.md)
+  - [Step 4: Controllers & Routes](file:///docs/api-guide/step-4-controllers-routes.md)
+  - [Step 5: Verification & Testing](file:///docs/api-guide/step-5-testing.md)
+  - [**Full Implementation Example**](file:///docs/api-guide/full-example.md)
+
 ### 🧩 The Basics
 - [Routing](file:///docs/the-basics/routing.md)
 - [Controllers](file:///docs/the-basics/controllers.md)
