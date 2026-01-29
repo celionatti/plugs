@@ -15,19 +15,18 @@ use Plugs\View\ErrorMessage;
  */
 abstract class FormRequest
 {
+    protected ?\Psr\Http\Message\ServerRequestInterface $request = null;
     protected ?Validator $validator = null;
     protected ErrorMessage $errors;
     protected array $data = [];
 
     /**
-     * FormRequest constructor.
-     *
-     * @param array|null $data The data to validate
+     * Set the current request.
      */
-    public function __construct(?array $data = [])
+    public function setRequest(\Psr\Http\Message\ServerRequestInterface $request): self
     {
-        $this->data = $data ?? [];
-        $this->errors = new ErrorMessage();
+        $this->request = $request;
+        $this->data = array_merge($request->getParsedBody() ?: [], $request->getQueryParams());
 
         $this->validator = new Validator(
             $this->data,
@@ -35,6 +34,50 @@ abstract class FormRequest
             $this->messages(),
             $this->attributes()
         );
+
+        return $this;
+    }
+
+    /**
+     * Determine if the user is authorized to make this request.
+     */
+    public function authorize(): bool
+    {
+        return true;
+    }
+
+    /**
+     * Run validation and authorization.
+     * 
+     * @throws \Plugs\Http\Exceptions\ValidationException
+     */
+    public function validateInternal(): void
+    {
+        if (!$this->authorize()) {
+            throw new \RuntimeException("This action is unauthorized.", 403);
+        }
+
+        if (!$this->validate()) {
+            throw new \Plugs\Http\Exceptions\ValidationException($this->errors(), $this->request);
+        }
+    }
+
+    /**
+     * FormRequest constructor.
+     */
+    public function __construct(array $data = [])
+    {
+        $this->data = $data;
+        $this->errors = new ErrorMessage();
+
+        if (!empty($data)) {
+            $this->validator = new Validator(
+                $this->data,
+                $this->rules(),
+                $this->messages(),
+                $this->attributes()
+            );
+        }
     }
 
     /**

@@ -34,6 +34,7 @@ class SecurityShieldMiddleware implements MiddlewareInterface
     private array $rules;
     private ?array $whitelistedIps = null;
     private ?array $blacklistedIps = null;
+    private bool $listsLoaded = false;
 
     /**
      * Initialize SecurityShield Middleware
@@ -45,17 +46,20 @@ class SecurityShieldMiddleware implements MiddlewareInterface
         // Connection is lazy, so this doesn't connect yet
         $this->db = Connection::getInstance();
         $this->config = array_merge($this->getDefaultConfig(), $config);
+        $this->whitelistedIps = [];
+        $this->blacklistedIps = [];
         $this->initializeRules();
         // Removed eager loadWhitelistBlacklist()
     }
 
     private function ensureListsLoaded(): void
     {
-        if ($this->whitelistedIps !== null) {
+        if ($this->listsLoaded) {
             return;
         }
 
         $this->loadWhitelistBlacklist();
+        $this->listsLoaded = true;
     }
 
     public function process(ServerRequestInterface $request, RequestHandlerInterface $handler): ResponseInterface
@@ -688,7 +692,11 @@ class SecurityShieldMiddleware implements MiddlewareInterface
             );
             $this->blacklistedIps = array_column($blacklist, 'ip');
         } catch (\Exception $e) {
-            // Tables might not exist yet
+            // Tables might not exist yet or connection failed
+            if ($this->whitelistedIps === null)
+                $this->whitelistedIps = [];
+            if ($this->blacklistedIps === null)
+                $this->blacklistedIps = [];
         }
     }
 

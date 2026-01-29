@@ -34,6 +34,7 @@ class Route
     private ?string $domain = null;
     private ?string $scheme = null;
     private array $metadata = [];
+    private array $parameterKeys = [];
 
     /** @var array Common parameter patterns */
     private const COMMON_PATTERNS = [
@@ -114,6 +115,11 @@ class Route
         }
 
         return $this;
+    }
+
+    public function getParameterKey(string $name): ?string
+    {
+        return $this->parameterKeys[$name] ?? null;
     }
 
     public function where($key, ?string $pattern = null): self
@@ -212,12 +218,19 @@ class Route
     private function compilePattern(string $path): string
     {
         $pattern = preg_quote($path, '#');
-        $pattern = str_replace(['\{', '\}', '\?'], ['{', '}', '?'], $pattern);
+        $pattern = str_replace(['\{', '\}', '\?', '\:'], ['{', '}', '?', ':'], $pattern);
 
+        // Support {param} and {param:key}
         $pattern = preg_replace_callback(
-            '/\{([a-zA-Z_][a-zA-Z0-9_]*)\}/',
+            '/\{([a-zA-Z_][a-zA-Z0-9_]*)(?::([a-zA-Z0-9_]+))?\}/',
             function ($matches) {
                 $param = $matches[1];
+                $key = $matches[2] ?? null;
+
+                if ($key) {
+                    $this->parameterKeys[$param] = $key;
+                }
+
                 $constraint = $this->where[$param] ?? '[^/]+';
 
                 return "(?P<{$param}>{$constraint})";
@@ -225,6 +238,7 @@ class Route
             $pattern
         );
 
+        // Optional parameters: {param?}
         $pattern = preg_replace_callback(
             '/\{([a-zA-Z_][a-zA-Z0-9_]*)\?\}/',
             function ($matches) {

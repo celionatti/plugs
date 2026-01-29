@@ -19,7 +19,26 @@ trait HasAttributes
     protected $appends = [];
     protected $dates = [];
     protected $dateFormat = 'Y-m-d H:i:s';
+    protected $visible = [];
     protected $castNulls = true;
+
+    public function setRawAttributes(array|object $attributes, bool $sync = true): self
+    {
+        $this->attributes = $this->parseAttributes($attributes);
+
+        if ($sync) {
+            $this->syncOriginal();
+        }
+
+        return $this;
+    }
+
+    public function syncOriginal(): self
+    {
+        $this->original = $this->attributes;
+
+        return $this;
+    }
 
     public function fill(array|object $attributes)
     {

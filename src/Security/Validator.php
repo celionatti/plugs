@@ -218,7 +218,7 @@ class Validator
 
         // Replace placeholders
         foreach ($replacements as $key => $value) {
-            $message = str_replace(":{$key}", $value, $message);
+            $message = str_replace(":{$key}", (string) $value, $message);
         }
 
         // Replace field name

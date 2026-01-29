@@ -775,9 +775,29 @@ class Router
 
             // Try dependency injection from container
             try {
+                // FormRequest Automatic Validation
+                if (is_subclass_of($typeName, \Plugs\Http\Requests\FormRequest::class)) {
+                    $formRequest = new $typeName();
+                    $formRequest->setRequest($request);
+                    $formRequest->validateInternal();
+
+                    return $formRequest;
+                }
+
+                // Route Model Binding check
+                if (is_subclass_of($typeName, \Plugs\Base\Model\PlugModel::class)) {
+                    $modelValue = $this->resolveModelParameter($typeName, $paramName, $routeParams, $request, $sentinel);
+                    if ($modelValue !== $sentinel) {
+                        return $modelValue;
+                    }
+                }
+
                 return $container->make($typeName);
+            } catch (\Plugs\Database\Exception\ModelNotFoundException | \Plugs\Http\Exceptions\ValidationException | \RuntimeException $e) {
+                // Rethrow these so they can be handled by middleware or global handler
+                throw $e;
             } catch (\Exception $e) {
-                // Fall through to other resolution methods
+                // Fall through to other resolution methods for other DI failures
             }
         }
 
@@ -1428,5 +1448,43 @@ class Router
         }
 
         return call_user_func_array($macro, $arguments);
+    }
+
+    /**
+     * Resolve a model parameter for Route Model Binding.
+     */
+    private function resolveModelParameter(
+        string $modelClass,
+        string $paramName,
+        array $routeParams,
+        ServerRequestInterface $request,
+        $sentinel
+    ) {
+        // 1. Check if the parameter exists in the route
+        if (!array_key_exists($paramName, $routeParams)) {
+            return $sentinel;
+        }
+
+        $value = $routeParams[$paramName];
+
+        // 2. Determine the key to use for resolution
+        $key = 'id';
+        $route = $request->getAttribute('_route');
+        if ($route instanceof Route) {
+            $key = $route->getParameterKey($paramName) ?: 'id';
+        }
+
+        // 3. Resolve the model
+        if ($key === 'id') {
+            return $modelClass::findOrFail($value);
+        }
+
+        // Custom key resolution
+        $model = $modelClass::where($key, '=', $value)->first();
+        if (!$model) {
+            throw (new \Plugs\Database\Exception\ModelNotFoundException())->setModel($modelClass, $value);
+        }
+
+        return $model;
     }
 }

@@ -53,14 +53,20 @@ abstract class PlugModel
     protected static $transactionDepth = 0;
     protected static $transactionConnection = null;
 
-    public function __construct(array|object $attributes = [])
+    public function __construct(array|object $attributes = [], bool $exists = false)
     {
         $this->bootIfNotBooted();
+        $this->exists = $exists;
 
         // Validate configuration
         $this->validateModelConfiguration();
 
-        $this->fill($attributes);
+        if ($exists) {
+            $this->setRawAttributes($attributes);
+        } else {
+            $this->fill($attributes);
+        }
+
         if (!$this->table) {
             $this->table = $this->getTableName();
         }

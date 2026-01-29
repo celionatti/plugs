@@ -133,4 +133,14 @@ class ErrorMessage
 
         return $this;
     }
+
+    /**
+     * Get all errors as raw array
+     *
+     * @return array
+     */
+    public function toArray(): array
+    {
+        return $this->errors;
+    }
 }

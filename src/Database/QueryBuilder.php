@@ -224,7 +224,7 @@ class QueryBuilder
         $results = $this->connection->fetchAll($sql, $this->params);
 
         if ($this->model && !empty($results)) {
-            $models = array_map(fn($item) => new $this->model($item), $results);
+            $models = array_map(fn($item) => new $this->model($item, true), $results);
 
             if (!empty($this->with)) {
                 $collection = new Collection($models);
@@ -251,7 +251,7 @@ class QueryBuilder
         $result = $this->connection->fetch($sql, $this->params);
 
         if ($this->model && $result) {
-            return new $this->model($result);
+            return new $this->model($result, true);
         }
 
         return $result;

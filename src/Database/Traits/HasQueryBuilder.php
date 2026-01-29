@@ -86,7 +86,7 @@ trait HasQueryBuilder
     {
         $result = static::find($id, $columns);
         if (!$result) {
-            throw new \Exception("Model not found with id: {$id}");
+            throw (new \Plugs\Database\Exception\ModelNotFoundException())->setModel(static::class, $id);
         }
 
         return $result;
