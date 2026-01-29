@@ -243,8 +243,14 @@ trait HasQueryBuilder
 
         // Generate absolute URLs for links
         $baseUrl = function_exists('currentUrl') ? currentUrl(includeQuery: false) : '';
-        $buildUrl = function ($p) use ($baseUrl) {
-            return $p ? $baseUrl . '?page=' . $p : null;
+        $queryParams = $_GET;
+        unset($queryParams['page']);
+
+        $buildUrl = function ($p) use ($baseUrl, $queryParams) {
+            if (!$p)
+                return null;
+            $params = array_merge($queryParams, ['page' => $p]);
+            return $baseUrl . '?' . http_build_query($params);
         };
 
         return [
@@ -317,8 +323,14 @@ trait HasQueryBuilder
 
         // Generate absolute URLs for links
         $baseUrl = function_exists('currentUrl') ? currentUrl(includeQuery: false) : '';
-        $buildUrl = function ($p) use ($baseUrl) {
-            return $p ? $baseUrl . '?page=' . $p : null;
+        $queryParams = $_GET;
+        unset($queryParams['page']);
+
+        $buildUrl = function ($p) use ($baseUrl, $queryParams) {
+            if (!$p)
+                return null;
+            $params = array_merge($queryParams, ['page' => $p]);
+            return $baseUrl . '?' . http_build_query($params);
         };
 
         return [
@@ -347,11 +359,18 @@ trait HasQueryBuilder
     }
 
     /**
-     * Apply filters from request parameters
+     * Apply filters from request parameters or a QueryFilter instance
      */
-    public static function filter(array $params): QueryBuilder
+    public static function filter(array|\Plugs\Database\Filters\QueryFilter $params): QueryBuilder
     {
         $query = static::query();
+
+        // Handle QueryFilter instance
+        if ($params instanceof \Plugs\Database\Filters\QueryFilter) {
+            return $params->apply($query);
+        }
+
+        // Legacy array-based filtering
         $instance = new static();
 
         foreach ($params as $key => $value) {
@@ -423,8 +442,14 @@ trait HasQueryBuilder
 
         // Generate absolute URLs for links
         $baseUrl = function_exists('currentUrl') ? currentUrl(includeQuery: false) : '';
-        $buildUrl = function ($p) use ($baseUrl) {
-            return $p ? $baseUrl . '?page=' . $p : null;
+        $queryParams = $params;
+        unset($queryParams['page']);
+
+        $buildUrl = function ($p) use ($baseUrl, $queryParams) {
+            if (!$p)
+                return null;
+            $params = array_merge($queryParams, ['page' => $p]);
+            return $baseUrl . '?' . http_build_query($params);
         };
 
         return [

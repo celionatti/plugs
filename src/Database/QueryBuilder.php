@@ -79,7 +79,7 @@ class QueryBuilder
             if (!empty($nestedWhere)) {
                 $nestedSql = substr($nestedWhere, 7); // Remove ' WHERE '
                 $this->where[] = [
-                    'type' => 'Nested',
+                    'type' => 'Raw',
                     'query' => "({$nestedSql})",
                     'boolean' => $boolean,
                     'params' => $query->getParams(),
@@ -96,15 +96,24 @@ class QueryBuilder
             $operator = '=';
         }
 
-        $placeholder = ':where_' . count($this->params) . '_' . str_replace('.', '_', $column);
+        if ($value instanceof Raw) {
+            $this->where[] = [
+                'type' => 'Raw',
+                'query' => "{$column} {$operator} {$value}",
+                'boolean' => $boolean,
+                'params' => [],
+            ];
+        } else {
+            $placeholder = ':where_' . count($this->params) . '_' . str_replace('.', '_', (string) $column);
 
-        $this->where[] = [
-            'type' => 'Basic',
-            'query' => "{$column} {$operator} {$placeholder}",
-            'boolean' => $boolean,
-        ];
+            $this->where[] = [
+                'type' => 'Basic',
+                'query' => "{$column} {$operator} {$placeholder}",
+                'boolean' => $boolean,
+            ];
 
-        $this->params[$placeholder] = $value;
+            $this->params[$placeholder] = $value;
+        }
 
         return $this;
     }
@@ -112,6 +121,118 @@ class QueryBuilder
     public function orWhere($column, $operator = null, $value = null): self
     {
         return $this->where($column, $operator, $value, 'OR');
+    }
+
+    /**
+     * Add a "where has" relationship constraint.
+     */
+    public function whereHas(string $relation, ?\Closure $callback = null, string $boolean = 'AND'): self
+    {
+        if (!$this->model) {
+            throw new \Exception("whereHas requires a model to be set on the builder.");
+        }
+
+        $modelInstance = new $this->model();
+
+        // Use reflection to get relation details via a temporary proxy
+        if (!method_exists($modelInstance, $relation)) {
+            throw new \Exception("Relationship [{$relation}] not found on model [" . get_class($modelInstance) . "].");
+        }
+
+        $proxy = $modelInstance->$relation();
+
+        // We need to extract the related table and keys from the proxy
+        // This is a bit hacky but works given the current architecture
+        $reflection = new \ReflectionObject($proxy);
+
+        $relatedBuilder = null;
+        $foreignKey = null;
+        $localKey = null;
+        $pivotTable = null;
+        $foreignPivotKey = null;
+        $relatedPivotKey = null;
+
+        if ($reflection->hasProperty('builder')) {
+            $prop = $reflection->getProperty('builder');
+            $prop->setAccessible(true);
+            $relatedBuilder = $prop->getValue($proxy);
+        }
+
+        if ($reflection->hasProperty('foreignKey')) {
+            $prop = $reflection->getProperty('foreignKey');
+            $prop->setAccessible(true);
+            $foreignKey = $prop->getValue($proxy);
+        }
+
+        if ($reflection->hasProperty('localKey')) {
+            $prop = $reflection->getProperty('localKey');
+            $prop->setAccessible(true);
+            $localKey = $prop->getValue($proxy);
+        }
+
+        if ($reflection->hasProperty('ownerKey')) {
+            $prop = $reflection->getProperty('ownerKey');
+            $prop->setAccessible(true);
+            $localKey = $prop->getValue($proxy); // ownerKey is like localKey for BelongsTo
+        }
+
+        // Handle BelongsToMany which uses BelongsToManyProxy
+        if (str_contains(get_class($proxy), 'BelongsToManyProxy')) {
+            $prop = $reflection->getProperty('config');
+            $prop->setAccessible(true);
+            $config = $prop->getValue($proxy);
+
+            $pivotTable = $config['pivotTable'];
+            $foreignPivotKey = $config['foreignPivotKey'];
+            $relatedPivotKey = $config['relatedPivotKey'];
+            $relatedClass = $config['relatedClass'];
+            $relatedBuilder = $relatedClass::query();
+        }
+
+        if (!$relatedBuilder) {
+            throw new \Exception("Could not resolve relationship builder for [{$relation}].");
+        }
+
+        $relatedTable = $relatedBuilder->getTable();
+        $parentTable = $this->table;
+
+        // Build the subquery
+        $subQuery = new static($this->connection);
+        $subQuery->table($relatedTable);
+        $subQuery->select(['1']);
+
+        if ($pivotTable) {
+            // WHERE EXISTS (SELECT 1 FROM related JOIN pivot ON pivot.related_id = related.id WHERE pivot.parent_id = parent.id AND ...)
+            $subQuery->join($pivotTable, "{$pivotTable}.{$relatedPivotKey}", '=', "{$relatedTable}.id");
+            $subQuery->where("{$pivotTable}.{$foreignPivotKey}", '=', new \Plugs\Database\Raw("{$parentTable}.id"));
+        } else {
+            // Basic relationship
+            // WHERE EXISTS (SELECT 1 FROM related WHERE related.foreign_key = parent.local_key AND ...)
+            $subQuery->where("{$relatedTable}.{$foreignKey}", '=', new \Plugs\Database\Raw("{$parentTable}.{$localKey}"));
+        }
+
+        if ($callback) {
+            $callback($subQuery);
+        }
+
+        $sql = $subQuery->buildSelectSql();
+        // Remove "SELECT 1 FROM table" and keep the rest? No, actually we can just use the whole query.
+
+        $this->where[] = [
+            'type' => 'Raw',
+            'sql' => "EXISTS ({$sql})",
+            'boolean' => $boolean,
+            'params' => $subQuery->getParams()
+        ];
+
+        $this->params = array_merge($this->params, $subQuery->getParams());
+
+        return $this;
+    }
+
+    public function orWhereHas(string $relation, ?\Closure $callback = null): self
+    {
+        return $this->whereHas($relation, $callback, 'OR');
     }
 
     public function join(string $table, string $first, string $operator, string $second, string $type = 'INNER'): self
@@ -169,7 +290,8 @@ class QueryBuilder
         $sql = '';
         foreach ($this->where as $index => $condition) {
             $boolean = $index === 0 ? 'WHERE' : $condition['boolean'];
-            $sql .= " {$boolean} " . $condition['query'];
+            $queryPart = $condition['query'] ?? ($condition['sql'] ?? '');
+            $sql .= " {$boolean} " . $queryPart;
         }
 
         return $sql;
@@ -386,7 +508,7 @@ class QueryBuilder
         return (int) ($result['count'] ?? 0);
     }
 
-    private function buildSelectSql(): string
+    public function buildSelectSql(): string
     {
         $sql = "SELECT " . implode(', ', $this->select) . " FROM {$this->table}";
 
@@ -411,5 +533,20 @@ class QueryBuilder
         }
 
         return $sql;
+    }
+
+    public function __call($method, $parameters)
+    {
+        if ($this->model) {
+            $instance = new $this->model();
+            $scopeMethod = 'scope' . ucfirst($method);
+
+            if (method_exists($instance, $scopeMethod)) {
+                array_unshift($parameters, $this);
+                return $instance->$scopeMethod(...$parameters);
+            }
+        }
+
+        throw new \BadMethodCallException("Method [{$method}] does not exist on the query builder.");
     }
 }
