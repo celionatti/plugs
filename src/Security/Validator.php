@@ -42,10 +42,27 @@ class Validator
             if (strpos($field, '*') !== false) {
                 $this->validateWildcard($field, $rules);
             } else {
-                $value = $this->getValue($field);
                 $ruleList = is_string($rules) ? explode('|', $rules) : $rules;
 
+                // Handle 'sometimes' rule: if field is not present in data, skip all validation for it
+                if (in_array('sometimes', $ruleList) && !$this->hasValue($field)) {
+                    continue;
+                }
+
+                $value = $this->getValue($field);
+
+                // Handle 'nullable' rule: if value is null, skip all subsequent validation
+                // except if other rules specify otherwise (Laravel behavior)
+                if (in_array('nullable', $ruleList) && $value === null) {
+                    continue;
+                }
+
                 foreach ($ruleList as $rule) {
+                    // Skip sometimes and nullable rules themselves as they were handled above
+                    if ($rule === 'sometimes' || $rule === 'nullable') {
+                        continue;
+                    }
+
                     $this->validateRule($field, $value, $rule);
                 }
             }
@@ -178,6 +195,25 @@ class Validator
     }
 
     /**
+     * Check if a field exists in data using dot notation
+     */
+    private function hasValue(string $field): bool
+    {
+        $keys = explode('.', $field);
+        $value = $this->data;
+
+        foreach ($keys as $key) {
+            if (is_array($value) && array_key_exists($key, $value)) {
+                $value = $value[$key];
+            } else {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    /**
      * Validate single rule
      */
     private function validateRule(string $field, $value, string $rule): void
@@ -296,6 +332,21 @@ class Validator
             'password' => 'The :attribute must meet the complexity requirements: :requirements.',
             'strong_password' => 'The :attribute must be at least 8 characters and contain at least one uppercase letter, one lowercase letter, one number, and one special character.',
             'safe_html' => 'The :attribute contains invalid or dangerous HTML tags.',
+            'accepted' => 'The :attribute must be accepted.',
+            'declined' => 'The :attribute must be declined.',
+            'present' => 'The :attribute field must be present.',
+            'prohibited' => 'The :attribute field is prohibited.',
+            'prohibited_if' => 'The :attribute field is prohibited when :other is :value.',
+            'prohibited_unless' => 'The :attribute field is prohibited unless :other is in :value.',
+            'gt' => 'The :attribute must be greater than :value.',
+            'gte' => 'The :attribute must be greater than or equal :value.',
+            'lt' => 'The :attribute must be less than :value.',
+            'lte' => 'The :attribute must be less than or equal :value.',
+            'multiple_of' => 'The :attribute must be a multiple of :value.',
+            'min_digits' => 'The :attribute must have at least :value digits.',
+            'max_digits' => 'The :attribute must not have more than :value digits.',
+            'mac_address' => 'The :attribute must be a valid MAC address.',
+            'ulid' => 'The :attribute must be a valid ULID.',
         ];
 
         return $messages[$rule] ?? "The :attribute is invalid.";
@@ -1069,6 +1120,222 @@ class Validator
 
                 break;
             }
+        }
+    }
+
+    /**
+     * Accepted validation (yes, on, 1, or true)
+     */
+    private function validateAccepted(string $field, $value): void
+    {
+        $acceptable = ['yes', 'on', '1', 1, true, 'true'];
+
+        if (!in_array($value, $acceptable, true)) {
+            $this->addError($field, 'accepted');
+        }
+    }
+
+    /**
+     * Declined validation (no, off, 0, or false)
+     */
+    private function validateDeclined(string $field, $value): void
+    {
+        $acceptable = ['no', 'off', '0', 0, false, 'false'];
+
+        if (!in_array($value, $acceptable, true)) {
+            $this->addError($field, 'declined');
+        }
+    }
+
+    /**
+     * Present validation (field must exist in data)
+     */
+    private function validatePresent(string $field, $value): void
+    {
+        if (!$this->hasValue($field)) {
+            $this->addError($field, 'present');
+        }
+    }
+
+    /**
+     * Prohibited validation (field must NOT be present)
+     */
+    private function validateProhibited(string $field, $value): void
+    {
+        if ($this->hasValue($field)) {
+            $this->addError($field, 'prohibited');
+        }
+    }
+
+    /**
+     * Prohibited if validation
+     */
+    private function validateProhibitedIf(string $field, $value, array $params): void
+    {
+        if (count($params) < 2) {
+            return;
+        }
+
+        $otherField = $params[0];
+        $otherValues = array_slice($params, 1);
+        $actualValue = $this->getValue($otherField);
+
+        if (in_array((string) $actualValue, $otherValues, true) && $this->hasValue($field)) {
+            $this->addError($field, 'prohibited_if', ['other' => $otherField, 'value' => implode(', ', $otherValues)]);
+        }
+    }
+
+    /**
+     * Prohibited unless validation
+     */
+    private function validateProhibitedUnless(string $field, $value, array $params): void
+    {
+        if (count($params) < 2) {
+            return;
+        }
+
+        $otherField = $params[0];
+        $otherValues = array_slice($params, 1);
+        $actualValue = $this->getValue($otherField);
+
+        if (!in_array((string) $actualValue, $otherValues, true) && $this->hasValue($field)) {
+            $this->addError($field, 'prohibited_unless', ['other' => $otherField, 'value' => implode(', ', $otherValues)]);
+        }
+    }
+
+    /**
+     * Greater than validation (field > other)
+     */
+    private function validateGt(string $field, $value, array $params): void
+    {
+        if (!isset($params[0])) {
+            return;
+        }
+
+        $comparison = $params[0];
+        $otherValue = $this->hasValue($comparison) ? $this->getValue($comparison) : $comparison;
+
+        if (!(is_numeric($value) && is_numeric($otherValue) && $value > $otherValue)) {
+            $this->addError($field, 'gt', ['value' => $otherValue]);
+        }
+    }
+
+    /**
+     * Greater than or equal validation (field >= other)
+     */
+    private function validateGte(string $field, $value, array $params): void
+    {
+        if (!isset($params[0])) {
+            return;
+        }
+
+        $comparison = $params[0];
+        $otherValue = $this->hasValue($comparison) ? $this->getValue($comparison) : $comparison;
+
+        if (!(is_numeric($value) && is_numeric($otherValue) && $value >= $otherValue)) {
+            $this->addError($field, 'gte', ['value' => $otherValue]);
+        }
+    }
+
+    /**
+     * Less than validation (field < other)
+     */
+    private function validateLt(string $field, $value, array $params): void
+    {
+        if (!isset($params[0])) {
+            return;
+        }
+
+        $comparison = $params[0];
+        $otherValue = $this->hasValue($comparison) ? $this->getValue($comparison) : $comparison;
+
+        if (!(is_numeric($value) && is_numeric($otherValue) && $value < $otherValue)) {
+            $this->addError($field, 'lt', ['value' => $otherValue]);
+        }
+    }
+
+    /**
+     * Less than or equal validation (field <= other)
+     */
+    private function validateLte(string $field, $value, array $params): void
+    {
+        if (!isset($params[0])) {
+            return;
+        }
+
+        $comparison = $params[0];
+        $otherValue = $this->hasValue($comparison) ? $this->getValue($comparison) : $comparison;
+
+        if (!(is_numeric($value) && is_numeric($otherValue) && $value <= $otherValue)) {
+            $this->addError($field, 'lte', ['value' => $otherValue]);
+        }
+    }
+
+    /**
+     * Multiple of validation
+     */
+    private function validateMultipleOf(string $field, $value, array $params): void
+    {
+        if (!isset($params[0]) || !is_numeric($value)) {
+            return;
+        }
+
+        $multiple = (float) $params[0];
+
+        if ($multiple == 0 || fmod((float) $value, $multiple) != 0) {
+            $this->addError($field, 'multiple_of', ['value' => $multiple]);
+        }
+    }
+
+    /**
+     * Minimum digits validation
+     */
+    private function validateMinDigits(string $field, $value, array $params): void
+    {
+        if (!isset($params[0]) || !is_numeric($value)) {
+            return;
+        }
+
+        $min = (int) $params[0];
+
+        if (strlen((string) abs((int) $value)) < $min) {
+            $this->addError($field, 'min_digits', ['value' => $min]);
+        }
+    }
+
+    /**
+     * Maximum digits validation
+     */
+    private function validateMaxDigits(string $field, $value, array $params): void
+    {
+        if (!isset($params[0]) || !is_numeric($value)) {
+            return;
+        }
+
+        $max = (int) $params[0];
+
+        if (strlen((string) abs((int) $value)) > $max) {
+            $this->addError($field, 'max_digits', ['value' => $max]);
+        }
+    }
+
+    /**
+     * MAC address validation
+     */
+    private function validateMacAddress(string $field, $value): void
+    {
+        if (!filter_var($value, FILTER_VALIDATE_MAC)) {
+            $this->addError($field, 'mac_address');
+        }
+    }
+
+    /**
+     * ULID validation
+     */
+    private function validateUlid(string $field, $value): void
+    {
+        if (!preg_match('/^[0-7][0-9A-HJKMNP-TV-Z]{25}$/i', (string) $value)) {
+            $this->addError($field, 'ulid');
         }
     }
 }
