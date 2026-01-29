@@ -168,6 +168,54 @@ abstract class PlugResource implements JsonSerializable
     }
 
     /**
+     * Conditionally include an attribute when it exists on the resource
+     * 
+     * @param string $attribute The attribute name
+     * @param mixed $value Optional value/transformation (defaults to attribute value)
+     * @param mixed $default Default value if attribute doesn't exist
+     * @return mixed
+     */
+    protected function whenHas(string $attribute, mixed $value = null, mixed $default = null): mixed
+    {
+        $hasAttribute = false;
+
+        if ($this->resource instanceof PlugModel || is_object($this->resource)) {
+            $hasAttribute = isset($this->resource->$attribute);
+        } elseif (is_array($this->resource)) {
+            $hasAttribute = array_key_exists($attribute, $this->resource);
+        }
+
+        if (!$hasAttribute) {
+            if (func_num_args() >= 3) {
+                return is_callable($default) ? $default() : $default;
+            }
+            return new MissingValue();
+        }
+
+        if (func_num_args() >= 2 && $value !== null) {
+            $attrValue = $this->__get($attribute);
+            return is_callable($value) ? $value($attrValue) : $value;
+        }
+
+        return $this->__get($attribute);
+    }
+
+    /**
+     * Conditionally include a relationship count
+     * 
+     * @param string $relationship The relationship name
+     * @param mixed $value Optional value/transformation
+     * @param mixed $default Default value if count is missing
+     * @return mixed
+     */
+    protected function whenCount(string $relationship, mixed $value = null, mixed $default = null): mixed
+    {
+        $countKey = "{$relationship}_count";
+
+        return $this->whenHas($countKey, $value, $default);
+    }
+
+    /**
      * Conditionally merge an array of values
      * 
      * @param bool|callable $condition The condition to evaluate

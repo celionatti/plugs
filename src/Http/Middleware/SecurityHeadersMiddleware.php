@@ -19,17 +19,37 @@ use Psr\Http\Server\RequestHandlerInterface;
 
 class SecurityHeadersMiddleware implements MiddlewareInterface
 {
-    private $config = [
-        'X-Frame-Options' => 'SAMEORIGIN',
-        'X-Content-Type-Options' => 'nosniff',
-        'X-XSS-Protection' => '1; mode=block',
-        'Referrer-Policy' => 'strict-origin-when-cross-origin',
-        'Permissions-Policy' => 'geolocation=(), microphone=(), camera=()',
-    ];
+    private $config = [];
 
     public function __construct(array $config = [])
     {
-        $this->config = array_merge($this->config, $config);
+        $this->config = array_merge(config('security.headers', []), $config);
+
+        // Add CSP if enabled in config
+        if (config('security.csp.enabled', false)) {
+            $this->config['Content-Security-Policy'] = $this->buildCspHeader();
+        }
+
+        // Add HSTS if not already present
+        if (!isset($this->config['Strict-Transport-Security'])) {
+            $this->config['Strict-Transport-Security'] = 'max-age=31536000; includeSubDomains; preload';
+        }
+    }
+
+    private function buildCspHeader(): string
+    {
+        $cspConfig = config('security.csp', []);
+        $directives = [];
+
+        foreach ($cspConfig as $key => $values) {
+            if ($key === 'enabled' || !is_array($values)) {
+                continue;
+            }
+
+            $directives[] = $key . ' ' . implode(' ', $values);
+        }
+
+        return implode('; ', $directives);
     }
 
     public function process(ServerRequestInterface $request, RequestHandlerInterface $handler): ResponseInterface

@@ -125,6 +125,12 @@ trait HasAttributes
     {
         $castType = $this->casts[$key];
 
+        // Handle custom cast classes
+        if (is_string($castType) && class_exists($castType) && is_subclass_of($castType, \Plugs\Database\Contracts\CastsAttributes::class)) {
+            $caster = new $castType();
+            return $caster->set($this, $key, $value, $this->attributes);
+        }
+
         switch ($castType) {
             case 'array':
             case 'json':
@@ -182,6 +188,12 @@ trait HasAttributes
         }
 
         $castType = $this->casts[$key];
+
+        // Handle custom cast classes
+        if (is_string($castType) && class_exists($castType) && is_subclass_of($castType, \Plugs\Database\Contracts\CastsAttributes::class)) {
+            $caster = new $castType();
+            return $caster->get($this, $key, $value, $this->attributes);
+        }
 
         // Handle null values based on cast type
         if ($value === null) {

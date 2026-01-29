@@ -32,7 +32,17 @@ class Logger extends AbstractLogger
         $this->validateLevel($level);
 
         $message = $this->interpolate((string) $message, $context);
-        $formatted = $this->format($level, $message, $context);
+
+        if (config('logging.format') === 'json') {
+            $formatted = json_encode([
+                'timestamp' => date('Y-m-d H:i:s'),
+                'level' => strtoupper($level),
+                'message' => $message,
+                'context' => $context
+            ]) . PHP_EOL;
+        } else {
+            $formatted = $this->format($level, $message, $context);
+        }
 
         file_put_contents($this->logPath, $formatted, FILE_APPEND | LOCK_EX);
     }

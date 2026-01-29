@@ -209,6 +209,16 @@ class Router
     }
 
     /**
+     * Register an array of API resources.
+     */
+    public function apiResources(array $resources): void
+    {
+        foreach ($resources as $name => $controller) {
+            $this->apiResource($name, $controller);
+        }
+    }
+
+    /**
      * Route grouping
      */
     public function group(array $attributes, callable $callback): void
@@ -828,10 +838,15 @@ class Router
             return null;
         }
 
+        $typeName = $type->getName();
+
+        // Handle Backed Enums
+        if (enum_exists($typeName) && method_exists($typeName, 'tryFrom')) {
+            return $typeName::tryFrom($value) ?? $value;
+        }
+
         // Built-in type casting
         if ($type->isBuiltin()) {
-            $typeName = $type->getName();
-
             switch ($typeName) {
                 case 'int':
                     if ($value === '' || $value === null) {

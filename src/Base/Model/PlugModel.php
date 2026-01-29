@@ -108,7 +108,9 @@ abstract class PlugModel
 
     protected static function getTableName(): string
     {
-        return (new static())->getTable();
+        return strtolower(
+            preg_replace('/([a-z])([A-Z])/', '$1_$2', class_basename(static::class))
+        ) . 's';
     }
 
     protected function sanitizeColumnName(string $column): string
