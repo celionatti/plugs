@@ -64,10 +64,11 @@ Explore our comprehensive guides to learn more about the Plugs Framework:
 -   [**Routing**](docs/the-basics/routing.md)
 -   [**Views & Components**](docs/the-basics/views.md)
 -   [**Database & ORM**](docs/database/getting-started.md)
--   [**Security Shield**](docs/security/security-shield.md)
+-   [**Security & Headers**](docs/security/security-headers.md)
 -   [**Inertia / SPA Mode**](docs/advanced/inertia-spa.md)
+-   [**Health & Monitoring**](docs/features/health-checks.md)
+-   [**Testing & Assertions**](docs/testing.md)
 -   [**CLI Tool**](docs/advanced/cli-commands.md)
--   [**Pagination**](docs/features/pagination.md)
 
 ## 🤝 Contributing
 

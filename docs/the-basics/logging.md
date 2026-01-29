@@ -38,4 +38,19 @@ Log::info('Hello {name}', ['name' => 'John']);
 
 ## Configuration
 
-Log files are stored in `storage/logs/plugs.log`.
+The logger stores files in `storage/logs/plugs.log`. You can configure the log format in your `.env` file or environment:
+
+```env
+LOG_FORMAT=json
+```
+
+### Structured JSON Logging
+
+When the log format is set to `json`, the framework will output logs as single-line JSON objects, which are ideal for centralized logging systems like ELK, Datadog, or AWS CloudWatch.
+
+**Example Output:**
+```json
+{"timestamp":"2026-01-29 12:00:00","level":"INFO","message":"User 123 logged in","context":{"user_id":123}}
+```
+
+This format makes it much easier to query and aggregate logs across multiple distributed servers.

@@ -34,6 +34,7 @@ Welcome to the official documentation for the **Plugs** framework. Plugs is a li
 - [Debugging & Performance](file:///docs/the-basics/debugging.md)
 - [Filesystem Storage](file:///docs/the-basics/storage.md)
 - [Flash Messages](file:///docs/features/flash-messages.md)
+- [Health Checks](file:///docs/features/health-checks.md) (New)
 - [Testing](file:///docs/testing.md)
 - [Factories & Seeders](file:///docs/database/factories-seeders.md)
 
@@ -47,6 +48,7 @@ Welcome to the official documentation for the **Plugs** framework. Plugs is a li
 ### 🛡️ Security
 - [Authentication](file:///docs/security/authentication.md)
 - [CSRF Protection](file:///docs/security/csrf-protection.md)
+- [Security Headers](file:///docs/security/security-headers.md) (New)
 - [Security Shield](file:///docs/security/security-shield.md)
 
 ### ⚡ Advanced Features

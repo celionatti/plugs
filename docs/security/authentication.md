@@ -59,3 +59,39 @@ $router->get('/dashboard', [DashboardController::class, 'index'])
 ```
 
 Unauthenticated users will be redirected to `/login` or receive a 401 response for JSON requests.
+
+## API Token Authentication
+
+For lightweight API authentication (similar to Laravel Sanctum), you can use the `HasApiTokens` trait in your User model.
+
+### Setup
+
+```php
+use Plugs\Security\Auth\Traits\HasApiTokens;
+
+class User implements Authenticatable
+{
+    use HasApiTokens;
+}
+```
+
+### Issuing Tokens
+
+You can issue a token for a user using the `createToken` method:
+
+```php
+public function login(Request $request)
+{
+    $user = User::where('email', $request->email)->first();
+
+    if ($user && Hash::check($request->password, $user->password)) {
+        $token = $user->createToken('my-app-token');
+
+        return response()->json(['token' => $token]);
+    }
+}
+```
+
+### Authenticating API Requests
+
+The framework automatically looks for a `Bearer` token in the `Authorization` header. You can then access the authenticated user via `Auth::user()` as usual.

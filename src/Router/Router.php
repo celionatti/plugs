@@ -574,12 +574,12 @@ class Router
     {
         $response = null;
 
-        // Handle array format [Controller::class, 'method']
-        if (is_array($handler) && count($handler) === 2) {
+        // Handle array format [Controller::class, 'method'] or [Controller::class]
+        if (is_array($handler) && (count($handler) === 2 || count($handler) === 1)) {
             $response = $this->executeControllerAction($handler, $request);
         }
-        // Handle string format "Controller@method"
-        elseif (is_string($handler) && strpos($handler, '@') !== false) {
+        // Handle string format "Controller@method" or "Controller" (invokable)
+        elseif (is_string($handler)) {
             $response = $this->executeControllerAction($handler, $request);
         }
         // Handle callables
@@ -621,11 +621,17 @@ class Router
      */
     private function executeControllerAction($handler, ServerRequestInterface $request)
     {
-        // Handle both string "Controller@method" and array [Controller::class, 'method'] formats
+        // Handle both string "Controller@method" / "Controller" and array formats
         if (is_string($handler)) {
-            [$controller, $method] = explode('@', $handler, 2);
-        } elseif (is_array($handler) && count($handler) === 2) {
-            [$controller, $method] = $handler;
+            if (strpos($handler, '@') !== false) {
+                [$controller, $method] = explode('@', $handler, 2);
+            } else {
+                $controller = $handler;
+                $method = '__invoke';
+            }
+        } elseif (is_array($handler)) {
+            $controller = $handler[0];
+            $method = $handler[1] ?? '__invoke';
         } else {
             throw new RuntimeException('Invalid controller action format');
         }

@@ -37,8 +37,40 @@ To run your tests, you may use the `vendor/bin/phpunit` command:
 vendor/bin/phpunit
 ```
 
-Alternatively, if you have defined the `test` script in your `composer.json`, you can run:
-
+Alternative ways to run tests:
 ```bash
-composer test
+./vendor/bin/phpunit --testdox
 ```
+
+## HTTP Testing
+
+Plugs provides a fluent API for making HTTP requests to your application and examining the output.
+
+### Fluent Assertions
+
+The `TestResponse` class allows you to chain assertions for a clear and readable testing style.
+
+```php
+public function test_api_endpoint(): void
+{
+    $response = $this->get('/api/users');
+
+    $response->assertStatus(200)
+             ->assertHeader('Content-Type', 'application/json')
+             ->assertJson([
+                 'success' => true
+             ]);
+}
+```
+
+#### Available Assertions
+
+| Method | Description |
+|--------|-------------|
+| `assertStatus($code)` | Assert the response has the given status code. |
+| `assertOk()` | Assert the response has a 200 status code. |
+| `assertJson($data)` | Assert the response contains the given JSON data. |
+| `assertHeader($name, $value)` | Assert the response has the given header. |
+| `assertRedirect($uri)` | Assert the response is a redirect to the given URI. |
+
+This fluent interface makes it significantly faster to build robust integration test suites for your APIs and web pages.

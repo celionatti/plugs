@@ -30,6 +30,8 @@ if (config('security.profiler.enabled', false)) {
 
 $router->post('/plugs/component/action', [\Plugs\View\ReactiveController::class, 'handle']);
 
+$router->get('/plugs/up', [\Plugs\Http\Controllers\HealthController::class]);
+
 $router->get('/reactive-test', function () {
     return view('reactive_test');
 });
