@@ -23,6 +23,7 @@ Welcome to the official documentation for the **Plugs** framework. Plugs is a li
 
 ### 🧩 The Basics
 - [Routing](file:///docs/the-basics/routing.md)
+- [Route Model Binding](file:///docs/the-basics/route-model-binding.md) (New)
 - [Controllers](file:///docs/the-basics/controllers.md)
 - [Requests & Responses](file:///docs/the-basics/requests.md)
 - [API Responses](file:///docs/the-basics/api-responses.md)
@@ -41,14 +42,16 @@ Welcome to the official documentation for the **Plugs** framework. Plugs is a li
 ### 🗄️ Database
 - [Getting Started](file:///docs/database/getting-started.md)
 - [Query Builder](file:///docs/database/query-builder.md)
+- [Query Filtering](file:///docs/database/query-filtering.md) (New)
 - [Migrations](file:///docs/database/migrations.md)
 - [Models](file:///docs/database/models.md)
 - [Factories & Seeders](file:///docs/database/factories-seeders.md)
 
 ### 🛡️ Security
 - [Authentication](file:///docs/security/authentication.md)
+- [Validation](file:///docs/security/validation.md) (New)
 - [CSRF Protection](file:///docs/security/csrf-protection.md)
-- [Security Headers](file:///docs/security/security-headers.md) (New)
+- [Security Headers](file:///docs/security/security-headers.md)
 - [Security Shield](file:///docs/security/security-shield.md)
 
 ### ⚡ Advanced Features

@@ -155,3 +155,49 @@ DB::table('users')
 ```php
 DB::table('users')->where('votes', '>', 100)->delete();
 ```
+
+## Relationship Queries (whereHas)
+
+Query records based on the existence of related records:
+
+```php
+// Get all posts that have at least one comment
+$posts = Post::query()
+    ->whereHas('comments')
+    ->get();
+
+// Get all posts with approved comments
+$posts = Post::query()
+    ->whereHas('comments', function($query) {
+        $query->where('approved', true);
+    })
+    ->get();
+
+// With OR condition
+$posts = Post::query()
+    ->whereHas('comments')
+    ->orWhereHas('likes')
+    ->get();
+```
+
+## Raw Expressions
+
+For complex queries requiring raw SQL:
+
+```php
+use Plugs\Database\Raw;
+
+// Column-to-column comparison
+$users = DB::table('users')
+    ->where('views', '>', new Raw('likes * 2'))
+    ->get();
+
+// In calculations
+$users = DB::table('users')
+    ->where('balance', '>', new Raw('credit_limit - used_credit'))
+    ->get();
+```
+
+## Query Filtering
+
+For advanced filtering from request parameters, see the [Query Filtering](query-filtering.md) documentation.
