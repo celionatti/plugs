@@ -16,29 +16,81 @@ The new migration will be placed in your `database/migrations` directory.
 
 A migration class contains two methods: `up` and `down`. The `up` method is used to add new tables, columns, or indexes to your database, while the `down` method should reverse the operations performed by the `up` method.
 
+Plugs uses anonymous classes for migrations by default:
+
 ```php
+<?php
+
+declare(strict_types=1);
+
 use Plugs\Database\Migration;
 use Plugs\Database\Blueprint;
 use Plugs\Database\Schema;
 
-class CreateUsersTable extends Migration
+return new class extends Migration
 {
+    /**
+     * Run the migrations.
+     */
     public function up(): void
     {
         Schema::create('users', function (Blueprint $table) {
             $table->id();
             $table->string('name');
             $table->string('email')->unique();
+            $table->string('password');
             $table->timestamps();
         });
     }
 
+    /**
+     * Reverse the migrations.
+     */
     public function down(): void
     {
         Schema::dropIfExists('users');
     }
-}
+};
 ```
+
+## Creating Tables & Foreign Keys
+
+Here is an example of creating a `posts` table with a foreign key relationship to the `users` table:
+
+```php
+Schema::create('posts', function (Blueprint $table) {
+    $table->id();
+    $table->unsignedBigInteger('user_id');
+    $table->string('title');
+    $table->text('content');
+    $table->timestamps();
+
+    // Define the foreign key
+    $table->foreign('user_id')
+          ->references('id')
+          ->on('users')
+          ->onDelete('cascade');
+});
+```
+
+## Available Column Types
+
+The `Blueprint` class provides many methods for defining your table's columns:
+
+| Method | Description |
+| --- | --- |
+| `$table->id()` | Auto-incrementing BIGINT (Primary Key) |
+| `$table->string('name', 255)` | VARCHAR column |
+| `$table->text('description')` | TEXT column |
+| `$table->integer('votes')` | INT column |
+| `$table->bigInteger('amount')` | BIGINT column |
+| `$table->decimal('price', 8, 2)` | DECIMAL column |
+| `$table->boolean('is_active')` | BOOLEAN column |
+| `$table->json('options')` | JSON column |
+| `$table->dateTime('published_at')` | DATETIME column |
+| `$table->timestamps()` | created_at and updated_at columns |
+| `$table->softDeletes()` | deleted_at column for soft deletes |
+| `$table->unsignedBigInteger('id')` | Unsigned BIGINT column |
 
 ## Running Migrations
 

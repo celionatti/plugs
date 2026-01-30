@@ -21,20 +21,36 @@ This command creates:
 Open your new migration file and define the products table:
 
 ```php
-public function up(): void
+<?php
+
+declare(strict_types=1);
+
+use Plugs\Database\Migration;
+use Plugs\Database\Blueprint;
+use Plugs\Database\Schema;
+
+return new class extends Migration
 {
-    Schema::create('products', function (Blueprint $table) {
-        $table->id();
-        $table->string('name');
-        $table->string('slug')->unique();
-        $table->text('description')->nullable();
-        $table->decimal('price', 10, 2);
-        $table->integer('stock_quantity');
-        $table->boolean('is_active')->default(true);
-        $table->timestamps();
-        $table->softDeletes();
-    });
-}
+    public function up(): void
+    {
+        Schema::create('products', function (Blueprint $table) {
+            $table->id();
+            $table->string('name');
+            $table->string('slug')->unique();
+            $table->text('description')->nullable();
+            $table->decimal('price', 10, 2);
+            $table->integer('stock_quantity');
+            $table->boolean('is_active')->default(true);
+            $table->timestamps();
+            $table->softDeletes();
+        });
+    }
+
+    public function down(): void
+    {
+        Schema::dropIfExists('products');
+    }
+};
 ```
 
 Run the migration:
