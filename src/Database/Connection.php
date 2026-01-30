@@ -782,7 +782,10 @@ class Connection
         $this->transactions--;
 
         if ($this->transactions === 0) {
-            return $this->pdo->commit();
+            if ($this->pdo && $this->pdo->inTransaction()) {
+                return $this->pdo->commit();
+            }
+            return false;
         }
 
         $this->pdo->exec("RELEASE SAVEPOINT trans{$this->transactions}");
@@ -798,7 +801,10 @@ class Connection
         $this->transactions--;
 
         if ($this->transactions === 0) {
-            return $this->pdo->rollBack();
+            if ($this->pdo && $this->pdo->inTransaction()) {
+                return $this->pdo->rollBack();
+            }
+            return false;
         }
 
         $this->pdo->exec("ROLLBACK TO SAVEPOINT trans{$this->transactions}");
@@ -930,7 +936,7 @@ class Connection
      */
     public function enableQueryLog(): void
     {
-        $this->loggingQueries = true;
+        self::$loggingQueries = true;
     }
 
     /**
@@ -938,7 +944,7 @@ class Connection
      */
     public function disableQueryLog(): void
     {
-        $this->loggingQueries = false;
+        self::$loggingQueries = false;
     }
 
     /**
@@ -946,7 +952,7 @@ class Connection
      */
     public function getQueryLog(): array
     {
-        return $this->queryLog;
+        return self::$queryLog;
     }
 
     /**
@@ -954,7 +960,7 @@ class Connection
      */
     public function clearQueryLog(): void
     {
-        $this->queryLog = [];
+        self::$queryLog = [];
     }
 
     /**
