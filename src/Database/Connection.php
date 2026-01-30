@@ -59,6 +59,7 @@ class Connection
     private $sticky = false;
     private $lastWriteTimestamp = 0;
     private static $auditLogPath = 'storage/logs/security_audit.log';
+    private $isConnecting = false;
 
     /**
      * The number of active transactions.
@@ -76,20 +77,35 @@ class Connection
         // Connection deferred until first query (Lazy Loading)
     }
 
+    public function __destruct()
+    {
+        $this->disconnect();
+    }
+
     private function connect(array $config): void
     {
-        // Handle Read/Write Splitting
-        if (isset($config['read']) || isset($config['write'])) {
-            $this->pdo = $this->createPdo(array_merge($config, $config['write'] ?? []));
-            $this->readPdo = $this->createPdo(array_merge($config, $config['read'] ?? []));
-        } else {
-            $this->pdo = $this->createPdo($config);
-            $this->readPdo = &$this->pdo;
+        if ($this->isConnecting) {
+            return;
         }
 
-        $this->lastActivityTime = time();
-        $this->isHealthy = true;
-        $this->connectionAttempts = 0;
+        $this->isConnecting = true;
+
+        try {
+            // Handle Read/Write Splitting
+            if (isset($config['read']) || isset($config['write'])) {
+                $this->pdo = $this->createPdo(array_merge($config, $config['write'] ?? []));
+                $this->readPdo = $this->createPdo(array_merge($config, $config['read'] ?? []));
+            } else {
+                $this->pdo = $this->createPdo($config);
+                $this->readPdo = &$this->pdo;
+            }
+
+            $this->lastActivityTime = time();
+            $this->isHealthy = true;
+            $this->connectionAttempts = 0;
+        } finally {
+            $this->isConnecting = false;
+        }
     }
 
     private function createPdo(array $config): PDO
@@ -677,11 +693,19 @@ class Connection
     public function disconnect(): void
     {
         $this->pdo = null;
+        $this->readPdo = null;
         $this->isHealthy = false;
+        $this->isConnecting = false;
     }
 
     private function isConnectionError(PDOException $e): bool
     {
+        // 08004 is "Too many connections", we don't want to retry/reconnect on this
+        // as it will likely fail again and increase the connection count.
+        if ($e->getCode() === '08004') {
+            return false;
+        }
+
         $connectionErrors = ['HY000', '2006', '2013', '08S01'];
 
         return in_array($e->getCode(), $connectionErrors, true);
