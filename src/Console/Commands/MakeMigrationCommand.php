@@ -95,7 +95,7 @@ use Plugs\Database\Migration;
 use Plugs\Database\Blueprint;
 use Plugs\Database\Schema;
 
-class {$className} extends Migration
+return new class extends Migration
 {
     /**
      * Run the migrations.
@@ -115,7 +115,7 @@ class {$className} extends Migration
     {
         Schema::dropIfExists('{$tableName}');
     }
-}
+};
 PHP;
     }
 

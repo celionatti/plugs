@@ -768,63 +768,73 @@ STUB;
     private function getMigrationTemplate(): string
     {
         return <<<'STUB'
-        <?php
+<?php
 
-        declare(strict_types=1);
+declare(strict_types=1);
 
-        use Plugs\Database\Migration;
-        use Plugs\Database\Schema\Blueprint;
-        use Plugs\Database\Schema\Schema;
+use Plugs\Database\Migration;
+use Plugs\Database\Blueprint;
+use Plugs\Database\Schema;
 
-        return new class extends Migration
-        {
-            public function up(): void
-            {
-                Schema::create('{{table}}', function (Blueprint $table) {
-        {{fields}}
-                });
-            }
+return new class extends Migration
+{
+    /**
+     * Run the migrations.
+     */
+    public function up(): void
+    {
+        Schema::create('{{table}}', function (Blueprint $table) {
+{{fields}}
+        });
+    }
 
-            public function down(): void
-            {
-                Schema::dropIfExists('{{table}}');
-            }
-        };
-
-        STUB;
+    /**
+     * Reverse the migrations.
+     */
+    public function down(): void
+    {
+        Schema::dropIfExists('{{table}}');
+    }
+};
+STUB;
     }
 
     private function getPivotMigrationTemplate(): string
     {
         return <<<'STUB'
-        <?php
+<?php
 
-        declare(strict_types=1);
+declare(strict_types=1);
 
-        use Plugs\Database\Migration;
-        use Plugs\Database\Schema\Blueprint;
-        use Plugs\Database\Schema\Schema;
+use Plugs\Database\Migration;
+use Plugs\Database\Blueprint;
+use Plugs\Database\Schema;
 
-        return new class extends Migration
-        {
-            public function up(): void
-            {
-                Schema::create('{{table}}', function (Blueprint $table) {
-                    $table->foreignId('first_id')->constrained()->onDelete('cascade');
-                    $table->foreignId('second_id')->constrained()->onDelete('cascade');
-                    $table->timestamps();
-                    
-                    $table->primary(['first_id', 'second_id']);
-                });
-            }
+return new class extends Migration
+{
+    /**
+     * Run the migrations.
+     */
+    public function up(): void
+    {
+        Schema::create('{{table}}', function (Blueprint $table) {
+            $table->foreignId('first_id')->constrained()->onDelete('cascade');
+            $table->foreignId('second_id')->constrained()->onDelete('cascade');
+            $table->timestamps();
+            
+            $table->primary(['first_id', 'second_id']);
+        });
+    }
 
-            public function down(): void
-            {
-                Schema::dropIfExists('{{table}}');
-            }
-        };
-
-        STUB;
+    /**
+     * Reverse the migrations.
+     */
+    public function down(): void
+    {
+        Schema::dropIfExists('{{table}}');
+    }
+};
+STUB;
     }
 
     private function getControllerTemplate(): string

@@ -18,7 +18,17 @@ abstract class Migration
 {
     protected $connection;
 
-    public function __construct(Connection $connection)
+    public function __construct(?Connection $connection = null)
+    {
+        if ($connection) {
+            $this->setConnection($connection);
+        }
+    }
+
+    /**
+     * Set the database connection
+     */
+    public function setConnection(Connection $connection): void
     {
         $this->connection = $connection;
         Schema::setConnection($connection);

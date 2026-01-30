@@ -417,7 +417,12 @@ class MigrationRunner
             throw new \RuntimeException("Migration file not found: {$file}");
         }
 
-        require_once $file;
+        $instance = require_once $file;
+
+        if ($instance instanceof Migration) {
+            $instance->setConnection($this->connection);
+            return $instance;
+        }
 
         $parts = explode('_', $migration);
 
