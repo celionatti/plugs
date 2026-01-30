@@ -151,7 +151,9 @@ class Connection
             } catch (PDOException $e) {
                 // If the error is "Too many connections", fail immediately to avoid load and slowness
                 if ($e->getCode() === '08004') {
-                    throw new \RuntimeException("Database connection failed: Too many connections (SQLSTATE 08004)");
+                    $host = is_array($config['host']) ? implode(',', $config['host']) : ($config['host'] ?? 'unknown');
+                    $db = $config['database'] ?? 'unknown';
+                    throw new \RuntimeException("Database connection failed: Too many connections (SQLSTATE 08004) for [{$host}] database [{$db}]");
                 }
 
                 if ($attempt === $this->maxRetries) {
@@ -736,10 +738,20 @@ class Connection
     // Standard connection method (without pooling)
     public static function getInstance(array|null $config = null, string $connectionName = 'default'): self
     {
-        if (!isset(self::$instances[$connectionName])) {
-            if ($config === null) {
-                $config = self::loadConfigFromFile($connectionName);
+        // Resolve actual connection name if 'default' or provided via config
+        if ($config === null) {
+            $dbConfig = require BASE_PATH . 'config/database.php';
+            if ($connectionName === 'default') {
+                $connectionName = $dbConfig['default'] ?? 'mysql';
             }
+            $config = $dbConfig['connections'][$connectionName] ?? null;
+
+            if ($config === null) {
+                throw new \InvalidArgumentException("Connection [{$connectionName}] not configured.");
+            }
+        }
+
+        if (!isset(self::$instances[$connectionName])) {
             self::$instances[$connectionName] = new self($config, $connectionName);
         } else {
             self::$instances[$connectionName]->ensureConnectionHealth();
