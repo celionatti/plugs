@@ -60,6 +60,7 @@ class Connection
     private $lastWriteTimestamp = 0;
     private static $auditLogPath = 'storage/logs/security_audit.log';
     private $isConnecting = false;
+    private $lastHealthCheckAt = 0;
 
     /**
      * The number of active transactions.
@@ -93,8 +94,17 @@ class Connection
         try {
             // Handle Read/Write Splitting
             if (isset($config['read']) || isset($config['write'])) {
-                $this->pdo = $this->createPdo(array_merge($config, $config['write'] ?? []));
-                $this->readPdo = $this->createPdo(array_merge($config, $config['read'] ?? []));
+                $writeConfig = array_merge($config, $config['write'] ?? []);
+                $readConfig = array_merge($config, $config['read'] ?? []);
+
+                $this->pdo = $this->createPdo($writeConfig);
+
+                // If read and write configs are identical, share the connection
+                if ($writeConfig === $readConfig) {
+                    $this->readPdo = &$this->pdo;
+                } else {
+                    $this->readPdo = $this->createPdo($readConfig);
+                }
             } else {
                 $this->pdo = $this->createPdo($config);
                 $this->readPdo = &$this->pdo;
@@ -139,6 +149,11 @@ class Connection
 
                 return $pdo;
             } catch (PDOException $e) {
+                // If the error is "Too many connections", fail immediately to avoid load and slowness
+                if ($e->getCode() === '08004') {
+                    throw new \RuntimeException("Database connection failed: Too many connections (SQLSTATE 08004)");
+                }
+
                 if ($attempt === $this->maxRetries) {
                     $this->auditLog("Connection failure for [{$this->connectionName}]: " . $e->getMessage(), 'CRITICAL');
                     throw new \RuntimeException("Database connection failed: " . $e->getMessage());
@@ -654,6 +669,11 @@ class Connection
             return;
         }
 
+        // Only check health once every 30 seconds to improve performance
+        if ((time() - $this->lastHealthCheckAt) < 30) {
+            return;
+        }
+
         $maxIdleTime = self::$config[$this->connectionName]['max_idle_time'] ?? 3600;
 
         if ((time() - $this->lastActivityTime) > $maxIdleTime) {
@@ -665,6 +685,8 @@ class Connection
         if (!$this->ping()) {
             $this->reconnect();
         }
+
+        $this->lastHealthCheckAt = time();
     }
 
     public function ping(): bool
