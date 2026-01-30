@@ -16,7 +16,8 @@ use Plugs\Console\Commands\MakeConnectorCommand;
 use Plugs\Console\Commands\MakeControllerCommand;
 use Plugs\Console\Commands\MakeDTOCommand;
 use Plugs\Console\Commands\MakeMiddlewareCommand;
-use Plugs\Console\Commands\MakeResourceCommand;
+use Plugs\Console\Commands\MakeMigrationCommand;
+use Plugs\Console\Commands\MakeRequestCommand;
 use Plugs\Console\Commands\MakeServiceCommand;
 use Plugs\Console\Commands\MakeFactoryCommand;
 use Plugs\Console\Commands\MakeSeederCommand;
@@ -134,7 +135,6 @@ class ConsoleKernel
             'make:command',
             'make:middleware',
             'make:provider',
-            'make:migration',
             'make:migration',
             'make:request',
             'make:service',
