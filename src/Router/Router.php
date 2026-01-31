@@ -516,12 +516,37 @@ class Router
             return $this->dispatchRoute($route, $request, $path);
         }
 
+        // Check if the path matches any other method (Method Not Allowed)
+        $allowedMethods = [];
+        foreach ($this->routes as $m => $mRoutes) {
+            if ($m === $method)
+                continue;
+            foreach ($mRoutes as $route) {
+                if ($route->matches($m, $path)) {
+                    $allowedMethods[] = $m;
+                    break;
+                }
+            }
+        }
+
+        if (!empty($allowedMethods)) {
+            $this->currentRoute = null; // No matched route
+            // We don't throw here to stay compatible with current 'return null' behavior for middleware chain
+            // but the RoutingMiddleware or Plugs::run can handle the null.
+            // Actually, for better exception handling, let's throw if no fallback.
+        }
+
         // Try fallback route if no match found
         if ($this->fallbackRoute !== null) {
             return $this->dispatchRoute($this->fallbackRoute, $request, $path);
         }
 
-        return null;
+        // If we found allowed methods but no match for current method
+        if (!empty($allowedMethods)) {
+            throw new \Plugs\Exceptions\MethodNotAllowedException($allowedMethods);
+        }
+
+        return null; // Will trigger RouteNotFoundException in fallback handler or caller
     }
 
     /**

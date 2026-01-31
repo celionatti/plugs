@@ -25,6 +25,7 @@ class Plugs
 {
     private $dispatcher;
     private $fallbackHandler;
+    private $container;
 
     /**
      * The bootstrappers for the application.
@@ -61,12 +62,14 @@ class Plugs
         $this->dispatcher->add(new \Plugs\Http\Middleware\ShareErrorsFromSession()); // Errors middleware
 
         $this->fallbackHandler = function (ServerRequestInterface $request) {
-            $body = new Stream(fopen('php://temp', 'w+'));
-            $body->write('Not Found');
-            $body->rewind();
-
-            return new Response(404, $body, ['Content-Type' => 'text/plain']);
+            throw new \Plugs\Exceptions\RouteNotFoundException();
         };
+
+        // Register Exception Handler
+        $this->container = \Plugs\Container\Container::getInstance();
+        $this->container->singleton(\Plugs\Exceptions\Handler::class, function ($container) {
+            return new \Plugs\Exceptions\Handler($container);
+        });
     }
 
     /**
@@ -233,11 +236,17 @@ class Plugs
     {
         $request = $request ?? $this->createServerRequest();
 
-        // Set the fallback handler before handling the request
-        $this->dispatcher->setFallbackHandler($this->fallbackHandler);
+        try {
+            // Set the fallback handler before handling the request
+            $this->dispatcher->setFallbackHandler($this->fallbackHandler);
 
-        $response = $this->dispatcher->handle($request);
-        $this->emitResponse($response);
+            $response = $this->dispatcher->handle($request);
+            $this->emitResponse($response);
+        } catch (\Throwable $e) {
+            $handler = $this->container->make(\Plugs\Exceptions\Handler::class);
+            $response = $handler->handle($e, $request);
+            $this->emitResponse($response);
+        }
     }
 
     private function createServerRequest(): ServerRequestInterface

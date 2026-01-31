@@ -148,12 +148,17 @@ class Connection
                 if ($e->getCode() === '08004') {
                     $host = is_array($config['host']) ? implode(',', $config['host']) : ($config['host'] ?? 'unknown');
                     $db = $config['database'] ?? 'unknown';
-                    throw new \RuntimeException("Database connection failed: Too many connections (SQLSTATE 08004) for [{$host}] database [{$db}]");
+                    throw new \Plugs\Exceptions\DatabaseException(
+                        "Database connection failed: Too many connections (SQLSTATE 08004) for [{$host}] database [{$db}]",
+                        null,
+                        [],
+                        $e
+                    );
                 }
 
                 if ($attempt === $this->maxRetries) {
                     $this->auditLog("Connection failure for [{$this->connectionName}]: " . $e->getMessage(), 'CRITICAL');
-                    throw new \RuntimeException("Database connection failed: " . $e->getMessage());
+                    throw \Plugs\Exceptions\DatabaseException::fromPDOException($e);
                 }
                 usleep(100000 * $attempt);
             }

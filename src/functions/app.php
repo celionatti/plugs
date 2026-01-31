@@ -343,7 +343,7 @@ if (!function_exists('storage')) {
 if (!function_exists('abort')) {
     function abort(int $code, string $message = ''): void
     {
-        throw new \RuntimeException($message ?: "HTTP {$code}", $code);
+        throw new \Plugs\Exceptions\HttpException($code, $message ?: "HTTP Error {$code}");
     }
 }
 

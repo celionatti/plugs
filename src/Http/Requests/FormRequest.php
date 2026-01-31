@@ -54,11 +54,11 @@ abstract class FormRequest
     public function validateInternal(): void
     {
         if (!$this->authorize()) {
-            throw new \RuntimeException("This action is unauthorized.", 403);
+            throw new \Plugs\Exceptions\AuthorizationException("This action is unauthorized.");
         }
 
         if (!$this->validate()) {
-            throw new \Plugs\Http\Exceptions\ValidationException($this->errors(), $this->request);
+            throw new \Plugs\Exceptions\ValidationException($this->errors()->toArray());
         }
     }
 

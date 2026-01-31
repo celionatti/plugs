@@ -176,6 +176,7 @@ class Handler
             $e instanceof AuthenticationException => $this->renderAuthenticationException($request, $e),
             $e instanceof AuthorizationException => $this->renderAuthorizationException($request, $e),
             $e instanceof ModelNotFoundException => $this->renderModelNotFoundException($request, $e),
+            $e instanceof MethodNotAllowedException => $this->renderHttpException($request, $e),
             $e instanceof RouteNotFoundException => $this->renderRouteNotFoundException($request, $e),
             $e instanceof HttpException => $this->renderHttpException($request, $e),
             default => $this->renderGenericException($request, $e),
