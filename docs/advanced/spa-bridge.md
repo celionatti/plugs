@@ -15,6 +15,32 @@ The **SPA Bridge** is a progressive enhancement layer that turns your multi-page
 
 ---
 
+## Installation & Generation
+
+To use the SPA Bridge, you first need to generate the bridge JavaScript file. Plugs provides a dedicated CLI command for this:
+
+```bash
+php theplugs make:spa-asset
+```
+
+This command creates `public/plugs/plugs-spa.js`. You can also generate a minified version:
+
+```bash
+php theplugs make:spa-asset --min
+```
+
+### Loading the Script
+
+Include the generated script in your layout's `<head>`:
+
+```html
+<script src="/plugs/plugs-spa.js"></script>
+<!-- Or minified version -->
+<script src="/plugs/plugs-spa.min.js"></script>
+```
+
+---
+
 ## Inline View Controllers
 
 With **Inline View Controllers**, you can define `mount` and `unmount` logic directly in your PHP view files. This keeps your JavaScript co-located with your PHP logic.

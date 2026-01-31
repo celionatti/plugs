@@ -77,6 +77,22 @@ php theplugs make:middleware AuthMiddleware
 php theplugs make:migration create_posts_table
 php theplugs make:pdf-template invoice
 php theplugs make:pagination-template tailwind
+php theplugs make:spa-asset --min  # Generate SPA bridge with minification
+```
+
+### SPA Bridge (New)
+
+Generate the Plugs SPA Bridge asset for your application:
+
+```bash
+php theplugs make:spa-asset
+```
+
+**Options:**
+- `--min`: Create a minified version (`plugs-spa.min.js`).
+- `--force`: Overwrite existing files.
+
+**Alias:** `g:spa`
 ```
 
 ### PDF Templates
