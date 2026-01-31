@@ -725,7 +725,7 @@ class Connection
             return false;
         }
 
-        $connectionErrors = ['HY000', '2006', '2013', '08S01'];
+        $connectionErrors = ['2006', '2013', '08S01'];
 
         return in_array($e->getCode(), $connectionErrors, true);
     }
@@ -811,12 +811,12 @@ class Connection
 
     public function lastInsertId(): string
     {
-        return $this->pdo->lastInsertId();
+        return $this->getPdo()->lastInsertId();
     }
 
     public function beginTransaction(): bool
     {
-        $this->ensureConnectionHealth();
+        $this->getPdo(); // Ensure connection exists
 
         if ($this->transactions === 0) {
             $result = $this->pdo->beginTransaction();

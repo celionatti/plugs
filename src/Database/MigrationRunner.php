@@ -342,7 +342,119 @@ class MigrationRunner
 
         $ran = array_column($ranMigrations, 'migration');
 
-        return array_values(array_diff($allMigrations, $ran));
+        return $this->sortMigrationsByDependency(array_values(array_diff($allMigrations, $ran)));
+    }
+
+    /**
+     * Sort migrations based on foreign key dependencies
+     */
+    private function sortMigrationsByDependency(array $migrations): array
+    {
+        $tableCreators = []; // Map: tableName => migrationName
+        $dependencies = [];  // Map: migrationName => [dependentTableNames]
+
+        // Step 1: Analyze all migrations to find what they create and what they need
+        foreach ($migrations as $migration) {
+            $file = $this->migrationPath . '/' . $migration . '.php';
+            if (!file_exists($file)) {
+                continue;
+            }
+
+            $content = file_get_contents($file);
+
+            // detecting table creation: Schema::create('users', ...)
+            if (preg_match("/Schema::create\s*\(\s*['\"](\w+)['\"]/", $content, $matches)) {
+                $tableCreators[$matches[1]] = $migration;
+            }
+
+            // detecting dependencies: ->on('users') or Schema::table('users')
+            $neededTables = [];
+
+            // Foreign keys: ->on('users')
+            if (preg_match_all("/->on\s*\(\s*['\"](\w+)['\"]\)/", $content, $matches)) {
+                $neededTables = array_merge($neededTables, $matches[1]);
+            }
+
+            // Table modification: Schema::table('users') - implies user table must exist
+            if (preg_match("/Schema::table\s*\(\s*['\"](\w+)['\"]/", $content, $matches)) {
+                $neededTables[] = $matches[1];
+            }
+
+            $dependencies[$migration] = array_unique($neededTables);
+        }
+
+        // Step 2: Build the graph
+        // Nodes are migrations. Edge A -> B means A must run before B.
+        // If B depends on Table T, and A creates Table T, then A -> B.
+        $graph = []; // adjacency list: migration => [next_migrations] (dependents)
+        $inDegree = []; // migration => count (how many deps not yet met)
+
+        foreach ($migrations as $m) {
+            $graph[$m] = [];
+            $inDegree[$m] = 0;
+        }
+
+        foreach ($migrations as $migration) {
+            $needs = $dependencies[$migration] ?? [];
+            foreach ($needs as $table) {
+                if (isset($tableCreators[$table])) {
+                    $creator = $tableCreators[$table];
+                    if ($creator !== $migration) {
+                        // Dependencies might be on migrations NOT in the pending list (already ran).
+                        // If creator is not in $migrations list, we ignore it (assumed satisfied).
+                        if (in_array($creator, $migrations)) {
+                            if (!in_array($migration, $graph[$creator])) {
+                                $graph[$creator][] = $migration;
+                                $inDegree[$migration]++;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        // Step 3: Topological Sort (Kahn's Algorithm)
+        $queue = [];
+        // Initialize queue with nodes having in-degree 0 (no dependencies)
+        foreach ($migrations as $m) {
+            // Tie-breaking: if generic in-degree is 0, sort by name to be deterministic
+            // We'll sort the queue later or just rely on initial order
+            if ($inDegree[$m] === 0) {
+                $queue[] = $m;
+            }
+        }
+
+        // For deterministic output, usually better to use a priority queue or sort input
+        sort($queue);
+
+        $sorted = [];
+        while (!empty($queue)) {
+            $current = array_shift($queue);
+            $sorted[] = $current;
+
+            if (isset($graph[$current])) {
+                foreach ($graph[$current] as $neighbor) {
+                    $inDegree[$neighbor]--;
+                    if ($inDegree[$neighbor] === 0) {
+                        $queue[] = $neighbor;
+                        sort($queue); // Keep queue sorted for deterministic order
+                    }
+                }
+            }
+        }
+
+        // Check for circular dependencies
+        if (count($sorted) !== count($migrations)) {
+            // Cycle detected or disconnected components behaving oddly.
+            // Fallback: return original order but log warning? 
+            // Or throw error.
+            // For now, let's append remaining items (broken) to end, 
+            // ensuring we return all migrations.
+            $remaining = array_diff($migrations, $sorted);
+            return array_merge($sorted, $remaining);
+        }
+
+        return $sorted;
     }
 
     /**
