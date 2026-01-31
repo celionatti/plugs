@@ -42,6 +42,7 @@ use Plugs\Console\Commands\ServeCommand;
 use Plugs\Console\Commands\StorageLinkCommand;
 
 use Plugs\Console\Commands\MakeSpaAssetCommand;
+use Plugs\Console\Commands\MakeComponentCommand;
 
 /*
 |--------------------------------------------------------------------------
@@ -76,6 +77,7 @@ class ConsoleKernel
         'make:pdf-template' => MakePdfTemplateCommand::class,
         'make:pagination-template' => MakePaginationTemplateCommand::class,
         'make:spa-asset' => MakeSpaAssetCommand::class,
+        'make:component' => MakeComponentCommand::class,
 
         'db:seed' => SeedCommand::class,
 
@@ -122,6 +124,7 @@ class ConsoleKernel
         'g:fact' => 'make:factory',
         'g:seed' => 'make:seeder',
         'g:spa' => 'make:spa-asset',
+        'g:comp' => 'make:component',
         'seed' => 'db:seed',
         'routes' => 'route:list',
         'route:show' => 'route:list',
@@ -156,6 +159,7 @@ class ConsoleKernel
             'make:pdf-template',
             'make:pagination-template',
             'make:spa-asset',
+            'make:component',
         ],
         'Routes' => ['route:list', 'route:cache', 'route:clear', 'route:test'],
         'Utility' => ['serve', 'cache:clear', 'config:cache', 'optimize', 'queue:work', 'health', 'storage:link'],

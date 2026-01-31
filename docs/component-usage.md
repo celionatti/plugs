@@ -2,6 +2,24 @@
 
 Plugs features a powerful component system similar to Blade components in Laravel. Components allow you to split your UI into reusable pieces.
 
+---
+
+## Quick Generation
+
+Use the CLI to quickly generate components:
+
+```bash
+# Simple component (view only)
+php theplugs make:component Name
+
+# Reactive component (class + view)
+php theplugs make:component Name --bolt
+```
+
+**Alias:** `g:comp`
+
+---
+
 ## Creating Components
 
 Components are stored in `resources/views/components`. The file extension can be `.plug.php`, `.php`, or `.html`. The filename determines the component name (snake_case filename becomes PascalCase component name).

@@ -307,7 +307,7 @@ class ViewEngine
             $componentData = array_merge($data, ['slot' => $slot]);
 
             // Check if there's a reactive class for this component
-            $className = "App\\Components\\" . $this->snakeToPascalCase(str_replace('.', '\\', $componentName));
+            $className = "App\\Components\\" . $this->anyToPascalCase(str_replace('.', '\\', $componentName));
 
             if (class_exists($className)) {
                 $component = new $className($componentName, $componentData);
@@ -360,7 +360,7 @@ class ViewEngine
 
             foreach ($files as $file) {
                 $filename = pathinfo($file, PATHINFO_FILENAME);
-                $componentName = $this->snakeToPascalCase($filename);
+                $componentName = $this->anyToPascalCase($filename);
 
                 if (!isset($components[$componentName])) {
                     $components[$componentName] = $file;
@@ -732,38 +732,43 @@ class ViewEngine
 
     private function getComponentPath(string $componentName): string
     {
-        // FIX: Validate component name to prevent path traversal
+        // Validate component name to prevent path traversal
         if (preg_match('/[\.\/\\\\]/', $componentName)) {
             throw new RuntimeException(
                 sprintf('Invalid component name: %s (cannot contain path separators)', $componentName)
             );
         }
 
-        $filename = $this->pascalToSnakeCase($componentName);
+        $kebab = $this->pascalToKebabCase($componentName);
+        $snake = str_replace('-', '_', $kebab);
 
-        foreach (self::VIEW_EXTENSIONS as $extension) {
-            $componentPath = $this->componentPath . DIRECTORY_SEPARATOR . $filename . $extension;
+        $filenames = array_unique([$kebab, $snake]);
 
-            if (file_exists($componentPath)) {
-                // FIX: Additional security check - verify real path is within component directory
-                $realComponentPath = realpath($componentPath);
-                $realBaseComponentPath = realpath($this->componentPath);
+        foreach ($filenames as $filename) {
+            foreach (self::VIEW_EXTENSIONS as $extension) {
+                $componentPath = $this->componentPath . DIRECTORY_SEPARATOR . $filename . $extension;
 
-                if (
-                    $realComponentPath === false ||
-                    $realBaseComponentPath === false ||
-                    strpos($realComponentPath, $realBaseComponentPath) !== 0
-                ) {
-                    throw new RuntimeException(
-                        sprintf('Invalid component path: %s', $componentName)
-                    );
+                if (file_exists($componentPath)) {
+                    // Additional security check - verify real path is within component directory
+                    $realComponentPath = realpath($componentPath);
+                    $realBaseComponentPath = realpath($this->componentPath);
+
+                    if (
+                        $realComponentPath === false ||
+                        $realBaseComponentPath === false ||
+                        strpos($realComponentPath, $realBaseComponentPath) !== 0
+                    ) {
+                        throw new RuntimeException(
+                            sprintf('Invalid component path: %s', $componentName)
+                        );
+                    }
+
+                    return $componentPath;
                 }
-
-                return $componentPath;
             }
         }
 
-        return $this->componentPath . DIRECTORY_SEPARATOR . $filename . self::VIEW_EXTENSIONS[0];
+        return $this->componentPath . DIRECTORY_SEPARATOR . $kebab . self::VIEW_EXTENSIONS[0];
     }
 
     private function getCompiledPath(string $view): string
@@ -780,16 +785,16 @@ class ViewEngine
         );
     }
 
-    public function pascalToSnakeCase(string $input): string
+    public function pascalToKebabCase(string $input): string
     {
-        $result = preg_replace('/([a-z])([A-Z])/', '$1_$2', $input);
+        $result = preg_replace('/([a-z])([A-Z])/', '$1-$2', $input);
 
         return strtolower($result);
     }
 
-    public function snakeToPascalCase(string $input): string
+    public function anyToPascalCase(string $input): string
     {
-        return str_replace('_', '', ucwords($input, '_'));
+        return str_replace(['_', '-'], '', ucwords($input, '_-'));
     }
 
     private function isDebugMode(): bool

@@ -18,6 +18,18 @@ Reactive Components bridge the gap between your server-side PHP logic and the cl
 
 ---
 
+## Quick Generation
+
+You can quickly scaffold a reactive component using the CLI:
+
+```bash
+php theplugs make:component Name --bolt
+```
+
+This will create both the PHP class and the corresponding view file.
+
+---
+
 ## Creating a Component
 
 Reactive components consist of two parts: a **PHP Class** and a **Plug View**.

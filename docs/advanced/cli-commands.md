@@ -78,7 +78,23 @@ php theplugs make:migration create_posts_table
 php theplugs make:pdf-template invoice
 php theplugs make:pagination-template tailwind
 php theplugs make:spa-asset --min  # Generate SPA bridge with minification
+php theplugs make:component MyButton  # Create a simple view component
+php theplugs make:component SearchBar --bolt  # Create a reactive Bolt component
 ```
+
+### View Components (New)
+
+Automate the creation of view components:
+
+```bash
+php theplugs make:component [name]
+```
+
+**Options:**
+- `--bolt, -b`: Create a reactive Bolt component (with PHP class).
+- `--force, -f`: Overwrite existing files.
+
+**Alias:** `g:comp`
 
 ### SPA Bridge (New)
 
