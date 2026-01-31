@@ -55,22 +55,29 @@ return new class extends Migration
 
 ## Creating Tables & Foreign Keys
 
-Here is an example of creating a `posts` table with a foreign key relationship to the `users` table:
+Here is an example of creating a `posts` table with a foreign key relationship to the `users` table. Note the use of the `foreignId` helper for cleaner syntax:
 
 ```php
 Schema::create('posts', function (Blueprint $table) {
     $table->id();
-    $table->unsignedBigInteger('user_id');
+    $table->foreignId('user_id'); // Creates unsigned BIGINT
     $table->string('title');
     $table->text('content');
     $table->timestamps();
 
-    // Define the foreign key
+    // Define the foreign key constraint
     $table->foreign('user_id')
           ->references('id')
           ->on('users')
           ->onDelete('cascade');
 });
+```
+
+You can also use the verbose method if you prefer:
+
+```php
+$table->unsignedBigInteger('user_id');
+$table->foreign('user_id')->references('id')->on('users');
 ```
 
 ## Available Column Types

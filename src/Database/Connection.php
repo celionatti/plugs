@@ -78,11 +78,6 @@ class Connection
         // Connection deferred until first query (Lazy Loading)
     }
 
-    public function __destruct()
-    {
-        $this->disconnect();
-    }
-
     private function connect(array $config): void
     {
         if ($this->isConnecting) {

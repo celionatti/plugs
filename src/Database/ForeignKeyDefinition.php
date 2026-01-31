@@ -113,6 +113,10 @@ class ForeignKeyDefinition
      */
     public function toSql(): string
     {
+        if (empty($this->referenceTable) || empty($this->referenceColumns)) {
+            throw new \RuntimeException("Foreign key constraint '{$this->name}' is incomplete. Missing 'references' or 'on' clause.");
+        }
+
         $columns = implode('`, `', $this->columns);
         $refColumns = implode('`, `', $this->referenceColumns);
 

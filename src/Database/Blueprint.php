@@ -176,6 +176,14 @@ class Blueprint
     }
 
     /**
+     * Create a foreign key ID column (alias for unsignedBigInteger)
+     */
+    public function foreignId(string $column): ColumnDefinition
+    {
+        return $this->unsignedBigInteger($column);
+    }
+
+    /**
      * Create an unsigned BIGINT column (typically for foreign keys)
      */
     public function unsignedBigInteger(string $column): ColumnDefinition
