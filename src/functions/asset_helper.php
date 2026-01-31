@@ -108,6 +108,36 @@ if (!function_exists('compile_js')) {
     }
 }
 
+if (!function_exists('inline_asset')) {
+    /**
+     * Get asset content as inline string
+     */
+    function inline_asset(string $path): string
+    {
+        return asset_manager()->inline($path);
+    }
+}
+
+if (!function_exists('inline_tag')) {
+    /**
+     * Generate inline tag for asset
+     */
+    function inline_tag(string $path, ?string $type = null): string
+    {
+        return asset_manager()->inlineTag($path, $type);
+    }
+}
+
+if (!function_exists('image')) {
+    /**
+     * Generate an optimized image URL
+     */
+    function image(string $path, array $options = []): string
+    {
+        return asset_manager()->image($path, $options);
+    }
+}
+
 if (!function_exists('clear_asset_cache')) {
     /**
      * Clear asset cache

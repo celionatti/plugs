@@ -26,6 +26,9 @@ class AssetManager
     private array $registeredAssets = [];
     private ?string $cdnUrl = null;
     private bool $useSri = false;
+    private ?string $nonce = null;
+    private bool $precompress = false;
+    private array $imageOptions = [];
 
     public function __construct(
         ?string $publicPath = null,
@@ -203,6 +206,10 @@ class AssetManager
                     $currentAttrs['integrity'] = $integrity;
                     $currentAttrs['crossorigin'] = 'anonymous';
                 }
+            }
+
+            if ($this->nonce) {
+                $currentAttrs['nonce'] = $this->nonce;
             }
 
             $attrStr = $this->buildAttributes($currentAttrs);
@@ -463,6 +470,16 @@ class AssetManager
             throw new \RuntimeException("Failed to write compiled asset: {$filePath}");
         }
 
+        // Pre-compression (Gzip & Brotli)
+        if ($this->precompress) {
+            if (function_exists('gzencode')) {
+                file_put_contents($filePath . '.gz', gzencode($content, 9));
+            }
+            if (function_exists('brotli_compress')) {
+                file_put_contents($filePath . '.br', brotli_compress($content, 11));
+            }
+        }
+
         // Update manifest
         $this->manifest[$name . '.' . $type] = $webPath;
         $this->saveManifest();
@@ -578,6 +595,125 @@ class AssetManager
         $this->useSri = $use;
 
         return $this;
+    }
+
+    /**
+     * Set CSP Nonce
+     */
+    public function setNonce(?string $nonce): self
+    {
+        $this->nonce = $nonce;
+
+        return $this;
+    }
+
+    /**
+     * Get CSP Nonce
+     */
+    public function getNonce(): ?string
+    {
+        return $this->nonce;
+    }
+
+    /**
+     * Set precompression option
+     */
+    public function setPrecompress(bool $precompress): self
+    {
+        $this->precompress = $precompress;
+
+        return $this;
+    }
+
+    /**
+     * Get asset content as inline string
+     */
+    public function inline(string $asset): string
+    {
+        $path = $this->resolvePath($asset);
+        if (!file_exists($path)) {
+            throw new \RuntimeException("Asset file not found for inlining: {$path}");
+        }
+
+        return file_get_contents($path);
+    }
+
+    /**
+     * Generate inline tag for asset
+     */
+    public function inlineTag(string $asset, ?string $type = null): string
+    {
+        $content = $this->inline($asset);
+        $type = $type ?? (str_ends_with($asset, '.css') ? 'css' : 'js');
+
+        $attributes = [];
+        if ($this->nonce) {
+            $attributes['nonce'] = $this->nonce;
+        }
+
+        $attrStr = $this->buildAttributes($attributes);
+
+        if ($type === 'css') {
+            return sprintf('<style%s>%s</style>', $attrStr, $content);
+        }
+
+        return sprintf('<script%s>%s</script>', $attrStr, $content);
+    }
+
+    /**
+     * Generate optimized image URL
+     * 
+     * @param string $path
+     * @param array $options [width, height, quality, format]
+     */
+    public function image(string $path, array $options = []): string
+    {
+        $fullPath = $this->resolvePath($path);
+        if (!file_exists($fullPath)) {
+            return '/' . ltrim($path, '/');
+        }
+
+        if (empty($options)) {
+            return $this->url($path);
+        }
+
+        $extension = pathinfo($fullPath, PATHINFO_EXTENSION);
+        $format = $options['format'] ?? $extension;
+        $hash = substr(md5($fullPath . serialize($options)), 0, 8);
+        $fileName = pathinfo($fullPath, PATHINFO_FILENAME) . "-{$hash}.{$format}";
+        $cachePath = $this->cachePath . 'images' . DIRECTORY_SEPARATOR . $fileName;
+        $webPath = 'assets/cache/images/' . $fileName;
+
+        if (file_exists($cachePath) && filemtime($cachePath) >= filemtime($fullPath)) {
+            return $webPath;
+        }
+
+        $this->ensureDirectoryExists($this->cachePath . 'images');
+
+        $img = new \Plugs\Image\Image();
+        $img->load($fullPath);
+
+        if (isset($options['width']) || isset($options['height'])) {
+            $width = $options['width'] ?? $img->getDimensions()['width'];
+            $height = $options['height'] ?? $img->getDimensions()['height'];
+            $img->resize((int) $width, (int) $height, $options['aspectRatio'] ?? true);
+        }
+
+        if (isset($options['quality'])) {
+            $img->quality((int) $options['quality']);
+        }
+
+        $typeMap = [
+            'jpg' => IMAGETYPE_JPEG,
+            'jpeg' => IMAGETYPE_JPEG,
+            'png' => IMAGETYPE_PNG,
+            'gif' => IMAGETYPE_GIF,
+            'webp' => IMAGETYPE_WEBP,
+        ];
+
+        $img->save($cachePath, $typeMap[strtolower($format)] ?? null);
+
+        return $webPath;
     }
 
     /**
