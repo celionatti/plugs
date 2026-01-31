@@ -275,4 +275,78 @@ class Faker
 
         return null;
     }
+    /**
+     * Generate text with specified character limit
+     */
+    public function text(int $limit = 200): string
+    {
+        $text = $this->paragraph(rand(3, 6));
+
+        if (strlen($text) <= $limit) {
+            return $text;
+        }
+
+        return substr($text, 0, $limit - 3) . '...';
+    }
+
+    /**
+     * Generate a username
+     */
+    public function userName(): string
+    {
+        $formats = [
+            fn() => strtolower($this->firstName()) . rand(1, 999),
+            fn() => strtolower($this->firstName()) . '.' . strtolower($this->lastName()),
+            fn() => strtolower($this->firstName()) . '_' . strtolower($this->lastName()),
+        ];
+
+        return $this->randomElement($formats)();
+    }
+
+    /**
+     * Generate a random URL
+     */
+    public function url(): string
+    {
+        return 'https://' . $this->randomValue(self::$domains) . '/' . $this->slug();
+    }
+
+    /**
+     * Generate a DateTime between two dates
+     */
+    public function dateTimeBetween(string $startDate = '-30 years', string $endDate = 'now', string $format = 'Y-m-d H:i:s'): string
+    {
+        $start = strtotime($startDate);
+        $end = strtotime($endDate);
+
+        $timestamp = rand($start, $end);
+
+        return date($format, $timestamp);
+    }
+
+    /**
+     * Generate a placeholder image URL
+     */
+    public function imageUrl(int $width = 640, int $height = 480, ?string $category = null): string
+    {
+        $url = "https://via.placeholder.com/{$width}x{$height}";
+
+        if ($category) {
+            $url .= "?text=" . urlencode($category);
+        }
+
+        return $url;
+    }
+
+    /**
+     * Generate random HTML content
+     */
+    public function randomHtml(int $count = 3): string
+    {
+        $html = '';
+        for ($i = 0; $i < $count; $i++) {
+            $html .= '<p>' . $this->paragraph(rand(2, 5)) . '</p>';
+        }
+        return $html;
+    }
 }

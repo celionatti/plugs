@@ -176,6 +176,7 @@ The Plugs framework includes a built-in, zero-dependency Faker instance availabl
 - `$this->faker->name()`
 - `$this->faker->firstName()`
 - `$this->faker->lastName()`
+- `$this->faker->userName()`
 - `$this->faker->email()`
 - `$this->faker->unique()->safeEmail()`
 - `$this->faker->company()`
@@ -187,9 +188,34 @@ The Plugs framework includes a built-in, zero-dependency Faker instance availabl
 - `$this->faker->randomFloat(int $decimals, float $min, float $max)`
 - `$this->faker->date()`
 - `$this->faker->dateTime()`
+- `$this->faker->dateTimeBetween(string $startDate, string $endDate)`
 - `$this->faker->word()`
 - `$this->faker->sentence()`
 - `$this->faker->paragraph()`
+- `$this->faker->text(int $limit)`
 - `$this->faker->slug()`
+- `$this->faker->url()`
+- `$this->faker->imageUrl(int $width, int $height, string $category)`
+- `$this->faker->randomHtml(int $count)`
 - `$this->faker->boolean()`
 - `$this->faker->uuid()`
+
+### Blog & Content Generation
+
+For generating content rich applications like a blog, you can use these specialized methods:
+
+```php
+public function definition(): array
+{
+    return [
+        'title' => $this->faker->sentence(),
+        'slug' => $this->faker->slug(),
+        'content' => $this->faker->randomHtml(5), // Generates 5 paragraphs of HTML
+        'excerpt' => $this->faker->text(150), // Truncated text
+        'banner_image' => $this->faker->imageUrl(1200, 600, 'Technology'),
+        'author_username' => $this->faker->userName(),
+        'published_at' => $this->faker->dateTimeBetween('-1 year', 'now'),
+        'source_url' => $this->faker->url(),
+    ];
+}
+```
