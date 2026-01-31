@@ -313,7 +313,7 @@ class AssetManager
                 if ($absolutePath && file_exists($absolutePath)) {
                     $webPath = str_replace($this->publicPath, '/', $absolutePath);
                     $webPath = str_replace('\\', '/', $webPath); // Ensure web path uses forward slashes
-
+    
                     return 'url(' . $webPath . ')';
                 }
 
@@ -342,20 +342,7 @@ class AssetManager
      */
     private function minifyCSS(string $css): string
     {
-        // Remove comments
-        $css = preg_replace('!/\*[^*]*\*+([^/][^*]*\*+)*/!', '', $css);
-        // Remove whitespace
-        $css = preg_replace('/\s+/', ' ', $css);
-        // Remove spaces around special characters
-        $css = preg_replace('/\s*([{}:;,>~+])\s*/', '$1', $css);
-        // Remove trailing semicolons
-        $css = preg_replace('/;}/', '}', $css);
-        // Remove empty rules
-        $css = preg_replace('/[^\}]+\{\s*\}/', '', $css);
-        // Shorten hexadecimal colors
-        $css = preg_replace('/#([a-f0-9])\\1([a-f0-9])\\2([a-f0-9])\\3/i', '#$1$2$3', $css);
-
-        return trim($css);
+        return Minifier::css($css);
     }
 
     /**
@@ -363,21 +350,7 @@ class AssetManager
      */
     private function minifyJS(string $js): string
     {
-        // Basic minification: remove comments and extra whitespace
-        // Note: For production use, a specialized library like terser or uglify-js is recommended
-
-        // Remove single-line comments (safer version)
-        $js = preg_replace('/(?<!:)\/\/(?:(?!http:|https:).)*$/m', '', $js);
-        // Remove multi-line comments
-        $js = preg_replace('!/\*[^*]*\*+([^/][^*]*\*+)*/!', '', $js);
-        // Remove leading/trailing whitespace per line
-        $js = preg_replace('/^\s+|\s+$/m', '', $js);
-        // Replace multiple spaces/newlines with a single space
-        $js = preg_replace('/\s+/', ' ', $js);
-        // Remove spaces around operators
-        $js = preg_replace('/\s*([=+\-*\/%&|^!<>?:,;{}()\[\]])\s*/', '$1', $js);
-
-        return trim($js);
+        return Minifier::js($js);
     }
 
     /**

@@ -6,6 +6,7 @@ namespace Plugs\Console\Commands;
 
 use Plugs\Console\Command;
 use Plugs\Console\Support\Filesystem;
+use Plugs\Utils\Minifier;
 
 class MakeSpaAssetCommand extends Command
 {
@@ -76,18 +77,15 @@ class MakeSpaAssetCommand extends Command
         ];
     }
 
+    /**
+     * Minify JavaScript content
+     * 
+     * @param string $js
+     * @return string
+     */
     private function minify(string $js): string
     {
-        // Remove single line comments
-        $js = preg_replace('/^\\s*\\/\\/.*$/m', '', $js);
-        // Remove block comments
-        $js = preg_replace('/\\/\\*.*?\\*\\//s', '', $js);
-        // Remove whitespace around brackets/operators
-        $js = preg_replace('/\\s*([\\{\\}\\(\\)\\=\\+\\-\\,\\;])\\s*/', '$1', $js);
-        // Collapse whitespace
-        $js = preg_replace('/\\s+/', ' ', $js);
-
-        return trim($js);
+        return Minifier::js($js);
     }
 
     private function getJsContent(): string
