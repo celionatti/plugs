@@ -434,6 +434,40 @@ class Response implements ResponseInterface
     }
 
     /**
+     * Add validation errors to the session
+     *
+     * @param array $errors
+     * @return ResponseInterface
+     */
+    public function withErrors(array $errors): static
+    {
+        if (session_status() === PHP_SESSION_NONE) {
+            session_start();
+        }
+
+        $_SESSION['errors'] = $errors;
+
+        return clone $this;
+    }
+
+    /**
+     * Add input data to the session
+     *
+     * @param array $input
+     * @return ResponseInterface
+     */
+    public function withInput(array $input): static
+    {
+        if (session_status() === PHP_SESSION_NONE) {
+            session_start();
+        }
+
+        $_SESSION['_old_input'] = $input;
+
+        return clone $this;
+    }
+
+    /**
      * Clone the response (deep copy body stream)
      */
     public function __clone()

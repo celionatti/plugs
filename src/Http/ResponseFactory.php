@@ -16,6 +16,7 @@ namespace Plugs\Http;
 
 use Plugs\Http\Message\Response;
 use Plugs\Http\Message\Stream;
+use Plugs\Http\RedirectResponse;
 use Psr\Http\Message\ResponseInterface;
 
 class ResponseFactory
@@ -103,15 +104,15 @@ class ResponseFactory
     /**
      * Create a redirect response
      */
-    public static function redirect(string $url, int $statusCode = 302, array $headers = []): ResponseInterface
+    public static function redirect(string $url, int $statusCode = 302, array $headers = []): RedirectResponse
     {
-        $body = new Stream(fopen('php://temp', 'r'));
+        $redirect = new RedirectResponse($url, $statusCode);
 
-        $headers = array_merge([
-            'Location' => $url,
-        ], $headers);
+        foreach ($headers as $name => $value) {
+            $redirect = $redirect->withHeader($name, $value);
+        }
 
-        return new Response($statusCode, $body, $headers);
+        return $redirect;
     }
 
     /**

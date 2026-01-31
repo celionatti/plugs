@@ -347,6 +347,18 @@ class Validator
             'max_digits' => 'The :attribute must not have more than :value digits.',
             'mac_address' => 'The :attribute must be a valid MAC address.',
             'ulid' => 'The :attribute must be a valid ULID.',
+            'phone' => 'The :attribute must be a valid phone number.',
+            'credit_card' => 'The :attribute must be a valid credit card number.',
+            'hex_color' => 'The :attribute must be a valid hexadecimal color.',
+            'slug' => 'The :attribute must be a valid slug.',
+            'base64' => 'The :attribute must be a valid base64 string.',
+            'ascii' => 'The :attribute must be ASCII characters only.',
+            'filled' => 'The :attribute field must have a value.',
+            'starts_with' => 'The :attribute must start with one of the following: :values.',
+            'ends_with' => 'The :attribute must end with one of the following: :values.',
+            'contains' => 'The :attribute must contain the value: :value.',
+            'lowercase' => 'The :attribute must be lowercase.',
+            'uppercase' => 'The :attribute must be uppercase.',
         ];
 
         return $messages[$rule] ?? "The :attribute is invalid.";
@@ -1338,4 +1350,131 @@ class Validator
             $this->addError($field, 'ulid');
         }
     }
+
+    /**
+     * Phone number validation (international format)
+     */
+    private function validatePhone(string $field, $value): void
+    {
+        if ($value === null || $value === '') {
+            return;
+        }
+
+        // Supports international format: +1234567890 or (123) 456-7890 etc.
+        $pattern = '/^[\+]?[(]?[0-9]{1,4}[)]?[-\s\.]?[(]?[0-9]{1,3}[)]?[-\s\.]?[0-9]{3,4}[-\s\.]?[0-9]{3,4}$/';
+
+        if (!preg_match($pattern, (string) $value)) {
+            $this->addError($field, 'phone');
+        }
+    }
+
+    /**
+     * Credit card number validation (Luhn algorithm)
+     */
+    private function validateCreditCard(string $field, $value): void
+    {
+        if ($value === null || $value === '') {
+            return;
+        }
+
+        // Remove spaces and dashes
+        $number = preg_replace('/[\s-]/', '', (string) $value);
+
+        // Check if it's only digits
+        if (!ctype_digit($number)) {
+            $this->addError($field, 'credit_card');
+            return;
+        }
+
+        // Luhn algorithm
+        $sum = 0;
+        $length = strlen($number);
+        $parity = $length % 2;
+
+        for ($i = 0; $i < $length; $i++) {
+            $digit = (int) $number[$i];
+
+            if ($i % 2 == $parity) {
+                $digit *= 2;
+                if ($digit > 9) {
+                    $digit -= 9;
+                }
+            }
+
+            $sum += $digit;
+        }
+
+        if ($sum % 10 !== 0) {
+            $this->addError($field, 'credit_card');
+        }
+    }
+
+    /**
+     * Hex color validation
+     */
+    private function validateHexColor(string $field, $value): void
+    {
+        if ($value === null || $value === '') {
+            return;
+        }
+
+        $pattern = '/^#?([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/';
+
+        if (!preg_match($pattern, (string) $value)) {
+            $this->addError($field, 'hex_color');
+        }
+    }
+
+    /**
+     * Slug validation (URL-friendly string)
+     */
+    private function validateSlug(string $field, $value): void
+    {
+        if ($value === null || $value === '') {
+            return;
+        }
+
+        if (!preg_match('/^[a-z0-9]+(?:-[a-z0-9]+)*$/', (string) $value)) {
+            $this->addError($field, 'slug');
+        }
+    }
+
+    /**
+     * Base64 validation
+     */
+    private function validateBase64(string $field, $value): void
+    {
+        if ($value === null || $value === '') {
+            return;
+        }
+
+        if (!preg_match('/^[A-Za-z0-9+\/=]+$/', (string) $value) || base64_decode($value, true) === false) {
+            $this->addError($field, 'base64');
+        }
+    }
+
+    /**
+     * ASCII validation
+     */
+    private function validateAscii(string $field, $value): void
+    {
+        if ($value === null || $value === '') {
+            return;
+        }
+
+        if (!preg_match('/^[\x00-\x7F]*$/', (string) $value)) {
+            $this->addError($field, 'ascii');
+        }
+    }
+
+    /**
+     * Filled validation (not empty when present)
+     */
+    private function validateFilled(string $field, $value): void
+    {
+        if ($this->hasValue($field) && ($value === null || $value === '' || $value === [])) {
+            $this->addError($field, 'filled');
+        }
+    }
 }
+

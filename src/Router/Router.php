@@ -64,6 +64,18 @@ class Router
     private bool $pagesRoutingEnabled = false;
 
     /**
+     * Fallback route for unmatched requests.
+     * @var Route|null
+     */
+    private ?Route $fallbackRoute = null;
+
+    /**
+     * Middleware groups (e.g., 'web', 'api').
+     * @var array<string, array>
+     */
+    private array $middlewareGroups = [];
+
+    /**
      * Register route methods
      */
     public function get(string $path, $handler, array $middleware = []): Route
@@ -216,6 +228,77 @@ class Router
         foreach ($resources as $name => $controller) {
             $this->apiResource($name, $controller);
         }
+    }
+
+    /**
+     * Register a fallback route for when no other route matches.
+     *
+     * @param callable|array|string $handler
+     * @return Route
+     */
+    public function fallback($handler): Route
+    {
+        $route = new Route('GET', '/{any:.*}', $handler, [], $this);
+        $this->fallbackRoute = $route;
+        return $route;
+    }
+
+    /**
+     * Get the fallback route.
+     *
+     * @return Route|null
+     */
+    public function getFallbackRoute(): ?Route
+    {
+        return $this->fallbackRoute;
+    }
+
+    /**
+     * Register a middleware group.
+     *
+     * @param string $name
+     * @param array $middleware
+     * @return void
+     */
+    public function middlewareGroup(string $name, array $middleware): void
+    {
+        $this->middlewareGroups[$name] = $middleware;
+    }
+
+    /**
+     * Get middleware from a group.
+     *
+     * @param string $name
+     * @return array
+     */
+    public function getMiddlewareGroup(string $name): array
+    {
+        return $this->middlewareGroups[$name] ?? [];
+    }
+
+    /**
+     * Register routes for a subdomain.
+     *
+     * @param string $subdomain
+     * @param callable $callback
+     * @return void
+     */
+    public function domain(string $domain, callable $callback): void
+    {
+        $this->group(['domain' => $domain], $callback);
+    }
+
+    /**
+     * Register routes for a subdomain with wildcard.
+     *
+     * @param string $subdomain Parameter name for subdomain (e.g., 'account' for {account}.example.com)
+     * @param string $baseDomain The base domain
+     * @param callable $callback
+     * @return void
+     */
+    public function subdomain(string $subdomain, string $baseDomain, callable $callback): void
+    {
+        $this->group(['domain' => "{{$subdomain}}.{$baseDomain}"], $callback);
     }
 
     /**
@@ -431,6 +514,11 @@ class Router
             }
 
             return $this->dispatchRoute($route, $request, $path);
+        }
+
+        // Try fallback route if no match found
+        if ($this->fallbackRoute !== null) {
+            return $this->dispatchRoute($this->fallbackRoute, $request, $path);
         }
 
         return null;
@@ -793,7 +881,7 @@ class Router
                 }
 
                 return $container->make($typeName);
-            } catch (\Plugs\Database\Exception\ModelNotFoundException | \Plugs\Http\Exceptions\ValidationException | \RuntimeException $e) {
+            } catch (\Plugs\Database\Exception\ModelNotFoundException | \Plugs\Http\Exceptions\ValidationException | RuntimeException $e) {
                 // Rethrow these so they can be handled by middleware or global handler
                 throw $e;
             } catch (\Exception $e) {
