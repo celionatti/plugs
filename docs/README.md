@@ -30,7 +30,7 @@ Welcome to the official documentation for the **Plugs** framework. Plugs is a li
 - [API Resources](file:///docs/the-basics/api-resources.md)
 - [Views & Components](file:///docs/the-basics/views.md)
 - [Navigation](file:///docs/the-basics/navigation.md)
-- [Validation](file:///docs/the-basics/validation.md)
+- [Validation](file:///docs/security/validation.md)
 - [Logging](file:///docs/the-basics/logging.md)
 - [Debugging & Performance](file:///docs/the-basics/debugging.md)
 - [Filesystem Storage](file:///docs/the-basics/storage.md)
@@ -53,6 +53,13 @@ Welcome to the official documentation for the **Plugs** framework. Plugs is a li
 - [CSRF Protection](file:///docs/security/csrf-protection.md)
 - [Security Headers](file:///docs/security/security-headers.md)
 - [Security Shield](file:///docs/security/security-shield.md)
+
+### 🏛️ Architecture & Clean Code (New)
+- [Repositories](file:///docs/architecture/repositories.md)
+- [Service Layer](file:///docs/architecture/services.md)
+- [Form Requests](file:///docs/architecture/form-requests.md)
+- [API Resources](file:///docs/architecture/api-resources.md)
+- [Complete CRUD Example](file:///docs/architecture/crud-example.md)
 
 ### ⚡ Advanced Features
 - [Cache System](file:///docs/advanced/cache.md)
