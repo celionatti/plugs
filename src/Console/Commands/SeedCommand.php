@@ -58,7 +58,7 @@ class SeedCommand extends Command
 
         try {
             $connection = Connection::getInstance();
-            $seederPath = getcwd() . '/database/seeders';
+            $seederPath = BASE_PATH . 'database/Seeders';
 
             $runner = new SeederRunner($connection, $seederPath, $this->output);
 

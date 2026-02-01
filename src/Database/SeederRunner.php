@@ -59,7 +59,13 @@ class SeederRunner
         }
 
         if (!class_exists($class)) {
-            throw new \RuntimeException("Seeder class [{$class}] not found.");
+            $msg = "Seeder class [{$class}] not found.";
+            if ($this->output) {
+                $this->output->error($msg);
+                $this->output->info("Search path: " . $this->seederPath);
+                $this->output->info("Is file readable: " . (is_readable($this->seederPath) ? 'Yes' : 'No'));
+            }
+            throw new \RuntimeException($msg);
         }
 
         $seeder = new $class($this->connection, $this->output);
