@@ -664,7 +664,7 @@ PHP;
 
     private function getMigrationPath(string $filename): string
     {
-        return getcwd() . '/database/migrations/' . $filename;
+        return BASE_PATH . 'database/Migrations/' . $filename;
     }
 
     private function getControllerPath(string $name): string
@@ -674,12 +674,12 @@ PHP;
 
     private function getFactoryPath(string $name): string
     {
-        return getcwd() . '/database/factories/' . $name . '.php';
+        return BASE_PATH . 'database/Factories/' . $name . '.php';
     }
 
     private function getSeederPath(string $name): string
     {
-        return getcwd() . '/database/seeders/' . $name . '.php';
+        return BASE_PATH . 'database/Seeders/' . $name . '.php';
     }
 
     private function getDefaultTemplate(string $templateName): string

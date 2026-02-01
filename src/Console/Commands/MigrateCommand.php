@@ -27,13 +27,13 @@ class MigrateCommand extends Command
 
         try {
             $connection = Connection::getInstance();
-            $migrationPath = getcwd() . '/database/migrations';
+            $migrationPath = BASE_PATH . 'database/Migrations';
 
             $runner = new MigrationRunner($connection, $migrationPath);
 
             $this->section('Migration Summary');
             $this->keyValue('Database', $connection->getName());
-            $this->keyValue('Path', str_replace(getcwd() . '/', '', $migrationPath));
+            $this->keyValue('Path', str_replace(BASE_PATH, '', $migrationPath));
             $this->newLine();
 
             if (!$this->confirm('Run pending migrations?', true)) {

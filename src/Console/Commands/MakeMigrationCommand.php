@@ -122,7 +122,7 @@ PHP;
     private function getMigrationPath(string $filename): string
     {
         // Base directory for migrations
-        $basePath = getcwd() . '/database/migrations';
+        $basePath = BASE_PATH . 'database/Migrations';
 
         // Ensure directory exists
         if (!is_dir($basePath)) {

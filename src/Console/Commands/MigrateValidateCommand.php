@@ -27,7 +27,7 @@ class MigrateValidateCommand extends Command
 
         try {
             $connection = Connection::getInstance();
-            $migrationPath = getcwd() . '/database/migrations';
+            $migrationPath = BASE_PATH . 'database/Migrations';
 
             $runner = new MigrationRunner($connection, $migrationPath);
             $status = $runner->status();

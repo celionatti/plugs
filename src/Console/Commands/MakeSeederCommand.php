@@ -48,11 +48,11 @@ class MakeSeederCommand extends Command
             $name .= 'Seeder';
         }
 
-        $path = getcwd() . '/database/seeders/' . $name . '.php';
+        $path = BASE_PATH . 'database/Seeders/' . $name . '.php';
 
         $this->section('Configuration Summary');
         $this->keyValue('Seeder Name', $name);
-        $this->keyValue('Target Path', str_replace(getcwd() . '/', '', $path));
+        $this->keyValue('Target Path', str_replace(BASE_PATH, '', $path));
         $this->newLine();
 
         if (Filesystem::exists($path) && !$this->isForce()) {
@@ -84,7 +84,7 @@ class MakeSeederCommand extends Command
 
         $this->section('Next Steps');
         $this->bulletList([
-            "Edit the run logic in: database/seeders/{$name}.php",
+            "Edit the run logic in: database/Seeders/{$name}.php",
             "Call it from DatabaseSeeder or run directly: php theplugs db:seed --class={$name}",
         ]);
         $this->newLine();

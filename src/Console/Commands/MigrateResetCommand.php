@@ -33,7 +33,7 @@ class MigrateResetCommand extends Command
 
         try {
             $connection = Connection::getInstance();
-            $migrationPath = getcwd() . '/database/migrations';
+            $migrationPath = BASE_PATH . 'database/Migrations';
 
             $runner = new MigrationRunner($connection, $migrationPath);
             $result = $runner->reset();

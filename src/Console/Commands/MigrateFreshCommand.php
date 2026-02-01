@@ -58,7 +58,7 @@ class MigrateFreshCommand extends Command
             $this->info('Re-running all migrations...');
 
             $connection = Connection::getInstance();
-            $migrationPath = getcwd() . '/database/migrations';
+            $migrationPath = BASE_PATH . 'database/Migrations';
 
             $runner = new MigrationRunner($connection, $migrationPath);
             $result = $runner->run();
