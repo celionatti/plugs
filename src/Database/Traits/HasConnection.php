@@ -11,7 +11,7 @@ use Plugs\Database\Connection;
 
 trait HasConnection
 {
-    protected static $connection;
+    protected static $storedConnection;
     protected static $connectionName = 'default';
 
     /**
@@ -19,7 +19,7 @@ trait HasConnection
      */
     public static function setConnection(array $config): void
     {
-        static::$connection = $config;
+        static::$storedConnection = $config;
     }
 
     /**
@@ -27,6 +27,10 @@ trait HasConnection
      */
     public function getConnectionName(): string
     {
+        if (isset($this->connection) && is_string($this->connection)) {
+            return $this->connection;
+        }
+
         return static::$connectionName;
     }
 
@@ -40,15 +44,15 @@ trait HasConnection
 
     protected static function getConnection(): PDO
     {
-        if (static::$connection instanceof PDO) {
-            return static::$connection;
+        if (static::$storedConnection instanceof PDO) {
+            return static::$storedConnection;
         }
 
-        if (is_array(static::$connection)) {
-            $connection = Connection::getInstance(static::$connection, static::$connectionName);
-            static::$connection = $connection->getPdo();
+        if (is_array(static::$storedConnection)) {
+            $connection = Connection::getInstance(static::$storedConnection, static::$connectionName);
+            static::$storedConnection = $connection->getPdo();
 
-            return static::$connection;
+            return static::$storedConnection;
         }
 
         $connection = Connection::getInstance(null, static::$connectionName);

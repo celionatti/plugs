@@ -62,6 +62,14 @@ class SeedCommand extends Command
 
             $runner = new SeederRunner($connection, $seederPath, $this->output);
 
+            // Check if class exists or file exists before running
+            if (!$this->option('class') && !class_exists("Database\\Seeders\\{$class}") && !file_exists($seederPath . "/{$class}.php")) {
+                $this->warning("Default seeder [{$class}] not found.");
+                $this->info("You can create it using: php theplugs make:seeder DatabaseSeeder");
+                $this->info("Or run a specific seeder using: php theplugs db:seed --class=YourSeeder");
+                return 0;
+            }
+
             $result = $runner->run($class);
 
             $this->checkpoint('finished');
