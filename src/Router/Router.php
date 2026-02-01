@@ -756,6 +756,19 @@ class Router
         $container = Container::getInstance();
         $instance = $container->make($controller);
 
+        // Initialize Plugs Base Controller if applicable
+        if ($instance instanceof \Plugs\Base\Controller\Controller) {
+            $instance->initialize(
+                $container->make(\Plugs\View\ViewEngine::class),
+                $container->bound('db') ? $container->make('db') : null
+            );
+        }
+
+        // Call onConstruct hook if it exists
+        if (method_exists($instance, 'onConstruct')) {
+            $container->call([$instance, 'onConstruct']);
+        }
+
         if (!method_exists($instance, $method)) {
             throw new RuntimeException(
                 "Method [{$method}] not found in controller [{$controller}]"

@@ -30,7 +30,18 @@ abstract class Controller
     protected ?Connection $db;
     protected ?ServerRequestInterface $currentRequest = null;
 
-    public function __construct(ViewEngine $view, ?Connection $db = null)
+    public function __construct()
+    {
+        // Constructor is now empty to allow child controllers to define their own
+        // without always needing to call parent::__construct() if they don't want to.
+        // Initialization is now handled by the initialize() method called by the Router.
+    }
+
+    /**
+     * Initialize the controller with framework dependencies.
+     * This is called by the Router after instantiation.
+     */
+    public function initialize(ViewEngine $view, ?Connection $db = null): void
     {
         $this->view = $view;
         $this->db = $db;
@@ -46,8 +57,6 @@ abstract class Controller
 
         // Make old() helper available globally
         $this->shareOldInputHelper();
-
-        $this->onConstruct();
     }
 
     /**
