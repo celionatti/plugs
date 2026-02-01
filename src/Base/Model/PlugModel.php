@@ -68,7 +68,7 @@ abstract class PlugModel
         }
 
         if (!$this->table) {
-            $this->table = $this->getTableName();
+            $this->table = static::getTable();
         }
 
         static::trackModelLoading();
@@ -107,15 +107,20 @@ abstract class PlugModel
      */
     public function getTable(): string
     {
-        return $this->table ?? strtolower(
-            preg_replace('/([a-z])([A-Z])/', '$1_$2', class_basename(static::class))
-        ) . 's';
+        return $this->table ?? static::getTableName();
     }
 
     protected static function getTableName(): string
     {
+        $basename = class_basename(static::class);
+
+        // Handle anonymous classes (e.g. from factories falling back)
+        if (str_contains($basename, '@anonymous') || str_contains($basename, ':')) {
+            return 'anonymous_models';
+        }
+
         return strtolower(
-            preg_replace('/([a-z])([A-Z])/', '$1_$2', class_basename(static::class))
+            preg_replace('/([a-z])([A-Z])/', '$1_$2', $basename)
         ) . 's';
     }
 

@@ -15,9 +15,8 @@ trait HasQueryBuilder
         $connection = Connection::getInstance();
         $builder = new QueryBuilder($connection);
 
-        $table = method_exists(static::class, 'getTableName')
-            ? static::getTableName()
-            : static::getTable();
+        $instance = new static();
+        $table = $instance->getTable();
 
         return $builder->table($table)->setModel(static::class);
     }
