@@ -6,7 +6,8 @@
     "autoload": {
         "psr-4": {
             "Plugs\\": "src/",
-            "App\\": "app/"
+            "App\\": "app/",
+            "Database\\": "database/"
         }
     },
     "autoload-dev": {
