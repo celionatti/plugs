@@ -45,7 +45,7 @@ class UserService
     /**
      * Create a new user with business logic validation.
      */
-    public function registerUser(array $data): array
+    public function registerUser(array $data): User
     {
         return DB::transaction(function () use ($data) {
             // 1. Business Logic: Check if registration is open
@@ -57,13 +57,13 @@ class UserService
             $user = $this->repository->create($data);
 
             // 3. Post-creation logic: Send Welcome Email
-            // Mail::to($user['email'])->send(new WelcomeMail($user));
+            // Mail::to($user->email)->send(new WelcomeMail($user));
 
             return $user;
         });
     }
 
-    public function getUserProfile(int $id): ?array
+    public function getUserProfile(int $id): ?User
     {
         return $this->repository->find($id);
     }

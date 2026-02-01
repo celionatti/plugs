@@ -696,9 +696,9 @@ class MakeControllerCommand extends Command
 
         namespace {{namespace}};
 
-        use Plugs\Http\Request;
+        use Plugs\Http\Requests\FormRequest;
 
-        class {{class}} extends Request
+        class {{class}} extends FormRequest
         {
             public function authorize(): bool
             {

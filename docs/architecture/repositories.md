@@ -19,24 +19,25 @@ You can generate a repository using the `theplugs` CLI:
 php theplugs make:repository UserRepository --model=User --interface
 ```
 
-This command creates two files:
-1. `app/Repositories/UserRepositoryInterface.php`
-2. `app/Repositories/UserRepository.php`
+This command creates three files if they don't exist:
+1. `app/Repositories/BaseRepository.php`
+2. `app/Repositories/Interfaces/UserRepositoryInterface.php`
+3. `app/Repositories/UserRepository/UserRepository.php`
 
 ---
 
 ## 🛠️ Repository Interface
 
-The interface defines the contract that the repository must follow. This is crucial for dependency injection and mocking.
+The interface defines the contract that the repository must follow. All interfaces are located in the `Interfaces` subfolder.
 
 ```php
-namespace App\Repositories;
+namespace App\Repositories\Interfaces;
 
 interface UserRepositoryInterface
 {
-    public function all(): array;
-    public function find(int $id): ?array;
-    public function create(array $data): ?array;
+    public function all(): \Plugs\Database\Collection;
+    public function find(int $id): ?User;
+    public function create(array $data): ?User;
     public function update(int $id, array $data): bool;
     public function delete(int $id): bool;
 }
@@ -46,30 +47,30 @@ interface UserRepositoryInterface
 
 ## 📦 Repository Implementation
 
-The implementation interacts with the Plugs ORM or Query Builder.
+The implementation interacts with the Plugs ORM or Query Builder. Each repository implementation is stored in its own subfolder and extends `BaseRepository`.
 
 ```php
-namespace App\Repositories;
+namespace App\Repositories\UserRepository;
 
 use App\Models\User;
+use App\Repositories\BaseRepository;
+use App\Repositories\Interfaces\UserRepositoryInterface;
 
-class UserRepository implements UserRepositoryInterface
+class UserRepository extends BaseRepository implements UserRepositoryInterface
 {
-    public function all(): array
+    public function all(): \Plugs\Database\Collection
     {
-        return User::all()->toArray();
+        return User::all();
     }
 
-    public function find(int $id): ?array
+    public function find(int $id): ?User
     {
-        $user = User::find($id);
-        return $user ? $user->toArray() : null;
+        return User::find($id);
     }
 
-    public function create(array $data): ?array
+    public function create(array $data): ?User
     {
-        $user = User::create($data);
-        return $user ? $user->toArray() : null;
+        return User::create($data);
     }
 
     public function update(int $id, array $data): bool
@@ -94,8 +95,8 @@ In your application's `AppServiceProvider` (usually in `app/Providers`), you sho
 namespace App\Providers;
 
 use Plugs\Support\ServiceProvider;
-use App\Repositories\UserRepositoryInterface;
-use App\Repositories\UserRepository;
+use App\Repositories\Interfaces\UserRepositoryInterface;
+use App\Repositories\UserRepository\UserRepository;
 
 class AppServiceProvider extends ServiceProvider
 {

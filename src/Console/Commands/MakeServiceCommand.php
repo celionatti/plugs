@@ -187,12 +187,15 @@ PHP;
     {
         $strict = $options['strict'] ? "declare(strict_types=1);\n\n" : '';
         $model = $options['model'] ?? 'Model';
+        $imports = $this->buildImports($options);
         $modelVar = Str::camel($model);
 
         return <<<PHP
 <?php
 
 {$strict}namespace App\Services;
+
+{$imports}
 
 /**
  * {$name}
@@ -202,11 +205,11 @@ PHP;
  */
 interface {$name}
 {
-    public function all(): array;
+    public function all(): \Plugs\Database\Collection;
     
-    public function find(int \$id): ?array;
+    public function find(int \$id): ?{$model};
     
-    public function create(array \$data): ?array;
+    public function create(array \$data): ?{$model};
     
     public function update(int \$id, array \$data): bool;
     
@@ -279,7 +282,7 @@ PHP;
             [],
             'Get all records',
             $useRepo ? 'return $this->repository->all();' : '// TODO: Implement retrieval logic',
-            'array'
+            '\Plugs\Database\Collection'
         );
 
         // find() method
@@ -288,7 +291,7 @@ PHP;
             ['int $id'],
             'Find a record by ID',
             $useRepo ? 'return $this->repository->find($id);' : '// TODO: Implement find logic',
-            '?array'
+            "?{$model}"
         );
 
         // create() method
@@ -297,7 +300,7 @@ PHP;
             ['array $data'],
             'Create a new record',
             $useRepo ? 'return $this->repository->create($data);' : '// TODO: Implement create logic',
-            '?array'
+            "?{$model}"
         );
 
         // update() method
