@@ -113,6 +113,9 @@ class Pagination
     public static function fromQuery($query, int $perPage = 15, int $currentPage = 1): self
     {
         $total = $query->count();
+        $lastPage = (int) ceil($total / $perPage);
+        $currentPage = max(1, min($currentPage, max(1, $lastPage)));
+
         $offset = ($currentPage - 1) * $perPage;
         $collection = $query->offset($offset)->limit($perPage)->get();
 
@@ -129,13 +132,13 @@ class Pagination
         // Handle meta structure from PlugModel
         if (isset($paginationData['meta'])) {
             $meta = $paginationData['meta'];
-            $perPage = $meta['per_page'] ?? 15;
-            $currentPage = $meta['current_page'] ?? 1;
-            $total = $meta['total'] ?? (is_countable($data) ? count($data) : 0);
+            $perPage = (int) ($meta['per_page'] ?? 15);
+            $currentPage = (int) ($meta['current_page'] ?? 1);
+            $total = isset($meta['total']) ? (int) $meta['total'] : (is_countable($data) ? count($data) : 0);
         } else {
-            $perPage = $paginationData['per_page'] ?? 15;
-            $currentPage = $paginationData['current_page'] ?? 1;
-            $total = $paginationData['total'] ?? (is_countable($data) ? count($data) : 0);
+            $perPage = (int) ($paginationData['per_page'] ?? 15);
+            $currentPage = (int) ($paginationData['current_page'] ?? 1);
+            $total = isset($paginationData['total']) ? (int) $paginationData['total'] : (is_countable($data) ? count($data) : 0);
         }
 
         return new self($data, $perPage, $currentPage, $total);

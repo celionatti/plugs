@@ -151,6 +151,9 @@ abstract class Model
         $page = max(1, $page);
 
         $total = static::query()->count();
+        $lastPage = (int) ceil($total / $perPage);
+        $page = max(1, min($page, max(1, $lastPage)));
+
         $offset = ($page - 1) * $perPage;
 
         $results = static::query()
@@ -191,7 +194,7 @@ abstract class Model
             array_pop($items);
         }
 
-        $data = array_map(fn ($item) => new static($item), $items);
+        $data = array_map(fn($item) => new static($item), $items);
 
         return [
             'data' => $data,
@@ -286,7 +289,7 @@ abstract class Model
             ->offset($offset)
             ->get();
 
-        $data = array_map(fn ($item) => new static($item), $items);
+        $data = array_map(fn($item) => new static($item), $items);
 
         return [
             'data' => $data,
@@ -294,7 +297,7 @@ abstract class Model
             'per_page' => $perPage,
             'current_page' => $page,
             'last_page' => (int) ceil($total / $perPage),
-            'filters' => array_filter($params, fn ($k) => !in_array($k, ['page', 'per_page']), ARRAY_FILTER_USE_KEY),
+            'filters' => array_filter($params, fn($k) => !in_array($k, ['page', 'per_page']), ARRAY_FILTER_USE_KEY),
         ];
     }
 

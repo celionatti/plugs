@@ -574,9 +574,9 @@ function paginate($data, $perPage = 15, $page = null)
 
     if (is_array($data)) {
         return \Plugs\Paginator\Pagination::fromArray([
-            'data' => array_slice($data, ($page - 1) * $perPage, $perPage),
+            'data' => array_slice($data, ((int) $page - 1) * $perPage, $perPage),
             'per_page' => $perPage,
-            'current_page' => $page,
+            'current_page' => (int) $page,
             'total' => count($data),
         ]);
     }
