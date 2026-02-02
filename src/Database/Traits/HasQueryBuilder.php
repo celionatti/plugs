@@ -237,7 +237,7 @@ trait HasQueryBuilder
             ->offset($offset)
             ->get();
 
-        $data = array_map(fn($item) => new static($item), $items);
+        $data = $items instanceof Collection ? $items->all() : $items;
         $lastPage = (int) ceil($total / $perPage);
 
         // Generate absolute URLs for links
@@ -315,10 +315,14 @@ trait HasQueryBuilder
 
         $hasMore = count($items) > $perPage;
         if ($hasMore) {
-            array_pop($items);
+            if ($items instanceof Collection) {
+                $items = new Collection(array_slice($items->all(), 0, $perPage, true));
+            } else {
+                array_pop($items);
+            }
         }
 
-        $data = array_map(fn($item) => new static($item), $items);
+        $data = $items instanceof Collection ? $items->all() : $items;
 
         // Generate absolute URLs for links
         $baseUrl = function_exists('currentUrl') ? currentUrl(includeQuery: false) : '';
@@ -436,7 +440,7 @@ trait HasQueryBuilder
             ->offset($offset)
             ->get();
 
-        $data = array_map(fn($item) => new static($item), $items);
+        $data = $items instanceof Collection ? $items->all() : $items;
         $lastPage = (int) ceil($total / $perPage);
 
         // Generate absolute URLs for links
