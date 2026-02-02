@@ -43,13 +43,14 @@ class Pagination
         'ellipsis_enabled' => true,
 
         // CSS Classes
-        'container_class' => 'plugs-pagination-container',
-        'pagination_class' => 'plugs-pagination',
-        'link_class' => 'plugs-page-link',
+        'container_class' => 'pagination-container',
+        'pagination_class' => 'pagination',
+        'item_class' => 'page-item',
+        'link_class' => 'page-link',
         'active_class' => 'active',
         'disabled_class' => 'disabled',
-        'info_class' => 'plugs-pagination-info',
-        'ellipsis_class' => 'plugs-page-ellipsis',
+        'info_class' => 'pagination-info',
+        'ellipsis_class' => 'page-ellipsis',
 
         // Text/Icons (SVG Icons for modern look)
         'prev_text' => '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path fill-rule="evenodd" d="M11.354 1.646a.5.5 0 0 1 0 .708L5.707 8l5.647 5.646a.5.5 0 0 1-.708.708l-6-6a.5.5 0 0 1 0-.708l6-6a.5.5 0 0 1 .708 0z"/></svg>',
@@ -156,6 +157,22 @@ class Pagination
     public function setPath(string $path): self
     {
         $this->path = $path;
+
+        return $this;
+    }
+
+    /**
+     * Append CSS classes to specific elements
+     * 
+     * @param array $classes Mapping of key to class string (e.g. ['container_class' => 'my-custom-class'])
+     */
+    public function addClasses(array $classes): self
+    {
+        foreach ($classes as $key => $class) {
+            if (isset($this->options[$key])) {
+                $this->options[$key] .= ' ' . $class;
+            }
+        }
 
         return $this;
     }
@@ -281,24 +298,20 @@ class Pagination
     {
         $maxLinks = $this->options['max_links'];
 
-        if ($this->lastPage <= $maxLinks + 2) {
-            return [
-                'pages' => range(1, $this->lastPage),
-                'show_first_ellipsis' => false,
-                'show_last_ellipsis' => false,
-            ];
-        }
+        // If last page is small, we still want to separate first/last if they are handled manually
+        // But for simplicity, we can just return the middle range
 
         $half = (int) floor($maxLinks / 2);
         $start = max(2, $this->currentPage - $half);
         $end = min($this->lastPage - 1, $start + $maxLinks - 1);
 
-        if ($end - $start < $maxLinks - 1) {
+        // Adjust if we are near the end
+        if ($this->lastPage > 1 && $end - $start < $maxLinks - 1) {
             $start = max(2, $end - $maxLinks + 1);
         }
 
         return [
-            'pages' => range($start, $end),
+            'pages' => $this->lastPage > 2 ? range($start, $end) : [],
             'show_first_ellipsis' => $start > 2,
             'show_last_ellipsis' => $end < $this->lastPage - 1,
         ];
@@ -687,7 +700,8 @@ class Pagination
     {
         $text = $text ?? (string) $page;
         return sprintf(
-            '<li class="plugs-page-item"><a href="%s" class="%s" aria-label="Page %d">%s</a></li>',
+            '<li class="%s"><a href="%s" class="%s" aria-label="Page %d">%s</a></li>',
+            $this->options['item_class'],
             $this->url($page),
             $this->options['link_class'],
             $page,
@@ -698,7 +712,8 @@ class Pagination
     protected function renderActiveLink(int $page): string
     {
         return sprintf(
-            '<li class="plugs-page-item %s"><a href="%s" class="%s" aria-current="page" aria-label="Current page, Page %d">%d</a></li>',
+            '<li class="%s %s"><a href="%s" class="%s" aria-current="page" aria-label="Current page, Page %d">%d</a></li>',
+            $this->options['item_class'],
             $this->options['active_class'],
             $this->url($page),
             $this->options['link_class'],
@@ -713,7 +728,8 @@ class Pagination
 
         if (!$this->hasPreviousPage()) {
             return sprintf(
-                '<li class="plugs-page-item %s"><span class="%s">%s</span></li>',
+                '<li class="%s %s"><span class="%s">%s</span></li>',
+                $this->options['item_class'],
                 $this->options['disabled_class'],
                 $this->options['link_class'],
                 $text
@@ -721,7 +737,8 @@ class Pagination
         }
 
         return sprintf(
-            '<li class="plugs-page-item"><a href="%s" class="%s" rel="prev" aria-label="Previous page">%s</a></li>',
+            '<li class="%s"><a href="%s" class="%s" rel="prev" aria-label="Previous page">%s</a></li>',
+            $this->options['item_class'],
             $this->url($this->previousPage()),
             $this->options['link_class'],
             $text
@@ -734,7 +751,8 @@ class Pagination
 
         if (!$this->hasNextPage()) {
             return sprintf(
-                '<li class="plugs-page-item %s"><span class="%s">%s</span></li>',
+                '<li class="%s %s"><span class="%s">%s</span></li>',
+                $this->options['item_class'],
                 $this->options['disabled_class'],
                 $this->options['link_class'],
                 $text
@@ -742,7 +760,8 @@ class Pagination
         }
 
         return sprintf(
-            '<li class="plugs-page-item"><a href="%s" class="%s" rel="next" aria-label="Next page">%s</a></li>',
+            '<li class="%s"><a href="%s" class="%s" rel="next" aria-label="Next page">%s</a></li>',
+            $this->options['item_class'],
             $this->url($this->nextPage()),
             $this->options['link_class'],
             $text
@@ -770,7 +789,8 @@ class Pagination
     protected function renderEllipsis(): string
     {
         return sprintf(
-            '<li class="plugs-page-item %s"><span class="%s">%s</span></li>',
+            '<li class="%s %s"><span class="%s">%s</span></li>',
+            $this->options['item_class'],
             $this->options['ellipsis_class'],
             $this->options['link_class'],
             $this->options['ellipsis_text']
@@ -852,7 +872,7 @@ class Pagination
     {
         return <<<'CSS'
 <style>
-.plugs-pagination-container {
+.pagination-container {
     display: flex;
     justify-content: space-between;
     align-items: center;
@@ -860,12 +880,12 @@ class Pagination
     font-family: 'Inter', system-ui, -apple-system, sans-serif;
 }
 
-.plugs-pagination-info {
+.pagination-info {
     font-size: 0.875rem;
     color: #6b7280;
 }
 
-.plugs-pagination {
+.pagination {
     display: flex;
     list-style: none;
     padding: 0;
@@ -873,7 +893,7 @@ class Pagination
     gap: 0.25rem;
 }
 
-.plugs-page-link {
+.page-link {
     display: flex;
     align-items: center;
     justify-content: center;
@@ -888,26 +908,26 @@ class Pagination
 }
 
 /* Green Theme */
-.plugs-theme-green .plugs-page-link {
+.plugs-theme-green .page-link {
     color: #2d6a4f;
     background: #f0fdf4;
     border: 1px solid #dcfce7;
 }
 
-.plugs-theme-green .plugs-page-link:hover:not(.disabled) {
+.plugs-theme-green .page-link:hover:not(.disabled) {
     background: #dcfce7;
     border-color: #bbf7d0;
     transform: translateY(-1px);
 }
 
-.plugs-theme-green .active .plugs-page-link {
+.plugs-theme-green .active .page-link {
     background: #2d6a4f;
     color: white;
     border-color: #2d6a4f;
     box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
 }
 
-.plugs-theme-green .disabled .plugs-page-link {
+.plugs-theme-green .disabled .page-link {
     color: #9ca3af;
     background: #f9fafb;
     border-color: #f3f4f6;
@@ -924,7 +944,7 @@ class Pagination
     box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
 }
 
-.plugs-pagination-floating .plugs-pagination-info {
+.plugs-pagination-floating .pagination-info {
     display: none;
 }
 
@@ -952,26 +972,26 @@ class Pagination
 }
 
 /* Animated */
-.plugs-animated .plugs-page-link {
+.plugs-animated .page-link {
     transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275), background-color 0.2s;
 }
 
-.plugs-animated .plugs-page-link:hover:not(.disabled) {
+.plugs-animated .page-link:hover:not(.disabled) {
     transform: scale(1.1);
 }
 
 /* Rounded */
-.plugs-rounded .plugs-page-link {
+.plugs-rounded .page-link {
     border-radius: 9999px;
 }
 
 /* Shadow */
-.plugs-shadow .plugs-pagination {
+.plugs-shadow .pagination {
     filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.05));
 }
 
 /* SVG Icon alignment */
-.plugs-page-link svg {
+.page-link svg {
     display: block;
 }
 </style>
