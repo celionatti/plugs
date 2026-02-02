@@ -15,7 +15,7 @@ namespace Plugs\Base\Controller;
 */
 
 
-use Plugs\Database\Connection;
+use Plugs\Database\DatabaseManager;
 use Plugs\Http\ResponseFactory;
 use Plugs\Security\Validator;
 use Plugs\View\ErrorMessage;
@@ -27,7 +27,7 @@ use RuntimeException;
 abstract class Controller
 {
     protected ViewEngine $view;
-    protected ?Connection $db;
+    protected $db;
     protected ?ServerRequestInterface $currentRequest = null;
 
     public function __construct()
@@ -41,7 +41,7 @@ abstract class Controller
      * Initialize the controller with framework dependencies.
      * This is called by the Router after instantiation.
      */
-    public function initialize(ViewEngine $view, ?Connection $db = null): void
+    public function initialize(ViewEngine $view, $db = null): void
     {
         $this->view = $view;
         $this->db = $db;
@@ -50,7 +50,7 @@ abstract class Controller
         $this->ensureSessionStarted();
 
         // Share common data with views
-        $this->view->share('app_name', config('app.name', 'Plugs Framework'));
+        $this->view->share('app_name', \config('app.name', 'Plugs Framework'));
 
         // Share global errors (always available, empty if no errors)
         $this->shareGlobalErrors();
