@@ -286,7 +286,7 @@ class {$name} extends BaseRepository{$implements}
     /**
      * Get paginated records
      */
-    public function paginate(int \$perPage = 15, int \$page = 1): array
+    public function paginate(int \$perPage = 15, ?int \$page = null): array
     {
         // TODO: Implement paginate() method
         return [
@@ -365,7 +365,7 @@ interface {$name}
     /**
      * Get paginated records
      */
-    public function paginate(int \$perPage = 15, int \$page = 1): array;
+    public function paginate(int \$perPage = 15, ?int \$page = null): array;
 
     /**
      * Count all records
