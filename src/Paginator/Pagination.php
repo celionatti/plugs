@@ -85,12 +85,12 @@ class Pagination
     /**
      * Constructor
      */
-    public function __construct(array|Collection $items, int $perPage = 15, int $currentPage = 1, ?int $total = null)
+    public function __construct(array|Collection $items, int|string $perPage = 15, int|string $currentPage = 1, int|string|null $total = null)
     {
         $this->items = $items instanceof Collection ? $items->all() : $items;
-        $this->perPage = max(1, $perPage);
-        $this->currentPage = max(1, $currentPage);
-        $this->total = $total ?? count($this->items);
+        $this->perPage = max(1, (int) $perPage);
+        $this->currentPage = max(1, (int) $currentPage);
+        $this->total = $total !== null ? (int) $total : count($this->items);
         $this->lastPage = (int) ceil($this->total / $this->perPage);
         $this->currentPage = min($this->currentPage, max(1, $this->lastPage));
 
@@ -110,8 +110,11 @@ class Pagination
     /**
      * Create paginator from PlugModel query
      */
-    public static function fromQuery($query, int $perPage = 15, int $currentPage = 1): self
+    public static function fromQuery($query, int|string $perPage = 15, int|string $currentPage = 1): self
     {
+        $perPage = (int) $perPage;
+        $currentPage = (int) $currentPage;
+
         $total = $query->count();
         $lastPage = (int) ceil($total / $perPage);
         $currentPage = max(1, min($currentPage, max(1, $lastPage)));
@@ -132,13 +135,13 @@ class Pagination
         // Handle meta structure from PlugModel
         if (isset($paginationData['meta'])) {
             $meta = $paginationData['meta'];
-            $perPage = (int) ($meta['per_page'] ?? 15);
-            $currentPage = (int) ($meta['current_page'] ?? 1);
-            $total = isset($meta['total']) ? (int) $meta['total'] : (is_countable($data) ? count($data) : 0);
+            $perPage = $meta['per_page'] ?? 15;
+            $currentPage = $meta['current_page'] ?? 1;
+            $total = $meta['total'] ?? (is_countable($data) ? count($data) : 0);
         } else {
-            $perPage = (int) ($paginationData['per_page'] ?? 15);
-            $currentPage = (int) ($paginationData['current_page'] ?? 1);
-            $total = isset($paginationData['total']) ? (int) $paginationData['total'] : (is_countable($data) ? count($data) : 0);
+            $perPage = $paginationData['per_page'] ?? 15;
+            $currentPage = $paginationData['current_page'] ?? 1;
+            $total = $paginationData['total'] ?? (is_countable($data) ? count($data) : 0);
         }
 
         return new self($data, $perPage, $currentPage, $total);

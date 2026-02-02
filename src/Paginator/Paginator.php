@@ -29,7 +29,7 @@ class Paginator
     /**
      * Constructor
      */
-    public function __construct(array $items, int $perPage = 15, int $currentPage = 1, ?int $total = null)
+    public function __construct(array $items, int|string $perPage = 15, int|string $currentPage = 1, int|string|null $total = null)
     {
         $this->pagination = new Pagination($items, $perPage, $currentPage, $total);
     }
@@ -37,7 +37,7 @@ class Paginator
     /**
      * Create paginator from query builder
      */
-    public static function fromQuery($query, int $perPage = 15, int $currentPage = 1): self
+    public static function fromQuery($query, int|string $perPage = 15, int|string $currentPage = 1): self
     {
         $pagination = Pagination::fromQuery($query, $perPage, $currentPage);
         $instance = new self([], $perPage, $currentPage, $pagination->total());
@@ -48,7 +48,7 @@ class Paginator
     /**
      * Create simple paginator (no total count)
      */
-    public static function simple(array $items, int $perPage = 15, int $currentPage = 1): self
+    public static function simple(array $items, int|string $perPage = 15, int|string $currentPage = 1): self
     {
         $instance = new self($items, $perPage, $currentPage);
         return $instance;
