@@ -315,18 +315,20 @@ function plugs_dump(array $vars, bool $die = false, string $mode = 'default'): v
     echo <<<'JS'
 <script>
     // Tab Switching
-    function switchTab(btn, tabId) {
-        // Remove active class from all buttons and content
-        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-        document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+    function plugsSwitchTab(btn, tabId) {
+        const container = btn.closest('.plugs-debug-wrapper, #plugs-profiler-modal');
+        if (!container) return;
+        
+        container.querySelectorAll('.tab-btn, .plugs-tab-btn').forEach(b => b.classList.remove('active'));
+        container.querySelectorAll('.tab-content, .plugs-tab-content').forEach(c => c.classList.remove('active'));
 
-        // Add active class to clicked button and target content
         btn.classList.add('active');
-        document.getElementById(tabId).classList.add('active');
+        const target = container.querySelector('#' + tabId);
+        if (target) target.classList.add('active');
     }
 
     // Toggle collapsible variable view
-    function toggleVar(header) {
+    function plugsToggleVar(header) {
         const body = header.nextElementSibling;
         const isCollapsed = body.style.display === 'none';
         body.style.display = isCollapsed ? 'block' : 'none';
@@ -334,10 +336,9 @@ function plugs_dump(array $vars, bool $die = false, string $mode = 'default'): v
     }
 
     // Global toggle (Expand/Collapse All)
-    function toggleAll(expand) {
+    function plugsToggleAll(expand) {
         document.querySelectorAll('.plugs-var-body').forEach(body => {
-            // Only toggle visible tabs
-            if (body.closest('.plugs-tab-content.active')) {
+            if (body.closest('.plugs-tab-content.active, .plugs-debug-content')) {
                 body.style.display = expand ? 'block' : 'none';
                 body.previousElementSibling.style.opacity = expand ? '1' : '0.7';
             }
@@ -345,16 +346,19 @@ function plugs_dump(array $vars, bool $die = false, string $mode = 'default'): v
     }
 
     // Search & Filter
-    document.getElementById('debug-search').addEventListener('input', (e) => {
-        const query = e.target.value.toLowerCase();
-        document.querySelectorAll('.plugs-tab-content.active .plugs-var-item').forEach(item => {
-            const text = item.innerText.toLowerCase();
-            item.classList.toggle('hidden', !text.includes(query));
+    const debugSearch = document.getElementById('debug-search');
+    if (debugSearch) {
+        debugSearch.addEventListener('input', (e) => {
+            const query = e.target.value.toLowerCase();
+            document.querySelectorAll('.plugs-tab-content.active .plugs-var-item, .plugs-debug-content .plugs-var-item').forEach(item => {
+                const text = item.innerText.toLowerCase();
+                item.classList.toggle('hidden', !text.includes(query));
+            });
         });
-    });
+    }
 
     // Copy to Clipboard
-    function copyValue(icon) {
+    function plugsCopyValue(icon) {
         const container = icon.parentElement;
         const stringSpan = container.querySelector('.plugs-syntax-string');
         const textToCopy = stringSpan ? stringSpan.getAttribute('data-full-value') : container.innerText.trim();
@@ -369,13 +373,11 @@ function plugs_dump(array $vars, bool $die = false, string $mode = 'default'): v
             }, 1500);
         }).catch(err => {
             console.error('Failed to copy: ', err);
-            icon.innerText = '❌';
-            setTimeout(() => icon.innerText = originalIcon, 1500);
         });
     }
 
     // Secret Masking
-    function revealSecret(el) {
+    function plugsRevealSecret(el) {
         const secret = el.getAttribute('data-secret');
         el.innerText = secret;
         el.classList.remove('plugs-masked-secret');
@@ -386,18 +388,20 @@ function plugs_dump(array $vars, bool $die = false, string $mode = 'default'): v
 
     // Breadcrumbs on hover
     const breadcrumbBar = document.getElementById('breadcrumb-bar');
-    document.addEventListener('mouseover', (e) => {
-        const keySpan = e.target.closest('.plugs-syntax-key');
-        if (keySpan) {
-            const path = keySpan.getAttribute('data-path');
-            if (path) {
-                breadcrumbBar.innerHTML = 'Current Path: <span class="plugs-breadcrumb-item">' + path + '</span>';
-                breadcrumbBar.style.display = 'block';
+    if (breadcrumbBar) {
+        document.addEventListener('mouseover', (e) => {
+            const keySpan = e.target.closest('.plugs-syntax-key');
+            if (keySpan) {
+                const path = keySpan.getAttribute('data-path');
+                if (path) {
+                    breadcrumbBar.innerHTML = 'Current Path: <span class="plugs-breadcrumb-item">' + path + '</span>';
+                    breadcrumbBar.style.display = 'block';
+                }
+            } else if (!e.target.closest('.plugs-breadcrumbs')) {
+                breadcrumbBar.style.display = 'none';
             }
-        } else if (!e.target.closest('.plugs-breadcrumbs')) {
-            breadcrumbBar.style.display = 'none';
-        }
-    });
+        });
+    }
 
     // Handle string truncation toggle
     document.querySelectorAll('.plugs-syntax-string').forEach(span => {
@@ -461,7 +465,8 @@ function plugs_render_styles(bool $scoped = false): string
     @import url("https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Dancing+Script:wght@700&display=swap");
 
     /* Dark Theme (Default) */
-    :root, [data-theme="dark"], .plugs-safe-scope {
+    /* Scoping and Variables */
+    .plugs-debug-wrapper, .plugs-safe-scope, #plugs-profiler-modal {
         --bg-body: #0a0f1d;
         --bg-card: rgba(30, 41, 59, 0.7);
         --border-color: rgba(51, 65, 85, 0.5);
@@ -476,6 +481,16 @@ function plugs_render_styles(bool $scoped = false): string
         --code-bg: #0d1117;
         --glass-bg: rgba(15, 23, 42, 0.6);
         --glow: 0 0 20px rgba(168, 85, 247, 0.15);
+    }
+
+    .plugs-safe-scope .plugs-debug-header::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 2px;
+        background: linear-gradient(90deg, var(--accent-primary), var(--accent-secondary));
     }
 
     /* Light Theme */
@@ -534,9 +549,9 @@ function plugs_render_styles(bool $scoped = false): string
 HTML
         . "\n    body[data-theme=\"{$theme}\"], body.theme-{$theme} { }";
 
-    // If scoped, override :root variables to be scoped
+    // If scoped, override :root and body to be more specific
     if ($scoped) {
-        $css = str_replace([':root', 'body'], '.plugs-safe-scope', $css);
+        $css = str_replace([':root', 'body {'], ['.plugs-safe-scope', '.plugs-debug-wrapper {'], $css);
     }
 
     if (!$scoped) {
@@ -683,13 +698,13 @@ HTML;
         box-shadow: 0 4px 12px rgba(168, 85, 247, 0.3);
     }
 
-    .tab-content {
-        display: none;
+    .plugs-tab-content {
+        display: none !important;
         animation: fadeIn 0.3s ease-out;
     }
 
-    .tab-content.active {
-        display: block;
+    .plugs-tab-content.active {
+        display: block !important;
     }
 
     .search-input {
@@ -996,6 +1011,222 @@ HTML;
     .plugs-debug-wrapper {
         animation: fadeIn 0.4s ease-out;
     }
+    
+    /* Responsive Styles */
+    @media (max-width: 1024px) {
+        .plugs-debug-wrapper {
+            padding: 24px 16px 80px 16px;
+        }
+        
+        .plugs-debug-header {
+            padding: 24px;
+        }
+        
+        .plugs-stats-grid {
+            grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+            gap: 12px;
+        }
+    }
+    
+    @media (max-width: 768px) {
+        .plugs-debug-wrapper {
+            padding: 16px 12px 60px 12px;
+        }
+        
+        .plugs-debug-header {
+            padding: 16px;
+            border-radius: 12px;
+        }
+        
+        .plugs-header-top {
+            flex-direction: column;
+            gap: 16px;
+            align-items: flex-start;
+            margin-bottom: 20px;
+            padding-bottom: 16px;
+        }
+        
+        .plugs-header-controls {
+            width: 100%;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+        
+        .search-input {
+            width: 100%;
+            order: -1;
+        }
+        
+        .plugs-brand {
+            font-size: 1.75rem;
+        }
+        
+        .plugs-stats-grid {
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px;
+        }
+        
+        .plugs-stat-card {
+            padding: 12px;
+        }
+        
+        .plugs-stat-value {
+            font-size: 14px;
+        }
+        
+        .plugs-stat-label {
+            font-size: 9px;
+            margin-bottom: 8px;
+        }
+        
+        .tabs-nav, .plugs-tabs-nav {
+            overflow-x: auto;
+            gap: 4px;
+            padding: 4px;
+            border-radius: 8px;
+            scrollbar-width: none;
+            -ms-overflow-style: none;
+        }
+        
+        .tabs-nav::-webkit-scrollbar, .plugs-tabs-nav::-webkit-scrollbar {
+            display: none;
+        }
+        
+        .tab-btn, .plugs-tab-btn {
+            padding: 8px 14px;
+            font-size: 11px;
+            white-space: nowrap;
+            flex-shrink: 0;
+        }
+        
+        .variables-grid {
+            padding: 16px;
+            gap: 16px;
+        }
+        
+        .var-header {
+            padding: 12px 16px;
+        }
+        
+        .var-body {
+            padding: 16px;
+        }
+        
+        .plugs-code-block {
+            padding: 16px;
+            font-size: 12px;
+            border-radius: 8px;
+        }
+        
+        .info-grid {
+            grid-template-columns: repeat(2, 1fr);
+            gap: 8px;
+            margin-top: 16px;
+            padding-top: 16px;
+        }
+        
+        .info-card {
+            padding: 10px;
+        }
+        
+        .info-label {
+            font-size: 8px;
+        }
+        
+        .info-value {
+            font-size: 12px;
+        }
+        
+        .plugs-global-actions {
+            flex: 1;
+            justify-content: flex-end;
+        }
+        
+        .plugs-action-btn {
+            padding: 6px 10px;
+            font-size: 11px;
+        }
+        
+        .plugs-action-btn span {
+            display: none;
+        }
+        
+        .plugs-status-badge {
+            padding: 6px 12px;
+            font-size: 10px;
+        }
+    }
+    
+    @media (max-width: 480px) {
+        .plugs-debug-wrapper {
+            padding: 12px 8px 50px 8px;
+        }
+        
+        .plugs-debug-header {
+            padding: 12px;
+            border-radius: 8px;
+        }
+        
+        .plugs-brand {
+            font-size: 1.5rem;
+        }
+        
+        .plugs-stats-grid {
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+        }
+        
+        .plugs-stat-card {
+            padding: 10px;
+        }
+        
+        .plugs-stat-value {
+            font-size: 12px;
+        }
+        
+        .var-title span:first-child {
+            display: none;
+        }
+        
+        .var-badges {
+            gap: 4px;
+        }
+        
+        .plugs-badge {
+            padding: 2px 8px;
+            font-size: 10px;
+        }
+        
+        .plugs-code-block {
+            padding: 12px;
+            font-size: 11px;
+        }
+        
+        .info-grid {
+            grid-template-columns: 1fr;
+        }
+        
+        .breadcrumbs {
+            bottom: 44px;
+            padding: 8px 16px;
+            font-size: 11px;
+            max-width: calc(100% - 24px);
+        }
+        
+        .plugs-alert {
+            padding: 12px;
+            font-size: 12px;
+        }
+        
+        .plugs-header-top {
+            gap: 12px;
+        }
+        
+        .search-input {
+            padding: 6px 12px;
+            font-size: 12px;
+        }
+    }
 </style>
 HTML;
 
@@ -1020,8 +1251,8 @@ function plugs_render_header(string $file, $line, int $memoryUsage, int $peakMem
     $html .= '<div class="plugs-header-controls">';
     $html .= '<input type="text" class="search-input" id="debug-search" placeholder="Search variables, keys, values...">';
     $html .= '<div class="plugs-global-actions">';
-    $html .= '<button class="plugs-action-btn" onclick="toggleAll(true)"><span>Expand</span> ⊞</button>';
-    $html .= '<button class="plugs-action-btn" onclick="toggleAll(false)"><span>Collapse</span> ⊟</button>';
+    $html .= '<button class="plugs-action-btn" onclick="plugsToggleAll(true)"><span>Expand</span> ⊞</button>';
+    $html .= '<button class="plugs-action-btn" onclick="plugsToggleAll(false)"><span>Collapse</span> ⊟</button>';
     $html .= '</div>';
     $html .= '<div class="plugs-status-badge">Live Debugging</div>';
     $html .= '</div>';
@@ -1195,7 +1426,7 @@ function plugs_render_queries(array $data): string
         $isSlow = $time > 0.05;
 
         $html .= '<div class="var-item" style="margin-bottom: 16px;">';
-        $html .= '<div class="var-header" onclick="toggleVar(this)">';
+        $html .= '<div class="var-header" onclick="plugsToggleVar(this)">';
         $html .= '<div class="var-title"><span>#' . ($index + 1) . '</span> <code style="color: var(--accent-secondary);">' . substr(htmlspecialchars($query['query']), 0, 60) . (strlen($query['query']) > 60 ? '...' : '') . '</code></div>';
         $html .= '<div class="var-badges">';
         if ($isSlow)
@@ -1355,7 +1586,7 @@ function plugs_render_exception(array $data): string
             $call = $frameClass . $frameType . $frameFunction . '()';
 
             $html .= '<div class="var-item" style="margin-bottom: 8px;">';
-            $html .= '<div class="var-header" onclick="toggleVar(this)">';
+            $html .= '<div class="var-header" onclick="plugsToggleVar(this)">';
             $html .= '<div class="var-title"><span>#' . $index . '</span> <code style="color: var(--accent-secondary);">' . htmlspecialchars($call) . '</code></div>';
             $html .= '<div class="var-badges"><span class="plugs-badge">' . htmlspecialchars(basename($frameFile)) . ':' . $frameLine . '</span></div>';
             $html .= '</div>';
@@ -1520,7 +1751,7 @@ function plugs_render_profile(array $data): string
             $isSlow = $time > 0.05;
 
             $html .= '<div class="var-item" style="margin-bottom: 8px;">';
-            $html .= '<div class="var-header" onclick="toggleVar(this)">';
+            $html .= '<div class="var-header" onclick="plugsToggleVar(this)">';
             $html .= '<div class="var-title"><span>#' . ($index + 1) . '</span> <code style="color: var(--accent-secondary);">' . substr(htmlspecialchars($query['query'] ?? ''), 0, 60) . (strlen($query['query'] ?? '') > 60 ? '...' : '') . '</code></div>';
             $html .= '<div class="var-badges">';
             if ($isSlow)

@@ -60,8 +60,19 @@ class ProfilerBar
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
             margin-right: 8px;
+            white-space: nowrap;
         }
-        #plugs-profiler-bar .pbar-item { display: flex; align-items: center; gap: 6px; }
+        #plugs-profiler-bar .pbar-items {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            overflow-x: auto;
+            flex: 1;
+            scrollbar-width: none;
+            -ms-overflow-style: none;
+        }
+        #plugs-profiler-bar .pbar-items::-webkit-scrollbar { display: none; }
+        #plugs-profiler-bar .pbar-item { display: flex; align-items: center; gap: 6px; white-space: nowrap; flex-shrink: 0; }
         #plugs-profiler-bar .pbar-label { color: #64748b; }
         #plugs-profiler-bar .pbar-value { color: #f8fafc; font-weight: 500; }
         #plugs-profiler-bar .pbar-fast { color: #10b981; }
@@ -82,14 +93,16 @@ class ProfilerBar
             cursor: pointer;
             font-family: inherit;
             font-size: inherit;
+            white-space: nowrap;
         }
         #plugs-profiler-bar .pbar-link:hover { color: #a78bfa; }
         #plugs-profiler-bar .pbar-sep { 
             width: 1px; 
             height: 16px; 
-            background: rgba(255, 255, 255, 0.1); 
+            background: rgba(255, 255, 255, 0.1);
+            flex-shrink: 0;
         }
-        #plugs-profiler-bar .pbar-right { margin-left: auto; display: flex; align-items: center; gap: 16px; }
+        #plugs-profiler-bar .pbar-right { margin-left: auto; display: flex; align-items: center; gap: 12px; flex-shrink: 0; }
         #plugs-profiler-bar .pbar-close {
             background: none;
             border: none;
@@ -110,16 +123,100 @@ class ProfilerBar
             top: 0;
             left: 0;
             right: 0;
-            bottom: 36px; /* Height of bar */
+            bottom: 36px;
             background: rgba(10, 15, 29, 0.95);
             backdrop-filter: blur(10px);
-            z-index: 99998;
+            z-index: 999998;
             overflow-y: auto;
-            padding: 40px;
+            padding: 20px;
         }
         #plugs-profiler-modal.active { display: block; }
-        #plugs-profiler-modal .plugs-debug-wrapper { padding: 0; min-height: auto; max-width: 1400px; }
+        #plugs-profiler-modal .plugs-debug-wrapper { padding: 0; min-height: auto; max-width: 1400px; margin: 0 auto; }
         #plugs-profiler-modal .plugs-debug-header { margin-top: 0; }
+        #plugs-profiler-bar { z-index: 999999 !important; }
+        
+        /* Responsive Styles */
+        @media (max-width: 768px) {
+            #plugs-profiler-bar {
+                padding: 0 12px !important;
+                gap: 12px !important;
+                font-size: 11px !important;
+            }
+            #plugs-profiler-bar .pbar-brand {
+                font-size: 14px;
+            }
+            #plugs-profiler-bar .pbar-label {
+                display: none;
+            }
+            #plugs-profiler-bar .pbar-items {
+                gap: 12px;
+            }
+            #plugs-profiler-bar .pbar-right {
+                gap: 8px;
+            }
+            #plugs-profiler-bar .pbar-link span {
+                display: none;
+            }
+            #plugs-profiler-modal {
+                padding: 12px;
+                bottom: 36px;
+            }
+            #plugs-profiler-modal .plugs-debug-header {
+                padding: 16px !important;
+            }
+            #plugs-profiler-modal .plugs-tabs-nav {
+                flex-wrap: nowrap;
+                overflow-x: auto;
+                gap: 4px;
+                padding: 4px;
+                scrollbar-width: none;
+                -ms-overflow-style: none;
+            }
+            #plugs-profiler-modal .plugs-tabs-nav::-webkit-scrollbar { display: none; }
+            #plugs-profiler-modal .plugs-tab-btn {
+                padding: 8px 12px;
+                font-size: 11px;
+                white-space: nowrap;
+                flex-shrink: 0;
+            }
+            #plugs-profiler-modal .plugs-tab-content {
+                padding: 16px !important;
+            }
+            #plugs-profiler-modal .plugs-stats-grid {
+                grid-template-columns: repeat(2, 1fr) !important;
+                gap: 12px !important;
+            }
+            #plugs-profiler-modal .plugs-stat-card {
+                padding: 12px !important;
+            }
+            #plugs-profiler-modal .plugs-stat-value {
+                font-size: 14px !important;
+            }
+            #plugs-profiler-modal .timeline-row {
+                flex-direction: column !important;
+                gap: 8px !important;
+            }
+            #plugs-profiler-modal .timeline-info {
+                width: 100% !important;
+            }
+        }
+        
+        @media (max-width: 480px) {
+            #plugs-profiler-bar .pbar-sep {
+                display: none;
+            }
+            #plugs-profiler-bar .pbar-items {
+                gap: 8px;
+            }
+            #plugs-profiler-modal .plugs-stats-grid {
+                grid-template-columns: 1fr !important;
+            }
+            #plugs-profiler-modal .plugs-header-top {
+                flex-direction: column !important;
+                gap: 12px !important;
+                text-align: center;
+            }
+        }
         
         @import url("https://fonts.googleapis.com/css2?family=Dancing+Script:wght@700&family=JetBrains+Mono:wght@400;500&display=swap");
     </style>
@@ -128,25 +225,27 @@ class ProfilerBar
     
     <div class="pbar-sep"></div>
     
-    <div class="pbar-item">
-        <span class="pbar-label">Time:</span>
-        <span class="pbar-value ' . $durationClass . '">' . number_format($duration, 2) . ' ms</span>
-    </div>
-    
-    <div class="pbar-item">
-        <span class="pbar-label">Memory:</span>
-        <span class="pbar-value">' . htmlspecialchars($memory) . '</span>
-    </div>
-    
-    <div class="pbar-item">
-        <span class="pbar-label">Queries:</span>
-        <span class="pbar-value">' . $queryCount . '</span>
-        <span class="pbar-label">(' . $queryTime . ' ms)</span>
-    </div>
-    
-    <div class="pbar-item">
-        <span class="pbar-label">Status:</span>
-        <span class="pbar-value ' . $statusClass . '">' . $statusCode . '</span>
+    <div class="pbar-items">
+        <div class="pbar-item">
+            <span class="pbar-label">Time:</span>
+            <span class="pbar-value ' . $durationClass . '">' . number_format($duration, 2) . 'ms</span>
+        </div>
+        
+        <div class="pbar-item">
+            <span class="pbar-label">Memory:</span>
+            <span class="pbar-value">' . htmlspecialchars($memory) . '</span>
+        </div>
+        
+        <div class="pbar-item">
+            <span class="pbar-label">Queries:</span>
+            <span class="pbar-value">' . $queryCount . '</span>
+            <span class="pbar-label">(' . $queryTime . 'ms)</span>
+        </div>
+        
+        <div class="pbar-item">
+            <span class="pbar-label">Status:</span>
+            <span class="pbar-value ' . $statusClass . '">' . $statusCode . '</span>
+        </div>
     </div>
     
     <div class="pbar-right">
@@ -154,7 +253,7 @@ class ProfilerBar
             <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
             </svg>
-            Profiler
+            <span>Profiler</span>
         </button>
         
         <button class="pbar-close" onclick="document.getElementById(\'plugs-profiler-bar\').remove(); document.getElementById(\'plugs-profiler-modal\').remove()" title="Close">
@@ -212,13 +311,13 @@ class ProfilerBar
 
         // Tabs
         echo '<div class="plugs-tabs-nav">';
-        echo '<button class="plugs-tab-btn active" onclick="switchTab(this, \'tab-overview\')">📊 Overview</button>';
-        echo '<button class="plugs-tab-btn" onclick="switchTab(this, \'tab-timeline\')">⏱️ Timeline</button>';
-        echo '<button class="plugs-tab-btn" onclick="switchTab(this, \'tab-queries\')">🔮 Queries (' . count($data['queries']) . ')</button>';
-        echo '<button class="plugs-tab-btn" onclick="switchTab(this, \'tab-request\')">🌐 Request</button>';
-        echo '<button class="plugs-tab-btn" onclick="switchTab(this, \'tab-app\')">🧠 Application</button>';
-        echo '<button class="plugs-tab-btn" onclick="switchTab(this, \'tab-files\')">📂 Files (' . ($profile['files']['count'] ?? 0) . ')</button>';
-        echo '<button class="plugs-tab-btn" onclick="switchTab(this, \'tab-config\')">⚙️ Config</button>';
+        echo '<button class="plugs-tab-btn active" onclick="plugsSwitchTab(this, \'tab-overview\')">📊 Overview</button>';
+        echo '<button class="plugs-tab-btn" onclick="plugsSwitchTab(this, \'tab-timeline\')">⏱️ Timeline</button>';
+        echo '<button class="plugs-tab-btn" onclick="plugsSwitchTab(this, \'tab-queries\')">🔮 Queries (' . count($data['queries']) . ')</button>';
+        echo '<button class="plugs-tab-btn" onclick="plugsSwitchTab(this, \'tab-request\')">🌐 Request</button>';
+        echo '<button class="plugs-tab-btn" onclick="plugsSwitchTab(this, \'tab-app\')">🧠 Application</button>';
+        echo '<button class="plugs-tab-btn" onclick="plugsSwitchTab(this, \'tab-files\')">📂 Files (' . ($profile['files']['count'] ?? 0) . ')</button>';
+        echo '<button class="plugs-tab-btn" onclick="plugsSwitchTab(this, \'tab-config\')">⚙️ Config</button>';
         echo '</div>';
         echo '</div>'; // End Header
 
@@ -301,12 +400,16 @@ class ProfilerBar
         // Add scripts
         echo <<<'JS'
 <script>
-    function switchTab(btn, tabId) {
-        const modal = btn.closest('#plugs-profiler-modal');
-        modal.querySelectorAll('.plugs-tab-btn').forEach(b => b.classList.remove('active'));
-        modal.querySelectorAll('.plugs-tab-content').forEach(c => c.classList.remove('active'));
-        btn.classList.add('active');
-        modal.querySelector('#' + tabId).classList.add('active');
+    if (typeof plugsSwitchTab !== 'function') {
+        function plugsSwitchTab(btn, tabId) {
+            const modal = btn.closest('#plugs-profiler-modal, .plugs-debug-wrapper');
+            if (!modal) return;
+            modal.querySelectorAll('.plugs-tab-btn, .tab-btn').forEach(b => b.classList.remove('active'));
+            modal.querySelectorAll('.plugs-tab-content, .tab-content').forEach(c => c.classList.remove('active'));
+            btn.classList.add('active');
+            const target = modal.querySelector('#' + tabId);
+            if (target) target.classList.add('active');
+        }
     }
 </script>
 JS;
@@ -407,9 +510,9 @@ JS;
             'SAPI' => $profile['php']['sapi'] ?? PHP_SAPI,
             'OS' => PHP_OS,
             'Framework' => 'Plugs Framework',
-            'Environment' => getenv('APP_ENV') ?: 'production',
-            'Debug Mode' => (getenv('APP_DEBUG') ? 'Enabled' : 'Disabled'),
-            'Timezone' => date_default_timezone_get(),
+            'Environment' => config('app.env') ?? env('APP_ENV', 'production'),
+            'Debug Mode' => (config('app.debug') ? 'Enabled' : 'Disabled'),
+            'Timezone' => config('app.timezone') ?? date_default_timezone_get(),
             'Memory Limit' => ini_get('memory_limit'),
         ];
 

@@ -1,321 +1,431 @@
 <!DOCTYPE html>
 <?php /** @var string $childContent */ ?>
-<html lang="en">
+<html lang="en" data-theme="dark">
 
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Plugs Performance Debugger</title>
+    <title>⚡ Plugs Profiler | High-Performance Debugger</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap"
+        rel="stylesheet">
     <style>
         :root {
-            --bg-dark: #0f172a;
-            --bg-card: #1e293b;
+            --bg-deep: #050810;
+            --bg-glass: rgba(15, 23, 42, 0.6);
+            --bg-glass-heavy: rgba(15, 23, 42, 0.85);
+            --border-glass: rgba(255, 255, 255, 0.08);
+            --border-glass-bright: rgba(255, 255, 255, 0.15);
+
+            --accent: #a855f7;
+            --accent-glow: rgba(168, 85, 247, 0.4);
+            --secondary: #3b82f6;
+            --secondary-glow: rgba(59, 130, 246, 0.4);
+
             --text-primary: #f8fafc;
             --text-secondary: #94a3b8;
-            --accent: #8b5cf6;
-            --accent-glow: rgba(139, 92, 246, 0.3);
+            --text-muted: #64748b;
+
             --success: #10b981;
             --warning: #f59e0b;
             --danger: #ef4444;
-            --border: #334155;
+            --info: #0ea5e9;
+
+            --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
         }
 
         body {
-            background-color: var(--bg-dark);
+            background-color: var(--bg-deep);
+            background-image:
+                radial-gradient(circle at 10% 10%, rgba(168, 85, 247, 0.12) 0%, transparent 40%),
+                radial-gradient(circle at 90% 90%, rgba(59, 130, 246, 0.12) 0%, transparent 40%),
+                radial-gradient(circle at 50% 50%, rgba(15, 23, 42, 1) 0%, transparent 100%);
+            background-attachment: fixed;
             color: var(--text-primary);
-            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-            margin: 0;
-            padding: 0;
+            font-family: 'Outfit', sans-serif;
             min-height: 100vh;
+            line-height: 1.6;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        /* Particles/Grid Effect */
+        body::after {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-image: radial-gradient(var(--border-glass) 1px, transparent 1px);
+            background-size: 30px 30px;
+            pointer-events: none;
+            z-index: -1;
+            opacity: 0.3;
         }
 
         .container {
-            max-width: 1200px;
+            max-width: 1400px;
             margin: 0 auto;
-            padding: 2rem;
+            padding: 2.5rem 2rem;
         }
 
+        /* Glass Components */
+        .glass-panel {
+            background: var(--bg-glass);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid var(--border-glass);
+            border-radius: 20px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+            transition: border-color 0.3s ease;
+        }
+
+        .glass-panel:hover {
+            border-color: var(--border-glass-bright);
+        }
+
+        /* Header Styling */
         .header {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 2rem;
-            padding-bottom: 1rem;
-            border-bottom: 1px solid var(--border);
+            margin-bottom: 3rem;
         }
 
         .brand {
-            font-size: 1.5rem;
-            font-weight: 700;
-            background: linear-gradient(135deg, #a78bfa, #2dd4bf);
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            text-decoration: none;
+            color: inherit;
+        }
+
+        .brand-logo {
+            width: 44px;
+            height: 44px;
+            background: linear-gradient(135deg, var(--accent), var(--secondary));
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 0 20px var(--accent-glow);
+            transition: transform 0.5s var(--ease-out-expo);
+        }
+
+        .brand:hover .brand-logo {
+            transform: rotate(10deg) scale(1.1);
+        }
+
+        .brand-name {
+            font-size: 1.75rem;
+            font-weight: 800;
+            letter-spacing: -0.02em;
+            background: linear-gradient(to right, #fff, #94a3b8);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
+        }
+
+        /* Navigation Buttons */
+        .nav-actions {
             display: flex;
-            align-items: center;
-            gap: 0.5rem;
-        }
-
-        .card {
-            background: var(--bg-card);
-            border: 1px solid var(--border);
-            border-radius: 12px;
-            overflow: hidden;
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
-        }
-
-        .card-header {
-            padding: 1.5rem;
-            border-bottom: 1px solid var(--border);
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-
-        .card-title {
-            font-size: 1.1rem;
-            font-weight: 600;
-            margin: 0;
-        }
-
-        .table {
-            width: 100%;
-            border-collapse: collapse;
-            text-align: left;
-        }
-
-        .table th,
-        .table td {
-            padding: 1rem 1.5rem;
-            border-bottom: 1px solid var(--border);
-        }
-
-        .table th {
-            font-weight: 600;
-            color: var(--text-secondary);
-            font-size: 0.875rem;
-            background: rgba(0, 0, 0, 0.2);
-        }
-
-        .table tr:last-child td {
-            border-bottom: none;
-        }
-
-        .table tr:hover td {
-            background: rgba(255, 255, 255, 0.02);
-        }
-
-        .badge {
-            display: inline-flex;
-            align-items: center;
-            padding: 0.25rem 0.75rem;
-            border-radius: 9999px;
-            font-size: 0.75rem;
-            font-weight: 600;
-        }
-
-        .badge-success {
-            background: rgba(16, 185, 129, 0.2);
-            color: var(--success);
-        }
-
-        .badge-warning {
-            background: rgba(245, 158, 11, 0.2);
-            color: var(--warning);
-        }
-
-        .badge-danger {
-            background: rgba(239, 68, 68, 0.2);
-            color: var(--danger);
-        }
-
-        .badge-neutral {
-            background: rgba(148, 163, 184, 0.2);
-            color: var(--text-secondary);
-        }
-
-        .method {
-            font-family: monospace;
-            font-weight: 700;
-        }
-
-        .method-GET {
-            color: #60a5fa;
-        }
-
-        .method-POST {
-            color: #2dd4bf;
-        }
-
-        .method-PUT {
-            color: #f59e0b;
-        }
-
-        .method-DELETE {
-            color: #ef4444;
+            gap: 0.75rem;
         }
 
         .btn {
-            display: inline-block;
-            padding: 0.5rem 1rem;
-            border-radius: 6px;
-            font-weight: 500;
+            padding: 0.6rem 1.25rem;
+            border-radius: 12px;
+            font-weight: 600;
+            font-size: 0.9rem;
             text-decoration: none;
-            transition: all 0.2s;
+            transition: all 0.3s var(--ease-out-expo);
+            backdrop-filter: blur(8px);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
             cursor: pointer;
-            border: 1px solid transparent;
-            font-size: 0.875rem;
         }
 
         .btn-primary {
-            background: var(--accent);
+            background: linear-gradient(to right, var(--accent), var(--secondary));
             color: white;
-            box-shadow: 0 0 10px var(--accent-glow);
+            border: none;
         }
 
         .btn-primary:hover {
-            background: #7c3aed;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 20px var(--accent-glow);
         }
 
-        .btn-outline {
-            background: transparent;
-            border-color: var(--border);
-            color: var(--text-secondary);
-        }
-
-        .btn-outline:hover {
-            border-color: var(--text-primary);
+        .btn-glass {
+            background: rgba(255, 255, 255, 0.05);
             color: var(--text-primary);
         }
 
-        .stat-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 1.5rem;
+        .btn-glass:hover {
+            background: rgba(255, 255, 255, 0.1);
+            border-color: var(--border-glass-bright);
+        }
+
+        /* Typography & Content */
+        h1,
+        h2,
+        h3,
+        h4 {
+            color: var(--text-primary);
+            font-weight: 700;
+        }
+
+        p {
+            color: var(--text-secondary);
+        }
+
+        .animate-fade-up {
+            animation: fadeUp 0.6s var(--ease-out-expo) both;
+        }
+
+        @keyframes fadeUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* Profile Row Special Hover */
+        .profile-row {
+            cursor: pointer;
+            transition: background 0.2s ease;
+        }
+
+        .profile-row:hover {
+            background: rgba(255, 255, 255, 0.03);
+        }
+
+        /* Scoped styles for child views */
+        .card {
             margin-bottom: 2rem;
         }
 
-        .stat-card {
-            background: var(--bg-card);
-            padding: 1.5rem;
-            border-radius: 12px;
-            border: 1px solid var(--border);
-            position: relative;
-            overflow: hidden;
-        }
-
-        .stat-card::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            height: 4px;
-            background: linear-gradient(90deg, var(--accent), #2dd4bf);
-        }
-
-        .stat-value {
-            font-size: 2rem;
+        /* Badges */
+        .badge {
+            padding: 0.2rem 0.6rem;
+            border-radius: 6px;
+            font-size: 0.75rem;
             font-weight: 700;
-            margin-bottom: 0.5rem;
-            color: var(--text-primary);
-        }
-
-        .stat-label {
-            color: var(--text-secondary);
-            font-size: 0.875rem;
             text-transform: uppercase;
             letter-spacing: 0.05em;
         }
 
-        code {
-            background: rgba(0, 0, 0, 0.3);
-            padding: 0.2rem 0.4rem;
-            border-radius: 4px;
-            font-family: 'Fira Code', monospace;
-            font-size: 0.85em;
-            color: #e2e8f0;
+        /* Tabs System */
+        .plugs-tab-content {
+            display: none !important;
         }
 
-        .back-link {
-            color: var(--text-secondary);
-            text-decoration: none;
+        .plugs-tab-content.active {
+            display: block !important;
+            animation: fadeUp 0.3s var(--ease-out-expo) both;
+        }
+
+        .tabs-header {
             display: flex;
-            align-items: center;
-            gap: 0.5rem;
-            margin-bottom: 1rem;
-            font-size: 0.875rem;
-        }
-
-        .back-link:hover {
-            color: var(--text-primary);
-        }
-
-        .nav-tabs {
-            display: flex;
-            border-bottom: 1px solid var(--border);
-            padding: 0 1.5rem;
-        }
-
-        .nav-item {
-            padding: 1rem;
-            color: var(--text-secondary);
-            cursor: pointer;
-            border-bottom: 2px solid transparent;
-            margin-bottom: -1px;
-        }
-
-        .nav-item.active {
-            color: var(--accent);
-            border-bottom-color: var(--accent);
-        }
-
-        .tab-content {
-            display: none;
-            padding: 1.5rem;
-        }
-
-        .tab-content.active {
-            display: block;
-        }
-
-        pre {
-            background: #000;
-            padding: 1em;
-            border-radius: 8px;
+            gap: 2rem;
+            padding: 0 2rem;
+            background: rgba(0, 0, 0, 0.2);
+            border-bottom: 1px solid var(--border-glass);
             overflow-x: auto;
-            color: #a5b4fc;
+            scrollbar-width: none;
+            -ms-overflow-style: none;
+        }
+
+        .tabs-header::-webkit-scrollbar {
+            display: none;
+        }
+
+        .tab-btn {
+            background: none !important;
+            border: none !important;
+            padding: 1.25rem 1.5rem;
+            color: var(--text-muted);
+            font-weight: 600;
+            font-size: 0.9rem;
+            cursor: pointer;
+            position: relative;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            white-space: nowrap;
+            font-family: 'Outfit', sans-serif !important;
+            outline: none !important;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.75rem;
+            border-radius: 8px;
+            margin: 0.5rem 0;
+        }
+
+        .tab-btn:hover {
+            color: var(--text-primary);
+            background: rgba(255, 255, 255, 0.05) !important;
+        }
+
+        .tab-btn.active {
+            color: var(--accent);
+            background: rgba(168, 85, 247, 0.1) !important;
+        }
+
+        .tab-btn .tab-icon {
+            opacity: 0.7;
+            transition: transform 0.3s;
+        }
+
+        .tab-btn:hover .tab-icon {
+            opacity: 1;
+            transform: scale(1.1);
+        }
+
+        .tab-btn.active .tab-icon {
+            opacity: 1;
+            color: var(--accent);
+        }
+
+        .tab-btn::after {
+            content: '';
+            position: absolute;
+            bottom: -0.5rem;
+            left: 50%;
+            width: 0;
+            height: 2px;
+            background: var(--accent);
+            box-shadow: 0 0 12px var(--accent-glow);
+            transition: all 0.3s ease;
+            transform: translateX(-50%);
+            border-radius: 2px;
+        }
+
+        .tab-btn.active::after {
+            width: calc(100% - 2rem);
+        }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: var(--bg-deep);
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: var(--border-glass-bright);
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: var(--text-muted);
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 1.5rem 1rem;
+            }
+
+            .header {
+                flex-direction: column;
+                gap: 1.5rem;
+                align-items: flex-start;
+            }
+
+            .nav-actions {
+                width: 100%;
+            }
+
+            .nav-actions .btn {
+                flex: 1;
+                justify-content: center;
+            }
         }
     </style>
 </head>
 
 <body>
     <div class="container">
-        <header class="header">
-            <div class="brand">
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                    stroke-linecap="round" stroke-linejoin="round">
-                    <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon>
-                </svg>
-                Plugs Profiler
-            </div>
-            <nav>
-                <a href="/debug/performance" class="btn btn-outline">Requests</a>
-                <a href="/debug/performance/latest" class="btn btn-primary" style="margin-left: 0.5rem;">Latest
-                    Request</a>
+        <header class="header animate-fade-up">
+            <a href="/debug/performance" class="brand">
+                <div class="brand-logo">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
+                        stroke-linecap="round" stroke-linejoin="round" style="color: white;">
+                        <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon>
+                    </svg>
+                </div>
+                <span class="brand-name">Plugs Profiler</span>
+            </a>
+            <nav class="nav-actions">
+                <a href="/debug/performance" class="btn btn-glass">
+                    <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M4 6h16M4 10h16M4 14h16M4 18h16"></path>
+                    </svg>
+                    Requests
+                </a>
+                <a href="/debug/performance/latest" class="btn btn-primary">
+                    <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+                    </svg>
+                    Latest
+                </a>
             </nav>
         </header>
 
-        <?= $childContent ?>
-
+        <main class="animate-fade-up" style="animation-delay: 0.1s;">
+            <?= $childContent ?>
+        </main>
     </div>
 
     <script>
-        function showTab(id) {
-            document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
-            document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
-            document.getElementById(id).classList.add('active');
-            document.querySelector(`[onclick="showTab('${id}')"]`).classList.add('active');
+        function plugsSwitchTab(btn, id) {
+            const container = btn.closest('.glass-panel, .card, .container, .plugs-debug-wrapper, #plugs-profiler-modal');
+            if (!container) return;
+
+            // Find elements specifically within this tab context
+            const allTabs = container.querySelectorAll('.plugs-tab-content');
+            const allBtns = container.querySelectorAll('.tab-btn, .plugs-tab-btn, .nav-item');
+
+            allTabs.forEach(el => el.classList.remove('active'));
+            allBtns.forEach(el => el.classList.remove('active'));
+
+            const target = container.querySelector('#' + id);
+            if (target) {
+                target.classList.add('active');
+            }
+            btn.classList.add('active');
         }
+        window.plugsSwitchTab = plugsSwitchTab;
+
+        // Initialize any active tabs
+        document.addEventListener('DOMContentLoaded', () => {
+            document.querySelectorAll('.nav-item.active, .tab-btn.active').forEach(btn => {
+                // If it has an onclick with plugsSwitchTab, trigger it
+                const onclick = btn.getAttribute('onclick');
+                if (onclick && onclick.includes('plugsSwitchTab')) {
+                    // Get the id from the onclick string 'plugsSwitchTab(this, 'id')'
+                    const match = onclick.match(/'([^']+)'/);
+                    if (match) plugsSwitchTab(btn, match[1]);
+                }
+            });
+        });
     </script>
 </body>
 
