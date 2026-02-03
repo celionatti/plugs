@@ -28,6 +28,7 @@ class ViewEngine
     private array $customDirectives = [];
     private bool $suppressLayout = false;
     private ?string $requestedSection = null;
+    private bool $fastCache = false;
 
     private const VIEW_EXTENSIONS = ['.plug.php', '.php', '.html'];
     private const PRODUCTION_ERROR_LEVEL = E_ERROR | E_PARSE | E_CORE_ERROR | E_COMPILE_ERROR;
@@ -433,7 +434,16 @@ class ViewEngine
         $cacheKey = $view . ($isComponent ? '_component' : '');
         $compiled = $this->getCompiledPath($cacheKey);
 
-        if (!file_exists($compiled) || filemtime($viewFile) > filemtime($compiled)) {
+        // Optimization: In production, we can skip the filemtime check if fastCache is enabled
+        $needsRecompile = !file_exists($compiled);
+
+        if (!$needsRecompile && !($this->fastCache && \Plugs\Plugs::isProduction())) {
+            if (filemtime($viewFile) > filemtime($compiled)) {
+                $needsRecompile = true;
+            }
+        }
+
+        if ($needsRecompile) {
             $this->compile($viewFile, $compiled);
         }
 

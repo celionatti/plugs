@@ -353,21 +353,46 @@ class Plugs
     /**
      * Load helper functions.
      */
+    /**
+     * Load helper functions.
+     */
     private function loadFunctions(): void
     {
+        $cacheFile = STORAGE_PATH . 'framework/functions.php';
+
+        // Try to load from cache in production
+        if (self::isProduction() && file_exists($cacheFile)) {
+            $files = require $cacheFile;
+            foreach ($files as $file) {
+                require_once $file;
+            }
+            return;
+        }
+
         $functionsDir = __DIR__ . '/functions/';
 
-        // Use a more efficient file inclusion and avoid open_basedir issues if directory doesn't exist
         if (!is_dir($functionsDir)) {
             return;
         }
 
         $files = scandir($functionsDir);
+        $loadList = [];
 
         foreach ($files as $file) {
             if ($file[0] !== '.' && pathinfo($file, PATHINFO_EXTENSION) === 'php') {
-                require_once $functionsDir . $file;
+                $filePath = $functionsDir . $file;
+                require_once $filePath;
+                $loadList[] = $filePath;
             }
+        }
+
+        // Save cache in production
+        if (self::isProduction() && !empty($loadList)) {
+            $cacheDir = dirname($cacheFile);
+            if (!is_dir($cacheDir)) {
+                mkdir($cacheDir, 0755, true);
+            }
+            file_put_contents($cacheFile, '<?php return ' . var_export($loadList, true) . ';');
         }
     }
 
