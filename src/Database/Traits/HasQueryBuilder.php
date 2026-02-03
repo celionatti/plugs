@@ -222,30 +222,10 @@ trait HasQueryBuilder
      */
     public static function paginate(int $perPage = 15, ?int $page = null, array $columns = ['*']): Pagination
     {
-        // Enforce a sensible maximum to prevent DoS via per_page parameter
         $maxPerPage = defined('static::MAX_PER_PAGE') ? static::MAX_PER_PAGE : 100;
         $perPage = max(1, min($perPage, $maxPerPage));
 
-        $page = $page ?? static::getCurrentPage();
-        $page = max(1, $page);
-
-        $total = static::query()->count();
-        $offset = ($page - 1) * $perPage;
-
-        $items = static::query()
-            ->select($columns)
-            ->limit($perPage)
-            ->offset($offset)
-            ->get();
-
-        $data = $items instanceof Collection ? $items->all() : $items;
-
-        // Ensure items are instances of the model if possible
-        if (!empty($data) && is_array($data) && !($data[0] instanceof static)) {
-            $data = array_map(fn($item) => new static($item), $data);
-        }
-
-        return new Pagination($data, $perPage, $page, $total);
+        return static::query()->paginate($perPage, $page, $columns);
     }
 
 
@@ -429,26 +409,10 @@ trait HasQueryBuilder
         $perPage = max(1, min($perPage, $maxPerPage));
 
         $page = (int) ($params['page'] ?? 1);
-        $page = max(1, $page);
 
         $query = static::filter($params);
 
-        $total = $query->count();
-        $offset = ($page - 1) * $perPage;
-
-        $items = $query
-            ->limit($perPage)
-            ->offset($offset)
-            ->get();
-
-        $data = $items instanceof Collection ? $items->all() : $items;
-
-        // Ensure items are instances of the model if possible
-        if (!empty($data) && is_array($data) && !($data[0] instanceof static)) {
-            $data = array_map(fn($item) => new static($item), $data);
-        }
-
-        $paginator = new Pagination($data, $perPage, $page, $total);
+        $paginator = $query->paginate($perPage, $page);
         $paginator->appends(array_filter($params, fn($k) => !in_array($k, ['page', 'per_page']), ARRAY_FILTER_USE_KEY));
 
         return $paginator;

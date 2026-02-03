@@ -508,6 +508,24 @@ class QueryBuilder
         return (int) ($result['count'] ?? 0);
     }
 
+    /**
+     * Paginate the query.
+     */
+    public function paginate(int $perPage = 15, ?int $page = null, array $columns = ['*']): \Plugs\Paginator\Pagination
+    {
+        $page = $page ?? (int) ($_GET['page'] ?? $_REQUEST['page'] ?? 1);
+        $page = max(1, $page);
+
+        $total = $this->count();
+        $offset = ($page - 1) * $perPage;
+
+        $this->limit($perPage)->offset($offset);
+
+        $results = $this->get($columns);
+
+        return new \Plugs\Paginator\Pagination($results, $perPage, $page, $total);
+    }
+
     public function buildSelectSql(): string
     {
         $sql = "SELECT " . implode(', ', $this->select) . " FROM {$this->table}";
