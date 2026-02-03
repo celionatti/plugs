@@ -53,6 +53,20 @@ The `render` method will render the links to the rest of the pages in the result
 
 The `withPath` method allows you to customize the URI used by the paginator when generating links. For example, if you want the paginator to generate links like `http://example.com/custom/url?page=N`, you should pass `custom/url` to the `withPath` method:
 
+## Including Default Styles
+
+To use the built-in themes (Green, Floating, etc.), you **must** include the pagination CSS in your page (usually in the `<head>` or just before the pagination).
+
+```php
+<?= \Plugs\Paginator\Pagination::getStyles() ?>
+```
+
+This outputs a `<style>` block containing all the necessary CSS classes for:
+- The Default Green Theme
+- Floating / Glassmorphism Style
+- Animations & Rounding
+- Responsive Layouts
+
 ## Pagination Styles
 
 Plugs comes with several built-in pagination styles to fit your application's design.

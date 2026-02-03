@@ -138,137 +138,13 @@ abstract class Model
         return static::count() > 0;
     }
 
-    /**
-     * Paginate results
-     *
-     * @param int $perPage Items per page
-     * @param int|null $page Current page number
-     * @param array $columns Columns to select
-     * @return Pagination
-     */
-    public static function paginate(int $perPage = 15, ?int $page = null, array $columns = ['*']): Pagination
-    {
-        $page = $page ?? static::getCurrentPage();
-        $page = max(1, $page);
 
-        $total = static::query()->count();
-        $lastPage = (int) ceil($total / $perPage);
-        $page = max(1, min($page, max(1, $lastPage)));
 
-        $offset = ($page - 1) * $perPage;
 
-        $results = static::query()
-            ->select($columns)
-            ->limit($perPage)
-            ->offset($offset)
-            ->get();
 
-        return new Pagination($results, $perPage, $page, $total);
-    }
 
-    /**
-     * Simple paginate (lighter, no total count)
-     */
-    public static function simplePaginate(int $perPage = 15, ?int $page = null): array
-    {
-        $page = $page ?? static::getCurrentPage();
-        $page = max(1, $page);
 
-        $offset = ($page - 1) * $perPage;
 
-        // Fetch one extra to determine if there's a next page
-        $items = static::query()
-            ->limit($perPage + 1)
-            ->offset($offset)
-            ->get();
-
-        $hasMore = count($items) > $perPage;
-        if ($hasMore) {
-            array_pop($items);
-        }
-
-        $data = array_map(fn($item) => new static($item), $items);
-
-        return [
-            'data' => $data,
-            'per_page' => $perPage,
-            'current_page' => $page,
-            'has_more' => $hasMore,
-            'from' => $offset + 1,
-            'to' => $offset + count($data),
-        ];
-    }
-
-    /**
-     * Get current page from request
-     */
-    protected static function getCurrentPage(): int
-    {
-        $page = 1;
-
-        // Try to get from request helper if available
-        if (function_exists('request') && ($request = request())) {
-            $params = $request->getQueryParams();
-            if (isset($params['page'])) {
-                $page = $params['page'];
-            }
-        }
-
-        // Fallback to global $_GET / $_REQUEST
-        if ($page === 1) {
-            $page = $_GET['page'] ?? $_REQUEST['page'] ?? 1;
-        }
-
-        // Debug logging
-        // file_put_contents(base_path('pagination_debug.log'), date('Y-m-d H:i:s') . " - Page requested: " . print_r($page, true) . "\n", FILE_APPEND);
-
-        return (int) $page;
-    }
-
-    /**
-     * Apply filters from request parameters
-     */
-    public static function filter(array $params): QueryBuilder
-    {
-        $query = static::query();
-        $instance = new static();
-
-        foreach ($params as $key => $value) {
-            // Skip empty values and pagination params
-            if ($value === null || $value === '' || $key === 'page' || $key === 'per_page' || $key === 'direction') {
-                continue;
-            }
-
-            // Handle search parameters
-            if ($key === 'search') {
-                $searchColumns = $instance->getSearchableColumns();
-                if (!empty($searchColumns)) {
-                    foreach ($searchColumns as $column) {
-                        $query->orWhere($column, 'LIKE', "%{$value}%");
-                    }
-                }
-
-                continue;
-            }
-
-            // Handle sort parameters
-            if ($key === 'sort') {
-                $direction = strtoupper($params['direction'] ?? 'ASC');
-                $query->orderBy($value, $direction);
-
-                continue;
-            }
-
-            // Regular where clause
-            if (is_array($value)) {
-                $query->whereIn($key, $value);
-            } else {
-                $query->where($key, '=', $value);
-            }
-        }
-
-        return $query;
-    }
 
     /**
      * Get searchable columns - override this in your model
@@ -278,37 +154,7 @@ abstract class Model
         return $this->searchableColumns;
     }
 
-    /**
-     * Search and paginate with request parameters
-     *
-     * @return Pagination
-     */
-    public static function search(?array $params = null): Pagination
-    {
-        $params = $params ?? $_GET ?? $_REQUEST ?? [];
 
-        $perPage = (int) ($params['per_page'] ?? 15);
-        $perPage = max(1, min($perPage, 100)); // Limit between 1 and 100
-        $page = (int) ($params['page'] ?? 1);
-        $page = max(1, $page);
-
-        $query = static::filter($params);
-
-        $total = $query->count();
-        $offset = ($page - 1) * $perPage;
-
-        $items = $query
-            ->limit($perPage)
-            ->offset($offset)
-            ->get();
-
-        $data = array_map(fn($item) => new static($item), $items);
-
-        $paginator = new Pagination($data, $perPage, $page, $total);
-        $paginator->appends(array_filter($params, fn($k) => !in_array($k, ['page', 'per_page']), ARRAY_FILTER_USE_KEY));
-
-        return $paginator;
-    }
 
     public static function create(array $attributes): self
     {
