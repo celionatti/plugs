@@ -451,12 +451,12 @@ class ViewCompiler
         $balanced = '\((?:[^()]|(?R))*\)';
 
         // @if
-        $content = preg_replace_callback('/@if\s*\(((?:[^()]|\([^()]*\))*)\)/s', function ($matches) {
+        $content = preg_replace_callback('/@if\s*\(([^()]*+(?:\((?1)\)[^()]*+)*+)\)/s', function ($matches) {
             return "<?php if ({$matches[1]}): ?>";
         }, $content);
 
         // @elseif
-        $content = preg_replace_callback('/@elseif\s*\(((?:[^()]|\([^()]*\))*)\)/s', function ($matches) {
+        $content = preg_replace_callback('/@elseif\s*\(([^()]*+(?:\((?1)\)[^()]*+)*+)\)/s', function ($matches) {
             return "<?php elseif ({$matches[1]}): ?>";
         }, $content);
 
@@ -467,7 +467,7 @@ class ViewCompiler
         $content = preg_replace('/@endif\s*(?:\r?\n)?/', '<?php endif; ?>', $content);
 
         // @unless (inverted if)
-        $content = preg_replace_callback('/@unless\s*\(((?:[^()]|\([^()]*\))*)\)/s', function ($matches) {
+        $content = preg_replace_callback('/@unless\s*\(([^()]*+(?:\((?1)\)[^()]*+)*+)\)/s', function ($matches) {
             return "<?php if (!({$matches[1]})): ?>";
         }, $content);
         $content = preg_replace('/@endunless\s*(?:\r?\n)?/', '<?php endif; ?>', $content);

@@ -180,18 +180,7 @@ class Validator
      */
     private function getValue(string $field)
     {
-        $keys = explode('.', $field);
-        $value = $this->data;
-
-        foreach ($keys as $key) {
-            if (is_array($value) && array_key_exists($key, $value)) {
-                $value = $value[$key];
-            } else {
-                return null;
-            }
-        }
-
-        return $value;
+        return \Plugs\Utils\Arr::get($this->data, $field);
     }
 
     /**
@@ -199,18 +188,7 @@ class Validator
      */
     private function hasValue(string $field): bool
     {
-        $keys = explode('.', $field);
-        $value = $this->data;
-
-        foreach ($keys as $key) {
-            if (is_array($value) && array_key_exists($key, $value)) {
-                $value = $value[$key];
-            } else {
-                return false;
-            }
-        }
-
-        return true;
+        return \Plugs\Utils\Arr::has($this->data, $field);
     }
 
     /**

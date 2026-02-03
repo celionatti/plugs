@@ -62,6 +62,7 @@ class Router
     private array $patterns = [];
     private ?PageRouter $pageRouter = null;
     private bool $pagesRoutingEnabled = false;
+    private string $cachePath = '';
 
     /**
      * Fallback route for unmatched requests.
@@ -386,8 +387,6 @@ class Router
         // Add to indexed array
         $this->routes[$method][] = $route;
 
-        $this->clearCache();
-
         return $route;
     }
 
@@ -481,27 +480,22 @@ class Router
         $method = $request->getMethod();
         $path = $request->getUri()->getPath();
 
-        // FIX: Support Laravel-style method spoofing via _method field
+        // Support Laravel-style method spoofing via _method field
         if ($method === 'POST') {
             $method = $this->getMethodFromRequest($request);
         }
 
         // Handle HEAD as GET
-        if ($method === 'HEAD') {
-            $method = 'GET';
-        }
-
-        // Check cache
-        $cacheKey = $method . ':' . $path;
-        if ($this->cacheEnabled && isset($this->routeCache[$cacheKey])) {
-            return $this->dispatchCachedRoute($this->routeCache[$cacheKey], $request, $method);
+        if ($method === 'GET' || $method === 'HEAD') {
+            // Check cache
+            $cacheKey = $method . ':' . $path;
+            if ($this->cacheEnabled && isset($this->routeCache[$cacheKey])) {
+                return $this->dispatchRoute($this->routeCache[$cacheKey], $request, $path);
+            }
         }
 
         // Find matching route - Only iterate routes for the specific method
         $routes = $this->routes[$method] ?? [];
-
-        // Also check routes that match ANY method if you interpret some methods that way,
-        // but typically Router separates them. If you have 'ANY' routes, add them here.
 
         foreach ($routes as $route) {
             if (!$route->matches($method, $path)) {
@@ -510,7 +504,7 @@ class Router
 
             // Cache match
             if ($this->cacheEnabled) {
-                $this->cacheRoute($cacheKey, $route);
+                $this->cacheRoute($method . ':' . $path, $route);
             }
 
             return $this->dispatchRoute($route, $request, $path);
@@ -527,13 +521,6 @@ class Router
                     break;
                 }
             }
-        }
-
-        if (!empty($allowedMethods)) {
-            $this->currentRoute = null; // No matched route
-            // We don't throw here to stay compatible with current 'return null' behavior for middleware chain
-            // but the RoutingMiddleware or Plugs::run can handle the null.
-            // Actually, for better exception handling, let's throw if no fallback.
         }
 
         // Try fallback route if no match found
@@ -593,16 +580,6 @@ class Router
         }
 
         return $method;
-    }
-
-    /**
-     * Dispatch cached route
-     */
-    private function dispatchCachedRoute(Route $route, ServerRequestInterface $request, string $method): ResponseInterface
-    {
-        $path = $request->getUri()->getPath();
-
-        return $this->dispatchRoute($route, $request, $path);
     }
 
     /**
@@ -754,7 +731,12 @@ class Router
         }
 
         $container = Container::getInstance();
-        $instance = $container->make($controller);
+
+        try {
+            $instance = $container->make($controller);
+        } catch (\Throwable $e) {
+            throw new RuntimeException("Could not instantiate controller [{$controller}]: " . $e->getMessage(), (int) $e->getCode(), $e);
+        }
 
         // Initialize Plugs Base Controller if applicable
         if ($instance instanceof \Plugs\Base\Controller\Controller) {

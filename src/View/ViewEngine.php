@@ -14,6 +14,7 @@ namespace Plugs\View;
 */
 
 use RuntimeException;
+use Plugs\Exceptions\ViewException;
 use Throwable;
 
 class ViewEngine
@@ -262,8 +263,11 @@ class ViewEngine
             : $this->getViewPath($view);
 
         if (!file_exists($viewFile)) {
-            throw new RuntimeException(
-                sprintf('View [%s] not found at %s', $view, $viewFile)
+            throw new ViewException(
+                sprintf('View [%s] not found at %s', $view, $viewFile),
+                0,
+                null,
+                $view
             );
         }
 
@@ -286,8 +290,11 @@ class ViewEngine
             $componentFile = $this->getComponentPath($componentName);
 
             if (!file_exists($componentFile)) {
-                throw new RuntimeException(
-                    sprintf('Component [%s] not found at %s', $componentName, $componentFile)
+                throw new ViewException(
+                    sprintf('Component [%s] not found at %s', $componentName, $componentFile),
+                    0,
+                    null,
+                    $componentName
                 );
             }
 
@@ -328,14 +335,15 @@ class ViewEngine
             return $this->render($componentName, $componentData, true);
         } catch (Throwable $e) {
             // FIX: Better error context for component failures
-            throw new RuntimeException(
+            throw new ViewException(
                 sprintf(
                     'Error rendering component [%s]: %s',
                     $componentName,
                     $e->getMessage()
                 ),
-                0,
-                $e
+                (int) $e->getCode(),
+                $e,
+                $componentName
             );
         }
     }
@@ -412,9 +420,9 @@ class ViewEngine
             ob_end_clean();
             error_reporting($previousErrorLevel);
 
-            throw new RuntimeException(
+            throw new ViewException(
                 sprintf('Error executing compiled content: %s', $e->getMessage()),
-                0,
+                (int) $e->getCode(),
                 $e
             );
         }
@@ -486,7 +494,7 @@ class ViewEngine
                 // Include layout information for SPA to detect if a full reload is needed
                 /** @phpstan-ignore-next-line */
                 if (isset($__extends) && $__extends) {
-                    $output = "<meta name=\"plugs-layout\" content=\"{$__extends}\">\n" . (string) $output;
+                    $output = "<meta name=\"plugs-layout\" content=\"{$__extends}\">\n" . $output;
                 }
 
                 return $output;
@@ -499,14 +507,14 @@ class ViewEngine
             }
             error_reporting($previousErrorLevel);
 
-            throw new RuntimeException(
+            throw new ViewException(
                 sprintf(
                     'Error rendering compiled view: %s (File: %s, Line: %d)',
                     $e->getMessage(),
                     $compiled,
                     $e->getLine()
                 ),
-                0,
+                (int) $e->getCode(),
                 $e
             );
         }
@@ -570,7 +578,7 @@ class ViewEngine
                 // Include layout information for SPA to detect if a full reload is needed
                 /** @phpstan-ignore-next-line */
                 if (isset($__extends) && $__extends) {
-                    $output = "<meta name=\"plugs-layout\" content=\"{$__extends}\">\n" . (string) $output;
+                    $output = "<meta name=\"plugs-layout\" content=\"{$__extends}\">\n" . $output;
                 }
 
                 return $output;
@@ -583,14 +591,14 @@ class ViewEngine
             }
             error_reporting($previousErrorLevel);
 
-            throw new RuntimeException(
+            throw new ViewException(
                 sprintf(
                     'Error rendering view: %s (File: %s, Line: %d)',
                     $e->getMessage(),
                     $viewFile,
                     $e->getLine()
                 ),
-                0,
+                (int) $e->getCode(),
                 $e
             );
         }
@@ -601,8 +609,11 @@ class ViewEngine
         $parentFile = $this->getViewPath($parentView);
 
         if (!file_exists($parentFile)) {
-            throw new RuntimeException(
-                sprintf('Parent view [%s] not found at %s', $parentView, $parentFile)
+            throw new ViewException(
+                sprintf('Parent view [%s] not found at %s', $parentView, $parentFile),
+                0,
+                null,
+                $parentView
             );
         }
 
@@ -629,8 +640,11 @@ class ViewEngine
         $parentFile = $this->getViewPath($parentView);
 
         if (!file_exists($parentFile)) {
-            throw new RuntimeException(
-                sprintf('Parent view [%s] not found', $parentView)
+            throw new ViewException(
+                sprintf('Parent view [%s] not found', $parentView),
+                0,
+                null,
+                $parentView
             );
         }
 
@@ -661,14 +675,15 @@ class ViewEngine
             ob_end_clean();
             error_reporting($previousErrorLevel);
 
-            throw new RuntimeException(
+            throw new ViewException(
                 sprintf(
                     'Error rendering parent view: %s (File: %s)',
                     $e->getMessage(),
                     $parentFile
                 ),
-                0,
-                $e
+                (int) $e->getCode(),
+                $e,
+                $parentView
             );
         }
     }
@@ -710,8 +725,11 @@ class ViewEngine
                     $realBasePath === false ||
                     strpos($realViewPath, $realBasePath) !== 0
                 ) {
-                    throw new RuntimeException(
-                        sprintf('Invalid view path: %s', $view)
+                    throw new ViewException(
+                        sprintf('Invalid view path: %s', $view),
+                        0,
+                        null,
+                        $view
                     );
                 }
 
@@ -719,14 +737,17 @@ class ViewEngine
             }
         }
 
-        throw new RuntimeException(
+        throw new ViewException(
             sprintf(
                 'View [%s] not found. Looked for: %s',
                 $view,
                 implode(', ', array_map(function ($ext) use ($view) {
                     return $view . $ext;
                 }, self::VIEW_EXTENSIONS))
-            )
+            ),
+            0,
+            null,
+            $view
         );
     }
 
@@ -734,8 +755,11 @@ class ViewEngine
     {
         // Validate component name to prevent path traversal
         if (preg_match('/[\.\/\\\\]/', $componentName)) {
-            throw new RuntimeException(
-                sprintf('Invalid component name: %s (cannot contain path separators)', $componentName)
+            throw new ViewException(
+                sprintf('Invalid component name: %s (cannot contain path separators)', $componentName),
+                0,
+                null,
+                $componentName
             );
         }
 
@@ -758,8 +782,11 @@ class ViewEngine
                         $realBaseComponentPath === false ||
                         strpos($realComponentPath, $realBaseComponentPath) !== 0
                     ) {
-                        throw new RuntimeException(
-                            sprintf('Invalid component path: %s', $componentName)
+                        throw new ViewException(
+                            sprintf('Invalid component path: %s', $componentName),
+                            0,
+                            null,
+                            $componentName
                         );
                     }
 

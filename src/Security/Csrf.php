@@ -100,11 +100,11 @@ class Csrf
      */
     public static function generate(): string
     {
-        self::ensureSessionStarted();
+        $session = self::getSession();
 
         // Check if token exists and is still valid
         if (self::hasValidToken()) {
-            return $_SESSION[self::TOKEN_KEY];
+            return $session->get(self::TOKEN_KEY);
         }
 
         // Generate new token
@@ -142,7 +142,7 @@ class Csrf
      */
     public static function regenerate(): string
     {
-        self::ensureSessionStarted();
+        $session = self::getSession();
 
         try {
             $token = bin2hex(random_bytes(self::TOKEN_LENGTH));
@@ -154,16 +154,14 @@ class Csrf
             );
         }
 
-        $_SESSION[self::TOKEN_KEY] = $token;
-        $_SESSION[self::TOKEN_TIMESTAMP_KEY] = time();
+        $session->set(self::TOKEN_KEY, $token);
+        $session->set(self::TOKEN_TIMESTAMP_KEY, time());
 
         // Clear old per-request tokens when regenerating master token
-        if (isset($_SESSION[self::REQUEST_TOKENS_KEY])) {
-            unset($_SESSION[self::REQUEST_TOKENS_KEY]);
-        }
+        $session->remove(self::REQUEST_TOKENS_KEY);
 
         if (self::$config['context_bound']) {
-            $_SESSION['_csrf_context'] = self::getContextFingerprint();
+            $session->set('_csrf_context', self::getContextFingerprint());
         }
 
         return $token;
@@ -177,7 +175,7 @@ class Csrf
      */
     public static function generateRequestToken(): string
     {
-        self::ensureSessionStarted();
+        $session = self::getSession();
 
         // Ensure master token exists
         self::generate();
@@ -193,12 +191,9 @@ class Csrf
         }
 
         // Initialize request tokens array if needed
-        if (!isset($_SESSION[self::REQUEST_TOKENS_KEY])) {
-            $_SESSION[self::REQUEST_TOKENS_KEY] = [];
-        }
-
-        // Store with timestamp
-        $_SESSION[self::REQUEST_TOKENS_KEY][$requestToken] = time();
+        $tokens = $session->get(self::REQUEST_TOKENS_KEY, []);
+        $tokens[$requestToken] = time();
+        $session->set(self::REQUEST_TOKENS_KEY, $tokens);
 
         // Cleanup old tokens if we exceed maximum
         self::cleanupRequestTokens();
@@ -236,12 +231,13 @@ class Csrf
         }
 
         // Check master token first
-        $sessionToken = $_SESSION[self::TOKEN_KEY] ?? null;
+        $session = self::getSession();
+        $sessionToken = $session->get(self::TOKEN_KEY);
 
         if ($sessionToken !== null && self::constantTimeCompare($sessionToken, $token)) {
             // Check context if enabled
-            if (self::$config['context_bound'] && isset($_SESSION['_csrf_context'])) {
-                if (!self::constantTimeCompare($_SESSION['_csrf_context'], self::getContextFingerprint())) {
+            if (self::$config['context_bound'] && $session->has('_csrf_context')) {
+                if (!self::constantTimeCompare($session->get('_csrf_context'), self::getContextFingerprint())) {
                     self::$lastError = self::STATUS_CONTEXT_MISMATCH;
                     return false;
                 }
@@ -264,8 +260,8 @@ class Csrf
         }
 
         // Check per-request tokens if enabled
-        if (self::$config['use_per_request_tokens'] && isset($_SESSION[self::REQUEST_TOKENS_KEY])) {
-            $requestTokens = $_SESSION[self::REQUEST_TOKENS_KEY];
+        if (self::$config['use_per_request_tokens'] && $session->has(self::REQUEST_TOKENS_KEY)) {
+            $requestTokens = $session->get(self::REQUEST_TOKENS_KEY);
 
             foreach ($requestTokens as $storedToken => $timestamp) {
                 if (self::constantTimeCompare($storedToken, $token)) {
@@ -274,14 +270,16 @@ class Csrf
                         self::$config['strict_mode'] &&
                         (time() - $timestamp) > self::$config['token_lifetime']
                     ) {
-                        unset($_SESSION[self::REQUEST_TOKENS_KEY][$storedToken]);
+                        unset($requestTokens[$storedToken]);
+                        $session->set(self::REQUEST_TOKENS_KEY, $requestTokens);
 
                         return false;
                     }
 
                     // Consume the token (one-time use)
                     if ($consumeRequestToken) {
-                        unset($_SESSION[self::REQUEST_TOKENS_KEY][$storedToken]);
+                        unset($requestTokens[$storedToken]);
+                        $session->set(self::REQUEST_TOKENS_KEY, $requestTokens);
                     }
 
                     return true;
@@ -360,13 +358,11 @@ class Csrf
      */
     public static function clear(): void
     {
-        self::ensureSessionStarted();
+        $session = self::getSession();
 
-        unset(
-            $_SESSION[self::TOKEN_KEY],
-            $_SESSION[self::TOKEN_TIMESTAMP_KEY],
-            $_SESSION[self::REQUEST_TOKENS_KEY]
-        );
+        $session->remove(self::TOKEN_KEY);
+        $session->remove(self::TOKEN_TIMESTAMP_KEY);
+        $session->remove(self::REQUEST_TOKENS_KEY);
     }
 
     /**
@@ -487,36 +483,33 @@ class Csrf
     }
 
     /**
-     * Ensure session is started
+     * Get the session instance
+     */
+    private static function getSession(): \Plugs\Session\Session
+    {
+        $container = \Plugs\Container\Container::getInstance();
+        if ($container->bound('session')) {
+            return $container->make('session');
+        }
+
+        return new \Plugs\Session\Session();
+    }
+
+    /**
+     * Ensure session is started (Deprecated: Use getSession() instead)
      *
      * @return void
      */
     private static function ensureSessionStarted(): void
     {
-        if (session_status() === PHP_SESSION_NONE) {
-            // Set secure session parameters if not already set
-            if (!headers_sent()) {
-                ini_set('session.use_strict_mode', '1');
-                ini_set('session.cookie_httponly', '1');
-                ini_set('session.cookie_samesite', 'Strict');
-
-                if (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on') {
-                    ini_set('session.cookie_secure', '1');
-                }
-            }
-
-            session_start();
-        }
+        self::getSession();
     }
 
-    /**
-     * Check if token exists and is valid (not expired)
-     *
-     * @return bool True if valid token exists
-     */
     private static function hasValidToken(): bool
     {
-        if (!isset($_SESSION[self::TOKEN_KEY])) {
+        $session = self::getSession();
+
+        if (!$session->has(self::TOKEN_KEY)) {
             return false;
         }
 
@@ -529,67 +522,53 @@ class Csrf
         return !self::isTokenExpired();
     }
 
-    /**
-     * Check if the current token has expired
-     *
-     * @return bool True if expired
-     */
     private static function isTokenExpired(): bool
     {
-        if (!isset($_SESSION[self::TOKEN_TIMESTAMP_KEY])) {
+        $session = self::getSession();
+
+        if (!$session->has(self::TOKEN_TIMESTAMP_KEY)) {
             return true;
         }
 
-        $age = time() - $_SESSION[self::TOKEN_TIMESTAMP_KEY];
+        $age = time() - $session->get(self::TOKEN_TIMESTAMP_KEY);
 
         return $age > self::$config['token_lifetime'];
     }
 
-    /**
-     * Get the context fingerprint for the current request
-     *
-     * @return string Fingerprint
-     */
     private static function getContextFingerprint(): string
     {
-        self::ensureSessionStarted();
-        $sessionId = session_id();
+        $session = self::getSession();
+        $sessionId = $session->getId();
         $userAgent = $_SERVER['HTTP_USER_AGENT'] ?? 'unknown';
 
         return hash('sha256', $sessionId . '|' . $userAgent);
     }
 
-    /**
-     * Cleanup old per-request tokens
-     *
-     * @return void
-     */
     private static function cleanupRequestTokens(): void
     {
-        if (!isset($_SESSION[self::REQUEST_TOKENS_KEY])) {
+        $session = self::getSession();
+
+        if (!$session->has(self::REQUEST_TOKENS_KEY)) {
             return;
         }
 
-        $tokens = $_SESSION[self::REQUEST_TOKENS_KEY];
+        $tokens = $session->get(self::REQUEST_TOKENS_KEY);
 
         // Remove expired tokens
         $currentTime = time();
         foreach ($tokens as $token => $timestamp) {
             if (($currentTime - $timestamp) > self::$config['token_lifetime']) {
-                unset($_SESSION[self::REQUEST_TOKENS_KEY][$token]);
+                unset($tokens[$token]);
             }
         }
 
         // If still too many, remove oldest
-        if (count($_SESSION[self::REQUEST_TOKENS_KEY]) > self::MAX_REQUEST_TOKENS) {
-            asort($_SESSION[self::REQUEST_TOKENS_KEY]);
-            $_SESSION[self::REQUEST_TOKENS_KEY] = array_slice(
-                $_SESSION[self::REQUEST_TOKENS_KEY],
-                -self::MAX_REQUEST_TOKENS,
-                null,
-                true
-            );
+        if (count($tokens) > self::MAX_REQUEST_TOKENS) {
+            asort($tokens);
+            $tokens = array_slice($tokens, -self::MAX_REQUEST_TOKENS, null, true);
         }
+
+        $session->set(self::REQUEST_TOKENS_KEY, $tokens);
     }
 
     /**
@@ -628,16 +607,9 @@ class Csrf
         return self::$config;
     }
 
-    /**
-     * Check if CSRF protection is properly configured
-     *
-     * @return bool True if configured correctly
-     */
     public static function isConfigured(): bool
     {
-        self::ensureSessionStarted();
-
-        return isset($_SESSION[self::TOKEN_KEY]);
+        return self::getSession()->has(self::TOKEN_KEY);
     }
 
     /**

@@ -236,6 +236,9 @@ class Plugs
     {
         $request = $request ?? $this->createServerRequest();
 
+        // Set global current request early for helpers and diagnostics
+        $GLOBALS['__current_request'] = $request;
+
         try {
             // Set the fallback handler before handling the request
             $this->dispatcher->setFallbackHandler($this->fallbackHandler);
@@ -319,6 +322,11 @@ class Plugs
 
     private function emitResponse(ResponseInterface $response): void
     {
+        if (headers_sent()) {
+            echo $response->getBody();
+            return;
+        }
+
         // Send status line
         $statusCode = $response->getStatusCode();
         $reasonPhrase = $response->getReasonPhrase();
@@ -349,17 +357,16 @@ class Plugs
     {
         $functionsDir = __DIR__ . '/functions/';
 
+        // Use a more efficient file inclusion and avoid open_basedir issues if directory doesn't exist
         if (!is_dir($functionsDir)) {
             return;
         }
 
-        // Use a more efficient way to load functions
-        $files = glob($functionsDir . '*.php', GLOB_NOSORT);
+        $files = scandir($functionsDir);
 
         foreach ($files as $file) {
-            // Check if it's a file and not an index or something else
-            if (is_file($file)) {
-                require_once $file;
+            if ($file[0] !== '.' && pathinfo($file, PATHINFO_EXTENSION) === 'php') {
+                require_once $functionsDir . $file;
             }
         }
     }

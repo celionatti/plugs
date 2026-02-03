@@ -197,7 +197,7 @@ class ResponseFactory
         ], $headers);
 
         // Handle range requests for video/audio streaming
-        $rangeHeader = $_SERVER['HTTP_RANGE'] ?? '';
+        $rangeHeader = $headers['Range'] ?? $headers['range'] ?? $_SERVER['HTTP_RANGE'] ?? '';
 
         if (!empty($rangeHeader)) {
             return self::handleRangeRequest($filePath, $fileSize, $rangeHeader, $contentType, $headers);
@@ -250,8 +250,21 @@ class ResponseFactory
     /**
      * Get MIME type for file
      */
-    private static function getMimeType(string $filePath): string
+    public static function getMimeType(string $filePath): string
     {
+        if (!file_exists($filePath)) {
+            return 'application/octet-stream';
+        }
+
+        // Try finfo first for accurate detection
+        if (class_exists('finfo')) {
+            $finfo = new \finfo(FILEINFO_MIME_TYPE);
+            $mime = $finfo->file($filePath);
+            if ($mime) {
+                return $mime;
+            }
+        }
+
         $extension = strtolower(pathinfo($filePath, PATHINFO_EXTENSION));
 
         $mimeTypes = [
@@ -315,7 +328,8 @@ class ResponseFactory
      */
     public static function error(string $message, int $statusCode = 500, array $headers = []): ResponseInterface
     {
-        $accept = $_SERVER['HTTP_ACCEPT'] ?? '';
+        $request = $GLOBALS['__current_request'] ?? null;
+        $accept = $request ? $request->getHeaderLine('Accept') : ($_SERVER['HTTP_ACCEPT'] ?? '');
 
         // Return JSON for API requests
         if (strpos($accept, 'application/json') !== false) {
@@ -337,7 +351,8 @@ class ResponseFactory
      */
     public static function success(string $message, $data = null, int $statusCode = 200, array $headers = []): ResponseInterface
     {
-        $accept = $_SERVER['HTTP_ACCEPT'] ?? '';
+        $request = $GLOBALS['__current_request'] ?? null;
+        $accept = $request ? $request->getHeaderLine('Accept') : ($_SERVER['HTTP_ACCEPT'] ?? '');
 
         // Return JSON for API requests
         if (strpos($accept, 'application/json') !== false) {
@@ -365,7 +380,8 @@ class ResponseFactory
      */
     public static function validationError(array $errors, string $message = 'Validation failed', int $statusCode = 422, array $headers = []): ResponseInterface
     {
-        $accept = $_SERVER['HTTP_ACCEPT'] ?? '';
+        $request = $GLOBALS['__current_request'] ?? null;
+        $accept = $request ? $request->getHeaderLine('Accept') : ($_SERVER['HTTP_ACCEPT'] ?? '');
 
         if (strpos($accept, 'application/json') !== false) {
             return self::json([

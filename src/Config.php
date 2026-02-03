@@ -31,18 +31,11 @@ class Config
             self::load($file);
         }
 
-        // Navigate through the array using dot notation
-        $value = self::$config[$file] ?? null;
-
-        foreach ($parts as $part) {
-            if (is_array($value) && isset($value[$part])) {
-                $value = $value[$part];
-            } else {
-                return $default;
-            }
+        if (empty($parts)) {
+            return self::$config[$file] ?? $default;
         }
 
-        return $value ?? $default;
+        return \Plugs\Utils\Arr::get(self::$config[$file], implode('.', $parts), $default);
     }
 
     /**
@@ -53,25 +46,17 @@ class Config
         $parts = explode('.', $key);
         $file = array_shift($parts);
 
-        // Ensure file config exists
+        if (empty($parts)) {
+            self::$config[$file] = $value;
+            self::$loaded[$file] = true;
+            return;
+        }
+
         if (!isset(self::$config[$file])) {
             self::$config[$file] = [];
         }
 
-        // Navigate and set the value
-        $config = &self::$config[$file];
-
-        foreach ($parts as $i => $part) {
-            if ($i === count($parts) - 1) {
-                $config[$part] = $value;
-            } else {
-                if (!isset($config[$part]) || !is_array($config[$part])) {
-                    $config[$part] = [];
-                }
-                $config = &$config[$part];
-            }
-        }
-
+        \Plugs\Utils\Arr::set(self::$config[$file], implode('.', $parts), $value);
         self::$loaded[$file] = true;
     }
 
@@ -87,17 +72,11 @@ class Config
             self::load($file);
         }
 
-        $value = self::$config[$file] ?? null;
-
-        foreach ($parts as $part) {
-            if (is_array($value) && isset($value[$part])) {
-                $value = $value[$part];
-            } else {
-                return false;
-            }
+        if (empty($parts)) {
+            return isset(self::$config[$file]);
         }
 
-        return true;
+        return \Plugs\Utils\Arr::has(self::$config[$file], implode('.', $parts));
     }
 
     /**
@@ -134,6 +113,25 @@ class Config
         }
 
         return self::$config;
+    }
+
+    /**
+     * Pre-load all configuration files.
+     */
+    public static function warmup(): void
+    {
+        $configPath = self::$path ?? (defined('BASE_PATH') ? BASE_PATH . 'config/' : __DIR__ . '/../config/');
+
+        if (!is_dir($configPath)) {
+            return;
+        }
+
+        $files = glob($configPath . '*.php');
+
+        foreach ($files as $file) {
+            $name = basename($file, '.php');
+            self::load($name);
+        }
     }
 
     /**

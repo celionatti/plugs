@@ -61,6 +61,7 @@ class Connection
     private static $auditLogPath = 'storage/logs/security_audit.log';
     private $isConnecting = false;
     private $lastHealthCheckAt = 0;
+    private $strictMode = false;
 
     /**
      * The number of active transactions.
@@ -671,8 +672,8 @@ class Connection
             return;
         }
 
-        // Only check health once every 30 seconds to improve performance
-        if ((time() - $this->lastHealthCheckAt) < 30) {
+        // Only check health once every 60 seconds to improve performance
+        if ((time() - $this->lastHealthCheckAt) < 60) {
             return;
         }
 
@@ -693,13 +694,19 @@ class Connection
 
     public function ping(): bool
     {
+        if ($this->pdo === null) {
+            return false;
+        }
+
         try {
-            $this->pdo->query('SELECT 1');
+            // Using a simple query to verify connection
+            @$this->pdo->query('SELECT 1');
             $this->lastActivityTime = time();
 
             return true;
         } catch (PDOException $e) {
             $this->isHealthy = false;
+            $this->auditLog("Ping failed: " . $e->getMessage(), 'WARNING');
 
             return false;
         }
@@ -1022,6 +1029,15 @@ class Connection
     }
 
     /**
+     * Enable or disable strict mode (prevents UPDATE/DELETE without WHERE)
+     */
+    public function setStrictMode(bool $strict = true): self
+    {
+        $this->strictMode = $strict;
+        return $this;
+    }
+
+    /**
      * Get the last inserted ID
      */
     public function getLastInsertId(): string
@@ -1072,7 +1088,12 @@ class Connection
     private function guardQuery(string $sql): void
     {
         if (preg_match('/^\s*(update|delete)\b/i', $sql) && !stripos($sql, 'where')) {
-            $this->auditLog("DANGEROUS QUERY DETECTED (No WHERE clause): " . trim($sql), 'ALERT');
+            $message = "DANGEROUS QUERY DETECTED (No WHERE clause): " . trim($sql);
+            $this->auditLog($message, 'ALERT');
+
+            if ($this->strictMode) {
+                throw new \Plugs\Exceptions\DatabaseException($message);
+            }
         }
     }
 
