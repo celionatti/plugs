@@ -19,6 +19,10 @@ class ProfilerController
      */
     public function index(ServerRequestInterface $request)
     {
+        if (!config('app.debug', false)) {
+            abort(403, 'Profiler is disabled in production.');
+        }
+
         $profiles = Profiler::getProfiles(50);
 
         return ResponseFactory::html(view('debug.profiler.index', ['profiles' => $profiles]));
@@ -29,6 +33,10 @@ class ProfilerController
      */
     public function show(ServerRequestInterface $request, string $id)
     {
+        if (!config('app.debug', false)) {
+            abort(403, 'Profiler is disabled in production.');
+        }
+
         $profile = Profiler::getProfile($id);
         if (!$profile) {
             abort(404, 'Profile not found');

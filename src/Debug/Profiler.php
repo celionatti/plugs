@@ -336,8 +336,9 @@ class Profiler
 
         if (!file_exists($file)) {
             // Check if it's in the current instance
-            if (self::$instance && self::$instance->currentProfile && self::$instance->currentProfile['id'] === $id) {
-                return self::$instance->currentProfile;
+            $instance = self::getInstance();
+            if ($instance->currentProfile && ($instance->currentProfile['id'] === $id)) {
+                return $instance->currentProfile;
             }
             return null;
         }

@@ -150,8 +150,21 @@ function getMethodClass($method)
                         <?php foreach ($profile['database']['most_frequent'] as $sql => $stats): ?>
                             <tr>
                                 <td>
-                                    <div class="code-pattern">
-                                        <code><?= htmlspecialchars(substr($sql, 0, 160)) . (strlen($sql) > 160 ? '...' : '') ?></code>
+                                    <div class="code-pattern" style="position: relative;">
+                                        <code
+                                            id="sql-<?= md5($sql) ?>"><?= htmlspecialchars(substr($sql, 0, 160)) . (strlen($sql) > 160 ? '...' : '') ?></code>
+                                        <?php if (strlen($sql) > 160): ?>
+                                            <button
+                                                onclick="plugsShowFullSql('<?= md5($sql) ?>', `<?= addslashes(htmlspecialchars($sql)) ?>`)"
+                                                class="btn-view-full" title="View Full Query">
+                                                <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                        d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                        d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                                </svg>
+                                            </button>
+                                        <?php endif; ?>
                                     </div>
                                 </td>
                                 <td style="text-align: center;"><span class="hit-count"><?= $stats['count'] ?></span></td>
@@ -261,7 +274,8 @@ function getMethodClass($method)
                             <td style="padding: 0.75rem 0; color: var(--text-muted); font-size: 0.9rem;">Application
                                 Name</td>
                             <td style="padding: 0.75rem 0; text-align: right; font-weight: 600;">
-                                <?= config('app.name', 'Plugs App') ?></td>
+                                <?= config('app.name', 'Plugs App') ?>
+                            </td>
                         </tr>
                         <tr style="border-bottom: 1px solid var(--border-glass);">
                             <td style="padding: 0.75rem 0; color: var(--text-muted); font-size: 0.9rem;">Environment
@@ -284,12 +298,14 @@ function getMethodClass($method)
                             <td style="padding: 0.75rem 0; color: var(--text-muted); font-size: 0.9rem;">Timezone</td>
                             <td
                                 style="padding: 0.75rem 0; text-align: right; font-family: 'JetBrains Mono', monospace; font-size: 0.85rem;">
-                                <?= config('app.timezone', 'UTC') ?></td>
+                                <?= config('app.timezone', 'UTC') ?>
+                            </td>
                         </tr>
                         <tr>
                             <td style="padding: 0.75rem 0; color: var(--text-muted); font-size: 0.9rem;">URL</td>
                             <td style="padding: 0.75rem 0; text-align: right; color: var(--info); font-size: 0.85rem;">
-                                <?= config('app.url') ?></td>
+                                <?= config('app.url') ?>
+                            </td>
                         </tr>
                     </table>
                 </div>
@@ -310,7 +326,8 @@ function getMethodClass($method)
                             </td>
                             <td
                                 style="padding: 0.75rem 0; text-align: right; font-family: 'JetBrains Mono', monospace;">
-                                <?= PHP_VERSION ?></td>
+                                <?= PHP_VERSION ?>
+                            </td>
                         </tr>
                         <tr style="border-bottom: 1px solid var(--border-glass);">
                             <td style="padding: 0.75rem 0; color: var(--text-muted); font-size: 0.9rem;">SAPI</td>
@@ -325,7 +342,8 @@ function getMethodClass($method)
                             </td>
                             <td
                                 style="padding: 0.75rem 0; text-align: right; font-family: 'JetBrains Mono', monospace;">
-                                <?= ini_get('memory_limit') ?></td>
+                                <?= ini_get('memory_limit') ?>
+                            </td>
                         </tr>
                     </table>
                 </div>
@@ -334,7 +352,135 @@ function getMethodClass($method)
     </div>
 </div>
 
+<!-- SQL Modal -->
+<div id="plugs-sql-modal" class="modal-overlay" onclick="plugsCloseSqlModal(event)">
+    <div class="modal-content glass-panel animate-fade-up" onclick="event.stopPropagation()">
+        <div class="modal-header">
+            <h3>Full SQL Query</h3>
+            <button class="modal-close" onclick="plugsCloseSqlModal(event)">&times;</button>
+        </div>
+        <div class="modal-body">
+            <pre id="full-sql-content" class="code-pattern"
+                style="white-space: pre-wrap; word-break: break-all; font-size: 0.9rem; padding: 1.5rem;"></pre>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-glass" onclick="plugsCopySql()">
+                <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" />
+                </svg>
+                Copy SQL
+            </button>
+        </div>
+    </div>
+</div>
+
+<script>
+    function plugsShowFullSql(id, sql) {
+        document.getElementById('full-sql-content').innerText = sql;
+        document.getElementById('plugs-sql-modal').classList.add('active');
+        document.body.style.overflow = 'hidden';
+    }
+
+    function plugsCloseSqlModal(e) {
+        document.getElementById('plugs-sql-modal').classList.remove('active');
+        document.body.style.overflow = '';
+    }
+
+    function plugsCopySql() {
+        const sql = document.getElementById('full-sql-content').innerText;
+        navigator.clipboard.writeText(sql).then(() => {
+            const btn = document.querySelector('.modal-footer .btn');
+            const originalText = btn.innerHTML;
+            btn.innerHTML = 'Copied!';
+            setTimeout(() => btn.innerHTML = originalText, 2000);
+        });
+    }
+</script>
+
 <style>
+    .btn-view-full {
+        position: absolute;
+        right: 0.5rem;
+        top: 50%;
+        transform: translateY(-50%);
+        background: var(--bg-deep);
+        border: 1px solid var(--border-glass);
+        color: var(--text-muted);
+        padding: 0.3rem;
+        border-radius: 4px;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: all 0.2s;
+    }
+
+    .btn-view-full:hover {
+        color: var(--accent);
+        border-color: var(--accent);
+        background: rgba(168, 85, 247, 0.1);
+    }
+
+    /* Modal Styling */
+    .modal-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.7);
+        backdrop-filter: blur(8px);
+        display: none;
+        align-items: center;
+        justify-content: center;
+        z-index: 9999;
+        padding: 2rem;
+    }
+
+    .modal-overlay.active {
+        display: flex;
+    }
+
+    .modal-content {
+        max-width: 800px;
+        width: 100%;
+        max-height: 80vh;
+        display: flex;
+        flex-direction: column;
+        padding: 0 !important;
+        overflow: hidden;
+    }
+
+    .modal-header {
+        padding: 1.5rem 2rem;
+        border-bottom: 1px solid var(--border-glass);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .modal-close {
+        background: none;
+        border: none;
+        color: var(--text-muted);
+        font-size: 1.5rem;
+        cursor: pointer;
+    }
+
+    .modal-body {
+        padding: 2rem;
+        overflow-y: auto;
+        flex: 1;
+    }
+
+    .modal-footer {
+        padding: 1rem 2rem;
+        border-top: 1px solid var(--border-glass);
+        display: flex;
+        justify-content: flex-end;
+    }
+
     .stat-card-premium {
         padding: 1.5rem;
         display: flex;
