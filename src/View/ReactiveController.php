@@ -48,7 +48,8 @@ class ReactiveController
             $componentName = $data['component'] ?? null;
             $action = $data['action'] ?? null;
             $state = $data['state'] ?? null;
-            $params = $data['params'] ?? [];
+            $payload = $data['payload'] ?? [];
+            $params = is_array($payload) ? $payload : [$payload];
             $id = $data['id'] ?? null;
 
             if (!$componentName || !$action || !$state) {
@@ -57,7 +58,7 @@ class ReactiveController
                 return ResponseFactory::json(['error' => 'Invalid request structure'], 400);
             }
 
-            $className = "App\\Components\\" . $this->viewEngine->snakeToPascalCase(str_replace('.', '\\', $componentName));
+            $className = "App\\Components\\" . $this->viewEngine->anyToPascalCase(str_replace('.', '\\', $componentName));
 
             if (!class_exists($className)) {
                 error_log("Plugs Reactive Error: Class not found: $className");
