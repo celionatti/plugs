@@ -474,6 +474,8 @@ return User::paginateResponse(15);
 // Returns: { success, status, data, meta: { total, per_page, current_page, ... }, links: { first, last, next, prev } }
 ```
 
+For more details on pagination, see the [Pagination documentation](pagination.md).
+
 ### Search Response
 
 Combine filtering, sorting, and pagination:

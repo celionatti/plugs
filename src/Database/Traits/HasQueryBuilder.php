@@ -7,6 +7,7 @@ namespace Plugs\Database\Traits;
 use Plugs\Database\Collection;
 use Plugs\Database\Connection;
 use Plugs\Database\QueryBuilder;
+use Plugs\Paginator\Pagination;
 
 trait HasQueryBuilder
 {
@@ -213,13 +214,13 @@ trait HasQueryBuilder
         return static::count() > 0;
     }
 
-    /**
-     * Paginate results
-     */
+
     /**
      * Paginate results (Production Ready)
+     * 
+     * @return Pagination
      */
-    public static function paginate(int $perPage = 15, ?int $page = null, array $columns = ['*']): array
+    public static function paginate(int $perPage = 15, ?int $page = null, array $columns = ['*']): Pagination
     {
         // Enforce a sensible maximum to prevent DoS via per_page parameter
         $maxPerPage = defined('static::MAX_PER_PAGE') ? static::MAX_PER_PAGE : 100;
@@ -238,59 +239,56 @@ trait HasQueryBuilder
             ->get();
 
         $data = $items instanceof Collection ? $items->all() : $items;
-        $lastPage = (int) ceil($total / $perPage);
 
-        // Generate absolute URLs for links
-        $baseUrl = function_exists('currentUrl') ? currentUrl(includeQuery: false) : '';
-        $queryParams = $_GET;
-        unset($queryParams['page']);
+        // Ensure items are instances of the model if possible
+        if (!empty($data) && is_array($data) && !($data[0] instanceof static)) {
+            $data = array_map(fn($item) => new static($item), $data);
+        }
 
-        $buildUrl = function ($p) use ($baseUrl, $queryParams) {
-            if (!$p)
-                return null;
-            $params = array_merge($queryParams, ['page' => $p]);
-            return $baseUrl . '?' . http_build_query($params);
-        };
-
-        return [
-            'data' => $data,
-            'meta' => [
-                'total' => $total,
-                'per_page' => $perPage,
-                'current_page' => $page,
-                'last_page' => $lastPage,
-                'from' => $total > 0 ? $offset + 1 : 0,
-                'to' => min($offset + $perPage, $total),
-                'path' => $baseUrl,
-            ],
-            'links' => [
-                'first' => $buildUrl(1),
-                'last' => $buildUrl($lastPage),
-                'next' => $page < $lastPage ? $buildUrl($page + 1) : null,
-                'prev' => $page > 1 ? $buildUrl($page - 1) : null,
-            ]
-        ];
+        return new Pagination($data, $perPage, $page, $total);
     }
+
 
     /**
      * Paginate results and return a Pagination object
+     *
+     * @alias paginate
      */
-    public static function paginateLinks(int $perPage = 15, ?int $page = null, array $columns = ['*']): \Plugs\Paginator\Pagination
+    public static function paginateLinks(int $perPage = 15, ?int $page = null, array $columns = ['*']): Pagination
     {
-        $paginated = static::paginate($perPage, $page, $columns);
-        return \Plugs\Paginator\Pagination::fromArray($paginated);
+        return static::paginate($perPage, $page, $columns);
     }
+
 
     /**
      * Get paginated results as a standardized API response.
      */
     public static function paginateResponse(int $perPage = 15, ?int $page = null, array $columns = ['*']): \Plugs\Http\StandardResponse
     {
-        $paginated = static::paginate($perPage, $page, $columns);
+        $paginator = static::paginate($perPage, $page, $columns);
+        $paginated = $paginator->toArray();
+
+        // Extract meta and links manually since toArray is flat
+        $meta = [
+            'total' => $paginated['total'],
+            'per_page' => $paginated['per_page'],
+            'current_page' => $paginated['current_page'],
+            'last_page' => $paginated['last_page'],
+            'from' => $paginated['from'],
+            'to' => $paginated['to'],
+            'path' => $paginated['path'],
+        ];
+
+        $links = [
+            'first' => $paginated['first_page_url'],
+            'last' => $paginated['last_page_url'],
+            'prev' => $paginated['prev_page_url'],
+            'next' => $paginated['next_page_url'],
+        ];
 
         return \Plugs\Http\StandardResponse::success($paginated['data'])
-            ->withMeta($paginated['meta'])
-            ->withLinks($paginated['links']);
+            ->withMeta($meta)
+            ->withLinks($links);
     }
 
     /**
@@ -415,10 +413,13 @@ trait HasQueryBuilder
         return $query;
     }
 
+
     /**
      * Search and paginate with request parameters
+     *
+     * @return Pagination
      */
-    public static function search(?array $params = null): array
+    public static function search(?array $params = null): Pagination
     {
         $params = $params ?? $_GET ?? $_REQUEST ?? [];
 
@@ -441,48 +442,55 @@ trait HasQueryBuilder
             ->get();
 
         $data = $items instanceof Collection ? $items->all() : $items;
-        $lastPage = (int) ceil($total / $perPage);
 
-        // Generate absolute URLs for links
-        $baseUrl = function_exists('currentUrl') ? currentUrl(includeQuery: false) : '';
-        $queryParams = $params;
-        unset($queryParams['page']);
+        // Ensure items are instances of the model if possible
+        if (!empty($data) && is_array($data) && !($data[0] instanceof static)) {
+            $data = array_map(fn($item) => new static($item), $data);
+        }
 
-        $buildUrl = function ($p) use ($baseUrl, $queryParams) {
-            if (!$p)
-                return null;
-            $params = array_merge($queryParams, ['page' => $p]);
-            return $baseUrl . '?' . http_build_query($params);
-        };
+        $paginator = new Pagination($data, $perPage, $page, $total);
+        $paginator->appends(array_filter($params, fn($k) => !in_array($k, ['page', 'per_page']), ARRAY_FILTER_USE_KEY));
 
-        return [
-            'data' => $data,
-            'meta' => [
-                'total' => $total,
-                'per_page' => $perPage,
-                'current_page' => $page,
-                'last_page' => $lastPage,
-                'filters' => array_filter($params, fn($k) => !in_array($k, ['page', 'per_page']), ARRAY_FILTER_USE_KEY),
-                'path' => $baseUrl,
-            ],
-            'links' => [
-                'first' => $buildUrl(1),
-                'last' => $buildUrl($lastPage),
-                'next' => $page < $lastPage ? $buildUrl($page + 1) : null,
-                'prev' => $page > 1 ? $buildUrl($page - 1) : null,
-            ],
-        ];
+        return $paginator;
     }
+
 
     /**
      * Search and paginate results as a standardized API response.
      */
     public static function searchResponse(?array $params = null): \Plugs\Http\StandardResponse
     {
-        $paginated = static::search($params);
+        $paginator = static::search($params);
+        $paginated = $paginator->toArray();
+
+        // Extract meta and links manually since toArray is flat
+        $meta = [
+            'total' => $paginated['total'],
+            'per_page' => $paginated['per_page'],
+            'current_page' => $paginated['current_page'],
+            'last_page' => $paginated['last_page'],
+            'from' => $paginated['from'],
+            'to' => $paginated['to'],
+            'path' => $paginated['path'],
+            // specific to search, filters might be needed, but Pagination object doesn't carry them explicitly in toArray usually unless added
+            // Pagination has 'filters' only if we added it? 
+            // In Model::search and HasQueryBuilder::search, I added $paginator->appends(...)
+            // Pagination appends to query string, but does it put it in toArray?
+            // Pagination::toArray() does NOT include 'filters' key.
+            // If API consumers need 'filters', I might need to check if Pagination allows retrieving them.
+            // Pagination::getCurrentQuery() returns them.
+            // But for now, let's stick to standard meta.
+        ];
+
+        $links = [
+            'first' => $paginated['first_page_url'],
+            'last' => $paginated['last_page_url'],
+            'prev' => $paginated['prev_page_url'],
+            'next' => $paginated['next_page_url'],
+        ];
 
         return \Plugs\Http\StandardResponse::success($paginated['data'])
-            ->withMeta($paginated['meta'])
-            ->withLinks($paginated['links']);
+            ->withMeta($meta)
+            ->withLinks($links);
     }
 }

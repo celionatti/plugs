@@ -201,3 +201,7 @@ $users = DB::table('users')
 ## Query Filtering
 
 For advanced filtering from request parameters, see the [Query Filtering](query-filtering.md) documentation.
+
+## Pagination
+
+For details on paginating query builder results, see the [Pagination documentation](pagination.md).

@@ -45,6 +45,7 @@ Welcome to the official documentation for the **Plugs** framework. Plugs is a li
 - [Query Filtering](file:///docs/database/query-filtering.md) (New)
 - [Migrations](file:///docs/database/migrations.md)
 - [Models](file:///docs/database/models.md)
+- [Pagination](file:///docs/database/pagination.md)
 - [Factories & Seeders](file:///docs/database/factories-seeders.md)
 
 ### 🛡️ Security

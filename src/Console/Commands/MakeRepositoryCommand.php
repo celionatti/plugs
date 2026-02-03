@@ -286,16 +286,10 @@ class {$name} extends BaseRepository{$implements}
     /**
      * Get paginated records
      */
-    public function paginate(int \$perPage = 15, ?int \$page = null): array
+    public function paginate(int \$perPage = 15, ?int \$page = null): \Plugs\Paginator\Pagination
     {
-        // TODO: Implement paginate() method
-        return [
-            'data' => [],
-            'total' => 0,
-            'per_page' => \$perPage,
-            'current_page' => \$page,
-            'last_page' => 1,
-        ];
+        // Example with Eloquent: return {$model}::paginate(\$perPage);
+        return new \Plugs\Paginator\Pagination([], \$perPage, \$page ?? 1, 0);
     }
 
     /**
@@ -365,7 +359,7 @@ interface {$name}
     /**
      * Get paginated records
      */
-    public function paginate(int \$perPage = 15, ?int \$page = null): array;
+    public function paginate(int \$perPage = 15, ?int \$page = null): \Plugs\Paginator\Pagination;
 
     /**
      * Count all records
