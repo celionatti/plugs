@@ -494,7 +494,7 @@ class ViewEngine
                 // Include layout information for SPA to detect if a full reload is needed
                 /** @phpstan-ignore-next-line */
                 if (isset($__extends) && $__extends) {
-                    $output = "<meta name=\"plugs-layout\" content=\"{$__extends}\">\n" . $output;
+                    $output = "<meta name=\"plugs-layout\" content=\"" . (string) ($__extends ?? '') . "\">\n" . $output;
                 }
 
                 return $output;
@@ -578,7 +578,7 @@ class ViewEngine
                 // Include layout information for SPA to detect if a full reload is needed
                 /** @phpstan-ignore-next-line */
                 if (isset($__extends) && $__extends) {
-                    $output = "<meta name=\"plugs-layout\" content=\"{$__extends}\">\n" . $output;
+                    $output = "<meta name=\"plugs-layout\" content=\"" . (string) ($__extends ?? '') . "\">\n" . $output;
                 }
 
                 return $output;
@@ -670,7 +670,7 @@ class ViewEngine
             $result = ob_get_clean();
             error_reporting($previousErrorLevel);
 
-            return $result;
+            return (string) ($result ?: '');
         } catch (Throwable $e) {
             ob_end_clean();
             error_reporting($previousErrorLevel);

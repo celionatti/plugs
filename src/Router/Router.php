@@ -26,8 +26,11 @@ use Plugs\Http\ResponseFactory;
 use Plugs\Inertia\InertiaResponse;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
+use ReflectionClass;
 use ReflectionMethod;
 use ReflectionParameter;
+use ReflectionType;
+use ReflectionNamedType;
 use RuntimeException;
 
 class Router
@@ -822,7 +825,7 @@ class Router
         $type = $parameter->getType();
 
         // Handle array type parameters from request body
-        if ($type instanceof \ReflectionNamedType && $type->getName() === 'array') {
+        if ($type instanceof ReflectionNamedType && $type->getName() === 'array') {
             $parsedBody = $request->getParsedBody();
             if (is_array($parsedBody) && array_key_exists($paramName, $parsedBody)) {
                 $value = $parsedBody[$paramName];
@@ -862,7 +865,7 @@ class Router
 
         // Handle typed parameters (classes/interfaces) - BEFORE route params
         // This ensures Request/Response injection works even if there's a route param with same name
-        if ($type instanceof \ReflectionNamedType && !$type->isBuiltin()) {
+        if ($type instanceof ReflectionNamedType && !$type->isBuiltin()) {
             $typeName = $type->getName();
 
             // PSR-7 Request injection
@@ -955,10 +958,10 @@ class Router
     /**
      * Cast parameter value to type
      */
-    private function castParameterValue($value, ?\ReflectionType $type)
+    private function castParameterValue($value, ?ReflectionType $type)
     {
         // No type hint or not a named type - return as-is
-        if (!$type instanceof \ReflectionNamedType) {
+        if (!$type instanceof ReflectionNamedType) {
             return $value;
         }
 
@@ -1484,7 +1487,7 @@ class Router
      */
     public function registerControllerAttributes(string $controller): void
     {
-        $reflection = new \ReflectionClass($controller);
+        $reflection = new ReflectionClass($controller);
 
         // Get class-level middleware
         $classMiddleware = [];
@@ -1494,7 +1497,7 @@ class Router
             $classMiddleware = array_merge($classMiddleware, (array) $mw);
         }
 
-        foreach ($reflection->getMethods(\ReflectionMethod::IS_PUBLIC) as $method) {
+        foreach ($reflection->getMethods(ReflectionMethod::IS_PUBLIC) as $method) {
             $routeAttributes = $method->getAttributes(\Plugs\Router\Attributes\Route::class);
 
             foreach ($routeAttributes as $attribute) {
