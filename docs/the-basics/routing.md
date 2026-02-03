@@ -117,6 +117,73 @@ $router->prefix('admin')->group(function ($router) {
 });
 ```
 
+## Resource Routes
+
+The Plugs router resource routing assigns the typical "CRUD" (Create, Read, Update, Delete) routes to a controller with a single line of code.
+
+### RESTful Resource Controllers
+
+```php
+$router->resource('photos', PhotoController::class);
+```
+
+This single route declaration creates multiple routes to handle a variety of actions on the resource. The generated routes will handle:
+
+| Verb | URI | Action | Route Name |
+| :--- | :--- | :--- | :--- |
+| GET | `/photos` | index | `photos.index` |
+| GET | `/photos/create` | create | `photos.create` |
+| POST | `/photos` | store | `photos.store` |
+| GET | `/photos/{id}` | show | `photos.show` |
+| GET | `/photos/{id}/edit` | edit | `photos.edit` |
+| PUT/PATCH | `/photos/{id}` | update | `photos.update` |
+| DELETE | `/photos/{id}` | destroy | `photos.destroy` |
+
+### API Resource Routes
+
+When declaring resource routes that will be consumed by APIs, you will commonly want to exclude routes that present HTML templates such as `create` and `edit`. For this reason, you may use the `apiResource` method:
+
+```php
+$router->apiResource('photos', PhotoController::class);
+```
+
+| Verb | URI | Action | Route Name |
+| :--- | :--- | :--- | :--- |
+| GET | `/photos` | index | `photos.index` |
+| POST | `/photos` | store | `photos.store` |
+| GET | `/photos/{id}` | show | `photos.show` |
+| PUT/PATCH | `/photos/{id}` | update | `photos.update` |
+| DELETE | `/photos/{id}` | destroy | `photos.destroy` |
+
+### Specifying Resource Parameters
+
+By default, `resource` routes use `{id}` as the parameter name. You can customize this using the `parameters` option:
+
+```php
+$router->resource('users', UserController::class, [
+    'parameters' => 'user_id'
+]);
+// URIs will look like: /users/{user_id}
+```
+
+## Manual API Method Usage
+
+While `apiResource` is convenient, you can always define API routes manually:
+
+```php
+$router->group(['prefix' => 'api/v1'], function($router) {
+    $router->get('/posts', [PostController::class, 'index']);
+    $router->post('/posts', [PostController::class, 'store']);
+    
+    // Updating a resource (PUT replaces, PATCH partially updates)
+    $router->put('/posts/{id}', [PostController::class, 'update']);
+    $router->patch('/posts/{id}', [PostController::class, 'update']);
+    
+    // Deleting a resource
+    $router->delete('/posts/{id}', [PostController::class, 'destroy']);
+});
+```
+
 ## Method Spoofing
 
 HTML forms do not support `PUT`, `PATCH`, or `DELETE` actions. To use these methods, you will need to add a hidden `_method` field to the form. The `@method` Blade directive can create this field for you:

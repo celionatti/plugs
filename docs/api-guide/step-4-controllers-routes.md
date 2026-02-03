@@ -67,7 +67,7 @@ This single line registers:
 *   `GET /v1/products` (index)
 *   `POST /v1/products` (store)
 *   `GET /v1/products/{id}` (show)
-*   `PUT/PATCH /v1/products/{id}` (update)
+*   `PUT/PATCH /v1/products/{id}` (update) - Use `PUT` for full updates and `PATCH` for partial updates.
 *   `DELETE /v1/products/{id}` (destroy)
 
 ## 4. Why Use API Controllers?
