@@ -18,6 +18,7 @@ use Plugs\Database\Collection;
 use Plugs\Database\Connection;
 use Plugs\Database\QueryBuilder;
 use Plugs\Database\Traits\HasQueryBuilder;
+use Plugs\Paginator\Pagination;
 
 abstract class Model
 {
@@ -143,9 +144,9 @@ abstract class Model
      * @param int $perPage Items per page
      * @param int|null $page Current page number
      * @param array $columns Columns to select
-     * @return array Pagination data
+     * @return Pagination
      */
-    public static function paginate(int $perPage = 15, ?int $page = null, array $columns = ['*']): array
+    public static function paginate(int $perPage = 15, ?int $page = null, array $columns = ['*']): Pagination
     {
         $page = $page ?? static::getCurrentPage();
         $page = max(1, $page);
@@ -162,15 +163,7 @@ abstract class Model
             ->offset($offset)
             ->get();
 
-        return [
-            'data' => $results,
-            'total' => $total,
-            'per_page' => $perPage,
-            'current_page' => $page,
-            'last_page' => (int) ceil($total / $perPage),
-            'from' => $offset + 1,
-            'to' => min($offset + $perPage, $total),
-        ];
+        return new Pagination($results, $perPage, $page, $total);
     }
 
     /**
@@ -211,7 +204,25 @@ abstract class Model
      */
     protected static function getCurrentPage(): int
     {
-        return (int) ($_GET['page'] ?? $_REQUEST['page'] ?? 1);
+        $page = 1;
+
+        // Try to get from request helper if available
+        if (function_exists('request') && ($request = request())) {
+            $params = $request->getQueryParams();
+            if (isset($params['page'])) {
+                $page = $params['page'];
+            }
+        }
+
+        // Fallback to global $_GET / $_REQUEST
+        if ($page === 1) {
+            $page = $_GET['page'] ?? $_REQUEST['page'] ?? 1;
+        }
+
+        // Debug logging
+        // file_put_contents(base_path('pagination_debug.log'), date('Y-m-d H:i:s') . " - Page requested: " . print_r($page, true) . "\n", FILE_APPEND);
+
+        return (int) $page;
     }
 
     /**
@@ -269,8 +280,10 @@ abstract class Model
 
     /**
      * Search and paginate with request parameters
+     *
+     * @return Pagination
      */
-    public static function search(?array $params = null): array
+    public static function search(?array $params = null): Pagination
     {
         $params = $params ?? $_GET ?? $_REQUEST ?? [];
 
@@ -291,14 +304,10 @@ abstract class Model
 
         $data = array_map(fn($item) => new static($item), $items);
 
-        return [
-            'data' => $data,
-            'total' => $total,
-            'per_page' => $perPage,
-            'current_page' => $page,
-            'last_page' => (int) ceil($total / $perPage),
-            'filters' => array_filter($params, fn($k) => !in_array($k, ['page', 'per_page']), ARRAY_FILTER_USE_KEY),
-        ];
+        $paginator = new Pagination($data, $perPage, $page, $total);
+        $paginator->appends(array_filter($params, fn($k) => !in_array($k, ['page', 'per_page']), ARRAY_FILTER_USE_KEY));
+
+        return $paginator;
     }
 
     public static function create(array $attributes): self

@@ -22,7 +22,7 @@ use Plugs\Database\Collection;
  * // Load more style
  * echo $users['paginator']->renderLoadMore();
  */
-class Pagination
+class Pagination implements \IteratorAggregate, \Countable, \ArrayAccess, \JsonSerializable
 {
     protected array $items = [];
     protected int $total;
@@ -1102,5 +1102,58 @@ JS;
     public function __toString(): string
     {
         return $this->render();
+    }
+
+    // ==========================================
+    // IteratorAggregate Implementation
+    // ==========================================
+
+    public function getIterator(): \Traversable
+    {
+        return new \ArrayIterator($this->items);
+    }
+
+    // ==========================================
+    // Countable Implementation
+    // ==========================================
+
+    public function count(): int
+    {
+        return count($this->items);
+    }
+
+    // ==========================================
+    // ArrayAccess Implementation
+    // ==========================================
+
+    public function offsetExists($offset): bool
+    {
+        $array = $this->toArray();
+        return array_key_exists($offset, $array);
+    }
+
+    public function offsetGet($offset): mixed
+    {
+        $array = $this->toArray();
+        return $array[$offset] ?? null;
+    }
+
+    public function offsetSet($offset, $value): void
+    {
+        throw new \BadMethodCallException("Pagination object is read-only via array access");
+    }
+
+    public function offsetUnset($offset): void
+    {
+        throw new \BadMethodCallException("Pagination object is read-only via array access");
+    }
+
+    // ==========================================
+    // JsonSerializable Implementation
+    // ==========================================
+
+    public function jsonSerialize(): mixed
+    {
+        return $this->toArray();
     }
 }
