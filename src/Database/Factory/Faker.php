@@ -15,16 +15,250 @@ use DateTime;
  */
 class Faker
 {
-    private static array $firstNames = ['James', 'Mary', 'Robert', 'Patricia', 'John', 'Jennifer', 'Michael', 'Linda', 'William', 'Elizabeth', 'David', 'Barbara', 'Richard', 'Susan', 'Joseph', 'Jessica', 'Thomas', 'Sarah', 'Christopher', 'Karen', 'Celio', 'Tilly'];
-    private static array $lastNames = ['Smith', 'Johnson', 'Williams', 'Brown', 'Jones', 'Garcia', 'Miller', 'Davis', 'Rodriguez', 'Martinez', 'Hernandez', 'Lopez', 'Gonzales', 'Wilson', 'Anderson', 'Thomas', 'Taylor', 'Moore', 'Jackson', 'Martin', 'Natti', 'Tinny'];
-    private static array $cities = ['New York', 'Los Angeles', 'Chicago', 'Houston', 'Phoenix', 'Philadelphia', 'San Antonio', 'San Diego', 'Dallas', 'San Jose', 'Fort Worth', 'El Paso', 'Lagos', 'Abuja', 'Ibadan', 'Port Harcourt', 'Kano', 'Oyo', 'Ogun', 'Ondo', 'Osun', 'Ilorin', 'Benin'];
-    private static array $countries = ['United States', 'United Kingdom', 'Canada', 'Australia', 'Germany', 'France', 'Japan', 'China', 'Brazil', 'Nigeria'];
-    private static array $domains = ['example.com', 'test.org', 'sample.net', 'demo.io', 'plugs.dev'];
-    private static array $words = ['lorem', 'ipsum', 'dolor', 'sit', 'amet', 'consectetur', 'adipiscing', 'elit', 'sed', 'do', 'eiusmod', 'tempor', 'incididunt', 'ut', 'labore', 'et', 'dolore', 'magna', 'aliqua'];
-    private static array $companies = ['Google', 'Microsoft', 'Apple', 'Meta', 'Amazon', 'Antigravity', 'Celionatti', 'Innovate', 'Pixel', 'Vertex', 'Cyberdyne', 'Umbrella', 'Stark', 'Wayne'];
-    private static array $companySuffixes = ['Inc', 'Corp', 'LLC', 'Group', 'Solutions', 'Tech', 'Ventures'];
-    private static array $jobTitles = ['Developer', 'Manager', 'Designer', 'Engineer', 'CEO', 'CTO', 'Analyst', 'Consultant', 'Architect'];
-    private static array $streets = ['Main St', 'High St', 'Broadway', 'Bridge Rd', 'Station Rd', 'Oxford St', 'Victoria Rd', 'London Rd', 'Church St', 'Park St'];
+    private static array $firstNames = [
+        'James',
+        'Mary',
+        'Robert',
+        'Patricia',
+        'John',
+        'Jennifer',
+        'Michael',
+        'Linda',
+        'William',
+        'Elizabeth',
+        'David',
+        'Barbara',
+        'Richard',
+        'Susan',
+        'Joseph',
+        'Jessica',
+        'Thomas',
+        'Sarah',
+        'Christopher',
+        'Karen',
+        'Celio',
+        'Tilly',
+        'Daniel',
+        'Nancy',
+        'Matthew',
+        'Margaret',
+        'Anthony',
+        'Sandra',
+        'Mark',
+        'Ashley',
+        'Donald',
+        'Dorothy',
+        'Steven',
+        'Kimberly',
+        'Andrew',
+        'Emily',
+        'Paul',
+        'Donna',
+        'Joshua',
+        'Michelle',
+        'Kenneth',
+        'Carol',
+        'Kevin',
+        'Amanda',
+        'Brian',
+        'Melissa',
+        'George',
+        'Deborah',
+        'Edward',
+        'Stephanie'
+    ];
+    private static array $lastNames = [
+        'Smith',
+        'Johnson',
+        'Williams',
+        'Brown',
+        'Jones',
+        'Garcia',
+        'Miller',
+        'Davis',
+        'Rodriguez',
+        'Martinez',
+        'Hernandez',
+        'Lopez',
+        'Gonzales',
+        'Wilson',
+        'Anderson',
+        'Thomas',
+        'Taylor',
+        'Moore',
+        'Jackson',
+        'Martin',
+        'Natti',
+        'Tinny',
+        'Lee',
+        'Perez',
+        'Thompson',
+        'White',
+        'Harris',
+        'Sanchez',
+        'Clark',
+        'Ramirez',
+        'Lewis',
+        'Robinson',
+        'Walker',
+        'Young',
+        'Allen',
+        'King',
+        'Wright',
+        'Scott',
+        'Torres',
+        'Nguyen',
+        'Hill',
+        'Flores',
+        'Green',
+        'Adams',
+        'Nelson',
+        'Baker',
+        'Hall',
+        'Rivera',
+        'Campbell',
+        'Mitchell'
+    ];
+    private static array $cities = [
+        'New York',
+        'Los Angeles',
+        'Chicago',
+        'Houston',
+        'Phoenix',
+        'Philadelphia',
+        'San Antonio',
+        'San Diego',
+        'Dallas',
+        'San Jose',
+        'Fort Worth',
+        'El Paso',
+        'Lagos',
+        'Abuja',
+        'Ibadan',
+        'Port Harcourt',
+        'Kano',
+        'Oyo',
+        'Ogun',
+        'Ondo',
+        'Osun',
+        'Ilorin',
+        'Benin',
+        'London',
+        'Manchester',
+        'Birmingham',
+        'Paris',
+        'Berlin',
+        'Madrid',
+        'Rome',
+        'Tokyo',
+        'Beijing',
+        'Sydney',
+        'Toronto',
+        'Dubai'
+    ];
+    private static array $countries = [
+        'United States',
+        'United Kingdom',
+        'Canada',
+        'Australia',
+        'Germany',
+        'France',
+        'Japan',
+        'China',
+        'Brazil',
+        'Nigeria',
+        'India',
+        'Mexico',
+        'South Africa',
+        'Russia',
+        'Italy',
+        'Spain',
+        'Netherlands',
+        'Sweden',
+        'Switzerland',
+        'Singapore'
+    ];
+    private static array $domains = ['example.com', 'test.org', 'sample.net', 'demo.io', 'plugs.dev', 'dummy.com', 'fake.net', 'celio.io'];
+    private static array $words = [
+        'lorem',
+        'ipsum',
+        'dolor',
+        'sit',
+        'amet',
+        'consectetur',
+        'adipiscing',
+        'elit',
+        'sed',
+        'do',
+        'eiusmod',
+        'tempor',
+        'incididunt',
+        'ut',
+        'labore',
+        'et',
+        'dolore',
+        'magna',
+        'aliqua',
+        'enim',
+        'ad',
+        'minim',
+        'veniam',
+        'quis',
+        'nostrud',
+        'exercitation',
+        'ullamco',
+        'laboris',
+        'nisi',
+        'ut',
+        'aliquid',
+        'ex',
+        'ea',
+        'commodi',
+        'consequat',
+        'quis',
+        'autem',
+        'vel',
+        'eum',
+        'iure',
+        'reprehenderit',
+        'qui',
+        'in',
+        'ea',
+        'voluptate',
+        'velit',
+        'esse',
+        'quam',
+        'nihil',
+        'molestiae',
+        'consequatur',
+        'vel',
+        'illum',
+        'qui',
+        'dolorem',
+        'eum',
+        'fugiat',
+        'quo',
+        'voluptas',
+        'nulla',
+        'pariatur',
+        'framework',
+        'application',
+        'database',
+        'system',
+        'interface',
+        'software',
+        'dynamic',
+        'digital',
+        'global',
+        'creative',
+        'modern'
+    ];
+    private static array $companies = ['Google', 'Microsoft', 'Apple', 'Meta', 'Amazon', 'Antigravity', 'Celionatti', 'Innovate', 'Pixel', 'Vertex', 'Cyberdyne', 'Umbrella', 'Stark', 'Wayne', 'Oscorp', 'Aperture', 'Hooli', 'Pied Piper'];
+    private static array $companySuffixes = ['Inc', 'Corp', 'LLC', 'Group', 'Solutions', 'Tech', 'Ventures', 'Associates', 'International', 'Limited'];
+    private static array $jobTitles = ['Developer', 'Manager', 'Designer', 'Engineer', 'CEO', 'CTO', 'Analyst', 'Consultant', 'Architect', 'Specialist', 'Coordinator', 'Director'];
+    private static array $streets = ['Main St', 'High St', 'Broadway', 'Bridge Rd', 'Station Rd', 'Oxford St', 'Victoria Rd', 'London Rd', 'Church St', 'Park St', 'Maple Ave', 'Oak St', 'Washington Blvd'];
+    private static array $titles = ['Mr.', 'Mrs.', 'Ms.', 'Dr.', 'Prof.', 'Rev.'];
+    private static array $suffixes = ['Jr.', 'Sr.', 'II', 'III', 'IV', 'V', 'PhD', 'MD'];
 
     protected bool $useUnique = false;
     protected array $uniqueValues = [];
@@ -60,6 +294,22 @@ class Faker
     public function lastName(): string
     {
         return $this->randomValue(self::$lastNames);
+    }
+
+    /**
+     * Generate a title
+     */
+    public function title(): string
+    {
+        return $this->randomValue(self::$titles);
+    }
+
+    /**
+     * Generate a suffix
+     */
+    public function suffix(): string
+    {
+        return $this->randomValue(self::$suffixes);
     }
 
     /**
@@ -148,15 +398,28 @@ class Faker
     }
 
     /**
+     * Generate random words
+     * 
+     * @param int $count Number of words to generate
+     * @param bool $asText Whether to return as a space-separated string
+     * @return array|string
+     */
+    public function words(int $count = 3, bool $asText = false): array|string
+    {
+        $words = [];
+        for ($i = 0; $i < $count; $i++) {
+            $words[] = $this->word();
+        }
+
+        return $asText ? implode(' ', $words) : $words;
+    }
+
+    /**
      * Generate a sentence
      */
     public function sentence(int $wordCount = 6): string
     {
-        $words = [];
-        for ($i = 0; $i < $wordCount; $i++) {
-            $words[] = $this->word();
-        }
-
+        $words = $this->words($wordCount);
         $sentence = implode(' ', $words);
         return ucfirst($sentence) . '.';
     }
@@ -179,12 +442,7 @@ class Faker
      */
     public function slug(int $wordCount = 3): string
     {
-        $words = [];
-        for ($i = 0; $i < $wordCount; $i++) {
-            $words[] = $this->word();
-        }
-
-        return implode('-', $words);
+        return implode('-', $this->words($wordCount));
     }
 
     /**
@@ -275,6 +533,7 @@ class Faker
 
         return null;
     }
+
     /**
      * Generate text with specified character limit
      */
@@ -349,4 +608,77 @@ class Faker
         }
         return $html;
     }
+
+    /**
+     * Generate a random hex color
+     */
+    public function hexColor(): string
+    {
+        return '#' . str_pad(dechex(mt_rand(0, 0xFFFFFF)), 6, '0', STR_PAD_LEFT);
+    }
+
+    /**
+     * Generate a random RGB color string
+     */
+    public function rgbColor(): string
+    {
+        return sprintf('rgb(%d,%d,%d)', mt_rand(0, 255), mt_rand(0, 255), mt_rand(0, 255));
+    }
+
+    /**
+     * Generate a random IPv4 address
+     */
+    public function ipv4(): string
+    {
+        return long2ip(mt_rand(0, mt_getrandmax()));
+    }
+
+    /**
+     * Generate a random IPv6 address
+     */
+    public function ipv6(): string
+    {
+        $res = [];
+        for ($i = 0; $i < 8; $i++) {
+            $res[] = dechex(mt_rand(0, 65535));
+        }
+        return implode(':', $res);
+    }
+
+    /**
+     * Generate a random MAC address
+     */
+    public function macAddress(): string
+    {
+        $res = [];
+        for ($i = 0; $i < 6; $i++) {
+            $res[] = str_pad(dechex(mt_rand(0, 255)), 2, '0', STR_PAD_LEFT);
+        }
+        return strtoupper(implode(':', $res));
+    }
+
+    /**
+     * Generate a random User Agent
+     */
+    public function userAgent(): string
+    {
+        $agents = [
+            'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
+            'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
+            'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
+            'Mozilla/5.0 (iPhone; CPU iPhone OS 14_6 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/14.1.1 Mobile/15E148 Safari/604.1',
+            'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:89.0) Gecko/20100101 Firefox/89.0'
+        ];
+        return $this->randomElement($agents);
+    }
+
+    /**
+     * Generate a random password
+     */
+    public function password(int $length = 12): string
+    {
+        $chars = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*()-_=+';
+        return substr(str_shuffle($chars), 0, $length);
+    }
+
 }
