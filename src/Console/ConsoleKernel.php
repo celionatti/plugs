@@ -41,8 +41,11 @@ use Plugs\Console\Commands\SeedCommand;
 use Plugs\Console\Commands\ServeCommand;
 use Plugs\Console\Commands\StorageLinkCommand;
 
-use Plugs\Console\Commands\MakeSpaAssetCommand;
 use Plugs\Console\Commands\MakeComponentCommand;
+use Plugs\Console\Commands\MakeEventCommand;
+use Plugs\Console\Commands\MakeListenerCommand;
+use Plugs\Console\Commands\MakeNotificationCommand;
+use Plugs\Console\Commands\MakeSpaAssetCommand;
 
 /*
 |--------------------------------------------------------------------------
@@ -78,6 +81,9 @@ class ConsoleKernel
         'make:pagination-template' => MakePaginationTemplateCommand::class,
         'make:spa-asset' => MakeSpaAssetCommand::class,
         'make:component' => MakeComponentCommand::class,
+        'make:event' => MakeEventCommand::class,
+        'make:listener' => MakeListenerCommand::class,
+        'make:notification' => MakeNotificationCommand::class,
 
         'db:seed' => SeedCommand::class,
 
@@ -125,6 +131,9 @@ class ConsoleKernel
         'g:seed' => 'make:seeder',
         'g:spa' => 'make:spa-asset',
         'g:comp' => 'make:component',
+        'g:evt' => 'make:event',
+        'g:lis' => 'make:listener',
+        'g:not' => 'make:notification',
         'seed' => 'db:seed',
         'routes' => 'route:list',
         'route:show' => 'route:list',
@@ -160,6 +169,9 @@ class ConsoleKernel
             'make:pagination-template',
             'make:spa-asset',
             'make:component',
+            'make:event',
+            'make:listener',
+            'make:notification',
         ],
         'Routes' => ['route:list', 'route:cache', 'route:clear', 'route:test'],
         'Utility' => ['serve', 'cache:clear', 'config:cache', 'optimize', 'queue:work', 'health', 'storage:link'],

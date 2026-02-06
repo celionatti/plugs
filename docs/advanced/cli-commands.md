@@ -75,12 +75,36 @@ php theplugs make:controller UserController
 php theplugs make:model Post -m  # With migration
 php theplugs make:middleware AuthMiddleware
 php theplugs make:migration create_posts_table
+php theplugs make:event UserRegistered
+php theplugs make:listener SendWelcomeEmail
+php theplugs make:notification InvoicePaid
 php theplugs make:pdf-template invoice
 php theplugs make:pagination-template tailwind
 php theplugs make:spa-asset --min  # Generate SPA bridge with minification
 php theplugs make:component MyButton  # Create a simple view component
 php theplugs make:component SearchBar --bolt  # Create a reactive Bolt component
 ```
+
+### Events & Listeners (New)
+
+Generate event and listener classes:
+
+```bash
+php theplugs make:event [name]
+php theplugs make:listener [name]
+```
+
+**Aliases:** `g:evt`, `g:lis`
+
+### Notifications (New)
+
+Generate notification classes:
+
+```bash
+php theplugs make:notification [name]
+```
+
+**Alias:** `g:not`
 
 ### View Components (New)
 

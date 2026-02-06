@@ -43,6 +43,9 @@ class Plugs
         'database' => 'bootstrapDatabase',
         'socialite' => 'bootstrapSocialite',
         'pdf' => 'bootstrapPdf',
+        'events' => 'bootstrapEvents',
+        'translator' => 'bootstrapTranslator',
+        'notifications' => 'bootstrapNotifications',
         'providers' => 'bootstrapProviders',
     ];
 
@@ -216,6 +219,49 @@ class Plugs
             $pdf->register();
             return $pdf;
         });
+    }
+
+    private function bootstrapEvents(): void
+    {
+        $container = \Plugs\Container\Container::getInstance();
+
+        $container->singleton('events', function ($container) {
+            return new \Plugs\Event\Dispatcher($container);
+        });
+
+        $container->alias('events', \Plugs\Event\DispatcherInterface::class);
+    }
+
+    private function bootstrapTranslator(): void
+    {
+        $container = \Plugs\Container\Container::getInstance();
+
+        $container->singleton('translator', function ($container) {
+            $config = config('app');
+            $locale = $config['locale'] ?? 'en';
+            $fallback = $config['fallback_locale'] ?? 'en';
+
+            $translator = new \Plugs\Support\Translator($locale, $fallback);
+            $translator->addPath(base_path('resources/lang'));
+
+            return $translator;
+        });
+
+        $container->alias('translator', \Plugs\Support\Translator::class);
+
+        // Load translation functions
+        require_once __DIR__ . '/functions/translation.php';
+    }
+
+    private function bootstrapNotifications(): void
+    {
+        $container = \Plugs\Container\Container::getInstance();
+
+        $container->singleton('notifications', function ($container) {
+            return new \Plugs\Notification\Manager($container);
+        });
+
+        $container->alias('notifications', \Plugs\Notification\Manager::class);
     }
 
     public function pipe(MiddlewareInterface $middleware): self
