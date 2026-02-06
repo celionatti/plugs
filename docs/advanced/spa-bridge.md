@@ -1,150 +1,187 @@
-# SPA Bridge (v2)
+# SPA Bridge Documentation (v2.3)
 
-The **SPA Bridge** is a progressive enhancement layer that turns your multi-page PHP application into a Single Page Application with minimal effort. It includes lifecycle hooks, reactive components, and smooth transitions.
-
----
-
-![SPA Navigation Flow](../assets/spa_flow.png)
-
-## Core Features
-
-1.  **Intercepting Clicks**: Listens for `data-spa="true"` links and loads content via Fetch.
-2.  **View Controllers**: Attach JavaScript logic using inline scripts.
-3.  **View Transitions**: Native browser support for smooth navigation animations.
-4.  **Reactive Components**: Backend-driven UI components with extensive event support.
+The **Plugs SPA Bridge** is a lightweight progressive enhancement layer that turns your multi-page PHP application into a reactive Single Page Application. It provides smooth transitions, reactive backend-driven components, and a declarative API via HTML attributes.
 
 ---
 
-## Installation & Generation
+## 🚀 Getting Started
 
-To use the SPA Bridge, you first need to generate the bridge JavaScript file. Plugs provides a dedicated CLI command for this:
-
+### Installation
+Generate the bridge asset using the CLI:
 ```bash
 php theplugs make:spa-asset
 ```
 
-This command creates `public/plugs/plugs-spa.js`. You can also generate a minified version:
-
-```bash
-php theplugs make:spa-asset --min
-```
-
-### Loading the Script
-
-Include the generated script in your layout's `<head>`:
-
+### Global Initialization
+Include the script in your layout `<head>`:
 ```html
 <script src="/plugs/plugs-spa.js"></script>
-<!-- Or minified version -->
-<script src="/plugs/plugs-spa.min.js"></script>
-```
-
----
-
-## Inline View Controllers
-
-With **Inline View Controllers**, you can define `mount` and `unmount` logic directly in your PHP view files. This keeps your JavaScript co-located with your PHP logic.
-
-### Usage
-
-Use the `Plugs.view()` helper in a script tag within your content area.
-
-#### 1. Functional Style (Recommended)
-This pattern, inspired by modern hooks, runs the function immediately on mount and returns a cleanup function for unmount.
-
-```php
-<!-- In resources/views/dashboard.php -->
-<div class="dashboard">
-    <h1>Hello, <?php echo $user->name; ?></h1>
-    <div id="chart"></div>
-</div>
-
 <script>
-Plugs.view(() => {
-    // MOUNT LOGIC
-    console.log("Dashboard mounted via SPA!");
-    const chart = new Chart('#chart', { ... });
-    const userId = <?php echo $user->id; ?>;
-
-    // UNMOUNT LOGIC (Cleanup)
-    return () => {
-        console.log("Leaving Dashboard...");
-        chart.destroy();
-    };
-});
+    // Optional custom initialization
+    window.Plugs = new PlugsSPA({
+        contentSelector: '#app-content', // Main container
+        prefetch: true,                  // Prefetch links on hover
+        cacheMaxSize: 50,                // Cache up to 50 pages
+        cacheTTL: 300000                 // Cache expiry (5 mins)
+    });
 </script>
 ```
 
-#### 2. Object Style
-Alternatively, pass an object with distinct `mount` and `unmount` methods.
+---
 
+## 📖 Public API (JavaScript)
+
+The bridge is exposed globally as `window.Plugs`.
+
+### `Plugs.view(controller)`
+Attaches logic to the current view.
+- **Pattern 1 (Functional)**:
+  ```javascript
+  Plugs.view(() => {
+      console.log('Mounted');
+      return () => console.log('Unmounted'); // Cleanup
+  });
+  ```
+- **Pattern 2 (Object)**:
+  ```javascript
+  Plugs.view({
+      mount() { ... },
+      unmount() { ... }
+  });
+  ```
+
+### `Plugs.navigate(url, [pushState=true], [target=null])`
+Programmatically navigate to a URL.
 ```javascript
-Plugs.view({
-    mount() {
-        this.timer = setInterval(refresh, 1000);
-    },
-    unmount() {
-        clearInterval(this.timer);
-    }
-});
+Plugs.navigate('/dashboard');
 ```
 
-> [!IMPORTANT]
-> Ensure `plugs-spa.js` is loaded in your `<head>` or at the top of your `<body>` so that `Plugs` is defined when the inline script runs.
+### `Plugs.load(url, targetSelector)`
+Load content from a URL directly into a specific element without changing the browser URL.
+```javascript
+Plugs.load('/api/notifications', '#notif-ui');
+```
+
+### `Plugs.prefetch(url)`
+Manually trigger a prefetch of a URL into the SPA cache.
 
 ---
 
-## Reactive Component Events
+## 🔗 SPA Navigation (Attributes)
 
-Elements inside a `[data-plug-component]` can trigger backend actions using `p-*` attributes.
+Enhance standard HTML elements for SPA behavior.
 
-### Available Events
-
-| Attribute | Description | Example |
+| Attribute | Usage | Description |
 | :--- | :--- | :--- |
-| `p-click` | Fired when clicked. | `<button p-click="increment">` |
-| `p-change` | Fired on input change. | `<input p-change="search">` |
-| `p-submit` | Fired on form submit. | `<form p-submit="save">` |
-| `p-blur` | Fired when focus is lost. | `<input p-blur="validate">` |
-| `p-keyup` | Fired on keyup. | `<input p-keyup="filter">` |
-| `p-intersect` | Fired when visible. | `<div p-intersect="loadMore">` |
+| `data-spa="true"` | `<a>`, `<form>` | Enables SPA handling for this element. |
+| `data-spa-target="selector"` | `<a>`, `<form>` | Redirects the response HTML into a specific container. |
+| `p-method="METHOD"` | `<a>` | Perform non-GET requests (e.g., `DELETE`, `POST`) on a link. |
+| `p-confirm="message"` | `<a>`, `<button>` | Shows a confirmation dialog before proceeding. |
+| `data-spa-skeleton="type"` | Target Div | Shows a placeholder (`card`, `list`, `table`) while loading. |
 
-### Modifiers
-
-- `p-debounce="ms"`: Delays the event (useful for `p-keyup`).
-
-### Example: Real-time Search
-
+### Example: Delete Link
 ```html
-<div data-plug-component="UserSearch">
-    <input type="text" 
-           p-keyup="search" 
-           p-debounce="300" 
-           placeholder="Search users...">
-    
-    <div id="results">
-        <!-- Results rendered by backend -->
-        <?php foreach($users ?? [] as $user): ?>
-            <div class="user-row"><?= $user->name ?></div>
-        <?php endforeach; ?>
-    </div>
+<a href="/post/1" data-spa="true" p-method="DELETE" p-confirm="Delete post?">
+    Delete
+</a>
+```
+
+---
+
+## ⚡ Reactive Components (Attributes)
+
+Elements with `data-plug-component` become reactive. All events inside trigger a backend request to `/plugs/component/action`.
+
+### Component Definition
+```html
+<div data-plug-component="UserList" id="users-container">
+    <!-- Content -->
 </div>
 ```
 
-**Backend Implementation (PHP):**
+### Event Handlers
+| Attribute | Description |
+| :--- | :--- |
+| `p-click="action"` | Trigger on click. |
+| `p-change="action"` | Trigger on input/select change. |
+| `p-submit="action"` | Trigger on form submission. |
+| `p-blur="action"` | Trigger on focus loss. |
+| `p-keyup="action"` | Trigger on keyup. |
+| `p-keyup.enter="action"` | Trigger only when Enter is pressed. |
+| `p-intersect="action"` | Trigger when the element becomes visible (lazy-load). |
 
-The bridge sends a JSON POST request to `/plugs/component/action`.
+### Interaction Modifiers
+- **`p-debounce="ms"`**: Delays the event (e.g., `p-keyup` search).
+- **`p-loading="selector"`**: Shows/hides a specific loading element during the request.
+- **`p-confirm="message"`**: Prevents the action unless confirmed.
 
-```php
-// In your ComponentController
-public function handleAction() 
-{
+### Lifecycle & Automation
+- **`p-init="action"`**: Executes an action immediately when the component is mounted.
+- **`p-poll="ms"`**: Automatically triggers an action on an interval.
+- **`p-poll-action="name"`**: The action to trigger during polling (default: `refresh`).
+- **`p-outside="action"`**: Triggers an action when clicking anywhere *outside* the component.
+
+---
+
+## 🎨 Styles & Transitions
+
+### View Transitions
+If supported by the browser, Plugs uses the **View Transitions API**.
+```css
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation-duration: 0.3s;
+}
+```
+
+### Body Classes
+During a page load, the body receives a class (`spa-loading` by default) for global styling.
+
+---
+
+## 🛠️ Backend Integration
+
+### Headers Sent by Bridge
+- `X-Plugs-SPA`: Always `true`.
+- `X-Plugs-Section`: The ID of the target container (if partial load).
+- `X-Requested-With`: `XMLHttpRequest`.
+
+### Response Headers
+- `X-Plugs-Flash`: A JSON string for toast notifications.
+  - `header('X-Plugs-Flash: ' . json_encode(['type' => 'success', 'message' => 'Saved!']));`
+
+### Flash Event
+Listen for flash messages in your global JS:
+```javascript
+window.addEventListener('plugs:flash', (e) => {
+    alert(e.detail.message); // Replace with your toast UI
+});
+```
+
+---
+
+## 🧩 Complete Component Example
+
+```html
+<div data-plug-component="Search" 
+     p-init="loadRecent" 
+     p-outside="closeResults"
+     p-loading=".spinner">
+
+    <input type="text" p-keyup.enter="search" placeholder="Hit Enter to search">
+    
+    <div class="spinner" style="display:none">Searching...</div>
+    
+    <div id="results">
+        <!-- Backend renders this -->
+    </div>
+</div>
+```
     // 1. Get Payload
     $input = json_decode(file_get_contents('php://input'), true);
     
     $component = $input['component']; // "UserSearch"
     $action = $input['action'];       // "search"
-    $query = $input['payload'];       // The input value
 
     // 2. Handle Action
     if ($component === 'UserSearch' && $action === 'search') {

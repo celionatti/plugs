@@ -195,6 +195,9 @@ class PlugsSPA {
         // Initialize Reactive Components
         this.initializeComponents();
 
+        // Handle clicks outside for p-outside
+        document.addEventListener('click', (e) => this.handleOutsideClick(e));
+
         window.plugsSPAInitialized = true;
         console.log('Plugs SPA Bridge initialized (v2.2).');
     }
@@ -212,9 +215,31 @@ class PlugsSPA {
         components.forEach(el => {
             if (el._plugInitialized) return;
 
+            // p-init
+            const initAction = el.getAttribute('p-init');
+            if (initAction) {
+                this.callComponentAction(el, 'init', initAction);
+            }
+
+            // p-poll
+            const pollInterval = parseInt(el.getAttribute('p-poll') || '0');
+            if (pollInterval > 0) {
+                const pollAction = el.getAttribute('p-poll-action') || 'refresh';
+                el._pollTimer = setInterval(() => {
+                    if (!document.body.contains(el)) {
+                        clearInterval(el._pollTimer);
+                        return;
+                    }
+                    this.callComponentAction(el, 'poll', pollAction);
+                }, pollInterval);
+            }
+
             // p-click
             el.querySelectorAll('[p-click]').forEach(actionEl => {
                 actionEl.addEventListener('click', (e) => {
+                    const confirmMsg = actionEl.getAttribute('p-confirm');
+                    if (confirmMsg && !confirm(confirmMsg)) return;
+
                     e.preventDefault();
                     this.callComponentAction(el, 'click', actionEl.getAttribute('p-click'));
                 });
@@ -230,6 +255,9 @@ class PlugsSPA {
             // p-submit (forms)
             el.querySelectorAll('form[p-submit]').forEach(formEl => {
                 formEl.addEventListener('submit', (e) => {
+                    const confirmMsg = formEl.getAttribute('p-confirm');
+                    if (confirmMsg && !confirm(confirmMsg)) return;
+
                     e.preventDefault();
                     const formData = new FormData(formEl);
                     const data = Object.fromEntries(formData.entries());
@@ -244,13 +272,17 @@ class PlugsSPA {
                 });
             });
 
-            // p-keyup (with p-debounce support)
+            // p-keyup (with p-debounce and .enter support)
             el.querySelectorAll('[p-keyup]').forEach(actionEl => {
-                const action = actionEl.getAttribute('p-keyup');
+                const actionRaw = actionEl.getAttribute('p-keyup');
+                const isEnterOnly = actionRaw.endsWith('.enter');
+                const action = isEnterOnly ? actionRaw.replace('.enter', '') : actionRaw;
                 const debounceTime = parseInt(actionEl.getAttribute('p-debounce') || '0');
 
                 let timer;
                 actionEl.addEventListener('keyup', (e) => {
+                    if (isEnterOnly && e.key !== 'Enter') return;
+
                     if (timer) clearTimeout(timer);
                     timer = setTimeout(() => {
                         this.callComponentAction(el, 'keyup', action, this.getInputValue(actionEl));
@@ -274,6 +306,15 @@ class PlugsSPA {
         });
     }
 
+    handleOutsideClick(e) {
+        document.querySelectorAll('[p-outside]').forEach(el => {
+            if (!el.contains(e.target)) {
+                const action = el.getAttribute('p-outside');
+                this.callComponentAction(el, 'outside', action);
+            }
+        });
+    }
+
     getInputValue(el) {
         if (el.type === 'checkbox') return el.checked;
         if (el.type === 'radio') return el.checked ? el.value : null;
@@ -286,8 +327,17 @@ class PlugsSPA {
         const id = componentEl.id;
 
         // Visual feedback (unless specifically disabled or it's a background event like intersect/keyup)
-        if (eventType !== 'intersect' && eventType !== 'keyup') {
+        if (eventType !== 'intersect' && eventType !== 'keyup' && eventType !== 'poll') {
             componentEl.style.opacity = '0.7';
+        }
+
+        // Loading Indicator Support
+        const loadingSelector = componentEl.getAttribute('p-loading');
+        let loadingEls = [];
+        if (loadingSelector) {
+            loadingEls = Array.from(componentEl.querySelectorAll(loadingSelector));
+            loadingEls.forEach(el => el.style.display = ''); // Assuming they are hidden by default or we just show them
+            componentEl.classList.add('p-is-loading');
         }
 
         try {
@@ -329,6 +379,10 @@ class PlugsSPA {
             console.error('Plugs Component Error:', err);
         } finally {
             componentEl.style.opacity = '1';
+            if (loadingSelector) {
+                loadingEls.forEach(el => el.style.display = 'none');
+                componentEl.classList.remove('p-is-loading');
+            }
         }
     }
 
@@ -344,6 +398,13 @@ class PlugsSPA {
             return;
         }
 
+        // p-confirm support
+        const confirmMsg = link.getAttribute('p-confirm');
+        if (confirmMsg && !confirm(confirmMsg)) {
+            e.preventDefault();
+            return;
+        }
+
         // Skip if link has target="_blank" (as a safety measure)
         if (link.target === '_blank') {
             return;
@@ -352,7 +413,13 @@ class PlugsSPA {
         e.preventDefault();
         const url = link.href;
         const target = link.getAttribute('data-spa-target') || this.options.contentSelector;
-        this.navigate(url, true, target);
+        const method = (link.getAttribute('p-method') || 'GET').toUpperCase();
+
+        if (method !== 'GET') {
+            this.navigate(url, true, target, { method });
+        } else {
+            this.navigate(url, true, target);
+        }
     }
 
     handleFormSubmit(e) {
