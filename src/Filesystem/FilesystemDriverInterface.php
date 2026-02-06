@@ -86,4 +86,20 @@ interface FilesystemDriverInterface
      * @return \Psr\Http\Message\ResponseInterface
      */
     public function download(string $path, ?string $name = null, array $headers = []);
+
+    /**
+     * Get the full path for the given relative path.
+     *
+     * @param string $path
+     * @return string
+     */
+    public function fullPath(string $path): string;
+
+    /**
+     * Get the relative path for the given absolute path.
+     * 
+     * @param string $absolutePath
+     * @return string
+     */
+    public function path(string $absolutePath): string;
 }

@@ -35,6 +35,7 @@ Welcome to the official documentation for the **Plugs** framework. Plugs is a li
 - [Logging](file:///docs/the-basics/logging.md)
 - [Debugging & Performance](file:///docs/the-basics/debugging.md)
 - [Filesystem Storage](file:///docs/the-basics/storage.md)
+- [Image Manipulation](file:///docs/features/image-manipulation.md) (New)
 - [Flash Messages](file:///docs/features/flash-messages.md)
 - [Health Checks](file:///docs/features/health-checks.md) (New)
 - [Testing](file:///docs/testing.md)

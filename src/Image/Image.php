@@ -473,6 +473,123 @@ class Image
     }
 
     /**
+     * Add text to image using TrueType font
+     */
+    public function textTtf(string $text, string $fontPath, int $size, int $x, int $y, array $color = [0, 0, 0], float $angle = 0): self
+    {
+        $this->ensureImageLoaded();
+
+        if (!function_exists('imagettftext')) {
+            throw new \RuntimeException('FreeType support is not enabled in your PHP installation');
+        }
+
+        if (!file_exists($fontPath)) {
+            throw new \RuntimeException("Font file not found: {$fontPath}");
+        }
+
+        $textColor = imagecolorallocate($this->image, $color[0], $color[1], $color[2]);
+
+        if ($textColor === false) {
+            throw new \RuntimeException('Failed to allocate text color');
+        }
+
+        imagettftext($this->image, $size, $angle, $x, $y, $textColor, $fontPath, $text);
+
+        return $this;
+    }
+
+    /**
+     * Apply sepia filter
+     */
+    public function sepia(): self
+    {
+        $this->ensureImageLoaded();
+        imagefilter($this->image, IMG_FILTER_GRAYSCALE);
+        imagefilter($this->image, IMG_FILTER_COLORIZE, 90, 60, 40);
+
+        return $this;
+    }
+
+    /**
+     * Apply negative filter
+     */
+    public function negative(): self
+    {
+        $this->ensureImageLoaded();
+        imagefilter($this->image, IMG_FILTER_NEGATE);
+
+        return $this;
+    }
+
+    /**
+     * Pixelate image
+     */
+    public function pixelate(int $blockSize = 10): self
+    {
+        $this->ensureImageLoaded();
+        imagefilter($this->image, IMG_FILTER_PIXELATE, $blockSize);
+
+        return $this;
+    }
+
+    /**
+     * Colorize image
+     */
+    public function colorize(int $red, int $green, int $blue, int $alpha = 0): self
+    {
+        $this->ensureImageLoaded();
+        imagefilter($this->image, IMG_FILTER_COLORIZE, $red, $green, $blue, $alpha);
+
+        return $this;
+    }
+
+    /**
+     * Automatically rotate image based on EXIF data
+     */
+    public function autoRotate(string $path): self
+    {
+        $this->ensureImageLoaded();
+
+        if (!function_exists('exif_read_data')) {
+            return $this;
+        }
+
+        $exif = @exif_read_data($path);
+        if (!$exif || !isset($exif['Orientation'])) {
+            return $this;
+        }
+
+        switch ($exif['Orientation']) {
+            case 3:
+                $this->rotate(180);
+                break;
+            case 6:
+                $this->rotate(-90);
+                break;
+            case 8:
+                $this->rotate(90);
+                break;
+        }
+
+        return $this;
+    }
+
+    /**
+     * Get image information
+     */
+    public function getInfo(): array
+    {
+        $this->ensureImageLoaded();
+
+        return [
+            'width' => $this->width,
+            'height' => $this->height,
+            'type' => $this->type,
+            'mime' => image_type_to_mime_type($this->type),
+        ];
+    }
+
+    /**
      * Save image to file
      */
     public function save(string $path, ?int $type = null): bool

@@ -227,6 +227,11 @@ class FileUploader
                 throw new RuntimeException("Failed to store file at {$path}");
             }
 
+            // Post-processing for images (compression, metadata stripping)
+            if ($file->isImage() && ($this->stripMetadata || !empty($this->imageCompression))) {
+                $this->performImagePostProcessing($this->disk()->fullPath($resultPath));
+            }
+
             $duration = round((microtime(true) - $startTime) * 1000, 2);
 
             $this->logger->info('File uploaded successfully', [
@@ -479,7 +484,6 @@ class FileUploader
 
     /**
      * Set image compression settings
-     * TODO: Implement actual compression in post-processing
      */
     public function setImageCompression(int $jpegQuality = 85, int $pngCompression = 8, int $webpQuality = 85): self
     {
@@ -490,5 +494,49 @@ class FileUploader
         ];
 
         return $this;
+    }
+
+    /**
+     * Perform image post-processing like stripping metadata and compression
+     */
+    private function performImagePostProcessing(string $filePath): void
+    {
+        try {
+            $image = new \Plugs\Image\Image();
+            $image->load($filePath);
+
+            // If it's a JPEG and metadata stripping is enabled, the save process itself 
+            // often naturally strips non-essential EXIF if not handled specifically,
+            // but we can ensure it by loading and re-saving.
+
+            $extension = strtolower(pathinfo($filePath, PATHINFO_EXTENSION));
+            $type = null;
+
+            switch ($extension) {
+                case 'jpg':
+                case 'jpeg':
+                    $type = IMAGETYPE_JPEG;
+                    $image->quality($this->imageCompression['jpeg_quality']);
+                    break;
+                case 'png':
+                    $type = IMAGETYPE_PNG;
+                    $pngQuality = (int) (9 - ($this->imageCompression['png_compression']));
+                    $image->quality($pngQuality * 10 + 10); // Map back to 0-100 scale for our Image class quality
+                    break;
+                case 'webp':
+                    $type = IMAGETYPE_WEBP;
+                    $image->quality($this->imageCompression['webp_quality']);
+                    break;
+            }
+
+            if ($type !== null) {
+                $image->save($filePath, $type);
+            }
+        } catch (\Exception $e) {
+            $this->logger->warning('Image post-processing failed', [
+                'path' => $filePath,
+                'error' => $e->getMessage()
+            ]);
+        }
     }
 }

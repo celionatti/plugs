@@ -142,6 +142,17 @@ The `FileUploader` automatically:
 - Blocks dangerous extensions (php, exe, sh, etc.).
 - Verifies image integrity (detects fake images).
 - Prevents directory clutter by securing only the root upload folder.
+- **Image Post-Processing**: Automatically strips metadata (EXIF) and applies compression.
+
+#### Image Optimization Example
+
+```php
+$result = FileUploader::make()
+    ->imagesOnly()
+    ->stripMetadata(true) // Remove EXIF for privacy
+    ->setImageCompression(85, 8, 85) // JPEG info, PNG compression, WebP quality
+    ->upload($file);
+```
 
 ### Helper Functions
 

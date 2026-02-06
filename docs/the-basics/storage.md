@@ -74,6 +74,8 @@ Storage::disk('public')->put('avatar.png', $data);
 $size = Storage::size('file.txt');
 $time = Storage::lastModified('file.txt');
 $url = Storage::url('file.txt');
+$full = Storage::fullPath('file.txt'); // Absolute system path
+$relative = Storage::path('/abs/path/to/file.txt'); // Convert abs to relative
 ```
 
 ## Directory Operations

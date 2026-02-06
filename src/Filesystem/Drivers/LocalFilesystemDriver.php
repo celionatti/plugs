@@ -107,6 +107,11 @@ class LocalFilesystemDriver implements FilesystemDriverInterface
         return $this->root . DIRECTORY_SEPARATOR . ltrim($path, DIRECTORY_SEPARATOR);
     }
 
+    public function path(string $absolutePath): string
+    {
+        return ltrim(str_replace($this->root, '', $absolutePath), DIRECTORY_SEPARATOR);
+    }
+
     public function download(string $path, ?string $name = null, array $headers = [])
     {
         if (!$this->exists($path)) {
