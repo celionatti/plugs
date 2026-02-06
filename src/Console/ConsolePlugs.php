@@ -109,7 +109,7 @@ class ConsolePlugs
         if (!empty($similar)) {
             $output->box(
                 "Did you mean one of these?\n\n" .
-                implode("\n", array_map(fn ($cmd) => "  • {$cmd}", $similar)),
+                implode("\n", array_map(fn($cmd) => "  • {$cmd}", $similar)),
                 "💡 Suggestions",
                 "warning"
             );
@@ -144,20 +144,14 @@ class ConsolePlugs
         $memoryUsed = $this->metrics['memory_end'] - $this->metrics['memory_start'];
         $memoryPeak = memory_get_peak_usage(true);
 
-        $output->line();
-        $output->fullWidthLine('─', "\033[90m");
-
         $timeFormatted = $this->formatTime($totalTime);
         $memoryFormatted = $this->formatMemory($memoryUsed);
         $peakFormatted = $this->formatMemory($memoryPeak);
 
-        $output->line("  \033[92m✓\033[0m Command completed successfully");
-        $output->line("  \033[36m⏱\033[0m  Execution time: \033[1m{$timeFormatted}\033[0m");
-        $output->line("  \033[35m📊\033[0m Memory used: \033[1m{$memoryFormatted}\033[0m");
-        $output->line("  \033[33m📈\033[0m Peak memory: \033[1m{$peakFormatted}\033[0m");
-
-        $output->fullWidthLine('─', "\033[90m");
-        $output->line();
+        $output->newLine();
+        $output->success("Command completed successfully.");
+        $output->line("  " . Output::DIM . "Time: {$timeFormatted} | Memory: {$memoryFormatted} (Peak: {$peakFormatted})" . Output::RESET);
+        $output->newLine();
     }
 
     private function displayError(Output $output, Throwable $e, $input): void

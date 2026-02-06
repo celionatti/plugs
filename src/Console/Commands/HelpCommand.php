@@ -51,7 +51,6 @@ class HelpCommand extends Command
 
         $this->output->section('Usage');
         $this->line('  php theplugs <command> [options] [arguments]');
-        $this->line();
 
         $this->output->section('Global Options');
         $globalOptions = [
@@ -61,9 +60,6 @@ class HelpCommand extends Command
             '--verbose, -v' => 'Increase output verbosity',
         ];
         $this->output->twoColumnList($globalOptions, 20);
-        $this->line();
-
-        $this->output->section('Available Commands');
 
         $commands = $kernel->commands();
         $grouped = [];
@@ -78,10 +74,9 @@ class HelpCommand extends Command
         ksort($grouped);
 
         foreach ($grouped as $category => $categoryCommands) {
-            $this->line();
-            $this->line("  \033[1;33m" . $category . "\033[0m");
+            $this->newLine();
+            $this->line("  " . \Plugs\Console\Support\Output::BOLD . \Plugs\Console\Support\Output::YELLOW . strtoupper($category) . \Plugs\Console\Support\Output::RESET);
 
-            $items = [];
             foreach ($categoryCommands as $name => $commandClass) {
                 try {
                     $command = new $commandClass($name);
@@ -90,17 +85,16 @@ class HelpCommand extends Command
                     $description = '';
                 }
 
-                if (strlen($description) > 45) {
-                    $description = substr($description, 0, 42) . '...';
+                $this->line("  " . \Plugs\Console\Support\Output::BRIGHT_GREEN . $name . \Plugs\Console\Support\Output::RESET);
+                if ($description) {
+                    $this->line("    " . \Plugs\Console\Support\Output::DIM . $description . \Plugs\Console\Support\Output::RESET);
                 }
-                $items[$name] = $description;
             }
-            $this->output->twoColumnList($items, 28);
         }
 
-        $this->line();
-        $this->line("  \033[2mRun 'php theplugs help <command>' for more information.\033[0m");
-        $this->line();
+        $this->newLine();
+        $this->line("  " . \Plugs\Console\Support\Output::DIM . "Run 'php theplugs help <command>' for more information." . \Plugs\Console\Support\Output::RESET);
+        $this->newLine();
 
         return 0;
     }
@@ -116,7 +110,7 @@ class HelpCommand extends Command
             return 1;
         }
 
-        $this->header($commandName);
+        $this->output->title($commandName);
 
         // Description
         if ($description = $command->description()) {
@@ -132,7 +126,7 @@ class HelpCommand extends Command
         if (!empty($arguments)) {
             $this->output->section('ARGUMENTS');
             foreach ($arguments as $argument => $description) {
-                $this->line("  " . "\033[32m" . str_pad($argument, 20) . "\033[0m" . $description);
+                $this->line("  " . \Plugs\Console\Support\Output::BRIGHT_GREEN . str_pad($argument, 20) . \Plugs\Console\Support\Output::RESET . " " . $description);
             }
         }
 
@@ -141,7 +135,7 @@ class HelpCommand extends Command
         if (!empty($options)) {
             $this->output->section('OPTIONS');
             foreach ($options as $option => $description) {
-                $this->line("  " . "\033[32m" . str_pad($option, 25) . "\033[0m" . $description);
+                $this->line("  " . \Plugs\Console\Support\Output::BRIGHT_GREEN . str_pad($option, 25) . \Plugs\Console\Support\Output::RESET . " " . $description);
             }
         }
 
@@ -154,13 +148,13 @@ class HelpCommand extends Command
         if (!empty($examples)) {
             $this->output->section('EXAMPLES');
             foreach ($examples as $example => $description) {
-                $this->line("  " . "\033[90m# " . $description . "\033[0m");
+                $this->line("  " . \Plugs\Console\Support\Output::DIM . "# " . $description . \Plugs\Console\Support\Output::RESET);
                 $this->line("  php theplugs {$commandName} {$example}");
                 $this->line();
             }
         }
 
-        $this->line();
+        $this->newLine();
 
         return 0;
     }

@@ -13,50 +13,50 @@ namespace Plugs\Console\Support;
 class Output
 {
     // Reset
-    private const RESET = "\033[0m";
+    public const RESET = "\033[0m";
 
     // Standard colors
-    private const BLACK = "\033[30m";
-    private const RED = "\033[31m";
-    private const GREEN = "\033[32m";
-    private const YELLOW = "\033[33m";
-    private const BLUE = "\033[34m";
-    private const MAGENTA = "\033[35m";
-    private const CYAN = "\033[36m";
-    private const WHITE = "\033[37m";
+    public const BLACK = "\033[30m";
+    public const RED = "\033[31m";
+    public const GREEN = "\033[32m";
+    public const YELLOW = "\033[33m";
+    public const BLUE = "\033[34m";
+    public const MAGENTA = "\033[35m";
+    public const CYAN = "\033[36m";
+    public const WHITE = "\033[37m";
 
     // Bright colors
-    private const BRIGHT_BLACK = "\033[90m";
-    private const BRIGHT_RED = "\033[91m";
-    private const BRIGHT_GREEN = "\033[92m";
-    private const BRIGHT_YELLOW = "\033[93m";
-    private const BRIGHT_BLUE = "\033[94m";
-    private const BRIGHT_MAGENTA = "\033[95m";
-    private const BRIGHT_CYAN = "\033[96m";
-    private const BRIGHT_WHITE = "\033[97m";
+    public const BRIGHT_BLACK = "\033[90m";
+    public const BRIGHT_RED = "\033[91m";
+    public const BRIGHT_GREEN = "\033[92m";
+    public const BRIGHT_YELLOW = "\033[93m";
+    public const BRIGHT_BLUE = "\033[94m";
+    public const BRIGHT_MAGENTA = "\033[95m";
+    public const BRIGHT_CYAN = "\033[96m";
+    public const BRIGHT_WHITE = "\033[97m";
 
     // Background colors
-    private const BG_RED = "\033[41m";
-    private const BG_GREEN = "\033[42m";
-    private const BG_YELLOW = "\033[43m";
-    private const BG_BLUE = "\033[44m";
-    private const BG_MAGENTA = "\033[45m";
-    private const BG_CYAN = "\033[46m";
+    public const BG_RED = "\033[41m";
+    public const BG_GREEN = "\033[42m";
+    public const BG_YELLOW = "\033[43m";
+    public const BG_BLUE = "\033[44m";
+    public const BG_MAGENTA = "\033[45m";
+    public const BG_CYAN = "\033[46m";
 
     // Text styles
-    private const BOLD = "\033[1m";
-    private const DIM = "\033[2m";
-    private const ITALIC = "\033[3m";
-    private const UNDERLINE = "\033[4m";
-    private const BLINK = "\033[5m";
-    private const REVERSE = "\033[7m";
-    private const STRIKETHROUGH = "\033[9m";
+    public const BOLD = "\033[1m";
+    public const DIM = "\033[2m";
+    public const ITALIC = "\033[3m";
+    public const UNDERLINE = "\033[4m";
+    public const BLINK = "\033[5m";
+    public const REVERSE = "\033[7m";
+    public const STRIKETHROUGH = "\033[9m";
 
     // Gradient colors
-    private const GRADIENT_PURPLE = "\033[38;5;135m";
-    private const GRADIENT_PINK = "\033[38;5;211m";
-    private const GRADIENT_ORANGE = "\033[38;5;208m";
-    private const GRADIENT_TEAL = "\033[38;5;80m";
+    public const GRADIENT_PURPLE = "\033[38;5;135m";
+    public const GRADIENT_PINK = "\033[38;5;211m";
+    public const GRADIENT_ORANGE = "\033[38;5;208m";
+    public const GRADIENT_TEAL = "\033[38;5;80m";
 
     private int $consoleWidth;
     private array $logoLines = [];
@@ -221,37 +221,37 @@ class Output
 
     public function info(string $text): void
     {
-        $this->line("  " . self::BRIGHT_BLUE . "ℹ" . self::RESET . "  " . $text);
+        $this->line("  " . self::BRIGHT_BLUE . "INFO" . self::RESET . " " . $text);
     }
 
     public function success(string $text): void
     {
-        $this->line("  " . self::BRIGHT_GREEN . "✔" . self::RESET . "  " . $text);
+        $this->line("  " . self::BRIGHT_GREEN . "DONE" . self::RESET . " " . $text);
     }
 
     public function warning(string $text): void
     {
-        $this->line("  " . self::BRIGHT_YELLOW . "⚠" . self::RESET . "  " . $text);
+        $this->line("  " . self::BRIGHT_YELLOW . "WARN" . self::RESET . " " . $text);
     }
 
     public function error(string $text): void
     {
-        $this->line("  " . self::BRIGHT_RED . "✖" . self::RESET . "  " . $text);
+        $this->line("  " . self::BRIGHT_RED . "FAIL" . self::RESET . " " . $text);
     }
 
     public function note(string $text): void
     {
-        $this->line(self::DIM . "  NOTE: " . $text . self::RESET);
+        $this->line("  " . self::DIM . "NOTE" . self::RESET . " " . self::DIM . $text . self::RESET);
     }
 
     public function critical(string $text): void
     {
-        $this->line(self::BG_RED . self::BRIGHT_WHITE . self::BOLD . " CRITICAL " . self::RESET . " " . self::BRIGHT_RED . $text . self::RESET);
+        $this->line("  " . self::BG_RED . self::BRIGHT_WHITE . self::BOLD . " ERROR " . self::RESET . " " . self::BRIGHT_RED . $text . self::RESET);
     }
 
     public function debug(string $text): void
     {
-        $this->line(self::DIM . "🐛 Debug: " . $text . self::RESET);
+        $this->line("  " . self::DIM . "DEBUG" . self::RESET . " " . self::DIM . $text . self::RESET);
     }
 
     public function header(string $text): void
@@ -1217,273 +1217,25 @@ class Output
         return $lines;
     }
 
-    public function thePlugsSimpleLogo(): void
-    {
-        $logo = [
-            "  _____ _  _ ___   ___ _   _   _  ___ ___ ",
-            " |_   _| || | __| | _ \\ | | | | |/ __/ __|",
-            "   | | | __ | _|  |  _/ |_| |_| | (_ \\__ \\",
-            "   |_| |_||_|___| |_| |_(_)\\___/ \\___|___/",
-            "  1 0 1 0 0 1   1 1 0 0 1 0   1 0 1 1 0 1 ",
-        ];
-
-        $maxWidth = 0;
-        foreach ($logo as $line) {
-            $maxWidth = max($maxWidth, mb_strwidth($line));
-        }
-
-        $padding = (int) (($this->consoleWidth - $maxWidth) / 2);
-
-        $this->line();
-        foreach ($logo as $index => $line) {
-            $spaces = str_repeat(" ", $padding);
-
-            if ($index === count($logo) - 1) {
-                // Color the binary line
-                $colored = preg_replace_callback('/[01]/', function ($m) {
-                    return ($m[0] === '1' ? self::BRIGHT_CYAN : self::BRIGHT_BLUE) . $m[0] . self::RESET;
-                }, $line);
-                $this->line($spaces . $colored);
-            } else {
-                $this->line($spaces . self::BRIGHT_CYAN . $line . self::RESET);
-            }
-        }
-        $this->line();
-    }
-
-    public function thePlugsMinimalLogo(): void
-    {
-        $logo = [
-            " _____ _  _ ___   ___ _   _   _  ___ ___ ",
-            "|_   _| || | __| | _ \\ | | | | |/ __/ __|",
-            "  | | | __ | _|  |  _/ |_| |_| | (_ \\__ \\",
-            "  |_| |_||_|___| |_| |_(_)\\___/ \\___|___/",
-        ];
-
-        $binaryLine = "  1 0 1 0 0 1   1 1 0 0 1 0   1 0 1 1 0 1 ";
-
-        $maxWidth = 0;
-        foreach ($logo as $line) {
-            $maxWidth = max($maxWidth, mb_strwidth($line));
-        }
-
-        $padding = (int) (($this->consoleWidth - $maxWidth) / 2);
-
-        $this->line();
-        foreach ($logo as $line) {
-            $spaces = str_repeat(" ", $padding);
-            $this->line($spaces . self::BRIGHT_CYAN . $line . self::RESET);
-        }
-
-        // Add binary line with colors
-        $spaces = str_repeat(" ", $padding);
-        $colored = preg_replace_callback('/[01]/', function ($m) {
-            return ($m[0] === '1' ? self::BRIGHT_GREEN : self::BRIGHT_BLUE) . $m[0] . self::RESET;
-        }, $binaryLine);
-        $this->line($spaces . $colored);
-        $this->line();
-    }
-
-    public function thePlugsDashLogo(): void
-    {
-        $logo = [
-            " ----- -  - ---   --- -   -   - --- --- ",
-            "|  -  | || | -| | - \\ | | | | |/ -/ -|",
-            "  | | | -- | -  |  -/ |-| |-| | (- \\-- ",
-            "  |-| |-||-|---| |-| |-(-)\\---/ \\_--|---|",
-            " 1-0-1-0-0-1  1-1-0-0-1-0  1-0-1-1-0-1 ",
-        ];
-
-        $maxWidth = 0;
-        foreach ($logo as $line) {
-            $maxWidth = max($maxWidth, mb_strwidth($line));
-        }
-
-        $padding = (int) (($this->consoleWidth - $maxWidth) / 2);
-
-        $this->line();
-        foreach ($logo as $index => $line) {
-            $spaces = str_repeat(" ", $padding);
-
-            if ($index === count($logo) - 1) {
-                // Color the binary line
-                $colored = preg_replace_callback('/[01]/', function ($m) {
-                    return ($m[0] === '1' ? self::BRIGHT_CYAN : self::BRIGHT_BLUE) . $m[0] . self::RESET;
-                }, $line);
-                $this->line($spaces . $colored);
-            } else {
-                $this->line($spaces . self::BRIGHT_CYAN . $line . self::RESET);
-            }
-        }
-        $this->line();
-    }
-
-    public function thePlugsCleanLogo(): void
-    {
-        $logo = [
-            "_____ _  _ ___   ___ _   _   _  ___ ___ ",
-            " | | | || | __| | _ | | | | | |/ __/ __|",
-            " | | | __ | _|  |  _| |_| |_| | (_ __ |",
-            " |_| |_||_|___| |_| |_(_)___/ ___|___/",
-        ];
-
-        $binaryLine = " 1-0-1-0-0-1  1-1-0-0-1-0  1-0-1-1-0-1";
-
-        $maxWidth = 0;
-        foreach ($logo as $line) {
-            $maxWidth = max($maxWidth, mb_strwidth($line));
-        }
-        $maxWidth = max($maxWidth, mb_strwidth($binaryLine));
-
-        $padding = (int) (($this->consoleWidth - $maxWidth) / 2);
-
-        $this->line();
-        foreach ($logo as $line) {
-            $spaces = str_repeat(" ", $padding);
-            $this->line($spaces . self::BRIGHT_CYAN . $line . self::RESET);
-        }
-
-        // Add centered binary line with colors
-        $binaryPadding = (int) (($this->consoleWidth - mb_strwidth($binaryLine)) / 2);
-        $spaces = str_repeat(" ", $binaryPadding);
-        $colored = preg_replace_callback('/[01]/', function ($m) {
-            return ($m[0] === '1' ? self::BRIGHT_GREEN : self::BRIGHT_BLUE) . $m[0] . self::RESET;
-        }, $binaryLine);
-        $this->line($spaces . $colored);
-        $this->line();
-    }
-
-    public function thePlugsTinyLogo(): void
-    {
-        $logo = [
-            "THE PLUGS",
-            "1-0-1-0 1-1-0-1",
-        ];
-
-        foreach ($logo as $index => $line) {
-            $padding = (int) (($this->consoleWidth - mb_strwidth($line)) / 2);
-            $spaces = str_repeat(" ", $padding);
-
-            if ($index === 0) {
-                // Title line with letter spacing
-                $spaced = implode(' ', str_split($line));
-                $padding = (int) (($this->consoleWidth - mb_strwidth($spaced)) / 2);
-                $spaces = str_repeat(" ", $padding);
-                $this->line($spaces . self::BRIGHT_CYAN . self::BOLD . $spaced . self::RESET);
-            } else {
-                // Binary line
-                $colored = preg_replace_callback('/[01]/', function ($m) {
-                    return ($m[0] === '1' ? self::BRIGHT_GREEN : self::BRIGHT_BLUE) . $m[0] . self::RESET;
-                }, $line);
-                $this->line($spaces . $colored);
-            }
-        }
-        $this->line();
-    }
-
-    public function columns(array $leftLines, array $rightLines, int $leftWidth = 40): void
-    {
-        $maxLines = max(count($leftLines), count($rightLines));
-
-        $this->line();
-
-        for ($i = 0; $i < $maxLines; $i++) {
-            $left = $leftLines[$i] ?? '';
-            $right = $rightLines[$i] ?? '';
-
-            // Calculate padding needed for left column
-            // We strip ANSI codes to get true length
-            $visibleLeft = mb_strwidth($this->stripAnsiCodes($left));
-            $padding = max(0, $leftWidth - $visibleLeft);
-
-            $this->line($left . str_repeat(' ', $padding) . "  " . $right);
-        }
-
-        $this->line();
-    }
-
-    public function getCleanLogoAsArray(): array
-    {
-        // "PLUGS" in a cleaner, bold block font
-        $logo = [
-            "  _____  _      _    _   _____   _____ ",
-            " |  __ \| |    | |  | | / ____| / ____|",
-            " | |__) | |    | |  | || |  __ | (___  ",
-            " |  ___/| |    | |  | || | |_ | \___ \ ",
-            " | |    | |____| |__| || |__| | ____) |",
-            " |_|    |______|\____/  \_____||_____/ ",
-        ];
-
-        // A simple, clear separator line
-        $binaryLine = " ---------------------------------------";
-
-        $formatted = [];
-
-        foreach ($logo as $line) {
-            $formatted[] = self::BOLD . self::BRIGHT_CYAN . $line . self::RESET;
-        }
-
-        $formatted[] = self::DIM . $binaryLine . self::RESET;
-
-        return $formatted;
-    }
-
-    public function thePlugsPremiumLogo(): void
-    {
-        $logo = [
-            "   ____     __                                ",
-            "  /\  _`\\  /\ \                               ",
-            "  \ \ \L\ \\\\ \ \   __  __     __     ____     ",
-            "   \ \  __/ \ \ \ /\ \/\ \  /'_ `\  /',__\    ",
-            "    \ \ \/   \ \ \\\\ \ \_\ \/\ \L\ \/\__, `\   ",
-            "     \ \_\    \ \_\\\\ \____/\ \____ \/\____/   ",
-            "      \/_/     \/_/ \/___/  \/___L\ \/___/    ",
-            "                              /\____/         ",
-            "                              \_/__/          ",
-        ];
-
-        $colors = [
-            self::BRIGHT_GREEN,
-            self::BRIGHT_CYAN,
-            self::BRIGHT_BLUE,
-            self::BRIGHT_MAGENTA,
-            self::BRIGHT_CYAN,
-            self::BRIGHT_GREEN,
-            self::BRIGHT_YELLOW,
-            self::BRIGHT_YELLOW,
-            self::BRIGHT_YELLOW,
-        ];
-
-        $maxWidth = 0;
-        foreach ($logo as $line) {
-            $maxWidth = max($maxWidth, mb_strwidth($line));
-        }
-
-        $padding = (int) (($this->consoleWidth - $maxWidth) / 2);
-        $padding = max(0, $padding);
-
-        $this->line();
-        foreach ($logo as $index => $line) {
-            $spaces = str_repeat(" ", $padding);
-            $color = $colors[$index] ?? self::BRIGHT_CYAN;
-            $this->line($spaces . $color . self::BOLD . $line . self::RESET);
-        }
-        $this->line();
-    }
-
     public function branding(string $version = '1.0.0'): void
     {
-        $this->thePlugsPremiumLogo();
+        $logo = [
+            '  ___ _               ',
+            ' / _ \ |_  _ __ _ ___',
+            '|  __/ | || / _` (_-<',
+            '|_|  |_|\_,_\__, /__/',
+            '            |___/    ',
+        ];
 
-        $info = "Plugs Framework " . self::BRIGHT_GREEN . "v" . $version . self::RESET . " | PHP " . self::BRIGHT_BLUE . PHP_VERSION . self::RESET;
-        $width = mb_strwidth($this->stripAnsiCodes($info));
-        $padding = (int) (($this->consoleWidth - $width) / 2);
-        $padding = max(0, $padding);
+        $this->newLine();
+        foreach ($logo as $line) {
+            $this->line("  " . self::BRIGHT_CYAN . $line . self::RESET);
+        }
+        $this->newLine();
 
-        $this->line(str_repeat(" ", $padding) . $info);
-        $this->line();
-        $this->fullWidthLine('─', self::BRIGHT_BLACK);
-        $this->line();
+        $info = "Plugs Framework " . self::BRIGHT_WHITE . $version . self::RESET . " | PHP " . self::BRIGHT_BLUE . PHP_VERSION . self::RESET;
+        $this->line("  " . $info);
+        $this->newLine();
     }
 
     public function twoColumnList(array $items, int $leftWidth = 30): void
