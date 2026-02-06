@@ -59,14 +59,10 @@ class Output
     public const GRADIENT_TEAL = "\033[38;5;80m";
 
     private int $consoleWidth;
-    private array $logoLines = [];
-    private int $logoLineIndex = 0;
-    private int $logoWidth = 35; // Fixed width for logo column
 
     public function __construct()
     {
         $this->consoleWidth = $this->getConsoleWidth();
-        $this->logoLines = $this->getPlugLogoLines();
     }
 
     private function getConsoleWidth(): int
@@ -103,8 +99,7 @@ class Output
 
     public function fullWidthLine(string $char = '─', string $color = self::BRIGHT_BLACK): void
     {
-        // Adjust full width line to account for logo column
-        $contentWidth = $this->consoleWidth - $this->logoWidth - 2;
+        $contentWidth = $this->consoleWidth - 4;
         $this->line($color . str_repeat($char, $contentWidth) . self::RESET);
     }
 
@@ -149,10 +144,11 @@ class Output
 
     public function line(string $text = ''): void
     {
-        // 4 for "    " padding
-        // If console width is too small or detection failed, default to sensible content width
-        $effectiveConsoleWidth = ($this->consoleWidth > 60) ? $this->consoleWidth : 120;
-        $contentWidth = $effectiveConsoleWidth - $this->logoWidth - 4;
+        // Standard left margin: 2 spaces
+        $margin = "  ";
+
+        // Use full console width minus margin
+        $contentWidth = $this->consoleWidth - 4;
 
         // Handle incoming newlines first
         $rawLines = explode(PHP_EOL, $text);
@@ -167,56 +163,9 @@ class Output
             }
 
             foreach ($wrappedLines as $lineContent) {
-                // Get next logo line or empty padding
-                $logoLine = $this->logoLines[$this->logoLineIndex] ?? str_repeat(' ', $this->logoWidth);
-
-                // Increment logo index
-                if ($this->logoLineIndex < count($this->logoLines)) {
-                    $this->logoLineIndex++;
-                }
-
-                echo $logoLine . "    " . $lineContent . PHP_EOL;
+                echo $margin . $lineContent . PHP_EOL;
             }
         }
-    }
-
-    // ...
-
-    private function getPlugLogoLines(): array
-    {
-        $width = $this->logoWidth;
-        $g = self::BRIGHT_GREEN;
-        $c = self::BRIGHT_CYAN;
-        $b = self::BRIGHT_BLUE;
-        $m = self::BRIGHT_MAGENTA;
-        $y = self::BRIGHT_YELLOW;
-        $d = self::DIM;
-        $r = self::RESET;
-
-        // Colorful, Modern Plug Logo
-        $logo = [
-            "",
-            $g . "    ╔═══╗  " . $r,
-            $c . "    ║   ║  " . $r,
-            $b . "   ╔╩═══╩╗ " . $r,
-            $m . "   ║  P  ║ " . $r,
-            $c . "   ║  L  ║ " . $r,
-            $g . "   ║  U  ║ " . $r,
-            $y . "   ║  G  ║ " . $r,
-            $m . "   ║  S  ║ " . $r,
-            $b . "   ╚═════╝ " . $r,
-            "",
-            $c . self::BOLD . "   PLUGS   " . $r,
-            $d . "  FRAMEWORK" . $r,
-            $g . "   v1.0.0  " . $r,
-        ];
-
-        return array_map(function ($line) use ($width) {
-            $stripped = $this->stripAnsiCodes($line);
-            $padding = $width - mb_strwidth($stripped);
-
-            return $line . str_repeat(' ', max(0, $padding));
-        }, $logo);
     }
 
     public function info(string $text): void
@@ -713,11 +662,11 @@ class Output
 
     public function banner(string $text): void
     {
-        $maxWidth = $this->consoleWidth;
+        $maxWidth = $this->consoleWidth - 4;
         $textLen = mb_strwidth($text);
 
         // Calculate padding for centered text
-        $totalPadding = $maxWidth - $textLen;
+        $totalPadding = max(0, $maxWidth - $textLen);
         $leftPadding = (int) ($totalPadding / 2);
         $rightPadding = $totalPadding - $leftPadding;
 
@@ -725,7 +674,7 @@ class Output
         $this->gradient(str_repeat("█", $maxWidth));
 
         $centeredText = str_repeat(" ", $leftPadding) . $text . str_repeat(" ", $rightPadding);
-        echo self::BOLD . self::BRIGHT_WHITE . $centeredText . self::RESET . "\n";
+        $this->line(self::BOLD . self::BRIGHT_WHITE . $centeredText . self::RESET);
 
         $this->gradient(str_repeat("█", $maxWidth));
         $this->line();
@@ -1231,10 +1180,8 @@ class Output
         foreach ($logo as $line) {
             $this->line("  " . self::BRIGHT_CYAN . $line . self::RESET);
         }
-        $this->newLine();
 
-        $info = "Plugs Framework " . self::BRIGHT_WHITE . $version . self::RESET . " | PHP " . self::BRIGHT_BLUE . PHP_VERSION . self::RESET;
-        $this->line("  " . $info);
+        $this->line("  " . self::DIM . "FRAMEWORK" . self::RESET);
         $this->newLine();
     }
 

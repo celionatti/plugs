@@ -77,6 +77,7 @@ class HelpCommand extends Command
             $this->newLine();
             $this->line("  " . \Plugs\Console\Support\Output::BOLD . \Plugs\Console\Support\Output::YELLOW . strtoupper($category) . \Plugs\Console\Support\Output::RESET);
 
+            $items = [];
             foreach ($categoryCommands as $name => $commandClass) {
                 try {
                     $command = new $commandClass($name);
@@ -85,11 +86,12 @@ class HelpCommand extends Command
                     $description = '';
                 }
 
-                $this->line("  " . \Plugs\Console\Support\Output::BRIGHT_GREEN . $name . \Plugs\Console\Support\Output::RESET);
-                if ($description) {
-                    $this->line("    " . \Plugs\Console\Support\Output::DIM . $description . \Plugs\Console\Support\Output::RESET);
+                if (mb_strlen($description) > 60) {
+                    $description = mb_substr($description, 0, 57) . '...';
                 }
+                $items[$name] = $description;
             }
+            $this->output->twoColumnList($items, 28);
         }
 
         $this->newLine();
