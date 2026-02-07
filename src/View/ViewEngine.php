@@ -337,12 +337,20 @@ class ViewEngine
                 if ($component instanceof ReactiveComponent) {
                     $html = $this->render($componentName, array_merge($componentData, $component->getState()), true);
 
+                    // Build attribute string
+                    $attributes = $component->getAttributes();
+                    $attrString = '';
+                    foreach ($attributes as $key => $value) {
+                        $attrString .= sprintf(' %s="%s"', $key, htmlspecialchars((string) $value));
+                    }
+
                     // Wrap in reactive container
                     return sprintf(
-                        '<div data-plug-component="%s" data-plug-state="%s" id="%s">%s</div>',
+                        '<div data-plug-component="%s" data-plug-state="%s" id="%s"%s>%s</div>',
                         $componentName,
                         $component->serializeState(),
                         $component->getId(),
+                        $attrString,
                         $html
                     );
                 }

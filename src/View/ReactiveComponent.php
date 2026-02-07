@@ -141,4 +141,8 @@ abstract class ReactiveComponent
     {
         return $this->name;
     }
+    public function getAttributes(): array
+    {
+        return [];
+    }
 }

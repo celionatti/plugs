@@ -83,7 +83,8 @@ class ReactiveController
             $component->$action(...$params);
 
             // Re-render
-            $html = $this->viewEngine->render($componentName, array_merge($component->getState(), ['slot' => '']), true);
+            $viewPath = $component->render();
+            $html = $this->viewEngine->render($viewPath, array_merge($component->getState(), ['slot' => '']), false);
 
             return ResponseFactory::json([
                 'html' => $html,
