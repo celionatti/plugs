@@ -236,15 +236,15 @@ class UserController extends Controller
 
 ### Registering Attribute Routes
 
-To enable attribute-based routing, you must tell the router which directories to scan for controllers. This is typically done in your `routes/web.php` or `routes/api.php` file:
+To enable attribute-based routing, you must tell the router which directories to scan for controllers. This is typically done in your `routes/web.php` or `routes/api.php` file, or within your `Bootstrapper`.
 
 ```php
 // routes/web.php
 
-$router->registerAttributes('App\\Http\\Controllers', base_path('app/Http/Controllers'));
+$router->loadAttributes(app_path('Controllers'));
 ```
 
-The first argument is the root namespace of the controllers, and the second is the absolute path to the directory containing them.
+The argument is the absolute path to the directory containing your controllers.
 
 ### Route Attribute Parameters
 

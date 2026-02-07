@@ -183,3 +183,30 @@ $viewEngine->setCspNonce($nonce);
 | `@style([...])` | Dynamically bind inline styles. |
 | `@json($data)` | Output data as a JSON string. |
 | `@production` ... `@endproduction` | Render content only in production. |
+
+---
+
+## ⚡ Async Data Loading
+
+The view engine has built-in support for asynchronous data loading using Promises (e.g., from `HTTPClient`).
+
+When you pass a `PromiseInterface` or `Fiber` to a view, the engine will automatically wait for it to resolve before rendering. This allows you to fetch data in parallel.
+
+### Example
+
+```php
+use Plugs\Http\HTTPClient;
+
+public function index()
+{
+    $client = new HTTPClient();
+
+    // These requests run in PARALLEL
+    return view('dashboard', [
+        'users' => $client->getAsync('/users'),
+        'posts' => $client->getAsync('/posts'),
+    ]);
+}
+```
+
+In your view, `$users` and `$posts` will be the actual response objects, fully resolved.

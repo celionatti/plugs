@@ -447,6 +447,7 @@ class Plugs
      */
     public static function isProduction(): bool
     {
-        return strtolower(getenv('APP_ENV') ?: 'production') === 'production';
+        $env = $_ENV['APP_ENV'] ?? $_SERVER['APP_ENV'] ?? getenv('APP_ENV') ?: 'production';
+        return strtolower($env) === 'production';
     }
 }

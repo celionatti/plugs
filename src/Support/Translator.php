@@ -183,7 +183,7 @@ class Translator
 
         foreach ($replace as $key => $value) {
             $line = str_replace(
-                [':' . strtolower($key), ':' . ucwords($key), ':' . strtoupper($key)],
+                [':' . strtolower((string) $key), ':' . ucwords((string) $key), ':' . strtoupper((string) $key)],
                 [$value, ucwords((string) $value), strtoupper((string) $value)],
                 $line
             );

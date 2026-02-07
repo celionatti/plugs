@@ -103,3 +103,23 @@ Or call the `stopPropagation` method on the event object itself:
 ```php
 $event->stopPropagation();
 ```
+$event->stopPropagation();
+```
+
+## ⚡ Async Events
+
+Sometimes you want event listeners to run in parallel, especially for side effects like sending emails or notifications that shouldn't block the main response time (if waiting for them) or just to speed up the process.
+
+To make an event asynchronous, implement the `Plugs\Event\AsyncEventInterface`:
+
+```php
+use Plugs\Event\Event;
+use Plugs\Event\AsyncEventInterface;
+
+class OrderPlaced extends Event implements AsyncEventInterface
+{
+    // ...
+}
+```
+
+When you dispatch this event, all its listeners will be executed concurrently using the framework's Fiber system.

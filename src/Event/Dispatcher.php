@@ -64,10 +64,54 @@ class Dispatcher implements DispatcherInterface
      * @param bool $halt
      * @return array|null
      */
+    /**
+     * Dispatch an event and call all listeners asynchronously (in parallel).
+     *
+     * @param string|object $event
+     * @param array $payload
+     * @return array The results of the listeners.
+     */
+    public function dispatchAsync($event, array $payload = []): array
+    {
+        $eventName = is_object($event) ? get_class($event) : $event;
+
+        if (is_object($event) && empty($payload)) {
+            $payload = [$event];
+        }
+
+        if (!$this->hasListeners($eventName)) {
+            return [];
+        }
+
+        // Gather all listeners as tasks
+        $tasks = [];
+        foreach ($this->getListeners($eventName) as $listener) {
+            $tasks[] = fn() => $this->callListener($listener, $payload);
+        }
+
+        // Run them in parallel using our FiberManager/Async helper
+        // We use full namespace to avoid import conflicts if not imported
+        return \Plugs\Concurrency\Async::parallel($tasks);
+    }
+
+    /**
+     * Fire an event and call all relevant listeners.
+     *
+     * @param string|object $event
+     * @param mixed $payload
+     * @param bool $halt
+     * @return array|null
+     */
     public function dispatch($event, $payload = [], bool $halt = false): ?array
     {
         // If the event is an object, we use its class name as the event name
         $eventName = is_object($event) ? get_class($event) : $event;
+
+        // Check if event implements AsyncEventInterface and auto-dispatch async if so
+        // Note: Halt is not supported in async mode effectively as they run in parallel.
+        if (is_object($event) && $event instanceof AsyncEventInterface && !$halt) {
+            return $this->dispatchAsync($event, $payload);
+        }
 
         if (is_object($event) && empty($payload)) {
             $payload = [$event];

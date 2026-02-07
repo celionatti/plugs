@@ -255,6 +255,21 @@ class ViewEngine
     public function render(string $view, array $data = [], bool $isComponent = false): string
     {
         $startTime = microtime(true);
+
+        // OPTIMIZATION: Resolve any Async/Promise data in parallel before rendering
+        // This allows controllers to pass promises directly to views
+        $promises = [];
+        foreach ($data as $key => $value) {
+            if ($value instanceof \GuzzleHttp\Promise\PromiseInterface || $value instanceof \Fiber) {
+                $promises[$key] = $value;
+            }
+        }
+
+        if (!empty($promises)) {
+            $resolved = \Plugs\Concurrency\Async::parallel($promises);
+            $data = array_merge($data, $resolved);
+        }
+
         $data = array_merge($this->sharedData, $data);
         $data['view'] = $this;
         $data = $this->applyComposers($view, $data);
