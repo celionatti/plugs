@@ -199,7 +199,7 @@ class PlugsSPA {
         document.addEventListener('click', (e) => this.handleOutsideClick(e));
 
         window.plugsSPAInitialized = true;
-        console.log('Plugs SPA Bridge initialized (v2.2).');
+        console.log('Plugs SPA Bridge initialized (v2.3).');
     }
 
     initializeComponents(container = document) {
@@ -225,12 +225,18 @@ class PlugsSPA {
             const pollInterval = parseInt(el.getAttribute('p-poll') || '0');
             if (pollInterval > 0) {
                 const pollAction = el.getAttribute('p-poll-action') || 'refresh';
-                el._pollTimer = setInterval(() => {
+                el._pollTimer = setInterval(async () => {
                     if (!document.body.contains(el)) {
                         clearInterval(el._pollTimer);
                         return;
                     }
-                    this.callComponentAction(el, 'poll', pollAction);
+                    if (el._isPolling) return; // Prevent stacking
+                    el._isPolling = true;
+                    try {
+                        await this.callComponentAction(el, 'poll', pollAction);
+                    } finally {
+                        el._isPolling = false;
+                    }
                 }, pollInterval);
             }
 

@@ -79,6 +79,11 @@ class ReactiveController
                 return ResponseFactory::json(['error' => "Action [{$action}] not found on component"], 404);
             }
 
+            // Prevent session locking
+            if (session_status() === PHP_SESSION_ACTIVE) {
+                session_write_close();
+            }
+
             // Call the action
             $component->$action(...$params);
 
