@@ -68,6 +68,26 @@ class ViewEngine
      */
     private bool $streamingEnabled = false;
 
+    /**
+     * File existence cache to reduce I/O
+     */
+    private array $fileExistsCache = [];
+
+    /**
+     * Enable OPcache compilation hints
+     */
+    private bool $opcacheEnabled = true;
+
+    /**
+     * Lazy-loaded components registry
+     */
+    private array $lazyComponents = [];
+
+    /**
+     * Component definition cache
+     */
+    private array $componentDefinitionCache = [];
+
     public function __construct(string $viewPath, string $cachePath, bool $cacheEnabled = false)
     {
         $this->viewPath = rtrim($viewPath, '/\\');
@@ -116,6 +136,24 @@ class ViewEngine
     public function isLayoutSuppressed(): bool
     {
         return $this->suppressLayout;
+    }
+
+    /**
+     * Enable/disable fast cache mode (skip modification time checks)
+     * Recommended for production
+     */
+    public function setFastCache(bool $enabled): self
+    {
+        $this->fastCache = $enabled;
+        return $this;
+    }
+
+    /**
+     * Check if fast cache is enabled
+     */
+    public function isFastCacheEnabled(): bool
+    {
+        return $this->fastCache;
     }
 
     private function checkCompilationRateLimit(): void
@@ -1236,5 +1274,258 @@ class ViewEngine
     {
         return $this->getFragmentRenderer()->renderTeleportScripts();
     }
-}
 
+    // ============================================
+    // PERFORMANCE OPTIMIZATIONS
+    // ============================================
+
+    /**
+     * Fast hash function - uses xxHash on PHP 8.1+ for ~3-4x speedup
+     * Falls back to md5 for older PHP versions
+     */
+    public static function fastHash(string $content): string
+    {
+        // PHP 8.1+ has xxh128 which is significantly faster than md5
+        if (function_exists('hash') && in_array('xxh128', hash_algos(), true)) {
+            return hash('xxh128', $content);
+        }
+
+        // Fallback to md5 for older PHP
+        return md5($content);
+    }
+
+    /**
+     * Cached file existence check - reduces I/O operations
+     */
+    public function fileExistsCached(string $path): bool
+    {
+        if (!isset($this->fileExistsCache[$path])) {
+            $this->fileExistsCache[$path] = file_exists($path);
+        }
+        return $this->fileExistsCache[$path];
+    }
+
+    /**
+     * Clear file existence cache
+     * Call after creating/deleting files
+     */
+    public function clearFileExistsCache(?string $path = null): self
+    {
+        if ($path !== null) {
+            unset($this->fileExistsCache[$path]);
+        } else {
+            $this->fileExistsCache = [];
+        }
+        return $this;
+    }
+
+    /**
+     * Invalidate specific path in cache
+     */
+    public function invalidatePath(string $path): self
+    {
+        unset($this->fileExistsCache[$path]);
+        unset($this->pathCache[$path]);
+        return $this;
+    }
+
+    /**
+     * Enable/disable OPcache compilation hints
+     */
+    public function setOpcacheEnabled(bool $enabled): self
+    {
+        $this->opcacheEnabled = $enabled;
+        return $this;
+    }
+
+    /**
+     * Compile file to OPcache if available
+     */
+    public function opcacheCompile(string $filePath): bool
+    {
+        if (!$this->opcacheEnabled) {
+            return false;
+        }
+
+        if (!function_exists('opcache_compile_file')) {
+            return false;
+        }
+
+        if (!function_exists('opcache_is_script_cached')) {
+            return false;
+        }
+
+        // Don't recompile if already cached
+        if (opcache_is_script_cached($filePath)) {
+            return true;
+        }
+
+        // Suppress errors - OPcache might not be enabled
+        return @opcache_compile_file($filePath);
+    }
+
+    /**
+     * Invalidate OPcache for a file
+     */
+    public function opcacheInvalidate(string $filePath): bool
+    {
+        if (!function_exists('opcache_invalidate')) {
+            return false;
+        }
+
+        return @opcache_invalidate($filePath, true);
+    }
+
+    /**
+     * Compile and cache view with OPcache optimization
+     */
+    public function compileWithOpcache(string $viewFile, string $compiledPath): void
+    {
+        $this->compile($viewFile, $compiledPath);
+
+        // Add to OPcache
+        $this->opcacheCompile($compiledPath);
+
+        // Update file existence cache
+        $this->fileExistsCache[$compiledPath] = true;
+    }
+
+    /**
+     * Register a lazy-loaded component
+     * Component will only be parsed when first used
+     */
+    public function registerLazyComponent(string $name, callable $loader): self
+    {
+        $this->lazyComponents[$name] = $loader;
+        return $this;
+    }
+
+    /**
+     * Get a lazy component, loading it if needed
+     */
+    public function getLazyComponent(string $name): ?string
+    {
+        // Check if already loaded
+        if (isset($this->componentDefinitionCache[$name])) {
+            return $this->componentDefinitionCache[$name];
+        }
+
+        // Check if has lazy loader
+        if (isset($this->lazyComponents[$name])) {
+            $loader = $this->lazyComponents[$name];
+            $this->componentDefinitionCache[$name] = $loader();
+            return $this->componentDefinitionCache[$name];
+        }
+
+        return null;
+    }
+
+    /**
+     * Preload component definitions for faster rendering
+     */
+    public function preloadComponents(array $componentNames): self
+    {
+        foreach ($componentNames as $name) {
+            $path = $this->getComponentPath($name);
+            if ($this->fileExistsCached($path)) {
+                $this->componentDefinitionCache[$name] = file_get_contents($path);
+            }
+        }
+        return $this;
+    }
+
+    /**
+     * Get optimized compiled path using fast hash
+     */
+    public function getOptimizedCompiledPath(string $view): string
+    {
+        $hash = self::fastHash($view);
+        return $this->cachePath . DIRECTORY_SEPARATOR . $hash . '.php';
+    }
+
+    /**
+     * Warm cache with OPcache optimization
+     */
+    public function warmCacheWithOpcache(?string $tag = null): array
+    {
+        $count = $this->warmCache($tag);
+        $opcacheCount = 0;
+
+        // Compile all cached views to OPcache
+        foreach (glob($this->cachePath . DIRECTORY_SEPARATOR . '*.php') as $file) {
+            if ($this->opcacheCompile($file)) {
+                $opcacheCount++;
+            }
+        }
+
+        return [
+            'views_compiled' => $count,
+            'opcache_compiled' => $opcacheCount,
+        ];
+    }
+
+    /**
+     * Get performance statistics
+     */
+    public function getPerformanceStats(): array
+    {
+        $stats = [
+            'path_cache_size' => count($this->pathCache),
+            'file_exists_cache_size' => count($this->fileExistsCache),
+            'preloaded_views' => count($this->preloadedViews),
+            'component_cache_size' => count($this->componentDefinitionCache),
+            'lazy_components_registered' => count($this->lazyComponents),
+            'opcache_enabled' => $this->opcacheEnabled,
+        ];
+
+        // Add OPcache stats if available
+        if (function_exists('opcache_get_status')) {
+            $opcacheStatus = @opcache_get_status(false);
+            if ($opcacheStatus) {
+                $stats['opcache_memory_used'] = $opcacheStatus['memory_usage']['used_memory'] ?? 0;
+                $stats['opcache_scripts_cached'] = $opcacheStatus['opcache_statistics']['num_cached_scripts'] ?? 0;
+                $stats['opcache_hit_rate'] = $opcacheStatus['opcache_statistics']['opcache_hit_rate'] ?? 0;
+            }
+        }
+
+        return $stats;
+    }
+
+    /**
+     * Clear all caches for fresh start
+     */
+    public function clearAllCaches(): self
+    {
+        $this->pathCache = [];
+        $this->fileExistsCache = [];
+        $this->preloadedViews = [];
+        $this->componentDefinitionCache = [];
+
+        // Clear view cache
+        if ($this->viewCache) {
+            $this->viewCache->flush();
+        }
+
+        return $this;
+    }
+
+    /**
+     * Optimize view for production
+     * Precompiles and caches everything
+     */
+    public function optimizeForProduction(): array
+    {
+        $results = [];
+
+        // Enable fast cache
+        $this->setFastCache(true);
+
+        // Warm all caches with OPcache
+        $results['cache_warming'] = $this->warmCacheWithOpcache();
+
+        // Get stats
+        $results['stats'] = $this->getPerformanceStats();
+
+        return $results;
+    }
+}

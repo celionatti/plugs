@@ -308,3 +308,84 @@ if ($cache->has('sidebar')) {
     echo "Sidebar will be generated";
 }
 ```
+
+---
+
+## Performance Optimizations
+
+### Fast Hashing
+
+The View system uses xxHash (PHP 8.1+) for ~3-4x faster hash generation:
+
+```php
+// Automatically uses xxh128 on PHP 8.1+, md5 otherwise
+$hash = ViewEngine::fastHash($content);
+```
+
+### File Existence Caching
+
+Reduce I/O operations by caching `file_exists()` results:
+
+```php
+// Uses cache instead of disk check
+$exists = $viewEngine->fileExistsCached($path);
+
+// Clear cache after creating/deleting files
+$viewEngine->clearFileExistsCache($path);
+$viewEngine->clearFileExistsCache(); // Clear all
+```
+
+### OPcache Integration
+
+Automatically compile views to OPcache:
+
+```php
+// Enable OPcache hints
+$viewEngine->setOpcacheEnabled(true);
+
+// Compile with OPcache
+$viewEngine->compileWithOpcache($viewFile, $compiledPath);
+
+// Warm cache with OPcache
+$results = $viewEngine->warmCacheWithOpcache();
+// ['views_compiled' => 50, 'opcache_compiled' => 50]
+```
+
+### Lazy Component Loading
+
+Defer component parsing until needed:
+
+```php
+$viewEngine->registerLazyComponent('heavy-chart', function() {
+    return file_get_contents('/path/to/chart.plug.php');
+});
+```
+
+### Production Optimization
+
+One-command production setup:
+
+```php
+$results = $viewEngine->optimizeForProduction();
+// Enables fast cache
+// Warms all views
+// Compiles to OPcache
+// Returns statistics
+```
+
+### Performance Statistics
+
+Monitor cache performance:
+
+```php
+$stats = $viewEngine->getPerformanceStats();
+// [
+//     'path_cache_size' => 25,
+//     'file_exists_cache_size' => 100,
+//     'preloaded_views' => 5,
+//     'component_cache_size' => 10,
+//     'opcache_enabled' => true,
+//     'opcache_hit_rate' => 98.5,
+// ]
+```
+
