@@ -23,20 +23,180 @@ namespace Plugs\View;
 
 class ViewCompiler
 {
-    // private array $sectionStack = []; // Kept for future use? Or should be removed if truly unused. PHPStan says only written.
-    // private array $componentStack = []; // Same here.
-
     private array $componentData = [];
-    // private ?ViewEngine $viewEngine; // Removed unused
     private array $compilationCache = [];
     private array $customDirectives = [];
     private array $verbatimBlocks = [];
-    // private array $forElseVars = []; // Removed unused
     private const MAX_CACHE_SIZE = 1000;
+
+    /**
+     * Pre-compiled regex patterns for performance
+     */
+    private static array $patterns = [];
+
+    /**
+     * Source map tracking for debugging
+     */
+    private bool $sourceMapEnabled = false;
+    private array $sourceMap = [];
+    private int $currentLine = 0;
+
+    /**
+     * Fragment renderer for HTMX/Turbo support
+     */
+    private ?FragmentRenderer $fragmentRenderer = null;
+
+    /**
+     * View cache for block caching
+     */
+    private ?ViewCache $viewCache = null;
+
+    /**
+     * Parent component data stack for @aware directive
+     */
+    private static array $parentDataStack = [];
 
     public function __construct()
     {
-        // $this->viewEngine = $viewEngine;
+        self::initPatterns();
+    }
+
+    /**
+     * Initialize pre-compiled regex patterns (called once)
+     */
+    private static function initPatterns(): void
+    {
+        if (!empty(self::$patterns)) {
+            return;
+        }
+
+        self::$patterns = [
+            // Echo patterns
+            'escaped_echo' => '/\{\{\s*(.+?)\s*\}\}/s',
+            'raw_echo' => '/\{!!\s*(.+?)\s*!!\}/s',
+            'legacy_raw_echo' => '/\{\{\{\s*(.+?)\s*\}\}\}/s',
+
+            // Comment patterns
+            'comment' => '/\{\{--.*?--\}\}/s',
+
+            // Verbatim patterns
+            'verbatim' => '/@verbatim(.*?)@endverbatim/s',
+
+            // PHP patterns
+            'php_block' => '/@php\s*\n?(.*?)\n?\s*@endphp/s',
+            'php_inline' => '/@php\s*\((.+?)\)/s',
+
+            // Component patterns
+            'component_self_close' => '/<([A-Z][a-zA-Z0-9]*)((?:\s+(?:[^>"\'\/]+|"[^"]*"|\'[^\']*\'))*?)\/>/',
+            'component_with_content' => '/<([A-Z][a-zA-Z0-9]*)((?:\s+(?:[^>"\'\/]+|"[^"]*"|\'[^\']*\'))*?)>(.*?)<\/\1\s*>/s',
+            'x_component_self_close' => '/<x-([\w-]+)((?:\s+(?:[^>"\'\/]+|"[^"]*"|\'[^\']*\'))*?)\/>/',
+            'x_component_with_content' => '/<x-([\w-]+)((?:\s+(?:[^>"\'\/]+|"[^"]*"|\'[^\']*\'))*?)>(.*?)<\/x-\1\s*>/s',
+
+            // Slot patterns
+            'named_slot' => '/<x-slot(?:\s+name=["\']([^"\']+)["\']|:([\w-]+))(.*?)>(.*?)<\/x-slot>/s',
+
+            // Control structure patterns
+            'if' => '/@if\s*\(([^()]*+(?:\((?1)\)[^()]*+)*+)\)/s',
+            'elseif' => '/@elseif\s*\(([^()]*+(?:\((?1)\)[^()]*+)*+)\)/s',
+            'unless' => '/@unless\s*\(([^()]*+(?:\((?1)\)[^()]*+)*+)\)/s',
+            'isset' => '/@isset\s*\(((?:[^()]|\([^()]*\))*)\)/s',
+            'empty' => '/@empty\s*\(((?:[^()]|\([^()]*\))*)\)/s',
+
+            // Loop patterns
+            'foreach' => '/@foreach\s*\((.+?)\s+as\s+(.+?)\)/s',
+            'forelse' => '/@forelse\s*\((.+?)\s+as\s+(.+?)\)(.*?)@empty(.*?)@endforelse/s',
+            'for' => '/@for\s*\((.+?)\)/s',
+            'while' => '/@while\s*\((.+?)\)/s',
+
+            // Section patterns
+            'extends' => '/@extends\s*\([\'"](.+?)[\'"]\)/',
+            'section_inline' => '/@section\s*\([\'"](.+?)[\'"]\s*,\s*[\'"](.+?)[\'"]\)/',
+            'section_block' => '/@section\s*\([\'"](.+?)[\'"]\)/',
+            'yield' => '/@yield\s*\([\'"](.+?)[\'"]\s*(?:,\s*[\'"]?(.*?)[\'"]?)?\)/',
+
+            // Include patterns
+            'include' => '/@include\s*\([\'"](.+?)[\'"]\s*(?:,\s*(\[.+?\]|\$\w+))?\s*\)/s',
+
+            // New directive patterns
+            'props' => '/@props\s*\((\[.+?\])\)/s',
+            'fragment' => '/@fragment\s*\([\'"](.+?)[\'"]\)/s',
+            'endfragment' => '/@endfragment\s*/',
+            'teleport' => '/@teleport\s*\([\'"](.+?)[\'"]\)/s',
+            'endteleport' => '/@endteleport\s*/',
+            'cache' => '/@cache\s*\([\'"](.+?)[\'"](?:\s*,\s*(\d+))?\)/s',
+            'endcache' => '/@endcache\s*/',
+            'lazy' => '/@lazy\s*\([\'"](.+?)[\'"](?:\s*,\s*(\[.+?\]))?\)/s',
+            'aware' => '/@aware\s*\((\[.+?\])\)/s',
+            'sanitize' => '/@sanitize\s*\((.+?)\)/s',
+            'entangle' => '/@entangle\s*\([\'"](.+?)[\'"]\)/s',
+        ];
+    }
+
+    /**
+     * Enable source map generation for debugging
+     */
+    public function enableSourceMaps(bool $enabled = true): self
+    {
+        $this->sourceMapEnabled = $enabled;
+        return $this;
+    }
+
+    /**
+     * Get source map for debugging
+     */
+    public function getSourceMap(): array
+    {
+        return $this->sourceMap;
+    }
+
+    /**
+     * Set view cache instance
+     */
+    public function setViewCache(ViewCache $cache): self
+    {
+        $this->viewCache = $cache;
+        return $this;
+    }
+
+    /**
+     * Set fragment renderer instance
+     */
+    public function setFragmentRenderer(FragmentRenderer $renderer): self
+    {
+        $this->fragmentRenderer = $renderer;
+        return $this;
+    }
+
+    /**
+     * Push parent data for @aware directive
+     */
+    public static function pushParentData(array $data): void
+    {
+        self::$parentDataStack[] = $data;
+    }
+
+    /**
+     * Pop parent data stack
+     */
+    public static function popParentData(): ?array
+    {
+        return array_pop(self::$parentDataStack);
+    }
+
+    /**
+     * Get all parent data for @aware directive
+     */
+    public static function getParentData(array $keys): array
+    {
+        $result = [];
+        foreach (array_reverse(self::$parentDataStack) as $data) {
+            foreach ($keys as $key) {
+                if (!isset($result[$key]) && isset($data[$key])) {
+                    $result[$key] = $data[$key];
+                }
+            }
+        }
+        return $result;
     }
 
     public function registerCustomDirective(string $name, callable $handler): void
@@ -240,7 +400,17 @@ class ViewCompiler
         $content = $safeCompile([$this, 'compileMethod'], $content);
         $content = $safeCompile([$this, 'compileFormHelpers'], $content);
 
-        // 9. Utilities
+        // 9. NEW DIRECTIVES - Component & HTMX support
+        $content = $safeCompile([$this, 'compileProps'], $content);
+        $content = $safeCompile([$this, 'compileFragment'], $content);
+        $content = $safeCompile([$this, 'compileTeleport'], $content);
+        $content = $safeCompile([$this, 'compileCacheBlocks'], $content);
+        $content = $safeCompile([$this, 'compileLazy'], $content);
+        $content = $safeCompile([$this, 'compileAware'], $content);
+        $content = $safeCompile([$this, 'compileSanitize'], $content);
+        $content = $safeCompile([$this, 'compileEntangle'], $content);
+
+        // 10. Utilities
         $content = $safeCompile([$this, 'compileInject'], $content);
         $content = $safeCompile([$this, 'compileJson'], $content);
         $content = $safeCompile([$this, 'compileHelperDirectives'], $content);
@@ -248,7 +418,7 @@ class ViewCompiler
         $content = $safeCompile([$this, 'compileFlashMessages'], $content);
         $content = $safeCompile([$this, 'compileErrorDirectives'], $content);
 
-        // 10. Echo statements LAST (after all directives)
+        // 11. Echo statements LAST (after all directives)
         $content = $safeCompile([$this, 'compileRawEchos'], $content);
         $content = $safeCompile([$this, 'compileEscapedEchos'], $content);
 
@@ -1746,4 +1916,254 @@ class ViewCompiler
             $content
         );
     }
+
+    // ============================================
+    // NEW ADVANCED DIRECTIVES
+    // ============================================
+
+    /**
+     * Compile @props directive for component default props
+     * Usage: @props(['type' => 'primary', 'size' => 'md'])
+     */
+    private function compileProps(string $content): string
+    {
+        return preg_replace_callback(
+            self::$patterns['props'] ?? '/@props\s*\((\[.+?\])\)/s',
+            function ($matches) {
+                $defaults = $matches[1];
+
+                return sprintf(
+                    '<?php $__props = %s; foreach ($__props as $__key => $__default) { if (!isset($$__key)) { $$__key = $__default; } } unset($__props, $__key, $__default); ?>',
+                    $defaults
+                );
+            },
+            $content
+        ) ?? $content;
+    }
+
+    /**
+     * Compile @fragment directive for HTMX/Turbo partial rendering
+     * Usage: @fragment('sidebar') ... @endfragment
+     */
+    private function compileFragment(string $content): string
+    {
+        // Start fragment
+        $content = preg_replace_callback(
+            self::$patterns['fragment'] ?? '/@fragment\s*\([\'"](.+?)[\'"]\)/s',
+            function ($matches) {
+                $name = addslashes($matches[1]);
+
+                return sprintf(
+                    '<?php $__fragmentRenderer = $__fragmentRenderer ?? new \Plugs\View\FragmentRenderer(); $__fragmentRenderer->startFragment(\'%s\'); ?>',
+                    $name
+                );
+            },
+            $content
+        ) ?? $content;
+
+        // End fragment
+        $content = preg_replace(
+            self::$patterns['endfragment'] ?? '/@endfragment\s*/',
+            '<?php $__fragmentRenderer->endFragment(); ?>',
+            $content
+        ) ?? $content;
+
+        return $content;
+    }
+
+    /**
+     * Compile @teleport directive for content relocation
+     * Usage: @teleport('#modals') ... @endteleport
+     */
+    private function compileTeleport(string $content): string
+    {
+        // Start teleport
+        $content = preg_replace_callback(
+            self::$patterns['teleport'] ?? '/@teleport\s*\([\'"](.+?)[\'"]\)/s',
+            function ($matches) {
+                $target = addslashes($matches[1]);
+
+                return sprintf(
+                    '<?php $__fragmentRenderer = $__fragmentRenderer ?? new \Plugs\View\FragmentRenderer(); $__fragmentRenderer->startTeleport(\'%s\'); ?>',
+                    $target
+                );
+            },
+            $content
+        ) ?? $content;
+
+        // End teleport
+        $content = preg_replace_callback(
+            self::$patterns['endteleport'] ?? '/@endteleport\s*/',
+            function ($matches) {
+                return '<?php $__teleportTarget = array_key_last($__fragmentRenderer->getTeleports()); $__fragmentRenderer->endTeleport($__teleportTarget); ?>';
+            },
+            $content
+        ) ?? $content;
+
+        return $content;
+    }
+
+    /**
+     * Compile @cache directive for caching view blocks
+     * Usage: @cache('sidebar', 3600) ... @endcache
+     * Usage: @cache('sidebar') ... @endcache (uses default TTL)
+     */
+    private function compileCacheBlocks(string $content): string
+    {
+        // Start cache block
+        $content = preg_replace_callback(
+            self::$patterns['cache'] ?? '/@cache\s*\([\'"](.+?)[\'"](?:\s*,\s*(\d+))?\)/s',
+            function ($matches) {
+                $key = addslashes($matches[1]);
+                $ttl = $matches[2] ?? 'null';
+
+                return sprintf(
+                    '<?php $__cacheKey_%s = \'%s\'; $__cacheTtl_%s = %s; $__cacheContent_%s = null; if (isset($__viewCache) && $__viewCache->has($__cacheKey_%s)) { echo $__viewCache->get($__cacheKey_%s); } else { ob_start(); ?>',
+                    md5($key),
+                    $key,
+                    md5($key),
+                    $ttl,
+                    md5($key),
+                    md5($key),
+                    md5($key)
+                );
+            },
+            $content
+        ) ?? $content;
+
+        // End cache block
+        $content = preg_replace_callback(
+            self::$patterns['endcache'] ?? '/@endcache\s*/',
+            function ($matches) {
+                return '<?php $__cacheContent = ob_get_clean(); if (isset($__viewCache)) { $__viewCache->put($__cacheKey ?? \'\', $__cacheContent, $__cacheTtl ?? null); } echo $__cacheContent; } ?>';
+            },
+            $content
+        ) ?? $content;
+
+        return $content;
+    }
+
+    /**
+     * Compile @lazy directive for lazy loading components
+     * Usage: @lazy('heavy-component', ['data' => $data])
+     * Usage: @lazy('heavy-component')
+     */
+    private function compileLazy(string $content): string
+    {
+        return preg_replace_callback(
+            self::$patterns['lazy'] ?? '/@lazy\s*\([\'"](.+?)[\'"](?:\s*,\s*(\[.+?\]))?\)/s',
+            function ($matches) {
+                $component = addslashes($matches[1]);
+                $data = $matches[2] ?? '[]';
+                $uniqueId = 'lazy_' . substr(md5($component . uniqid()), 0, 8);
+
+                return sprintf(
+                    '<?php 
+                    $__lazyId = \'%s\';
+                    $__lazyComponent = \'%s\';
+                    $__lazyData = %s;
+                    echo \'<div id="\' . $__lazyId . \'" data-lazy-component="\' . $__lazyComponent . \'" data-lazy-data="\' . htmlspecialchars(json_encode($__lazyData), ENT_QUOTES) . \'">\';
+                    echo \'<div class="lazy-placeholder" style="min-height: 50px; background: #f0f0f0; border-radius: 4px; display: flex; align-items: center; justify-content: center;">\';
+                    echo \'<span style="color: #666;">Loading...</span>\';
+                    echo \'</div></div>\';
+                    unset($__lazyId, $__lazyComponent, $__lazyData);
+                    ?>',
+                    $uniqueId,
+                    $component,
+                    $data
+                );
+            },
+            $content
+        ) ?? $content;
+    }
+
+    /**
+     * Compile @aware directive to access parent component data
+     * Usage: @aware(['theme', 'user'])
+     */
+    private function compileAware(string $content): string
+    {
+        return preg_replace_callback(
+            self::$patterns['aware'] ?? '/@aware\s*\((\[.+?\])\)/s',
+            function ($matches) {
+                $keys = $matches[1];
+
+                return sprintf(
+                    '<?php $__awareData = \Plugs\View\ViewCompiler::getParentData(%s); extract($__awareData, EXTR_SKIP); unset($__awareData); ?>',
+                    $keys
+                );
+            },
+            $content
+        ) ?? $content;
+    }
+
+    /**
+     * Compile @sanitize directive for HTML sanitization
+     * Usage: @sanitize($userContent)
+     * Usage: @sanitize($userContent, 'strict')
+     */
+    private function compileSanitize(string $content): string
+    {
+        return preg_replace_callback(
+            '/@sanitize\s*\((.+?)(?:\s*,\s*[\'"](.+?)[\'"])?\)/s',
+            function ($matches) {
+                $input = trim($matches[1]);
+                $mode = $matches[2] ?? 'default';
+
+                // Define allowed tags based on mode
+                $allowedTags = match ($mode) {
+                    'strict' => '',
+                    'basic' => '<p><br><strong><em><b><i>',
+                    'rich' => '<p><br><strong><em><b><i><ul><ol><li><a><h1><h2><h3><h4><h5><h6><blockquote><code><pre>',
+                    default => '<p><br><strong><em><b><i><ul><ol><li><a>',
+                };
+
+                return sprintf(
+                    '<?php echo strip_tags(%s, \'%s\'); ?>',
+                    $input,
+                    $allowedTags
+                );
+            },
+            $content
+        ) ?? $content;
+    }
+
+    /**
+     * Compile @entangle directive for Livewire-style two-way binding
+     * Usage: wire:model="@entangle('property')"
+     */
+    private function compileEntangle(string $content): string
+    {
+        return preg_replace_callback(
+            self::$patterns['entangle'] ?? '/@entangle\s*\([\'"](.+?)[\'"]\)/s',
+            function ($matches) {
+                $property = addslashes($matches[1]);
+
+                return sprintf(
+                    '<?php echo "data-entangle=\"%s\" data-entangle-value=\"" . htmlspecialchars(json_encode($%s ?? null), ENT_QUOTES) . "\""; ?>',
+                    $property,
+                    $property
+                );
+            },
+            $content
+        ) ?? $content;
+    }
+
+    // ============================================
+    // ADDITIONAL FORM DIRECTIVES
+    // ============================================
+
+    /**
+     * Compile @autofocus directive
+     * Usage: @autofocus($condition) or @autofocus
+     */
+    private function compileAutofocus(string $content): string
+    {
+        return preg_replace(
+            '/@autofocus(?:\s*\((.+?)\))?/',
+            '<?php if(${1:-true}) echo "autofocus"; ?>',
+            $content
+        ) ?? $content;
+    }
 }
+

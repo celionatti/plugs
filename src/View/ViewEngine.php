@@ -38,6 +38,36 @@ class ViewEngine
 
     private array $composers = [];
 
+    /**
+     * Path resolution cache for performance
+     */
+    private array $pathCache = [];
+
+    /**
+     * Component aliases (alias => actual component name)
+     */
+    private array $componentAliases = [];
+
+    /**
+     * Fragment renderer for HTMX/Turbo support
+     */
+    private ?FragmentRenderer $fragmentRenderer = null;
+
+    /**
+     * View cache for block caching
+     */
+    private ?ViewCache $viewCache = null;
+
+    /**
+     * Preloaded views cache
+     */
+    private array $preloadedViews = [];
+
+    /**
+     * Enable streaming mode
+     */
+    private bool $streamingEnabled = false;
+
     public function __construct(string $viewPath, string $cachePath, bool $cacheEnabled = false)
     {
         $this->viewPath = rtrim($viewPath, '/\\');
@@ -48,8 +78,9 @@ class ViewEngine
         $this->ensureDirectoryExists($this->cachePath);
         $this->ensureDirectoryExists($this->componentPath);
 
-        // $this->viewCompiler = new ViewCompiler($this);
-        // $this->registerDefaultDirectives();
+        // Initialize fragment renderer and view cache
+        $this->fragmentRenderer = new FragmentRenderer();
+        $this->viewCache = new ViewCache($this->cachePath);
     }
 
     public function setCspNonce(string $nonce): void
@@ -896,4 +927,314 @@ class ViewEngine
             }
         }
     }
+
+    // ============================================
+    // NEW ENGINE ENHANCEMENTS
+    // ============================================
+
+    /**
+     * Get the fragment renderer instance
+     */
+    public function getFragmentRenderer(): FragmentRenderer
+    {
+        if ($this->fragmentRenderer === null) {
+            $this->fragmentRenderer = new FragmentRenderer();
+        }
+        return $this->fragmentRenderer;
+    }
+
+    /**
+     * Get the view cache instance
+     */
+    public function getViewCache(): ViewCache
+    {
+        if ($this->viewCache === null) {
+            $this->viewCache = new ViewCache($this->cachePath);
+        }
+        return $this->viewCache;
+    }
+
+    /**
+     * Set a custom view cache instance
+     */
+    public function setViewCache(ViewCache $cache): self
+    {
+        $this->viewCache = $cache;
+        return $this;
+    }
+
+    /**
+     * Register a component alias
+     * Usage: $engine->alias('btn', 'components.forms.button')
+     */
+    public function alias(string $alias, string $component): self
+    {
+        $this->componentAliases[$alias] = $component;
+        return $this;
+    }
+
+    /**
+     * Get component name from alias
+     */
+    public function resolveAlias(string $alias): string
+    {
+        return $this->componentAliases[$alias] ?? $alias;
+    }
+
+    /**
+     * Preload views for faster rendering
+     */
+    public function preload(array $views): self
+    {
+        foreach ($views as $view) {
+            $viewPath = $this->getViewPath($view);
+            if (file_exists($viewPath)) {
+                $this->preloadedViews[$view] = file_get_contents($viewPath);
+            }
+        }
+        return $this;
+    }
+
+    /**
+     * Warm the view cache for all views in the view directory
+     * Returns the number of views warmed
+     */
+    public function warmCache(?string $tag = null): int
+    {
+        $count = 0;
+        $pattern = $this->viewPath . DIRECTORY_SEPARATOR . '**' . DIRECTORY_SEPARATOR . '*.plug.php';
+
+        foreach (glob($pattern, GLOB_BRACE) as $file) {
+            $viewName = $this->getViewNameFromPath($file);
+
+            // If tag specified, only warm views that match
+            if ($tag !== null && strpos($viewName, $tag) === false) {
+                continue;
+            }
+
+            $compiledPath = $this->getCompiledPath($viewName);
+            if (!file_exists($compiledPath) || filemtime($file) > filemtime($compiledPath)) {
+                $this->compile($file, $compiledPath);
+                $count++;
+            }
+        }
+
+        // Also warm root views
+        foreach (self::VIEW_EXTENSIONS as $ext) {
+            foreach (glob($this->viewPath . DIRECTORY_SEPARATOR . '*' . $ext) as $file) {
+                $viewName = basename($file, $ext);
+                $compiledPath = $this->getCompiledPath($viewName);
+                if (!file_exists($compiledPath) || filemtime($file) > filemtime($compiledPath)) {
+                    $this->compile($file, $compiledPath);
+                    $count++;
+                }
+            }
+        }
+
+        return $count;
+    }
+
+    /**
+     * Convert file path to view name
+     */
+    private function getViewNameFromPath(string $path): string
+    {
+        $relativePath = str_replace($this->viewPath . DIRECTORY_SEPARATOR, '', $path);
+
+        foreach (self::VIEW_EXTENSIONS as $ext) {
+            $relativePath = preg_replace('/' . preg_quote($ext, '/') . '$/', '', $relativePath);
+        }
+
+        return str_replace(DIRECTORY_SEPARATOR, '.', $relativePath);
+    }
+
+    /**
+     * Render a dynamic component by name
+     * Resolves aliases and renders the component
+     */
+    public function renderDynamic(string $componentName, array $data = []): string
+    {
+        // Resolve alias if exists
+        $resolvedName = $this->resolveAlias($componentName);
+
+        // Render as component
+        return $this->renderComponent($resolvedName, $data);
+    }
+
+    /**
+     * Render only a specific fragment from a view
+     * Perfect for HTMX/Turbo partial updates
+     */
+    public function renderFragment(string $view, string $fragment, array $data = []): string
+    {
+        // Render the full view (fragments are captured)
+        $this->render($view, array_merge($data, [
+            '__fragmentRenderer' => $this->getFragmentRenderer(),
+        ]));
+
+        // Return only the requested fragment
+        $content = $this->getFragmentRenderer()->getFragment($fragment);
+
+        if ($content === null) {
+            throw new ViewException(
+                sprintf('Fragment [%s] not found in view [%s]', $fragment, $view),
+                0,
+                null,
+                $view
+            );
+        }
+
+        return $content;
+    }
+
+    /**
+     * Render multiple views in parallel (when possible)
+     * Returns array of view => rendered content
+     */
+    public function renderMany(array $views, array $sharedData = []): array
+    {
+        $results = [];
+
+        foreach ($views as $view => $data) {
+            if (is_int($view)) {
+                $view = $data;
+                $data = [];
+            }
+
+            $results[$view] = $this->render($view, array_merge($sharedData, $data));
+        }
+
+        return $results;
+    }
+
+    /**
+     * Enable streaming mode
+     */
+    public function enableStreaming(bool $enable = true): self
+    {
+        $this->streamingEnabled = $enable;
+        return $this;
+    }
+
+    /**
+     * Stream render a view as a Generator
+     * Yields content in chunks for large views
+     */
+    public function stream(string $view, array $data = []): \Generator
+    {
+        $content = $this->render($view, $data);
+
+        // Stream in 8KB chunks
+        $chunkSize = 8192;
+        $length = strlen($content);
+
+        for ($i = 0; $i < $length; $i += $chunkSize) {
+            yield substr($content, $i, $chunkSize);
+        }
+    }
+
+    /**
+     * Render and output directly to the browser with flushing
+     * Good for large views - sends content as it's ready
+     */
+    public function renderToStream(string $view, array $data = []): void
+    {
+        // Disable output buffering as much as possible
+        while (ob_get_level() > 0) {
+            ob_end_flush();
+        }
+
+        // Set headers for streaming
+        if (!headers_sent()) {
+            header('Content-Type: text/html; charset=utf-8');
+            header('X-Accel-Buffering: no');
+        }
+
+        // Stream the content
+        foreach ($this->stream($view, $data) as $chunk) {
+            echo $chunk;
+            if (connection_aborted()) {
+                break;
+            }
+            flush();
+        }
+    }
+
+    /**
+     * Get path with caching for performance
+     */
+    public function getViewPathCached(string $view): string
+    {
+        if (!isset($this->pathCache[$view])) {
+            $this->pathCache[$view] = $this->getViewPath($view);
+        }
+        return $this->pathCache[$view];
+    }
+
+    /**
+     * Clear path cache
+     */
+    public function clearPathCache(): self
+    {
+        $this->pathCache = [];
+        return $this;
+    }
+
+    /**
+     * Check if view exists (with caching)
+     */
+    public function exists(string $view): bool
+    {
+        $path = $this->getViewPathCached($view);
+        return file_exists($path);
+    }
+
+    /**
+     * Get all registered component aliases
+     */
+    public function getAliases(): array
+    {
+        return $this->componentAliases;
+    }
+
+    /**
+     * Render view if it's a partial/HTMX request, otherwise render full layout
+     */
+    public function renderSmart(string $view, array $data = []): string
+    {
+        // Check if this is a partial request
+        if (FragmentRenderer::isPartialRequest()) {
+            $requestedFragment = FragmentRenderer::getRequestedFragment();
+
+            if ($requestedFragment !== null) {
+                try {
+                    return $this->renderFragment($view, $requestedFragment, $data);
+                } catch (ViewException) {
+                    // Fragment not found, render full view
+                }
+            }
+
+            // Suppress layout for partial requests
+            $this->suppressLayout(true);
+        }
+
+        return $this->render($view, $data);
+    }
+
+    /**
+     * Get all available fragments from the last render
+     */
+    public function getRenderedFragments(): array
+    {
+        return $this->getFragmentRenderer()->getFragments();
+    }
+
+    /**
+     * Get teleport content for rendering at end of body
+     */
+    public function getTeleportScripts(): string
+    {
+        return $this->getFragmentRenderer()->renderTeleportScripts();
+    }
 }
+
