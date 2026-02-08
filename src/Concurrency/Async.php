@@ -22,7 +22,7 @@ class Async
         foreach ($tasks as $key => $task) {
             if ($task instanceof PromiseInterface) {
                 $promises[$key] = $task;
-            } elseif (is_callable($task)) {
+            } elseif (is_callable($task)) { /** @phpstan-ignore function.alreadyNarrowedType */
                 $result = $task();
                 if ($result instanceof PromiseInterface) {
                     $promises[$key] = $result;

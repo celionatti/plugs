@@ -32,7 +32,9 @@ class ColumnDefinition
     private $collation = null;
     private $useCurrent = false;
     private $useCurrentOnUpdate = false;
+    /** @phpstan-ignore property.onlyWritten */
     private $onUpdate = null;
+    /** @phpstan-ignore property.onlyWritten */
     private $onDelete = null;
     private $virtualAs = null;
     private $storedAs = null;

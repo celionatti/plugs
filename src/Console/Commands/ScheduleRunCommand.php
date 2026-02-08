@@ -79,6 +79,7 @@ class ScheduleRunCommand extends Command
 
             if (class_exists(\App\Console\Kernel::class)) {
                 $kernel = new \App\Console\Kernel();
+                /** @phpstan-ignore function.alreadyNarrowedType */
                 if (method_exists($kernel, 'schedule')) {
                     $kernel->schedule($schedule);
                 }

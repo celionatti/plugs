@@ -258,27 +258,25 @@ class Output
                 self::BRIGHT_BLUE . "│" . self::RESET;
 
             // Try to execute callback
-            if (!$completed) {
-                try {
-                    $result = $callback();
-                    $completed = true;
-                } catch (\Throwable $e) {
-                    $completed = true;
+            try {
+                $result = $callback();
+                $completed = true;
+            } catch (\Throwable $e) {
+                $completed = true;
 
-                    // Error line
-                    $errorText = "✗ " . $message . " - Failed!";
-                    $textLen = mb_strwidth($errorText);
-                    $padding = $maxWidth - $textLen;
+                // Error line
+                $errorText = "✗ " . $message . " - Failed!";
+                $textLen = mb_strwidth($errorText);
+                $padding = $maxWidth - $textLen;
 
-                    echo "\r" . self::BRIGHT_BLUE . "│" . self::RESET .
-                        " " . self::BRIGHT_RED . $errorText . self::RESET .
-                        str_repeat(" ", max(0, $padding)) . " " .
-                        self::BRIGHT_BLUE . "│" . self::RESET . "\n";
+                echo "\r" . self::BRIGHT_BLUE . "│" . self::RESET .
+                    " " . self::BRIGHT_RED . $errorText . self::RESET .
+                    str_repeat(" ", max(0, $padding)) . " " .
+                    self::BRIGHT_BLUE . "│" . self::RESET . "\n";
 
-                    $this->line(self::BRIGHT_BLUE . "╰" . str_repeat("─", $maxWidth) . "╯" . self::RESET);
+                $this->line(self::BRIGHT_BLUE . "╰" . str_repeat("─", $maxWidth) . "╯" . self::RESET);
 
-                    throw $e;
-                }
+                throw $e;
             }
 
             usleep(100000);
@@ -491,18 +489,17 @@ class Output
                 str_repeat(" ", max(0, $padding)) . " " .
                 self::BRIGHT_BLUE . "│" . self::RESET;
 
-            if (!$completed) {
-                try {
-                    $result = $callback();
-                    $completed = true;
-                } catch (\Throwable $e) {
-                    $error = $e;
-                    $completed = true;
-                }
+            try {
+                $result = $callback();
+                $completed = true;
+            } catch (\Throwable $e) {
+                $error = $e;
+                $completed = true;
             }
 
             usleep(120000);
 
+            /** @phpstan-ignore greater.alwaysFalse */
             if ($i > 500) {
                 break;
             }

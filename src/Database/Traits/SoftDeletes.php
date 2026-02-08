@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Plugs\Database\Traits;
 
 /**
+ * @phpstan-consistent-constructor
  * @phpstan-ignore trait.unused
  */
 trait SoftDeletes
@@ -19,6 +20,7 @@ trait SoftDeletes
 
     public static function restoreAll(): bool
     {
+        /** @phpstan-ignore new.static */
         $instance = new static();
         if (!$instance->softDelete) {
             return false;
@@ -31,6 +33,7 @@ trait SoftDeletes
 
     public static function forceDeleteAll(): bool
     {
+        /** @phpstan-ignore new.static */
         $instance = new static();
         if (!$instance->softDelete) {
             return false;

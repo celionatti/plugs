@@ -18,7 +18,6 @@ use Throwable;
 class ConsolePlugs
 {
     private array $metrics = [];
-    private array $checkpoints = [];
 
     public function __construct(private ConsoleKernel $kernel)
     {
@@ -172,6 +171,7 @@ class ConsolePlugs
             foreach ($e->getTrace() as $index => $trace) {
                 $file = $trace['file'] ?? 'unknown';
                 $line = $trace['line'] ?? 0;
+                /** @phpstan-ignore nullCoalesce.offset */
                 $function = $trace['function'] ?? 'unknown';
                 $class = $trace['class'] ?? '';
                 $type = $trace['type'] ?? '';

@@ -30,7 +30,6 @@ class TestResponse
      */
     public function assertStatus(int $status): self
     {
-        /** @phpstan-ignore-next-line */
         PHPUnit::assertEquals($status, $this->response->getStatusCode(), "Expected status code {$status} but received " . $this->response->getStatusCode());
 
         return $this;
@@ -55,13 +54,10 @@ class TestResponse
     {
         $json = json_decode((string) $this->response->getBody(), true);
 
-        /** @phpstan-ignore-next-line */
         PHPUnit::assertIsArray($json, "Response body is not valid JSON.");
 
         foreach ($data as $key => $value) {
-            /** @phpstan-ignore-next-line */
             PHPUnit::assertArrayHasKey($key, $json, "Response JSON does not contain key {$key}.");
-            /** @phpstan-ignore-next-line */
             PHPUnit::assertEquals($value, $json[$key], "Response JSON key {$key} does not match expected value.");
         }
 
@@ -77,11 +73,9 @@ class TestResponse
      */
     public function assertHeader(string $header, ?string $value = null): self
     {
-        /** @phpstan-ignore-next-line */
         PHPUnit::assertTrue($this->response->hasHeader($header), "Response does not have header {$header}.");
 
         if ($value !== null) {
-            /** @phpstan-ignore-next-line */
             PHPUnit::assertEquals($value, $this->response->getHeaderLine($header), "Response header {$header} does not match expected value.");
         }
 

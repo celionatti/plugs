@@ -202,7 +202,7 @@ class MakeModelCommand extends Command
 
     private function generateModel(string $name, array $options): string
     {
-        $this->task('Generating model class', function () use ($name, $options) {
+        $this->task('Generating model class', function () {
             usleep(300000);
         });
 
@@ -664,7 +664,7 @@ PHP;
 
     private function getMigrationPath(string $filename): string
     {
-        return BASE_PATH . 'database/Migrations/' . $filename;
+        return base_path('database/Migrations/' . $filename);
     }
 
     private function getControllerPath(string $name): string
@@ -674,12 +674,12 @@ PHP;
 
     private function getFactoryPath(string $name): string
     {
-        return BASE_PATH . 'database/Factories/' . $name . '.php';
+        return base_path('database/Factories/' . $name . '.php');
     }
 
     private function getSeederPath(string $name): string
     {
-        return BASE_PATH . 'database/Seeders/' . $name . '.php';
+        return base_path('database/Seeders/' . $name . '.php');
     }
 
     private function getDefaultTemplate(string $templateName): string

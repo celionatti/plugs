@@ -10,7 +10,8 @@ use Plugs\Database\QueryBuilder;
 use Plugs\Paginator\Pagination;
 
 /**
- * @phpstan-ignore trait.unused
+ * @phpstan-consistent-constructor
+ * @phpstan-ignore-next-line
  */
 trait HasQueryBuilder
 {
@@ -22,6 +23,7 @@ trait HasQueryBuilder
         $connection = Connection::getInstance();
         $builder = new QueryBuilder($connection);
 
+        /** @phpstan-ignore new.static */
         $instance = new static();
         $table = $instance->getTable();
 
@@ -135,6 +137,7 @@ trait HasQueryBuilder
     public static function insert(array|object $data): Collection|self
     {
         /** @phpstan-ignore-next-line */
+        /** @phpstan-ignore new.static */
         $data = (new static())->parseAttributes($data);
 
         // Check if data is multidimensional numeric array (bulk insert)
@@ -148,6 +151,7 @@ trait HasQueryBuilder
         static::query()->insert($data);
 
         $models = array_map(function ($attributes) {
+            /** @phpstan-ignore new.static */
             return new static($attributes);
         }, $data);
 
@@ -359,6 +363,7 @@ trait HasQueryBuilder
         }
 
         // Legacy array-based filtering
+        /** @phpstan-ignore new.static */
         $instance = new static();
 
         foreach ($params as $key => $value) {

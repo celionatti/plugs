@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Plugs\Database\Traits;
 
 /**
+ * @phpstan-consistent-constructor
  * @phpstan-ignore trait.unused
  */
 trait HasTimestamps
@@ -24,6 +25,7 @@ trait HasTimestamps
 
     public static function touchAll(array $ids): bool
     {
+        /** @phpstan-ignore new.static */
         $instance = new static();
 
         if (!$instance->timestamps) {

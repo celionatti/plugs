@@ -20,6 +20,9 @@ use Plugs\Database\QueryBuilder;
 use Plugs\Database\Traits\HasQueryBuilder;
 use Plugs\Paginator\Pagination;
 
+/**
+ * @phpstan-consistent-constructor
+ */
 abstract class Model
 {
     use HasQueryBuilder;
@@ -443,6 +446,7 @@ abstract class Model
 
     protected static function getTable(): string
     {
+        /** @phpstan-ignore property.staticAccess */
         return static::$table ?? strtolower(
             preg_replace('/([a-z])([A-Z])/', '$1_$2', class_basename(static::class))
         ) . 's';

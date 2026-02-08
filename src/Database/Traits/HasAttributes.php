@@ -9,6 +9,7 @@ use Exception;
 use Plugs\Database\Collection;
 
 /**
+ * @phpstan-consistent-constructor
  * @phpstan-ignore trait.unused
  */
 trait HasAttributes
@@ -91,7 +92,8 @@ trait HasAttributes
         }
 
         // Check for relationship
-        if (array_key_exists($key, $this->relations ?? [])) {
+        /** @phpstan-ignore-next-line */
+        if (property_exists($this, 'relations') && isset($this->relations[$key])) {
             return $this->relations[$key];
         }
 
@@ -445,6 +447,7 @@ trait HasAttributes
      */
     public static function createFromJson(string $json)
     {
+        /** @phpstan-ignore new.static */
         $instance = new static();
 
         return $instance->fill($instance->fromJson($json));
@@ -537,6 +540,7 @@ trait HasAttributes
         }
 
         // Add loaded relationships
+        /** @phpstan-ignore function.alreadyNarrowedType */
         if (property_exists($this, 'relations')) {
             foreach ($this->relations as $key => $value) {
                 if (in_array($key, $this->hidden)) {

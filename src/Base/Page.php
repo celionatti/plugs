@@ -70,7 +70,7 @@ abstract class Page
             $paramType = $param->getType();
 
             // Inject ServerRequestInterface
-            if ($paramType && !$paramType->isBuiltin()) {
+            if ($paramType instanceof \ReflectionNamedType && !$paramType->isBuiltin()) {
                 $typeName = $paramType->getName();
 
                 if ($typeName === ServerRequestInterface::class || is_subclass_of($typeName, ServerRequestInterface::class)) {
@@ -88,7 +88,7 @@ abstract class Page
                 $value = $routeParams[$paramName];
 
                 // Type casting
-                if ($paramType && $paramType->isBuiltin()) {
+                if ($paramType instanceof \ReflectionNamedType && $paramType->isBuiltin()) {
                     $value = $this->castValue($value, $paramType->getName());
                 }
 

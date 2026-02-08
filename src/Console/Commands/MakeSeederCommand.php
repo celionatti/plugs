@@ -48,11 +48,11 @@ class MakeSeederCommand extends Command
             $name .= 'Seeder';
         }
 
-        $path = BASE_PATH . 'database/Seeders/' . $name . '.php';
+        $path = base_path('database/Seeders/' . $name . '.php');
 
         $this->section('Configuration Summary');
         $this->keyValue('Seeder Name', $name);
-        $this->keyValue('Target Path', str_replace(BASE_PATH, '', $path));
+        $this->keyValue('Target Path', str_replace(base_path(), '', $path));
         $this->newLine();
 
         if (Filesystem::exists($path) && !$this->isForce()) {

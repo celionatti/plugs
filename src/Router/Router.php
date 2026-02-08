@@ -548,7 +548,7 @@ class Router
 
         // If we found allowed methods but no match for current method
         if (!empty($allowedMethods)) {
-            throw new \Plugs\Exceptions\MethodNotAllowedException($allowedMethods);
+            throw new \Plugs\Exceptions\MethodNotAllowedException(405, 'Method Not Allowed', null, [], $allowedMethods);
         }
 
         return null; // Will trigger RouteNotFoundException in fallback handler or caller

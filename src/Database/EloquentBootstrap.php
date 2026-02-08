@@ -18,9 +18,6 @@ use Illuminate\Container\Container as IlluminateContainer;
 use Illuminate\Database\Capsule\Manager as Capsule;
 use Illuminate\Events\Dispatcher;
 
-/**
- * @phpstan-ignore-next-line
- */
 class EloquentBootstrap
 {
     private static $capsule = null;

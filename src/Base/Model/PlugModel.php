@@ -26,6 +26,7 @@ use Plugs\Database\Traits\HasFactory;
  * 
  * @method mixed getAttribute(string $key)
  * @method void setAttribute(string $key, mixed $value)
+ * @phpstan-consistent-constructor
  */
 abstract class PlugModel
 {
@@ -45,6 +46,8 @@ abstract class PlugModel
     protected $primaryKey = 'id';
 
     protected $exists = false;
+
+    protected bool $allowRawQueries = false;
 
     // Static Query Logging and Caching
     protected static $queryLog = [];
@@ -298,12 +301,8 @@ abstract class PlugModel
         try {
             $connection = static::getConnection();
 
-            if ($connection instanceof PDO) {
-                $stmt = $connection->prepare($sql);
-                $stmt->execute($bindings);
-            } else {
-                $stmt = $connection->query($sql, $bindings);
-            }
+            $stmt = $connection->prepare($sql);
+            $stmt->execute($bindings);
 
             $time = microtime(true) - $startTime;
             static::logQuery($sql, $bindings, $time);
@@ -481,7 +480,10 @@ abstract class PlugModel
 
     // ... (Keep other batch operations or move to trait if desired, but for now keep here as they heavily use static/instance context mix)
 
-    // ==================== MAGIC METHODS ====================
+    public function newFromBuilder(array|object $attributes = []): static
+    {
+        return new static($attributes, true);
+    }
 
     public function __call($method, $parameters)
     {
@@ -499,29 +501,6 @@ abstract class PlugModel
 
         // 3. Delegate to QueryBuilder
         return call_user_func_array([$this->newQuery(), $method], $parameters);
-    }
-
-    private function isRelationshipProxy($object): bool
-    {
-        if (!is_object($object)) {
-            return false;
-        }
-
-        $proxies = [
-            \Plugs\Database\Relations\HasOneProxy::class,
-            \Plugs\Database\Relations\HasManyProxy::class,
-            \Plugs\Database\Relations\BelongsToProxy::class,
-            \Plugs\Database\Relations\HasManyThroughProxy::class,
-            \Plugs\Database\BelongsToManyProxy::class,
-        ];
-
-        foreach ($proxies as $proxy) {
-            if ($object instanceof $proxy) {
-                return true;
-            }
-        }
-
-        return false;
     }
 
     public static function __callStatic($method, $parameters)

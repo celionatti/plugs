@@ -220,7 +220,7 @@ class MakeControllerCommand extends Command
 
     private function generateController(string $name, array $options): string
     {
-        $this->task('Generating controller class', function () use ($name, $options) {
+        $this->task('Generating controller class', function () {
             usleep(300000);
         });
 

@@ -55,12 +55,12 @@ class MakeFactoryCommand extends Command
         }
         $model = Str::studly($model);
 
-        $path = BASE_PATH . 'database/Factories/' . $name . '.php';
+        $path = base_path('database/Factories/' . $name . '.php');
 
         $this->section('Configuration Summary');
         $this->keyValue('Factory Name', $name);
         $this->keyValue('Target Model', $model);
-        $this->keyValue('Target Path', str_replace(BASE_PATH, '', $path));
+        $this->keyValue('Target Path', str_replace(base_path(), '', $path));
         $this->newLine();
 
         if (Filesystem::exists($path) && !$this->isForce()) {

@@ -7,6 +7,9 @@ namespace Plugs\Database\Traits;
 use Plugs\Database\Filters\QueryFilter;
 use Plugs\Database\QueryBuilder;
 
+/**
+ * @phpstan-ignore trait.unused
+ */
 trait Filterable
 {
     /**

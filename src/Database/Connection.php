@@ -1108,11 +1108,12 @@ class Connection
         $date = date('Y-m-d H:i:s');
         $log = "[{$date}] [{$level}] {$message}" . PHP_EOL;
 
-        $logDir = dirname(BASE_PATH . self::$auditLogPath);
+        $basePath = defined('BASE_PATH') ? BASE_PATH : dirname(__DIR__, 2) . '/';
+        $logDir = dirname($basePath . self::$auditLogPath);
         if (!is_dir($logDir)) {
             @mkdir($logDir, 0755, true);
         }
 
-        @file_put_contents(BASE_PATH . self::$auditLogPath, $log, FILE_APPEND);
+        @file_put_contents($basePath . self::$auditLogPath, $log, FILE_APPEND);
     }
 }

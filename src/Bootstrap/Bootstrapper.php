@@ -67,8 +67,8 @@ class Bootstrapper
     protected function loadEnvironment(): void
     {
         if (!\Plugs\Config::loadFromCache()) {
-            if (file_exists(BASE_PATH . '.env')) {
-                $dotenv = \Dotenv\Dotenv::createImmutable(BASE_PATH);
+            if (file_exists($this->basePath . '.env')) {
+                $dotenv = \Dotenv\Dotenv::createImmutable($this->basePath);
                 $dotenv->load();
             }
         }
@@ -187,24 +187,25 @@ class Bootstrapper
             // Loaded from cache
         } else {
             $router->loadInternalRoutes();
-            if (file_exists(BASE_PATH . 'routes/web.php')) {
-                require BASE_PATH . 'routes/web.php';
+            if (file_exists($this->basePath . 'routes/web.php')) {
+                require $this->basePath . 'routes/web.php';
             }
 
             $router->group([
                 'prefix' => 'api',
                 'middleware' => [\Plugs\Http\Middleware\ForceJsonMiddleware::class],
             ], function () {
-                if (file_exists(BASE_PATH . 'routes/api.php')) {
-                    require BASE_PATH . 'routes/api.php';
+                if (file_exists($this->basePath . 'routes/api.php')) {
+                    require $this->basePath . 'routes/api.php';
                 }
             });
         }
 
-        $router->enablePagesRouting(base_path('resources/pages'), [
+        $router->enablePagesRouting($this->basePath . 'resources/pages', [
             'namespace' => 'App\\Pages',
             'cache' => Plugs::isProduction(),
-            'cache_file' => storage_path('framework/pages_routes.php'),
+            /** @phpstan-ignore constant.notFound */
+            'cache_file' => STORAGE_PATH . 'framework/pages_routes.php',
         ]);
         $router->loadPagesRoutes();
     }

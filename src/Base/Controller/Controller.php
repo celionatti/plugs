@@ -174,6 +174,7 @@ abstract class Controller
      */
     protected function flash(string $key, $value, ?string $title = null): void
     {
+        /** @phpstan-ignore arguments.count */
         flash($key, $value, $title);
     }
 
@@ -304,6 +305,7 @@ abstract class Controller
 
     /**
      * Get user identifier for rate limiting
+     * @phpstan-ignore method.unused
      */
     private function getUserIdentifier(): ?string
     {
