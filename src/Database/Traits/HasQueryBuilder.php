@@ -136,7 +136,6 @@ trait HasQueryBuilder
 
     public static function insert(array|object $data): Collection|self
     {
-        /** @phpstan-ignore-next-line */
         /** @phpstan-ignore new.static */
         $data = (new static())->parseAttributes($data);
 

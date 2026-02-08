@@ -451,4 +451,20 @@ abstract class Model
             preg_replace('/([a-z])([A-Z])/', '$1_$2', class_basename(static::class))
         ) . 's';
     }
+
+    /**
+     * Parse attributes from array or object.
+     */
+    protected function parseAttributes(array|object $attributes): array
+    {
+        if (is_object($attributes)) {
+            if (method_exists($attributes, 'toArray')) {
+                return $attributes->toArray();
+            }
+
+            return (array) $attributes;
+        }
+
+        return $attributes;
+    }
 }
