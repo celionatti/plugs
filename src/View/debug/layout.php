@@ -389,44 +389,257 @@
             </nav>
         </header>
 
-        <main class="animate-fade-up" style="animation-delay: 0.1s;">
-            <?= $childContent ?>
-        </main>
-    </div>
-
-    <script>
-        function plugsSwitchTab(btn, id) {
-            const container = btn.closest('.glass-panel, .card, .container, .plugs-debug-wrapper, #plugs-profiler-modal');
-            if (!container) return;
-
-            // Find elements specifically within this tab context
-            const allTabs = container.querySelectorAll('.plugs-tab-content');
-            const allBtns = container.querySelectorAll('.tab-btn, .plugs-tab-btn, .nav-item');
-
-            allTabs.forEach(el => el.classList.remove('active'));
-            allBtns.forEach(el => el.classList.remove('active'));
-
-            const target = container.querySelector('#' + id);
-            if (target) {
-                target.classList.add('active');
-            }
-            btn.classList.add('active');
+        opacity: 0;
+        transform: translateY(20px);
         }
-        window.plugsSwitchTab = plugsSwitchTab;
 
-        // Initialize any active tabs
-        document.addEventListener('DOMContentLoaded', () => {
-            document.querySelectorAll('.nav-item.active, .tab-btn.active').forEach(btn => {
-                // If it has an onclick with plugsSwitchTab, trigger it
-                const onclick = btn.getAttribute('onclick');
-                if (onclick && onclick.includes('plugsSwitchTab')) {
-                    // Get the id from the onclick string 'plugsSwitchTab(this, 'id')'
-                    const match = onclick.match(/'([^']+)'/);
-                    if (match) plugsSwitchTab(btn, match[1]);
+        to {
+        opacity: 1;
+        transform: translateY(0);
+        }
+        }
+
+        /* Profile Row Special Hover */
+        .profile-row {
+        cursor: pointer;
+        transition: background 0.2s ease;
+        }
+
+        .profile-row:hover {
+        background: rgba(255, 255, 255, 0.03);
+        }
+
+        /* Scoped styles for child views */
+        .card {
+        margin-bottom: 2rem;
+        }
+
+        /* Badges */
+        .badge {
+        padding: 0.2rem 0.6rem;
+        border-radius: 6px;
+        font-size: 0.75rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        }
+
+        /* Tabs System */
+        .plugs-tab-content {
+        display: none !important;
+        }
+
+        .plugs-tab-content.active {
+        display: block !important;
+        animation: fadeUp 0.3s var(--ease-out-expo) both;
+        }
+
+        .tabs-header {
+        display: flex;
+        gap: 2rem;
+        padding: 0 2rem;
+        background: rgba(0, 0, 0, 0.2);
+        border-bottom: 1px solid var(--border-glass);
+        overflow-x: auto;
+        scrollbar-width: none;
+        -ms-overflow-style: none;
+        }
+
+        .tabs-header::-webkit-scrollbar {
+        display: none;
+        }
+
+        .tab-btn {
+        background: none !important;
+        border: none !important;
+        padding: 1.25rem 1.5rem;
+        color: var(--text-muted);
+        font-weight: 600;
+        font-size: 0.9rem;
+        cursor: pointer;
+        position: relative;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        white-space: nowrap;
+        font-family: 'Outfit', sans-serif !important;
+        outline: none !important;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.75rem;
+        border-radius: 8px;
+        margin: 0.5rem 0;
+        }
+
+        .tab-btn:hover {
+        color: var(--text-primary);
+        background: rgba(255, 255, 255, 0.05) !important;
+        }
+
+        .tab-btn.active {
+        color: var(--accent);
+        background: rgba(168, 85, 247, 0.1) !important;
+        }
+
+        .tab-btn .tab-icon {
+        opacity: 0.7;
+        transition: transform 0.3s;
+        }
+
+        .tab-btn:hover .tab-icon {
+        opacity: 1;
+        transform: scale(1.1);
+        }
+
+        .tab-btn.active .tab-icon {
+        opacity: 1;
+        color: var(--accent);
+        }
+
+        .tab-btn::after {
+        content: '';
+        position: absolute;
+        bottom: -0.5rem;
+        left: 50%;
+        width: 0;
+        height: 2px;
+        background: var(--accent);
+        box-shadow: 0 0 12px var(--accent-glow);
+        transition: all 0.3s ease;
+        transform: translateX(-50%);
+        border-radius: 2px;
+        }
+
+        .tab-btn.active::after {
+        width: calc(100% - 2rem);
+        }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+        width: 8px;
+        height: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+        background: var(--bg-deep);
+        }
+
+        ::-webkit-scrollbar-thumb {
+        background: var(--border-glass-bright);
+        border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+        background: var(--text-muted);
+        }
+
+        @media (max-width: 768px) {
+        .container {
+        padding: 1.5rem 1rem;
+        }
+
+        .header {
+        flex-direction: column;
+        gap: 1.5rem;
+        align-items: flex-start;
+        }
+
+        .nav-actions {
+        width: 100%;
+        }
+
+        .nav-actions .btn {
+        flex: 1;
+        justify-content: center;
+        }
+        }
+        </style>
+        </head>
+
+        <body>
+            <div class="container">
+                <header class="header animate-fade-up">
+                    <a href="/debug/performance" class="brand">
+                        <div class="brand-logo">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="color: white;">
+                                <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon>
+                            </svg>
+                        </div>
+                        <span class="brand-name">Plugs Profiler</span>
+                    </a>
+                    <nav class="nav-actions">
+                        <a href="/debug/performance" class="btn btn-glass">
+                            <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M4 6h16M4 10h16M4 14h16M4 18h16"></path>
+                            </svg>
+                            Requests
+                        </a>
+                        <a href="/debug/performance/latest" class="btn btn-primary">
+                            <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+                            </svg>
+                            Latest
+                        </a>
+                    </nav>
+                </header>
+
+                <main class="animate-fade-up" style="animation-delay: 0.1s;">
+                    <?= $childContent ?>
+                </main>
+            </div>
+
+            <?php
+            $nonce = function_exists('asset_manager') ? asset_manager()->getNonce() : null;
+            $nonceAttr = $nonce ? ' nonce="' . $nonce . '"' : '';
+            ?>
+            <script<?= $nonceAttr ?>>
+                function plugsSwitchTab(btn, id) {
+                    const container = btn.closest('.glass-panel, .card, .container, .plugs-debug-wrapper,
+                #plugs - profiler - modal');
+                if (!container) return;
+
+                    // Find elements specifically within this tab context
+                    const allTabs = container.querySelectorAll('.plugs-tab-content');
+                    const allBtns = container.querySelectorAll('.tab-btn, .plugs-tab-btn, .nav-item');
+
+                    allTabs.forEach(el => el.classList.remove('active'));
+                    allBtns.forEach(el => el.classList.remove('active'));
+
+                    const target = container.querySelector('#' + id);
+                    if (target) {
+                        target.classList.add('active');
+                    }
+                    btn.classList.add('active');
                 }
-            });
-        });
-    </script>
-</body>
+                window.plugsSwitchTab = plugsSwitchTab;
+
+                // Initialize any active tabs & Event Delegation
+                document.addEventListener('DOMContentLoaded', () => {
+                    document.addEventListener('click', function (e) {
+                        const tabBtn = e.target.closest('.tab-btn, .plugs-tab-btn, .nav-item[data-tab]');
+                        if (tabBtn) {
+                            const id = tabBtn.getAttribute('data-tab');
+                            if (id) {
+                                plugsSwitchTab(tabBtn, id);
+                                e.preventDefault();
+                            }
+                        }
+
+                        // Profiler Row Click
+                        const profileRow = e.target.closest('.profile-row[data-href]');
+                        if (profileRow) {
+                            window.location.href = profileRow.getAttribute('data-href');
+                        }
+                    });
+
+                    // Auto-init active tabs based on data-tab
+                    document.querySelectorAll('.nav-item.active[data-tab], .tab-btn.active[data-tab]').forEach(btn => {
+                        const id = btn.getAttribute('data-tab');
+                        if (id) plugsSwitchTab(btn, id);
+                    });
+                });
+            </script>
+        </body>
 
 </html>

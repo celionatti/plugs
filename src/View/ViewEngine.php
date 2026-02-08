@@ -123,6 +123,9 @@ class ViewEngine
     public function setCspNonce(string $nonce): void
     {
         $this->cspNonce = $nonce;
+        if (isset($this->fragmentRenderer)) {
+            $this->fragmentRenderer->setNonce($nonce);
+        }
     }
 
     public function getCspNonce(): ?string
@@ -308,11 +311,13 @@ class ViewEngine
         });
 
         $this->directive('skeleton', function ($expression) {
-            if ($expression === null || trim($expression) === '') {
-                return '<?php echo skeleton(); ?>';
+            $expression = trim($expression ?? '');
+            if ($expression === '') {
+                return '<?php echo skeleton()->render(); ?>';
             }
 
-            return "<?php echo skeleton()->$expression; ?>";
+            // Ensure expression ends with a method call that we can chain render() onto
+            return "<?php echo skeleton()->{$expression}->render(); ?>";
         });
 
         $this->directive('session', function ($expression) {
@@ -367,6 +372,7 @@ class ViewEngine
 
         $data = array_merge($this->sharedData, $data);
         $data['view'] = $this;
+        $data['__fragmentRenderer'] = $this->getFragmentRenderer();
         $data = $this->applyComposers($view, $data);
 
         $viewFile = $isComponent
@@ -1003,6 +1009,9 @@ class ViewEngine
     {
         if ($this->fragmentRenderer === null) {
             $this->fragmentRenderer = new FragmentRenderer();
+            if ($this->cspNonce) {
+                $this->fragmentRenderer->setNonce($this->cspNonce);
+            }
         }
 
         return $this->fragmentRenderer;
@@ -1158,7 +1167,10 @@ class ViewEngine
                 );
             }
 
-            return $content;
+            // Append teleport scripts if any were captured during this render
+            $scripts = $this->getTeleportScripts();
+
+            return $content . $scripts;
         } finally {
             // Restore previous layout suppression state
             $this->suppressLayout($previousSuppress);

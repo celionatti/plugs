@@ -58,7 +58,9 @@ class ProfilerMiddleware implements MiddlewareInterface
 
         // Inject profiler bar into HTML responses if enabled
         if ($this->injectBar && $this->shouldInjectBar($response)) {
-            $response = $this->injectProfilerBar($response, $profile);
+            // Get nonce from AssetManager if available
+            $nonce = function_exists('asset_manager') ? asset_manager()->getNonce() : null;
+            $response = $this->injectProfilerBar($response, $profile, $nonce);
         }
 
         return $response;
@@ -88,7 +90,7 @@ class ProfilerMiddleware implements MiddlewareInterface
     /**
      * Inject profiler bar into response body
      */
-    private function injectProfilerBar(ResponseInterface $response, array $profile): ResponseInterface
+    private function injectProfilerBar(ResponseInterface $response, array $profile, ?string $nonce = null): ResponseInterface
     {
         $body = (string) $response->getBody();
 
@@ -97,7 +99,7 @@ class ProfilerMiddleware implements MiddlewareInterface
             return $response;
         }
 
-        $modifiedBody = ProfilerBar::injectIntoHtml($body, $profile);
+        $modifiedBody = ProfilerBar::injectIntoHtml($body, $profile, $nonce);
 
         // Create new response with modified body
         $resource = fopen('php://temp', 'r+');

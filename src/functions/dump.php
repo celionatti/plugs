@@ -259,15 +259,15 @@ if (!function_exists('dt')) {
 /**
  * Render profile dump
  */
-function plugs_dump_profile(array $profile, bool $die = false): void
+function plugs_dump_profile(array $profile, bool $die = false, ?string $nonce = null): void
 {
-    plugs_dump([$profile], $die, 'profile');
+    plugs_dump([$profile], $die, 'profile', $nonce);
 }
 
 /**
  * Core dump function with Laravel 12 styling
  */
-function plugs_dump(array $vars, bool $die = false, string $mode = 'default'): void
+function plugs_dump(array $vars, bool $die = false, string $mode = 'default', ?string $nonce = null): void
 {
     if (!headers_sent()) {
         header('Content-Type: text/html; charset=UTF-8');
@@ -286,12 +286,14 @@ function plugs_dump(array $vars, bool $die = false, string $mode = 'default'): v
     global $plugs_debug_theme;
     $theme = $plugs_debug_theme ?? 'dark';
 
-    echo plugs_render_styles(!$die);
+    $nonceAttr = $nonce ? ' nonce="' . $nonce . '"' : '';
+
+    echo plugs_render_styles(!$die, $nonce);
     // Add plugs-safe-scope class if not dying (which implies we are injecting into an existing page)
     $scopeClass = $die ? '' : 'plugs-safe-scope';
     echo '<div class="plugs-debug-wrapper ' . $scopeClass . '" data-theme="' . $theme . '">';
     if ($die) {
-        echo '<script>document.body.setAttribute("data-theme", "' . $theme . '");</script>';
+        echo '<script' . $nonceAttr . '>document.body.setAttribute("data-theme", "' . $theme . '");</script>';
     }
     echo plugs_render_header($file, $line, $memoryUsage, $peakMemory, $executionTime, $queryStats);
     echo '<div class="plugs-debug-content">';
@@ -313,110 +315,141 @@ function plugs_dump(array $vars, bool $die = false, string $mode = 'default'): v
     echo '</div>';
     echo '</div>';
 
-    echo <<<'JS'
-<script>
-    // Tab Switching
-    function plugsSwitchTab(btn, tabId) {
-        const container = btn.closest('.plugs-debug-wrapper, #plugs-profiler-modal');
-        if (!container) return;
-        
-        container.querySelectorAll('.tab-btn, .plugs-tab-btn').forEach(b => b.classList.remove('active'));
-        container.querySelectorAll('.tab-content, .plugs-tab-content').forEach(c => c.classList.remove('active'));
-
-        btn.classList.add('active');
-        const target = container.querySelector('#' + tabId);
-        if (target) target.classList.add('active');
-    }
-
-    // Toggle collapsible variable view
-    function plugsToggleVar(header) {
-        const body = header.nextElementSibling;
-        const isCollapsed = body.style.display === 'none';
-        body.style.display = isCollapsed ? 'block' : 'none';
-        header.style.opacity = isCollapsed ? '1' : '0.7';
-    }
-
-    // Global toggle (Expand/Collapse All)
-    function plugsToggleAll(expand) {
-        document.querySelectorAll('.plugs-var-body').forEach(body => {
-            if (body.closest('.plugs-tab-content.active, .plugs-debug-content')) {
-                body.style.display = expand ? 'block' : 'none';
-                body.previousElementSibling.style.opacity = expand ? '1' : '0.7';
-            }
-        });
-    }
-
-    // Search & Filter
-    const debugSearch = document.getElementById('debug-search');
-    if (debugSearch) {
-        debugSearch.addEventListener('input', (e) => {
-            const query = e.target.value.toLowerCase();
-            document.querySelectorAll('.plugs-tab-content.active .plugs-var-item, .plugs-debug-content .plugs-var-item').forEach(item => {
-                const text = item.innerText.toLowerCase();
-                item.classList.toggle('hidden', !text.includes(query));
-            });
-        });
-    }
-
-    // Copy to Clipboard
-    function plugsCopyValue(icon) {
-        const container = icon.parentElement;
-        const stringSpan = container.querySelector('.plugs-syntax-string');
-        const textToCopy = stringSpan ? stringSpan.getAttribute('data-full-value') : container.innerText.trim();
-        
-        navigator.clipboard.writeText(textToCopy).then(() => {
-            const originalIcon = icon.innerText;
-            icon.innerText = '✅';
-            icon.style.color = '#10b981';
-            setTimeout(() => {
-                icon.innerText = originalIcon;
-                icon.style.color = '';
-            }, 1500);
-        }).catch(err => {
-            console.error('Failed to copy: ', err);
-        });
-    }
-
-    // Secret Masking
-    function plugsRevealSecret(el) {
-        const secret = el.getAttribute('data-secret');
-        el.innerText = secret;
-        el.classList.remove('plugs-masked-secret');
-        el.style.color = '#10b981';
-        el.style.fontStyle = 'normal';
-        el.style.background = 'rgba(16, 185, 129, 0.1)';
-    }
-
-    // Breadcrumbs on hover
-    const breadcrumbBar = document.getElementById('breadcrumb-bar');
-    if (breadcrumbBar) {
-        document.addEventListener('mouseover', (e) => {
-            const keySpan = e.target.closest('.plugs-syntax-key');
-            if (keySpan) {
-                const path = keySpan.getAttribute('data-path');
-                if (path) {
-                    breadcrumbBar.innerHTML = 'Current Path: <span class="plugs-breadcrumb-item">' + path + '</span>';
-                    breadcrumbBar.style.display = 'block';
+    echo <<<JS
+<script{$nonceAttr}>
+<script{$nonceAttr}>
+    (function() {
+        // Event Delegation for Plugs Debugging
+        document.addEventListener('click', function(e) {
+            // Tab Switching
+            const tabBtn = e.target.closest('.plugs-tab-btn, .tab-btn');
+            if (tabBtn) {
+                const tabId = tabBtn.getAttribute('data-tab') || (tabBtn.getAttribute('onclick') ? tabBtn.getAttribute('onclick').match(/'([^']+)'/)[1] : null);
+                if (tabId) {
+                    const container = tabBtn.closest('.plugs-debug-wrapper, #plugs-profiler-modal');
+                    if (container) {
+                        container.querySelectorAll('.tab-btn, .plugs-tab-btn').forEach(b => b.classList.remove('active'));
+                        container.querySelectorAll('.tab-content, .plugs-tab-content').forEach(c => c.classList.remove('active'));
+                        tabBtn.classList.add('active');
+                        const target = container.querySelector('#' + tabId);
+                        if (target) target.classList.add('active');
+                    }
                 }
-            } else if (!e.target.closest('.plugs-breadcrumbs')) {
-                breadcrumbBar.style.display = 'none';
+                return;
+            }
+
+            // Toggle Var Header
+            const varHeader = e.target.closest('.var-header');
+            if (varHeader) {
+                const body = varHeader.nextElementSibling;
+                if (body) {
+                    const isCollapsed = body.style.display === 'none';
+                    body.style.display = isCollapsed ? 'block' : 'none';
+                    varHeader.style.opacity = isCollapsed ? '1' : '0.7';
+                }
+                return;
+            }
+
+            // Copy Value
+            const copyIcon = e.target.closest('.plugs-copy-icon');
+            if (copyIcon) {
+                const container = copyIcon.parentElement;
+                const stringSpan = container.querySelector('.plugs-syntax-string');
+                const textToCopy = stringSpan ? stringSpan.getAttribute('data-full-value') : container.innerText.trim();
+                
+                navigator.clipboard.writeText(textToCopy).then(() => {
+                    const originalText = copyIcon.innerText;
+                    copyIcon.innerText = '✅';
+                    copyIcon.style.color = '#10b981';
+                    setTimeout(() => {
+                        copyIcon.innerText = originalText;
+                        copyIcon.style.color = '';
+                    }, 1500);
+                }).catch(err => console.error('Failed to copy: ', err));
+                return;
+            }
+
+            // Reveal Secret
+            const secret = e.target.closest('.plugs-masked-secret');
+            if (secret) {
+                const val = secret.getAttribute('data-secret');
+                if (val) {
+                    secret.innerText = val;
+                    secret.classList.remove('plugs-masked-secret');
+                    secret.style.color = '#10b981';
+                    secret.style.fontStyle = 'normal';
+                    secret.style.background = 'rgba(16, 185, 129, 0.1)';
+                }
+                return;
+            }
+            
+            // Expand/Collapse All
+            const expandBtn = e.target.closest('.plugs-action-btn[data-action="expand"]');
+            if (expandBtn) {
+                plugsToggleAll(true);
+                return;
+            }
+            
+            const collapseBtn = e.target.closest('.plugs-action-btn[data-action="collapse"]');
+            if (collapseBtn) {
+                plugsToggleAll(false);
+                return;
+            }
+
+            // Truncated String Click
+            const truncatedStr = e.target.closest('.plugs-syntax-string[data-truncated="true"]');
+            if (truncatedStr) {
+                const full = truncatedStr.getAttribute('data-full-value');
+                truncatedStr.innerText = '"' + full + '"';
+                truncatedStr.style.cursor = 'default';
+                truncatedStr.removeAttribute('title');
+                truncatedStr.removeAttribute('data-truncated');
             }
         });
-    }
 
-    // Handle string truncation toggle
-    document.querySelectorAll('.plugs-syntax-string').forEach(span => {
-        if (span.innerText.endsWith('..."')) {
-            span.style.cursor = 'pointer';
-            span.title = 'Click to show full string';
-            span.onclick = function() {
-                const full = this.getAttribute('data-full-value');
-                this.innerText = '"' + full + '"';
-                this.style.cursor = 'default';
-                this.title = '';
-            };
+        // Search & Filter
+        const debugSearch = document.getElementById('debug-search');
+        if (debugSearch) {
+            debugSearch.addEventListener('input', (e) => {
+                const query = e.target.value.toLowerCase();
+                document.querySelectorAll('.plugs-tab-content.active .plugs-var-item, .plugs-debug-content .plugs-var-item').forEach(item => {
+                    const text = item.innerText.toLowerCase();
+                    if (item.classList.contains('var-item') || item.classList.contains('plugs-var-item')) {
+                        item.style.display = text.includes(query) ? 'block' : 'none';
+                    }
+                });
+            });
         }
-    });
+
+        // Breadcrumbs
+        const breadcrumbBar = document.getElementById('breadcrumb-bar');
+        if (breadcrumbBar) {
+            document.addEventListener('mouseover', (e) => {
+                const keySpan = e.target.closest('.plugs-syntax-key');
+                if (keySpan) {
+                    const path = keySpan.getAttribute('data-path');
+                    if (path) {
+                        breadcrumbBar.innerHTML = 'Current Path: <span class="plugs-breadcrumb-item">' + path + '</span>';
+                        breadcrumbBar.style.display = 'block';
+                    }
+                } else if (!e.target.closest('.plugs-breadcrumbs')) {
+                    breadcrumbBar.style.display = 'none';
+                }
+            });
+        }
+
+        function plugsToggleAll(expand) {
+            document.querySelectorAll('.var-body, .plugs-var-body').forEach(body => {
+                const parent = body.closest('.plugs-tab-content.active, .plugs-debug-content');
+                if (parent && body.closest('.plugs-debug-wrapper').style.display !== 'none') {
+                    body.style.display = expand ? 'block' : 'none';
+                    if (body.previousElementSibling) {
+                        body.previousElementSibling.style.opacity = expand ? '1' : '0.7';
+                    }
+                }
+            });
+        }
+    })();
 </script>
 JS;
 
@@ -453,16 +486,18 @@ function plugs_get_query_stats(): array
 /**
  * Render CSS styles (Plugs Debug - Multi-theme)
  */
-function plugs_render_styles(bool $scoped = false): string
+function plugs_render_styles(bool $scoped = false, ?string $nonce = null): string
 {
     global $plugs_debug_theme;
     $theme = $plugs_debug_theme ?? 'dark';
+
+    $nonceAttr = $nonce ? ' nonce="' . $nonce . '"' : '';
 
     // Core variables (Always included, but maybe scoped if needed. Keeping global for now as variables don't hurt)
     $css = <<<HTML
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<style>
+<style{$nonceAttr}>
     @import url("https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Dancing+Script:wght@700&display=swap");
 
     /* Dark Theme (Default) */
@@ -1252,8 +1287,8 @@ function plugs_render_header(string $file, $line, int $memoryUsage, int $peakMem
     $html .= '<div class="plugs-header-controls">';
     $html .= '<input type="text" class="search-input" id="debug-search" placeholder="Search variables, keys, values...">';
     $html .= '<div class="plugs-global-actions">';
-    $html .= '<button class="plugs-action-btn" onclick="plugsToggleAll(true)"><span>Expand</span> ⊞</button>';
-    $html .= '<button class="plugs-action-btn" onclick="plugsToggleAll(false)"><span>Collapse</span> ⊟</button>';
+    $html .= '<button class="plugs-action-btn" data-action="expand"><span>Expand</span> ⊞</button>';
+    $html .= '<button class="plugs-action-btn" data-action="collapse"><span>Collapse</span> ⊟</button>';
     $html .= '</div>';
     $html .= '<div class="plugs-status-badge">Live Debugging</div>';
     $html .= '</div>';
@@ -1306,7 +1341,7 @@ function plugs_render_variable($var, int $index): string
     $size = plugs_get_variable_size($var);
 
     $html = '<div class="var-item">';
-    $html .= '<div class="var-header" onclick="toggleVar(this)">';
+    $html .= '<div class="var-header">';
     $html .= '<div class="var-title">';
     $html .= '<span>📦</span>';
     $html .= '<span>Variable #' . ($index + 1) . '</span>';
@@ -1320,7 +1355,7 @@ function plugs_render_variable($var, int $index): string
     $html .= '<div class="var-body">';
     $html .= '<div class="section-title">📄 Value</div>';
     $html .= '<div class="plugs-code-block">';
-    $html .= '<div class="plugs-copy-icon" title="Copy to clipboard" onclick="copyValue(this)">📋</div>';
+    $html .= '<div class="plugs-copy-icon" title="Copy to clipboard">📋</div>';
     $html .= plugs_format_value($var, 0);
     $html .= '</div>';
 
@@ -1427,7 +1462,7 @@ function plugs_render_queries(array $data): string
         $isSlow = $time > 0.05;
 
         $html .= '<div class="var-item" style="margin-bottom: 16px;">';
-        $html .= '<div class="var-header" onclick="plugsToggleVar(this)">';
+        $html .= '<div class="var-header">';
         $html .= '<div class="var-title"><span>#' . ($index + 1) . '</span> <code style="color: var(--accent-secondary);">' . substr(htmlspecialchars($query['query']), 0, 60) . (strlen($query['query']) > 60 ? '...' : '') . '</code></div>';
         $html .= '<div class="var-badges">';
         if ($isSlow) {
@@ -1588,7 +1623,7 @@ function plugs_render_exception(array $data): string
             $call = $frameClass . $frameType . $frameFunction . '()';
 
             $html .= '<div class="var-item" style="margin-bottom: 8px;">';
-            $html .= '<div class="var-header" onclick="plugsToggleVar(this)">';
+            $html .= '<div class="var-header">';
             $html .= '<div class="var-title"><span>#' . $index . '</span> <code style="color: var(--accent-secondary);">' . htmlspecialchars($call) . '</code></div>';
             $html .= '<div class="var-badges"><span class="plugs-badge">' . htmlspecialchars(basename($frameFile)) . ':' . $frameLine . '</span></div>';
             $html .= '</div>';
@@ -1753,7 +1788,7 @@ function plugs_render_profile(array $data): string
             $isSlow = $time > 0.05;
 
             $html .= '<div class="var-item" style="margin-bottom: 8px;">';
-            $html .= '<div class="var-header" onclick="plugsToggleVar(this)">';
+            $html .= '<div class="var-header">';
             $html .= '<div class="var-title"><span>#' . ($index + 1) . '</span> <code style="color: var(--accent-secondary);">' . substr(htmlspecialchars($query['query'] ?? ''), 0, 60) . (strlen($query['query'] ?? '') > 60 ? '...' : '') . '</code></div>';
             $html .= '<div class="var-badges">';
             if ($isSlow) {
@@ -1808,8 +1843,10 @@ function plugs_format_value($value, int $depth = 0, array $path = []): string
     }
     if (is_string($value)) {
         $escaped = htmlspecialchars($value);
+        $isTruncated = strlen($value) > 200;
+        $truncatedAttr = $isTruncated ? ' data-truncated="true" style="cursor:pointer" title="Click to expand"' : '';
 
-        return '<span class="plugs-syntax-string" data-full-value="' . $escaped . '">"' . (strlen($value) > 200 ? substr($escaped, 0, 200) . '...' : $escaped) . '"</span>';
+        return '<span class="plugs-syntax-string" data-full-value="' . $escaped . '"' . $truncatedAttr . '>"' . ($isTruncated ? substr($escaped, 0, 200) . '...' : $escaped) . '"</span>';
     }
 
     if (is_array($value)) {
@@ -1829,7 +1866,7 @@ function plugs_format_value($value, int $depth = 0, array $path = []): string
             }
 
             if ($isSecret && !empty($val)) {
-                $html .= '<span class="plugs-masked-secret" onclick="revealSecret(this)" data-secret="' . htmlspecialchars(is_string($val) ? (string) $val : json_encode($val)) . '">🔒 [masked secret]</span>';
+                $html .= '<span class="plugs-masked-secret" data-secret="' . htmlspecialchars(is_string($val) ? (string) $val : json_encode($val)) . '">🔒 [masked secret]</span>';
             } else {
                 $html .= plugs_format_value($val, $depth + 1, $currentPath);
             }
@@ -1855,7 +1892,7 @@ function plugs_format_value($value, int $depth = 0, array $path = []): string
                     $html .= $indent . '  <span class="plugs-syntax-key" data-path="' . implode(' → ', $currentPath) . '">' . htmlspecialchars($name) . '</span> => ';
 
                     if ($isSecret && !empty($val)) {
-                        $html .= '<span class="plugs-masked-secret" onclick="revealSecret(this)" data-secret="' . htmlspecialchars(is_string($val) ? (string) $val : json_encode($val)) . '">🔒 [masked secret]</span>';
+                        $html .= '<span class="plugs-masked-secret" data-secret="' . htmlspecialchars(is_string($val) ? (string) $val : json_encode($val)) . '">🔒 [masked secret]</span>';
                     } else {
                         $html .= plugs_format_value($val, $depth + 1, $currentPath);
                     }

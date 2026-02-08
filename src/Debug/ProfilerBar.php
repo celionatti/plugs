@@ -14,7 +14,7 @@ class ProfilerBar
     /**
      * Render the profiler bar HTML
      */
-    public static function render(array $profile): string
+    public static function render(array $profile, ?string $nonce = null): string
     {
         $duration = $profile['duration'] ?? 0;
         $memory = $profile['memory']['peak_formatted'] ?? '0 B';
@@ -27,7 +27,9 @@ class ProfilerBar
         $statusClass = self::getStatusClass($statusCode);
 
         // Prepare full profile detail HTML
-        $detailHtml = self::renderProfileDetails($profile);
+        $detailHtml = self::renderProfileDetails($profile, $nonce);
+
+        $nonceAttr = $nonce ? ' nonce="' . $nonce . '"' : '';
 
         return '
 <!-- Plugs Profiler Bar -->
@@ -50,7 +52,7 @@ class ProfilerBar
     z-index: 99999;
     box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.3);
 ">
-    <style>
+    <style' . $nonceAttr . '>
         #plugs-profiler-bar * { box-sizing: border-box; margin: 0; padding: 0; }
         #plugs-profiler-bar .pbar-brand { 
             font-family: "Dancing Script", cursive, sans-serif;
@@ -249,14 +251,14 @@ class ProfilerBar
     </div>
     
     <div class="pbar-right">
-        <button onclick="document.getElementById(\'plugs-profiler-modal\').classList.toggle(\'active\')" class="pbar-link">
+        <button id="plugs-profiler-toggle" class="pbar-link">
             <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
             </svg>
             <span>Profiler</span>
         </button>
         
-        <button class="pbar-close" onclick="document.getElementById(\'plugs-profiler-bar\').remove(); document.getElementById(\'plugs-profiler-modal\').remove()" title="Close">
+        <button id="plugs-profiler-close" class="pbar-close" title="Close">
             <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
             </svg>
@@ -274,7 +276,7 @@ class ProfilerBar
     /**
      * Render the profile details using dump.php renderer
      */
-    protected static function renderProfileDetails(array $profile): string
+    protected static function renderProfileDetails(array $profile, ?string $nonce = null): string
     {
         ob_start();
 
@@ -289,6 +291,8 @@ class ProfilerBar
             'result' => null,
         ];
 
+        $nonceAttr = $nonce ? ' nonce="' . $nonce . '"' : '';
+
         echo '<div class="plugs-debug-wrapper" data-theme="dark">';
 
         // Header
@@ -299,25 +303,25 @@ class ProfilerBar
         // Git Info in Header
         if (!empty($profile['git']['branch'])) {
             echo '<div class="git-badge" title="Commit: ' . ($profile['git']['hash'] ?? '') . '">';
-            echo '<svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="margin-right:4px"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 8v8m-4-5v5m-4-2v2m-2 4h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>';
+            echo '<svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="margin-right:4px"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 8v8m-4-5v5m-4-2v2m-2 4h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>';
             echo htmlspecialchars($profile['git']['branch']);
             echo ' <span style="opacity:0.6;font-size:0.9em">#' . ($profile['git']['short_hash'] ?? '') . '</span>';
             echo '</div>';
-            echo '<style>.git-badge { display:flex; align-items:center; background:rgba(255,255,255,0.1); padding:4px 8px; border-radius:4px; font-size:12px; color:#cbd5e1; font-family:monospace; margin-left:12px; }</style>';
+            echo '<style' . $nonceAttr . '>.git-badge { display:flex; align-items:center; background:rgba(255,255,255,0.1); padding:4px 8px; border-radius:4px; font-size:12px; color:#cbd5e1; font-family:monospace; margin-left:12px; }</style>';
         }
 
         echo '</div>'; // End Logo Section
-        echo '<div class="plugs-header-controls"><button class="plugs-action-btn" onclick="document.getElementById(\'plugs-profiler-modal\').classList.remove(\'active\')">Close ✕</button></div></div>';
+        echo '<div class="plugs-header-controls"><button id="plugs-profiler-modal-close" class="plugs-action-btn">Close ✕</button></div></div>';
 
         // Tabs
         echo '<div class="plugs-tabs-nav">';
-        echo '<button class="plugs-tab-btn active" onclick="plugsSwitchTab(this, \'tab-overview\')">📊 Overview</button>';
-        echo '<button class="plugs-tab-btn" onclick="plugsSwitchTab(this, \'tab-timeline\')">⏱️ Timeline</button>';
-        echo '<button class="plugs-tab-btn" onclick="plugsSwitchTab(this, \'tab-queries\')">🔮 Queries (' . count($data['queries']) . ')</button>';
-        echo '<button class="plugs-tab-btn" onclick="plugsSwitchTab(this, \'tab-request\')">🌐 Request</button>';
-        echo '<button class="plugs-tab-btn" onclick="plugsSwitchTab(this, \'tab-app\')">🧠 Application</button>';
-        echo '<button class="plugs-tab-btn" onclick="plugsSwitchTab(this, \'tab-files\')">📂 Files (' . ($profile['files']['count'] ?? 0) . ')</button>';
-        echo '<button class="plugs-tab-btn" onclick="plugsSwitchTab(this, \'tab-config\')">⚙️ Config</button>';
+        echo '<button class="plugs-tab-btn active" data-tab="tab-overview">📊 Overview</button>';
+        echo '<button class="plugs-tab-btn" data-tab="tab-timeline">⏱️ Timeline</button>';
+        echo '<button class="plugs-tab-btn" data-tab="tab-queries">🔮 Queries (' . count($data['queries']) . ')</button>';
+        echo '<button class="plugs-tab-btn" data-tab="tab-request">🌐 Request</button>';
+        echo '<button class="plugs-tab-btn" data-tab="tab-app">🧠 Application</button>';
+        echo '<button class="plugs-tab-btn" data-tab="tab-files">📂 Files (' . ($profile['files']['count'] ?? 0) . ')</button>';
+        echo '<button class="plugs-tab-btn" data-tab="tab-config">⚙️ Config</button>';
         echo '</div>';
         echo '</div>'; // End Header
 
@@ -398,19 +402,56 @@ class ProfilerBar
         echo '</div>'; // End Wrapper
 
         // Add scripts
-        echo <<<'JS'
-<script>
-    if (typeof plugsSwitchTab !== 'function') {
-        function plugsSwitchTab(btn, tabId) {
+        echo <<<JS
+<script{$nonceAttr}>
+    (function() {
+        // Toggle Btn
+        const toggleBtn = document.getElementById('plugs-profiler-toggle');
+        if (toggleBtn) {
+            toggleBtn.addEventListener('click', function() {
+                const modal = document.getElementById('plugs-profiler-modal');
+                if (modal) modal.classList.toggle('active');
+            });
+        }
+
+        // Close Bar Btn
+        const closeBarBtn = document.getElementById('plugs-profiler-close');
+        if (closeBarBtn) {
+            closeBarBtn.addEventListener('click', function() {
+                document.getElementById('plugs-profiler-bar')?.remove();
+                document.getElementById('plugs-profiler-modal')?.remove();
+            });
+        }
+
+        // Close Modal Btn
+        const closeModalBtn = document.getElementById('plugs-profiler-modal-close');
+        if (closeModalBtn) {
+            closeModalBtn.addEventListener('click', function() {
+                const modal = document.getElementById('plugs-profiler-modal');
+                if (modal) modal.classList.remove('active');
+            });
+        }
+
+        // Tabs
+        function plugsSwitchTab(btn) {
+            const tabId = btn.getAttribute('data-tab');
             const modal = btn.closest('#plugs-profiler-modal, .plugs-debug-wrapper');
-            if (!modal) return;
+            if (!modal || !tabId) return;
+
             modal.querySelectorAll('.plugs-tab-btn, .tab-btn').forEach(b => b.classList.remove('active'));
             modal.querySelectorAll('.plugs-tab-content, .tab-content').forEach(c => c.classList.remove('active'));
+
             btn.classList.add('active');
             const target = modal.querySelector('#' + tabId);
             if (target) target.classList.add('active');
         }
-    }
+
+        document.querySelectorAll('.plugs-tab-btn[data-tab]').forEach(btn => {
+            btn.addEventListener('click', function() {
+                plugsSwitchTab(this);
+            });
+        });
+    })();
 </script>
 JS;
 
@@ -468,12 +509,14 @@ JS;
         return $html;
     }
 
-    private static function renderFilesTab(array $profile): string
+    private static function renderFilesTab(array $profile, ?string $nonce = null): string
     {
         $files = $profile['files']['list'] ?? [];
         if (empty($files)) {
             return '<div style="text-align:center; padding:20px; color:#94a3b8;">No file list captured.</div>';
         }
+
+        $nonceAttr = $nonce ? ' nonce="' . $nonce . '"' : '';
 
         $html = '<div class="plugs-file-list">';
         $html .= '<input type="text" placeholder="Filter files..." id="plugs-file-filter" style="width:100%; padding:10px; margin-bottom:20px; background:rgba(0,0,0,0.2); border:1px solid rgba(255,255,255,0.1); color:white; border-radius:6px; font-family:monospace;">';
@@ -492,7 +535,7 @@ JS;
             );
         }
         $html .= '</div>';
-        $html .= '<script>
+        $html .= '<script' . $nonceAttr . '>
             document.getElementById("plugs-file-filter").addEventListener("input", function(e) {
                 const val = e.target.value.toLowerCase();
                 document.querySelectorAll(".plugs-file-item").forEach(el => {
@@ -545,14 +588,14 @@ JS;
     /**
      * Inject profiler bar into HTML response
      */
-    public static function injectIntoHtml(string $html, array $profile): string
+    public static function injectIntoHtml(string $html, array $profile, ?string $nonce = null): string
     {
         // Only inject into HTML responses with closing body tag
         if (stripos($html, '</body>') === false) {
             return $html;
         }
 
-        $bar = self::render($profile);
+        $bar = self::render($profile, $nonce);
 
         return str_ireplace('</body>', $bar . '</body>', $html);
     }

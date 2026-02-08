@@ -417,6 +417,201 @@ function renderDebugErrorPage(Throwable $e): void
         @media (max-width: 1024px) {
             .container { flex-direction: column-reverse; overflow: auto; }
             .sidebar { width: 100%; height: 300px; border-right: none; border-top: 1px solid var(--border-color); }
+            background: linear-gradient(to bottom, rgba(30, 41, 59, 0.4), transparent);
+            border-bottom: 1px solid var(--border-color);
+            padding: 3rem;
+            flex-shrink: 0;
+        }
+
+        .exception-type {
+            font-size: 0.875rem;
+            color: var(--danger);
+            font-weight: 600;
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+        
+        .exception-type::before {
+            content: "";
+            display: block;
+            width: 6px;
+            height: 6px;
+            background: var(--danger);
+            border-radius: 50%;
+            box-shadow: 0 0 0 4px rgba(239, 68, 68, 0.2);
+        }
+
+        .exception-message {
+            font-size: 1.75rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 1.5rem;
+            line-height: 1.3;
+        }
+        
+        .exception-location {
+            font-family: "JetBrains Mono", monospace;
+            font-size: 0.875rem;
+            background: var(--bg-card);
+            padding: 0.75rem 1rem;
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+            color: var(--text-secondary);
+            display: inline-flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        /* Code Viewer */
+        .code-viewer-container {
+            border-bottom: 1px solid var(--border-color);
+            background: rgba(13, 17, 23, 0.3);
+            flex-shrink: 0;
+            min-height: 100px;
+        }
+
+        .code-viewer {
+            padding: 0;
+            overflow-x: auto;
+            display: none;
+        }
+
+        .code-viewer.active {
+            display: block;
+        }
+        
+        .code-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-family: "JetBrains Mono", monospace;
+            font-size: 0.875rem;
+        }
+        
+        .code-row {
+            line-height: 1.6;
+        }
+        
+        .code-line-num {
+            width: 60px;
+            text-align: right;
+            padding: 0 1rem;
+            color: var(--text-muted);
+            user-select: none;
+            border-right: 1px solid var(--border-color);
+            vertical-align: top;
+            background: rgba(255,255,255,0.01);
+        }
+        
+        .code-content {
+            padding: 0 1.5rem;
+            color: var(--text-secondary);
+            white-space: pre;
+            position: relative;
+        }
+        
+        .code-row.error-line {
+            background-color: var(--highlight-bg);
+        }
+        
+        .code-row.error-line .code-line-num {
+            color: var(--danger);
+            font-weight: bold;
+            border-right-color: rgba(239, 68, 68, 0.3);
+            background-color: var(--highlight-bg);
+        }
+        
+        .code-row.error-line .code-content {
+            color: var(--text-primary);
+        }
+
+        /* Sections */
+        .section-container {
+            padding: 3rem;
+        }
+        
+        .tabs {
+            display: flex;
+            gap: 2rem;
+            border-bottom: 1px solid var(--border-color);
+            margin-bottom: 2rem;
+        }
+        
+        .tab {
+            padding-bottom: 1rem;
+            color: var(--text-secondary);
+            cursor: pointer;
+            font-weight: 500;
+            transition: all 0.2s;
+            position: relative;
+            font-size: 0.95rem;
+        }
+        
+        .tab:hover { color: var(--text-primary); }
+        
+        .tab.active {
+            color: var(--accent-primary);
+        }
+        
+        .tab.active::after {
+            content: "";
+            position: absolute;
+            bottom: -1px;
+            left: 0;
+            width: 100%;
+            height: 2px;
+            background: var(--accent-primary);
+            box-shadow: 0 -2px 10px var(--accent-primary);
+        }
+        
+        .info-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 1.5rem;
+        }
+        
+        .info-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 1.5rem;
+            transition: transform 0.2s;
+        }
+        
+        .info-card:hover {
+            border-color: rgba(255,255,255,0.15);
+        }
+        
+        .info-label {
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            color: var(--text-muted);
+            margin-bottom: 0.75rem;
+            font-weight: 700;
+            letter-spacing: 0.05em;
+        }
+        
+        .info-value {
+            font-family: "JetBrains Mono", monospace;
+            font-size: 0.875rem;
+            color: var(--text-primary);
+            word-break: break-all;
+        }
+
+        .tab-content { display: none; }
+        .tab-content.active { display: block; animation: fadeIn 0.3s ease-out; }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        @media (max-width: 1024px) {
+            .container { flex-direction: column-reverse; overflow: auto; }
+            .sidebar { width: 100%; height: 300px; border-right: none; border-top: 1px solid var(--border-color); }
             .content { overflow: visible; }
         }
     </style>
@@ -427,7 +622,12 @@ function renderDebugErrorPage(Throwable $e): void
         <div class="exception-meta">
             <span class="php-version">PHP ' . PHP_VERSION . '</span>
         </div>
-    </header>
+    </header>';
+
+    $nonce = function_exists('asset_manager') ? asset_manager()->getNonce() : null;
+    $nonceAttr = $nonce ? ' nonce="' . $nonce . '"' : '';
+
+    $html .= '
 
     <div class="container">
         <aside class="sidebar">
@@ -444,7 +644,7 @@ function renderDebugErrorPage(Throwable $e): void
         $method = $class ? $class . ($frame['type'] ?? '::') . $frame['function'] : $frame['function'];
 
         $html .= '
-                    <li class="stack-item ' . $active . '" onclick="switchFrame(' . $index . ', this)" data-file="' . htmlspecialchars(basename($f)) . '" data-line="' . $l . '">
+                    <li class="stack-item ' . $active . '" data-frame-index="' . $index . '" data-file="' . htmlspecialchars(basename($f)) . '" data-line="' . $l . '">
                         <span class="stack-index">' . $index . '</span>
                         <div class="stack-file"><span class="stack-line">' . $l . '</span>' . htmlspecialchars(basename($f)) . '</div>
                         <div class="stack-method">' . htmlspecialchars($method) . '</div>
@@ -480,9 +680,9 @@ function renderDebugErrorPage(Throwable $e): void
 
             <div class="section-container">
                 <div class="tabs">
-                    <div class="tab active" onclick="switchTab(event, \'request\')">Request</div>
-                    <div class="tab" onclick="switchTab(event, \'environment\')">Environment</div>
-                    <div class="tab" onclick="switchTab(event, \'headers\')">Headers</div>
+                    <div class="tab active" data-tab-target="request">Request</div>
+                    <div class="tab" data-tab-target="environment">Environment</div>
+                    <div class="tab" data-tab-target="headers">Headers</div>
                 </div>
                 
                 <div id="request" class="tab-content active">
@@ -506,12 +706,30 @@ function renderDebugErrorPage(Throwable $e): void
         </main>
     </div>
 
-    <script>
-        function switchTab(event, tabId) {
+    <script' . $nonceAttr . '>
+        document.addEventListener("DOMContentLoaded", () => {
+            document.addEventListener("click", (e) => {
+                // Tabs
+                const tab = e.target.closest(".tab");
+                if (tab) {
+                    const tabId = tab.getAttribute("data-tab-target");
+                    if (tabId) switchTab(tab, tabId);
+                }
+
+                // Stack Frames
+                const frame = e.target.closest(".stack-item");
+                if (frame) {
+                    const index = frame.getAttribute("data-frame-index");
+                    if (index !== null) switchFrame(index, frame);
+                }
+            });
+        });
+
+        function switchTab(element, tabId) {
             document.querySelectorAll(".tab").forEach(t => t.classList.remove("active"));
             document.querySelectorAll(".tab-content").forEach(c => c.classList.remove("active"));
             
-            event.target.classList.add("active");
+            element.classList.add("active");
             document.getElementById(tabId).classList.add("active");
         }
         

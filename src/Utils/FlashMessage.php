@@ -408,7 +408,7 @@ CSS;
         } else {
             $_SESSION[self::SESSION_KEY] = array_filter(
                 $_SESSION[self::SESSION_KEY],
-                fn ($flash) => $flash['type'] !== $type
+                fn($flash) => $flash['type'] !== $type
             );
             $_SESSION[self::SESSION_KEY] = array_values($_SESSION[self::SESSION_KEY]);
         }
@@ -460,7 +460,7 @@ CSS;
     /**
      * Render all flash messages as HTML
      */
-    public static function render(array $options = []): string
+    public static function render(array $options = [], ?string $nonce = null): string
     {
         $messages = self::get();
 
@@ -485,9 +485,11 @@ CSS;
 
         $html .= '</div>';
 
-        // Add auto-dismiss JavaScript if enabled
-        if ($options['auto_dismiss']) {
-            $html .= self::renderAutoDismissScript($options['dismiss_delay']);
+        $nonce = $nonce ?? (function_exists('asset_manager') ? asset_manager()->getNonce() : null);
+
+        // Add JavaScript for interactions (Dismiss & Auto-dismiss)
+        if ($options['auto_dismiss'] || $options['show_close']) {
+            $html .= self::renderScripts($options['auto_dismiss'], $options['dismiss_delay'], $nonce);
         }
 
         return $html;
@@ -525,7 +527,7 @@ CSS;
 
         // Close button
         if ($options['show_close']) {
-            $html .= '<button type="button" class="plugs-alert-close" onclick="const alert=this.parentElement;alert.style.animation=\'plugs-bounce-out 0.5s ease forwards\';setTimeout(()=>alert.remove(),500)" aria-label="Close">';
+            $html .= '<button type="button" class="plugs-alert-close" aria-label="Close">';
             $html .= '<i class="bi bi-x-lg"></i>';
             $html .= '</button>';
         }
@@ -536,25 +538,44 @@ CSS;
     }
 
     /**
-     * Render auto-dismiss JavaScript
+     * Render message scripts
      */
-    protected static function renderAutoDismissScript(int $delay): string
+    protected static function renderScripts(bool $autoDismiss, int $delay, ?string $nonce = null): string
     {
+        $nonceAttr = $nonce ? ' nonce="' . $nonce . '"' : '';
+        $autoDismissStr = $autoDismiss ? 'true' : 'false';
+
         return <<<HTML
-        <script>
+        <script{$nonceAttr}>
         (function() {
-            const containerSelector = '.plugs-flash-container .plugs-alert';
-            const alerts = document.querySelectorAll(containerSelector);
-            alerts.forEach((alert, index) => {
-                // Stagger the dismissal if there are multiple alerts
-                const dismissTime = {$delay} + (index * 600);
-                setTimeout(() => {
-                    alert.style.animation = 'plugs-bounce-out 0.6s cubic-bezier(0.4, 0, 0.2, 1) forwards';
-                    setTimeout(() => {
-                        alert.remove();
-                    }, 600);
-                }, dismissTime);
+            // Event delegation for close buttons
+            document.addEventListener('click', function(e) {
+                const btn = e.target.closest('.plugs-alert-close');
+                if (btn) {
+                    const alert = btn.closest('.plugs-alert');
+                    if (alert) {
+                        alert.style.animation = 'plugs-bounce-out 0.5s cubic-bezier(0.4, 0, 0.2, 1) forwards';
+                        setTimeout(() => alert.remove(), 500);
+                    }
+                }
             });
+
+            // Auto-dismiss functionality
+            if ({$autoDismissStr}) {
+                const containerSelector = '.plugs-flash-container .plugs-alert';
+                const alerts = document.querySelectorAll(containerSelector);
+                alerts.forEach((alert, index) => {
+                    const dismissTime = {$delay} + (index * 600);
+                    setTimeout(() => {
+                        if (document.body.contains(alert)) {
+                            alert.style.animation = 'plugs-bounce-out 0.6s cubic-bezier(0.4, 0, 0.2, 1) forwards';
+                            setTimeout(() => {
+                                if (document.body.contains(alert)) alert.remove();
+                            }, 600);
+                        }
+                    }, dismissTime);
+                });
+            }
         })();
         </script>
         HTML;
@@ -707,7 +728,7 @@ CSS;
 
         return count(array_filter(
             $_SESSION[self::SESSION_KEY],
-            fn ($flash) => $flash['type'] === $type
+            fn($flash) => $flash['type'] === $type
         ));
     }
 

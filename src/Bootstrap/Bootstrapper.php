@@ -169,8 +169,8 @@ class Bootstrapper
     {
         $router = new Router();
 
-        $this->container->singleton('router', fn () => $router);
-        $this->container->singleton(Router::class, fn () => $router);
+        $this->container->singleton('router', fn() => $router);
+        $this->container->singleton(Router::class, fn() => $router);
         \Plugs\Facades\Route::setFacadeInstance('router', $router);
 
         $this->app->pipe(new RoutingMiddleware($router));
@@ -181,7 +181,7 @@ class Bootstrapper
         $request = ServerRequest::fromGlobals();
 
         // Register request as singleton
-        $this->container->singleton(ServerRequestInterface::class, fn () => $request);
+        $this->container->singleton(ServerRequestInterface::class, fn() => $request);
     }
 
     protected function loadRoutes(): void

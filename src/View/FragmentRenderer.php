@@ -33,6 +33,19 @@ class FragmentRenderer
     private ?string $currentFragment = null;
 
     /**
+     * CSP Nonce for script tags
+     */
+    private ?string $nonce = null;
+
+    /**
+     * Set the CSP nonce
+     */
+    public function setNonce(?string $nonce): void
+    {
+        $this->nonce = $nonce;
+    }
+
+    /**
      * Fragment output buffer level
      */
     private ?int $fragmentBufferLevel = null;
@@ -121,7 +134,13 @@ class FragmentRenderer
     public function clearFragments(): void
     {
         $this->fragments = [];
+        $this->teleports = [];
     }
+
+    /**
+     * Teleport targets stack for nested teleports
+     */
+    private array $teleportStack = [];
 
     /**
      * Start capturing teleport content
@@ -132,19 +151,22 @@ class FragmentRenderer
     public function startTeleport(string $target): void
     {
         ob_start();
+        $this->teleportStack[] = $target;
         $this->teleports[$target] = ['level' => ob_get_level()];
     }
 
     /**
      * End teleport capture
      *
-     * @param string $target
+     * @param string|null $target Target selector (optional, uses stack if null)
      * @return string Captured content
      */
-    public function endTeleport(string $target): string
+    public function endTeleport(?string $target = null): string
     {
-        if (!isset($this->teleports[$target])) {
-            throw new \RuntimeException(sprintf('No teleport started for target [%s]', $target));
+        $target = $target ?? array_pop($this->teleportStack);
+
+        if (!$target || !isset($this->teleports[$target])) {
+            throw new \RuntimeException(sprintf('No teleport started for target [%s]', $target ?? 'unknown'));
         }
 
         $content = ob_get_clean();
@@ -185,7 +207,8 @@ class FragmentRenderer
             return '';
         }
 
-        $scripts = ['<script>'];
+        $nonceAttr = $this->nonce ? sprintf(' nonce="%s"', htmlspecialchars($this->nonce)) : '';
+        $scripts = [sprintf('<script%s>', $nonceAttr)];
         $scripts[] = '(function() {';
 
         foreach ($this->teleports as $target => $data) {
@@ -195,11 +218,30 @@ class FragmentRenderer
 
             $escapedContent = json_encode($data['content']);
             $escapedTarget = json_encode($target);
+            $escapedNonce = json_encode($this->nonce);
 
+            // Robust script that moves content and ensures script execution with CSP nonce
             $scripts[] = sprintf(
-                'var target = document.querySelector(%s); if (target) { target.innerHTML = %s; }',
+                'var target = document.querySelector(%s); 
+                if (target) { 
+                    var temp = document.createElement("div"); 
+                    temp.innerHTML = %s; 
+                    var nonce = %s;
+                    Array.from(temp.childNodes).forEach(function(node) {
+                        if (node.nodeType === 1 && node.tagName === "SCRIPT") { 
+                            var script = document.createElement("script"); 
+                            Array.from(node.attributes).forEach(function(attr) { script.setAttribute(attr.name, attr.value); });
+                            if (nonce) script.setAttribute("nonce", nonce);
+                            script.text = node.innerHTML;
+                            document.head.appendChild(script).parentNode.removeChild(script);
+                        } else { 
+                            target.appendChild(node); 
+                        } 
+                    });
+                }',
                 $escapedTarget,
-                $escapedContent
+                $escapedContent,
+                $escapedNonce
             );
         }
 

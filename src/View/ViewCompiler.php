@@ -1075,7 +1075,7 @@ class ViewCompiler
 
         foreach ($directives as $name => $handler) {
             $content = preg_replace_callback(
-                '/@' . preg_quote($name, '/') . '(?!\w)(?:\s*\((.*?)\))?/s',
+                '/@' . preg_quote($name, '/') . '(?!\w)(?:\s*\(([^()]*+(?:\((?1)\)[^()]*+)*+)\))?/s',
                 function ($matches) use ($handler) {
                     $expression = $matches[1] ?? null;
 
@@ -2037,7 +2037,7 @@ class ViewCompiler
         $content = preg_replace_callback(
             self::$patterns['endteleport'] ?? '/@endteleport\s*/',
             function ($matches) {
-                return '<?php $__teleportTarget = array_key_last($__fragmentRenderer->getTeleports()); $__fragmentRenderer->endTeleport($__teleportTarget); ?>';
+                return '<?php $__fragmentRenderer->endTeleport(); ?>';
             },
             $content
         ) ?? $content;
@@ -2060,14 +2060,9 @@ class ViewCompiler
                 $ttl = $matches[2] ?? 'null';
 
                 return sprintf(
-                    '<?php $__cacheKey_%s = \'%s\'; $__cacheTtl_%s = %s; $__cacheContent_%s = null; if (isset($__viewCache) && $__viewCache->has($__cacheKey_%s)) { echo $__viewCache->get($__cacheKey_%s); } else { ob_start(); ?>',
-                    md5($key),
+                    '<?php $__cacheKey = \'%s\'; $__cacheTtl = %s; if (isset($__viewCache) && $__viewCache->has($__cacheKey)) { echo $__viewCache->get($__cacheKey); } else { ob_start(); ?>',
                     $key,
-                    md5($key),
-                    $ttl,
-                    md5($key),
-                    md5($key),
-                    md5($key)
+                    $ttl
                 );
             },
             $content
@@ -2077,7 +2072,7 @@ class ViewCompiler
         $content = preg_replace_callback(
             self::$patterns['endcache'] ?? '/@endcache\s*/',
             function ($matches) {
-                return '<?php $__cacheContent = ob_get_clean(); if (isset($__viewCache)) { $__viewCache->put($__cacheKey ?? \'\', $__cacheContent, $__cacheTtl ?? null); } echo $__cacheContent; } ?>';
+                return '<?php $__cacheContent = ob_get_clean(); if (isset($__viewCache)) { $__viewCache->put($__cacheKey, $__cacheContent, $__cacheTtl ?? null); } echo $__cacheContent; } ?>';
             },
             $content
         ) ?? $content;

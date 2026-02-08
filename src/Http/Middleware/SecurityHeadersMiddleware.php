@@ -36,24 +36,29 @@ class SecurityHeadersMiddleware implements MiddlewareInterface
         }
     }
 
-    private function buildCspHeader(): string
-    {
-        $cspConfig = config('security.csp', []);
-        $directives = [];
-
-        foreach ($cspConfig as $key => $values) {
-            if ($key === 'enabled' || !is_array($values)) {
-                continue;
-            }
-
-            $directives[] = $key . ' ' . implode(' ', $values);
-        }
-
-        return implode('; ', $directives);
-    }
-
     public function process(ServerRequestInterface $request, RequestHandlerInterface $handler): ResponseInterface
     {
+        // Generate and inject nonce if CSP is enabled
+        if (config('security.csp.enabled', false)) {
+            $nonce = base64_encode(random_bytes(16));
+
+            // Inject into ViewEngine
+            $container = \Plugs\Container\Container::getInstance();
+            if ($container->has(\Plugs\View\ViewEngine::class)) {
+                $viewEngine = $container->make(\Plugs\View\ViewEngine::class);
+                $viewEngine->setCspNonce($nonce);
+            }
+
+            // Inject into AssetManager (via helper if available or container)
+            // We use the helper function to ensure we get the initialized instance
+            if (function_exists('asset_manager')) {
+                asset_manager()->setNonce($nonce);
+            }
+
+            // Update CSP header config with nonce
+            $this->config['Content-Security-Policy'] = $this->buildCspHeader($nonce);
+        }
+
         $response = $handler->handle($request);
 
         foreach ($this->config as $header => $value) {
@@ -64,5 +69,26 @@ class SecurityHeadersMiddleware implements MiddlewareInterface
         }
 
         return $response;
+    }
+
+    private function buildCspHeader(?string $nonce = null): string
+    {
+        $cspConfig = config('security.csp', []);
+        $directives = [];
+
+        foreach ($cspConfig as $key => $values) {
+            if ($key === 'enabled' || !is_array($values)) {
+                continue;
+            }
+
+            // Inject nonce into script-src if available
+            if ($nonce && $key === 'script-src') {
+                $values[] = "'nonce-{$nonce}'";
+            }
+
+            $directives[] = $key . ' ' . implode(' ', $values);
+        }
+
+        return implode('; ', $directives);
     }
 }
