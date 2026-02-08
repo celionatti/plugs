@@ -174,6 +174,21 @@ trait HasQueryBuilder
         return static::query()->chunk($count, $callback);
     }
 
+    /**
+     * Chunk the results of the query by ID.
+     * More efficient than chunk() for large datasets.
+     *
+     * @param int $count Number of records per chunk
+     * @param callable $callback Function to process each chunk
+     * @param string|null $column The column to use for chunking
+     * @param string|null $alias The alias for the column
+     * @return bool
+     */
+    public static function chunkById(int $count, callable $callback, ?string $column = 'id', ?string $alias = null): bool
+    {
+        return static::query()->chunkById($count, $callback, $column, $alias);
+    }
+
     public static function where(string $column, string $operator, $value = null): QueryBuilder
     {
         if ($value === null) {
@@ -424,7 +439,7 @@ trait HasQueryBuilder
         $query = static::filter($params);
 
         $paginator = $query->paginate($perPage, $page);
-        $paginator->appends(array_filter($params, fn ($k) => !in_array($k, ['page', 'per_page']), ARRAY_FILTER_USE_KEY));
+        $paginator->appends(array_filter($params, fn($k) => !in_array($k, ['page', 'per_page']), ARRAY_FILTER_USE_KEY));
 
         return $paginator;
     }

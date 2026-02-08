@@ -349,7 +349,7 @@ class QueryBuilder
         $results = $this->connection->fetchAll($sql, $this->params);
 
         if ($this->model && !empty($results)) {
-            $models = array_map(fn ($item) => new $this->model($item, true), $results);
+            $models = array_map(fn($item) => new $this->model($item, true), $results);
 
             if (!empty($this->with)) {
                 $collection = new Collection($models);
@@ -435,6 +435,48 @@ class QueryBuilder
             unset($results);
 
             $page++;
+        } while ($countResults == $count);
+
+        return true;
+    }
+
+    /**
+     * Chunk the results of the query by ID.
+     * More efficient than chunk() for large datasets as it avoids OFFSET performance issues.
+     *
+     * @param int $count Number of records per chunk
+     * @param callable $callback Function to process each chunk
+     * @param string|null $column The column to use for chunking (usually primary key)
+     * @param string|null $alias The alias for the column if different from column name
+     * @return bool
+     */
+    public function chunkById(int $count, callable $callback, ?string $column = 'id', ?string $alias = null): bool
+    {
+        $alias = $alias ?? $column;
+        $lastId = null;
+
+        do {
+            $clone = clone $this;
+
+            if ($lastId !== null) {
+                $clone->where($column, '>', $lastId);
+            }
+
+            $results = $clone->orderBy($column, 'ASC')->limit($count)->get();
+            $countResults = count($results);
+
+            if ($countResults == 0) {
+                break;
+            }
+
+            if ($callback($results) === false) {
+                return false;
+            }
+
+            $lastRow = $results[$countResults - 1];
+            $lastId = is_object($lastRow) ? $lastRow->$alias : $lastRow[$alias];
+
+            unset($results);
         } while ($countResults == $count);
 
         return true;
