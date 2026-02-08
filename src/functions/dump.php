@@ -317,7 +317,7 @@ function plugs_dump(array $vars, bool $die = false, string $mode = 'default', ?s
 
     echo <<<JS
 <script{$nonceAttr}>
-<script{$nonceAttr}>
+
     (function() {
         // Event Delegation for Plugs Debugging
         document.addEventListener('click', function(e) {

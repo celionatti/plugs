@@ -33,7 +33,7 @@ class ProfilerBar
 
         return '
 <!-- Plugs Profiler Bar -->
-' . plugs_render_styles(true) . '
+' . plugs_render_styles(true, $nonce) . '
 <div id="plugs-profiler-bar" class="plugs-safe-scope" style="
     position: fixed;
     bottom: 0;
@@ -390,7 +390,7 @@ class ProfilerBar
 
         // Tab: Files
         echo '<div id="tab-files" class="plugs-tab-content" style="padding: 32px;">';
-        echo self::renderFilesTab($profile);
+        echo self::renderFilesTab($profile, $nonce);
         echo '</div>';
 
         // Tab: Config
