@@ -69,6 +69,7 @@ class PlugsException extends Exception
     public function setContext(array $context): static
     {
         $this->context = $context;
+
         return $this;
     }
 
@@ -91,6 +92,7 @@ class PlugsException extends Exception
     public function setStatusCode(int $statusCode): static
     {
         $this->statusCode = $statusCode;
+
         return $this;
     }
 

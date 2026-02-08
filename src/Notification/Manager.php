@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace Plugs\Notification;
 
 use Plugs\Container\Container;
-use Plugs\Utils\Arr;
 
 class Manager
 {

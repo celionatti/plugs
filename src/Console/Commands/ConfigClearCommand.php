@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace Plugs\Console\Commands;
 
-use Plugs\Console\Command;
 use Plugs\Config;
+use Plugs\Console\Command;
 
 class ConfigClearCommand extends Command
 {
@@ -17,6 +17,7 @@ class ConfigClearCommand extends Command
 
         $this->task('Removing configuration cache', function () {
             Config::clear();
+
             return true;
         });
 

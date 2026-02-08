@@ -124,6 +124,7 @@ abstract class ReactiveComponent
     public function getJavaScript(): string
     {
         $state = json_encode($this->getState());
+
         return "window.PlugsReactive.init('{$this->id}', '{$this->name}', {$state});";
     }
 
@@ -141,6 +142,7 @@ abstract class ReactiveComponent
     {
         return $this->name;
     }
+
     public function getAttributes(): array
     {
         return [];

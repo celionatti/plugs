@@ -67,6 +67,7 @@ class HttpException extends PlugsException
     public function setHeaders(array $headers): static
     {
         $this->headers = $headers;
+
         return $this;
     }
 
@@ -132,6 +133,7 @@ class HttpException extends PlugsException
     public static function methodNotAllowed(array $allowed = [], string $message = ''): static
     {
         $headers = !empty($allowed) ? ['Allow' => implode(', ', $allowed)] : [];
+
         return new static(405, $message, null, $headers);
     }
 
@@ -145,6 +147,7 @@ class HttpException extends PlugsException
     public static function tooManyRequests(?int $retryAfter = null, string $message = ''): static
     {
         $headers = $retryAfter ? ['Retry-After' => (string) $retryAfter] : [];
+
         return new static(429, $message, null, $headers);
     }
 
@@ -169,6 +172,7 @@ class HttpException extends PlugsException
     public static function serviceUnavailable(?int $retryAfter = null, string $message = ''): static
     {
         $headers = $retryAfter ? ['Retry-After' => (string) $retryAfter] : [];
+
         return new static(503, $message, null, $headers);
     }
 }

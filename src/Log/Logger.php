@@ -38,7 +38,7 @@ class Logger extends AbstractLogger
                 'timestamp' => date('Y-m-d H:i:s'),
                 'level' => strtoupper($level),
                 'message' => $message,
-                'context' => $context
+                'context' => $context,
             ]) . PHP_EOL;
         } else {
             $formatted = $this->format($level, $message, $context);

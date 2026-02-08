@@ -13,7 +13,6 @@ namespace Plugs;
 | point for the application and can be used to initialize and run the.
 */
 
-use Plugs\Http\Message\Response;
 use Plugs\Http\Message\ServerRequest;
 use Plugs\Http\Message\Stream;
 use Plugs\Http\MiddlewareDispatcher;
@@ -153,6 +152,7 @@ class Plugs
         $container->singleton('queue', function () {
             $queue = new \Plugs\Queue\QueueManager();
             $queue->setDefaultDriver(config('queue.default', 'sync'));
+
             return $queue;
         });
     }
@@ -217,6 +217,7 @@ class Plugs
         $container->singleton('pdf', function ($container) {
             $pdf = new \Plugs\Pdf\PdfServiceProvider($container);
             $pdf->register();
+
             return $pdf;
         });
     }
@@ -370,6 +371,7 @@ class Plugs
     {
         if (headers_sent()) {
             echo $response->getBody();
+
             return;
         }
 
@@ -413,6 +415,7 @@ class Plugs
             foreach ($files as $file) {
                 require_once $file;
             }
+
             return;
         }
 
@@ -449,6 +452,7 @@ class Plugs
     public static function isProduction(): bool
     {
         $env = $_ENV['APP_ENV'] ?? $_SERVER['APP_ENV'] ?? getenv('APP_ENV') ?: 'production';
+
         return strtolower($env) === 'production';
     }
 }

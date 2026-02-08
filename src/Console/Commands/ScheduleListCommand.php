@@ -31,6 +31,7 @@ class ScheduleListCommand extends Command
         if (empty($events)) {
             $this->warning('No scheduled tasks defined in your Console Kernel.');
             $this->checkpoint('finished');
+
             return 0;
         }
 
@@ -49,7 +50,7 @@ class ScheduleListCommand extends Command
                 $this->truncate((string) $command, 40),
                 'Custom', // We might need more specific frequency detection
                 $frequency,
-                $isDue
+                $isDue,
             ];
         }
 

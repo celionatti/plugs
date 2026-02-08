@@ -505,7 +505,7 @@ class FileUploader
             $image = new \Plugs\Image\Image();
             $image->load($filePath);
 
-            // If it's a JPEG and metadata stripping is enabled, the save process itself 
+            // If it's a JPEG and metadata stripping is enabled, the save process itself
             // often naturally strips non-essential EXIF if not handled specifically,
             // but we can ensure it by loading and re-saving.
 
@@ -517,15 +517,18 @@ class FileUploader
                 case 'jpeg':
                     $type = IMAGETYPE_JPEG;
                     $image->quality($this->imageCompression['jpeg_quality']);
+
                     break;
                 case 'png':
                     $type = IMAGETYPE_PNG;
                     $pngQuality = (int) (9 - ($this->imageCompression['png_compression']));
                     $image->quality($pngQuality * 10 + 10); // Map back to 0-100 scale for our Image class quality
+
                     break;
                 case 'webp':
                     $type = IMAGETYPE_WEBP;
                     $image->quality($this->imageCompression['webp_quality']);
+
                     break;
             }
 
@@ -535,7 +538,7 @@ class FileUploader
         } catch (\Exception $e) {
             $this->logger->warning('Image post-processing failed', [
                 'path' => $filePath,
-                'error' => $e->getMessage()
+                'error' => $e->getMessage(),
             ]);
         }
     }

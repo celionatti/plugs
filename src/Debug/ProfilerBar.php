@@ -286,7 +286,7 @@ class ProfilerBar
             'query_time_ms' => ($profile['database']['query_time_ms'] ?? ($profile['database']['total_time'] ?? 0) * 1000),
             'queries' => $profile['database']['queries'] ?? [],
             'stats' => $profile['database'], // Include database report as stats
-            'result' => null
+            'result' => null,
         ];
 
         echo '<div class="plugs-debug-wrapper" data-theme="dark">';
@@ -428,8 +428,9 @@ JS;
         $html = '<div class="timeline-v2" style="display:flex; flex-direction:column; gap:16px;">';
 
         foreach ($timeline as $name => $segment) {
-            if (($segment['duration'] ?? null) === null)
+            if (($segment['duration'] ?? null) === null) {
                 continue;
+            }
 
             $percentage = min(100, ($segment['duration'] / $totalDuration) * 100);
             $startOffset = 0;
@@ -463,6 +464,7 @@ JS;
             );
         }
         $html .= '</div>';
+
         return $html;
     }
 

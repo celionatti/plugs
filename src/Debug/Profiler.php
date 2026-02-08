@@ -63,7 +63,7 @@ class Profiler
         return [
             'branch' => $branchName,
             'hash' => $hash,
-            'short_hash' => substr($hash, 0, 7)
+            'short_hash' => substr($hash, 0, 7),
         ];
     }
 
@@ -172,6 +172,7 @@ class Profiler
         foreach ($data as $key => &$value) {
             if (preg_match($pattern, (string) $key)) {
                 $value = '******** [masked]';
+
                 continue;
             }
 
@@ -311,7 +312,7 @@ class Profiler
         $files = glob($storageDir . '*.json');
 
         // Sort by modification time (newest first)
-        usort($files, fn($a, $b) => filemtime($b) <=> filemtime($a));
+        usort($files, fn ($a, $b) => filemtime($b) <=> filemtime($a));
 
         $profiles = [];
         foreach (array_slice($files, 0, $limit) as $file) {
@@ -341,6 +342,7 @@ class Profiler
             if ($instance->currentProfile && ($instance->currentProfile['id'] === $id)) {
                 return $instance->currentProfile;
             }
+
             return null;
         }
 

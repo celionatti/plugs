@@ -219,6 +219,7 @@ class Csrf
 
         if ($token === null || $token === '') {
             self::$lastError = self::STATUS_MISSING;
+
             return false;
         }
 
@@ -239,6 +240,7 @@ class Csrf
             if (self::$config['context_bound'] && $session->has('_csrf_context')) {
                 if (!self::constantTimeCompare($session->get('_csrf_context'), self::getContextFingerprint())) {
                     self::$lastError = self::STATUS_CONTEXT_MISMATCH;
+
                     return false;
                 }
             }
@@ -288,6 +290,7 @@ class Csrf
         }
 
         self::$lastError = self::STATUS_MISMATCH;
+
         return false;
     }
 
@@ -478,7 +481,7 @@ class Csrf
             'domain' => '',
             'secure' => isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on',
             'httponly' => false,
-            'samesite' => 'Lax'
+            'samesite' => 'Lax',
         ]);
     }
 

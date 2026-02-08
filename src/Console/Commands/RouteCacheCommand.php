@@ -11,7 +11,6 @@ namespace Plugs\Console\Commands;
 */
 
 use Plugs\Console\Command;
-use Plugs\Console\Support\Filesystem;
 use Plugs\Router\Router;
 
 class RouteCacheCommand extends Command
@@ -41,9 +40,11 @@ class RouteCacheCommand extends Command
         $this->task('Caching application routes', function () use ($router) {
             try {
                 $router->cacheRoutes();
+
                 return true;
             } catch (\Exception $e) {
                 $this->error($e->getMessage());
+
                 return false;
             }
         });

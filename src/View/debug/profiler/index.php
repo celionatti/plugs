@@ -4,22 +4,27 @@ $__extends = 'debug.layout';
 ?>
 <?php
 function getMethodClass($method)
-    {
-        $method = strtoupper($method);
-        return 'method-' . $method;
+{
+    $method = strtoupper($method);
+
+    return 'method-' . $method;
+}
+
+function getStatusBadge($code)
+{
+    if ($code >= 200 && $code < 300) {
+        return 'status-success';
+    }
+    if ($code >= 300 && $code < 400) {
+        return 'status-info';
+    }
+    if ($code >= 400 && $code < 500) {
+        return 'status-warning';
     }
 
-    function getStatusBadge($code)
-    {
-        if ($code >= 200 && $code < 300)
-            return 'status-success';
-        if ($code >= 300 && $code < 400)
-            return 'status-info';
-        if ($code >= 400 && $code < 500)
-            return 'status-warning';
-        return 'status-danger';
-    }
-    ?>
+    return 'status-danger';
+}
+?>
 
     <div class="glass-panel animate-fade-up" style="animation-delay: 0.2s; overflow: hidden;">
         <div

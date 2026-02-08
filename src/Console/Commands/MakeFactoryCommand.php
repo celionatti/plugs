@@ -10,9 +10,9 @@ use Plugs\Console\Support\Str;
 
 /**
  * MakeFactoryCommand
- * 
+ *
  * Generate a new factory class.
- * 
+ *
  * @package Plugs\Console\Commands
  */
 class MakeFactoryCommand extends Command
@@ -65,11 +65,13 @@ class MakeFactoryCommand extends Command
 
         if (Filesystem::exists($path) && !$this->isForce()) {
             $this->error("Factory [{$name}] already exists!");
+
             return 1;
         }
 
         if (!$this->confirm('Proceed with generation?', true)) {
             $this->warning('Factory generation cancelled.');
+
             return 0;
         }
 

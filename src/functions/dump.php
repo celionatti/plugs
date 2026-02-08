@@ -1430,8 +1430,9 @@ function plugs_render_queries(array $data): string
         $html .= '<div class="var-header" onclick="plugsToggleVar(this)">';
         $html .= '<div class="var-title"><span>#' . ($index + 1) . '</span> <code style="color: var(--accent-secondary);">' . substr(htmlspecialchars($query['query']), 0, 60) . (strlen($query['query']) > 60 ? '...' : '') . '</code></div>';
         $html .= '<div class="var-badges">';
-        if ($isSlow)
+        if ($isSlow) {
             $html .= '<span class="plugs-badge" style="background: rgba(239, 68, 68, 0.1); color: var(--danger);">SLOW</span>';
+        }
         $html .= '<span class="plugs-badge">' . $ms . ' ms</span>';
         $html .= '</div>';
         $html .= '</div>';
@@ -1755,8 +1756,9 @@ function plugs_render_profile(array $data): string
             $html .= '<div class="var-header" onclick="plugsToggleVar(this)">';
             $html .= '<div class="var-title"><span>#' . ($index + 1) . '</span> <code style="color: var(--accent-secondary);">' . substr(htmlspecialchars($query['query'] ?? ''), 0, 60) . (strlen($query['query'] ?? '') > 60 ? '...' : '') . '</code></div>';
             $html .= '<div class="var-badges">';
-            if ($isSlow)
+            if ($isSlow) {
                 $html .= '<span class="plugs-badge" style="background: rgba(239, 68, 68, 0.1); color: var(--danger);">SLOW</span>';
+            }
             $html .= '<span class="plugs-badge">' . $ms . ' ms</span>';
             $html .= '</div>';
             $html .= '</div>';

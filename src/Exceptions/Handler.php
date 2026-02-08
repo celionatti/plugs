@@ -127,6 +127,7 @@ class Handler
     public function dontReport(array $types): static
     {
         $this->dontReport = array_merge($this->dontReport, $types);
+
         return $this;
     }
 
@@ -140,6 +141,7 @@ class Handler
     public function renderable(string $exceptionClass, callable $handler): static
     {
         $this->customHandlers[$exceptionClass] = $handler;
+
         return $this;
     }
 
@@ -222,6 +224,7 @@ class Handler
         }
 
         $redirectTo = $e->redirectTo() ?? '/login';
+
         return ResponseFactory::redirect($redirectTo);
     }
 
@@ -362,6 +365,7 @@ class Handler
                 'message' => $message,
                 'statusCode' => $statusCode,
             ]);
+
             return ResponseFactory::html($html, $statusCode);
         } catch (Throwable $e) {
             // Fallback to basic error page
@@ -385,6 +389,7 @@ class Handler
         $html = ob_get_clean();
 
         $statusCode = $e instanceof PlugsException ? $e->getStatusCode() : 500;
+
         return ResponseFactory::html($html, $statusCode);
     }
 

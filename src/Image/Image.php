@@ -55,6 +55,7 @@ class Image
         $this->checkMemory($info[0], $info[1]);
 
         $image = null;
+
         try {
             switch ($this->type) {
                 case IMAGETYPE_JPEG:
@@ -562,12 +563,15 @@ class Image
         switch ($exif['Orientation']) {
             case 3:
                 $this->rotate(180);
+
                 break;
             case 6:
                 $this->rotate(-90);
+
                 break;
             case 8:
                 $this->rotate(90);
+
                 break;
         }
 
@@ -761,10 +765,10 @@ class Image
         switch ($unit) {
             case 'g':
                 $value *= 1024;
-            // no break
+                // no break
             case 'm':
                 $value *= 1024;
-            // no break
+                // no break
             case 'k':
                 $value *= 1024;
         }

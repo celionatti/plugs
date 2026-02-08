@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace Plugs\Console\Commands;
 
 use Plugs\Console\Command;
-use Plugs\Console\Support\Filesystem;
 use Plugs\Utils\Minifier;
 
 class MakeSpaAssetCommand extends Command
@@ -25,6 +24,7 @@ class MakeSpaAssetCommand extends Command
         // Ensure directory exists
         if (!$this->ensureDirectory($directory)) {
             $this->error("Failed to create directory: {$directory}");
+
             return 1;
         }
 
@@ -32,6 +32,7 @@ class MakeSpaAssetCommand extends Command
         if ($this->fileExists($path) && !$force) {
             if (!$this->confirm("File {$filename} already exists. Overwrite?", false)) {
                 $this->warning("Operation cancelled.");
+
                 return 0;
             }
         }
@@ -73,13 +74,13 @@ class MakeSpaAssetCommand extends Command
     {
         return [
             '--min' => 'Create a minified version (plugs-spa.min.js)',
-            '--force' => 'Overwrite existing files'
+            '--force' => 'Overwrite existing files',
         ];
     }
 
     /**
      * Minify JavaScript content
-     * 
+     *
      * @param string $js
      * @return string
      */

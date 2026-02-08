@@ -28,6 +28,7 @@ class MigrateFreshCommand extends Command
             $this->critical('CAUTION: Application is in PRODUCTION mode!');
             if (!$this->confirm('Do you really wish to run this destructive command?', false)) {
                 $this->warning('Operation cancelled.');
+
                 return 1;
             }
         }
@@ -86,6 +87,7 @@ class MigrateFreshCommand extends Command
             return 0;
         } catch (\Exception $e) {
             $this->error("Fresh migration failed: " . $e->getMessage());
+
             return 1;
         }
     }

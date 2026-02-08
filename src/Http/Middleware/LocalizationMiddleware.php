@@ -78,6 +78,7 @@ class LocalizationMiddleware implements MiddlewareInterface
         if (!empty($header)) {
             $parts = explode(',', $header);
             $primary = explode(';', $parts[0])[0];
+
             return trim($primary);
         }
 

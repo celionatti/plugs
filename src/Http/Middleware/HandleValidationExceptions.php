@@ -27,7 +27,7 @@ class HandleValidationExceptions implements MiddlewareInterface
             if (strpos($acceptHeader, 'application/json') !== false || $request->getHeaderLine('X-Requested-With') === 'XMLHttpRequest') {
                 return ResponseFactory::json([
                     'message' => 'The given data was invalid.',
-                    'errors' => $this->formatErrors($errors)
+                    'errors' => $this->formatErrors($errors),
                 ], 422);
             }
 

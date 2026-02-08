@@ -19,6 +19,8 @@ namespace Plugs\Router;
  * - Route caching
 */
 
+use Closure;
+use Exception;
 use InvalidArgumentException;
 use Plugs\Container\Container;
 use Plugs\Http\MiddlewareDispatcher;
@@ -27,17 +29,15 @@ use Plugs\Inertia\InertiaResponse;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use ReflectionClass;
-use ReflectionMethod;
-use ReflectionParameter;
-use ReflectionType;
-use ReflectionNamedType;
 use ReflectionFunction;
 use ReflectionFunctionAbstract;
-use Closure;
+use ReflectionMethod;
+use ReflectionNamedType;
+use ReflectionParameter;
+use ReflectionType;
+use RuntimeException;
 use stdClass;
 use Throwable;
-use Exception;
-use RuntimeException;
 
 class Router
 {
@@ -259,6 +259,7 @@ class Router
     {
         $route = new Route('GET', '/{any:.*}', $handler, [], $this);
         $this->fallbackRoute = $route;
+
         return $route;
     }
 
@@ -531,11 +532,13 @@ class Router
         // Check if the path matches any other method (Method Not Allowed)
         $allowedMethods = [];
         foreach ($this->routes as $m => $mRoutes) {
-            if ($m === $method)
+            if ($m === $method) {
                 continue;
+            }
             foreach ($mRoutes as $route) {
                 if ($route->matches($m, $path)) {
                     $allowedMethods[] = $m;
+
                     break;
                 }
             }
@@ -1212,7 +1215,7 @@ class Router
     {
         $data = [
             'routes' => [],
-            'namedRoutes' => []
+            'namedRoutes' => [],
         ];
 
         foreach ($this->routes as $method => $routes) {
@@ -1231,7 +1234,7 @@ class Router
                 if ($route->isNamed()) {
                     $data['namedRoutes'][$route->getName()] = [
                         'method' => $method,
-                        'index' => count($data['routes'][$method]) - 1
+                        'index' => count($data['routes'][$method]) - 1,
                     ];
                 }
             }
@@ -1241,6 +1244,7 @@ class Router
         $this->ensureCacheDirectoryExists(dirname($cacheFile));
 
         $content = '<?php return ' . var_export($data, true) . ';';
+
         return file_put_contents($cacheFile, $content) !== false;
     }
 
@@ -1299,6 +1303,7 @@ class Router
     private function getPersistentCachePath(): string
     {
         $basePath = defined('BASE_PATH') ? BASE_PATH : dirname(__DIR__, 2) . DIRECTORY_SEPARATOR;
+
         return $basePath . 'storage/framework/routes.php';
     }
 

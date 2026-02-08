@@ -72,6 +72,7 @@ class ViewCache
     public function setDefaultTtl(int $seconds): self
     {
         $this->defaultTtl = $seconds;
+
         return $this;
     }
 
@@ -89,6 +90,7 @@ class ViewCache
         // Check memory cache first
         if (isset($this->memoryCache[$cacheKey])) {
             $this->stats['hits']++;
+
             return $this->memoryCache[$cacheKey];
         }
 
@@ -98,6 +100,7 @@ class ViewCache
             if ($value !== null) {
                 $this->stats['hits']++;
                 $this->memoryCache[$cacheKey] = $value;
+
                 return $value;
             }
         }
@@ -107,10 +110,12 @@ class ViewCache
         if ($value !== null) {
             $this->stats['hits']++;
             $this->memoryCache[$cacheKey] = $value;
+
             return $value;
         }
 
         $this->stats['misses']++;
+
         return $default;
     }
 
@@ -285,12 +290,14 @@ class ViewCache
 
         if (!is_array($data) || !isset($data['content'], $data['expires'])) {
             @unlink($path);
+
             return null;
         }
 
         // Check expiration
         if ($data['expires'] > 0 && $data['expires'] < time()) {
             @unlink($path);
+
             return null;
         }
 

@@ -100,7 +100,7 @@ class Route
 
         $this->middleware = array_filter(
             $this->middleware,
-            fn($mw) => !in_array($mw, $middlewareToRemove, true)
+            fn ($mw) => !in_array($mw, $middlewareToRemove, true)
         );
 
         return $this;

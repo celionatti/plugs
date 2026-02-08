@@ -64,6 +64,7 @@ class AuthorizationException extends PlugsException
     public function withResponse(mixed $response): static
     {
         $this->response = $response;
+
         return $this;
     }
 

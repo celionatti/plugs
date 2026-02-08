@@ -621,6 +621,7 @@ class MakeControllerCommand extends Command
         if ($options['subDir']) {
             $path .= '/' . $options['subDir'];
         }
+
         return getcwd() . '/' . $path . '/' . $name . '.php';
     }
 
@@ -630,6 +631,7 @@ class MakeControllerCommand extends Command
         if ($options['subDir']) {
             $path .= '/' . $options['subDir'];
         }
+
         return getcwd() . '/' . $path . '/' . $name . '.php';
     }
 

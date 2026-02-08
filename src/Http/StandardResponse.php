@@ -9,7 +9,7 @@ use Plugs\Plugs;
 
 /**
  * StandardResponse
- * 
+ *
  * Provides a standardized structure for API responses.
  * Especially useful in production for a consistent developer experience.
  */
@@ -50,24 +50,28 @@ class StandardResponse implements JsonSerializable
     public function withMeta(array $meta): self
     {
         $this->meta = array_merge($this->meta, $meta);
+
         return $this;
     }
 
     public function withLinks(array $links): self
     {
         $this->links = array_merge($this->links, $links);
+
         return $this;
     }
 
     public function withHeader(string $name, string $value): self
     {
         $this->headers[$name] = $value;
+
         return $this;
     }
 
     public function withHeaders(array $headers): self
     {
         $this->headers = array_merge($this->headers, $headers);
+
         return $this;
     }
 

@@ -152,6 +152,7 @@ trait HasAttributes
         // Handle custom cast classes
         if (is_string($castType) && class_exists($castType) && is_subclass_of($castType, \Plugs\Database\Contracts\CastsAttributes::class)) {
             $caster = new $castType();
+
             return $caster->set($this, $key, $value, $this->attributes);
         }
 
@@ -216,6 +217,7 @@ trait HasAttributes
         // Handle custom cast classes
         if (is_string($castType) && class_exists($castType) && is_subclass_of($castType, \Plugs\Database\Contracts\CastsAttributes::class)) {
             $caster = new $castType();
+
             return $caster->get($this, $key, $value, $this->attributes);
         }
 
@@ -550,7 +552,7 @@ trait HasAttributes
                 if ($value instanceof Collection) {
                     $attributes[$key] = $value->all();
                     /** @phpstan-ignore-next-line */
-                } else if (isset($value) && method_exists($value, 'toArray')) {
+                } elseif (isset($value) && method_exists($value, 'toArray')) {
                     $attributes[$key] = $value->toArray();
                 } else {
                     $attributes[$key] = $value;

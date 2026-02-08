@@ -6,7 +6,7 @@ namespace Plugs\Utils;
 
 /**
  * Minifier Utility
- * 
+ *
  * Provides robust, production-ready minification for JavaScript and CSS.
  * Designed to be safe and avoid common pitfalls like ASI errors by respecting
  * line boundaries and protecting string/regex literals.
@@ -15,7 +15,7 @@ class Minifier
 {
     /**
      * Minify JavaScript content
-     * 
+     *
      * @param string $js
      * @return string
      */
@@ -36,6 +36,7 @@ class Minifier
             if (isset($matches[1]) && $matches[1] !== '') {
                 return '';
             }
+
             return $matches[0];
         }, $js);
 
@@ -68,7 +69,7 @@ class Minifier
 
     /**
      * Minify CSS content
-     * 
+     *
      * @param string $css
      * @return string
      */

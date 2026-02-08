@@ -328,7 +328,7 @@ class AssetManager
                 if ($absolutePath && file_exists($absolutePath)) {
                     $webPath = str_replace($this->publicPath, '/', $absolutePath);
                     $webPath = str_replace('\\', '/', $webPath); // Ensure web path uses forward slashes
-    
+
                     return 'url(' . $webPath . ')';
                 }
 
@@ -670,7 +670,7 @@ class AssetManager
 
     /**
      * Generate optimized image URL
-     * 
+     *
      * @param string $path
      * @param array $options [width, height, quality, format]
      */

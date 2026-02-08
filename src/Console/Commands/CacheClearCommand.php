@@ -31,6 +31,7 @@ class CacheClearCommand extends Command
         if (!is_dir($cacheDir)) {
             $this->warning('Cache directory does not exist or is already empty.');
             $this->checkpoint('finished');
+
             return 0;
         }
 
@@ -41,6 +42,7 @@ class CacheClearCommand extends Command
         if (empty($files)) {
             $this->info('No cache files found to clear.');
             $this->checkpoint('finished');
+
             return 0;
         }
 

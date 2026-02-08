@@ -30,12 +30,14 @@ class BelongsToProxy
     public function associate(PlugModel $model)
     {
         $this->parent->setAttribute($this->foreignKey, $model->getAttribute($this->ownerKey));
+
         return $this->parent;
     }
 
     public function dissociate()
     {
         $this->parent->setAttribute($this->foreignKey, null);
+
         return $this->parent;
     }
 

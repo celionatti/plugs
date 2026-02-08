@@ -25,6 +25,7 @@ class RouteClearCommand extends Command
 
         $this->task('Removing route cache', function () use ($router) {
             $router->clearCache(true);
+
             return true;
         });
 

@@ -12,10 +12,10 @@ use Plugs\Paginator\Paginator;
 
 /**
  * PlugResourceCollection
- * 
+ *
  * Base class for API resource collections that transform multiple models/items.
  * Supports pagination, meta data, and links.
- * 
+ *
  * @package Plugs\Http\Resources
  * @phpstan-consistent-constructor
  */
@@ -79,9 +79,9 @@ class PlugResourceCollection implements JsonSerializable
             // Copy query parameters if any (appends)
             // Note: Paginator::appends() sets options on inner Pagination object
             // We might need to manually sync links if appends were used, but withPagination regenerates them.
-            // However, Paginator already handles link generation with parameters. 
-            // Instead of regenerating links via withPagination's simple logic, 
-            // we should trust the Paginator's own link generation if possible, 
+            // However, Paginator already handles link generation with parameters.
+            // Instead of regenerating links via withPagination's simple logic,
+            // we should trust the Paginator's own link generation if possible,
             // OR pass the query params to withPagination if we want to stick to our simple generation.
 
             // Better approach: Use the data from Paginator directly
@@ -142,6 +142,7 @@ class PlugResourceCollection implements JsonSerializable
         return array_map(function ($item) {
             if ($this->collects && class_exists($this->collects)) {
                 $resource = new $this->collects($item);
+
                 return $resource instanceof PlugResource ? $resource->resolve() : $resource->toArray();
             }
 
@@ -159,6 +160,7 @@ class PlugResourceCollection implements JsonSerializable
     public function withMeta(array $meta): static
     {
         $this->meta = array_merge($this->meta, $meta);
+
         return $this;
     }
 
@@ -168,6 +170,7 @@ class PlugResourceCollection implements JsonSerializable
     public function withLinks(array $links): static
     {
         $this->links = array_merge($this->links, $links);
+
         return $this;
     }
 
@@ -208,6 +211,7 @@ class PlugResourceCollection implements JsonSerializable
     public function additional(array $data): static
     {
         $this->additional = array_merge($this->additional, $data);
+
         return $this;
     }
 
@@ -217,6 +221,7 @@ class PlugResourceCollection implements JsonSerializable
     public function withResponse(\Closure $callback): static
     {
         $this->responseCallback = $callback;
+
         return $this;
     }
 

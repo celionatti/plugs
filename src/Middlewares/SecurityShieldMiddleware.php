@@ -693,10 +693,12 @@ class SecurityShieldMiddleware implements MiddlewareInterface
             $this->blacklistedIps = array_column($blacklist, 'ip');
         } catch (\Exception $e) {
             // Tables might not exist yet or connection failed
-            if ($this->whitelistedIps === null)
+            if ($this->whitelistedIps === null) {
                 $this->whitelistedIps = [];
-            if ($this->blacklistedIps === null)
+            }
+            if ($this->blacklistedIps === null) {
                 $this->blacklistedIps = [];
+            }
         }
     }
 

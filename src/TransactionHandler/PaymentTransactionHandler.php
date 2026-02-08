@@ -80,21 +80,27 @@ class PaymentTransactionHandler
         switch ($this->platform) {
             case self::PLATFORM_PAYSTACK:
                 $this->adapter = new PaystackAdapter($this->config);
+
                 break;
             case self::PLATFORM_STRIPE:
                 $this->adapter = new StripeAdapter($this->config);
+
                 break;
             case self::PLATFORM_PAYPAL:
                 $this->adapter = new PayPalAdapter();
+
                 break;
             case self::PLATFORM_FLUTTERWAVE:
                 $this->adapter = new FlutterwaveAdapter($this->config);
+
                 break;
             case self::PLATFORM_PAYONEER:
                 $this->adapter = new PayoneerAdapter();
+
                 break;
             case self::PLATFORM_BTCPAY:
                 $this->adapter = new BTCPayAdapter($this->config);
+
                 break;
             default:
                 throw new Exception("Unsupported platform: {$this->platform}");
@@ -106,48 +112,56 @@ class PaymentTransactionHandler
     public function amount(float $amount): self
     {
         $this->amount = $amount;
+
         return $this;
     }
 
     public function currency(string $currency): self
     {
         $this->currency = strtoupper($currency);
+
         return $this;
     }
 
     public function email(string $email): self
     {
         $this->email = $email;
+
         return $this;
     }
 
     public function reference(string $reference): self
     {
         $this->reference = $reference;
+
         return $this;
     }
 
     public function metadata(array $metadata): self
     {
         $this->metadata = $metadata;
+
         return $this;
     }
 
     public function callback(string $url): self
     {
         $this->callbackUrl = $url;
+
         return $this;
     }
 
     public function description(string $description): self
     {
         $this->description = $description;
+
         return $this;
     }
 
     public function with(array $data): self
     {
         $this->extraData = array_merge($this->extraData, $data);
+
         return $this;
     }
 
@@ -175,7 +189,7 @@ class PaymentTransactionHandler
 
         $this->logInfo("Initiating payment of {$payload['amount']} {$payload['currency']} for {$payload['email']}", [
             'reference' => $payload['reference'],
-            'platform' => $this->platform
+            'platform' => $this->platform,
         ]);
 
         try {
@@ -188,6 +202,7 @@ class PaymentTransactionHandler
             return $transactionResult;
         } catch (Exception $e) {
             $this->logError("Payment failed: " . $e->getMessage(), ['payload' => $payload]);
+
             return TransactionResult::failed($e->getMessage(), self::TYPE_ONE_TIME, $this->platform);
         }
     }
@@ -211,9 +226,11 @@ class PaymentTransactionHandler
 
         try {
             $result = $this->adapter->createSubscription($payload);
+
             return TransactionResult::success($result, self::TYPE_SUBSCRIPTION, $this->platform);
         } catch (Exception $e) {
             $this->logError("Subscription failed: " . $e->getMessage(), ['payload' => $payload]);
+
             return TransactionResult::failed($e->getMessage(), self::TYPE_SUBSCRIPTION, $this->platform);
         }
     }
@@ -228,6 +245,7 @@ class PaymentTransactionHandler
     {
         try {
             $result = $this->adapter->cancelSubscription($subscriptionId);
+
             return TransactionResult::success($result, self::TYPE_SUBSCRIPTION, $this->platform);
         } catch (Exception $e) {
             return TransactionResult::failed($e->getMessage(), self::TYPE_SUBSCRIPTION, $this->platform);
@@ -253,6 +271,7 @@ class PaymentTransactionHandler
 
         try {
             $result = $this->adapter->transfer($payload);
+
             return TransactionResult::success($result, self::TYPE_TRANSFER, $this->platform);
         } catch (Exception $e) {
             return TransactionResult::failed($e->getMessage(), self::TYPE_TRANSFER, $this->platform);
@@ -277,6 +296,7 @@ class PaymentTransactionHandler
 
         try {
             $result = $this->adapter->withdraw($payload);
+
             return TransactionResult::success($result, self::TYPE_WITHDRAWAL, $this->platform);
         } catch (Exception $e) {
             return TransactionResult::failed($e->getMessage(), self::TYPE_WITHDRAWAL, $this->platform);
@@ -295,6 +315,7 @@ class PaymentTransactionHandler
 
         try {
             $result = $this->adapter->refund($data);
+
             return TransactionResult::success($result, self::TYPE_REFUND, $this->platform);
         } catch (Exception $e) {
             return TransactionResult::failed($e->getMessage(), self::TYPE_REFUND, $this->platform);
@@ -311,6 +332,7 @@ class PaymentTransactionHandler
     {
         try {
             $result = $this->adapter->verify($reference);
+
             return TransactionResult::success($result, 'verify', $this->platform);
         } catch (Exception $e) {
             return TransactionResult::failed($e->getMessage(), 'verify', $this->platform);
@@ -379,6 +401,7 @@ class PaymentTransactionHandler
             return TransactionResult::success($result, 'webhook', $this->platform);
         } catch (Exception $e) {
             $this->logError("Webhook processing failed: " . $e->getMessage());
+
             return TransactionResult::failed($e->getMessage(), 'webhook', $this->platform);
         }
     }

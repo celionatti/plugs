@@ -6,7 +6,7 @@ namespace Plugs\Event;
 
 /**
  * AsyncEventInterface
- * 
+ *
  * Events implementing this interface will be dispatched asynchronously
  * if the dispatcher supports it.
  */

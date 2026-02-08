@@ -26,6 +26,7 @@ class MigrateResetCommand extends Command
         $this->critical('CAUTION: This will rollback ALL migrations and delete ALL data!');
         if (!$this->confirm('Are you sure you want to proceed?', false)) {
             $this->warning('Operation cancelled.');
+
             return 0;
         }
 
@@ -43,6 +44,7 @@ class MigrateResetCommand extends Command
             if (empty($result['migrations'])) {
                 $this->newLine();
                 $this->note($result['message'] ?? 'No migrations found to reset.');
+
                 return 0;
             }
 
@@ -64,6 +66,7 @@ class MigrateResetCommand extends Command
             return 0;
         } catch (\Exception $e) {
             $this->error("Reset failed: " . $e->getMessage());
+
             return 1;
         }
     }

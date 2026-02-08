@@ -10,9 +10,9 @@ use Plugs\Console\Support\Str;
 
 /**
  * MakeSeederCommand
- * 
+ *
  * Generate a new seeder class.
- * 
+ *
  * @package Plugs\Console\Commands
  */
 class MakeSeederCommand extends Command
@@ -57,11 +57,13 @@ class MakeSeederCommand extends Command
 
         if (Filesystem::exists($path) && !$this->isForce()) {
             $this->error("Seeder [{$name}] already exists!");
+
             return 1;
         }
 
         if (!$this->confirm('Proceed with generation?', true)) {
             $this->warning('Seeder generation cancelled.');
+
             return 0;
         }
 

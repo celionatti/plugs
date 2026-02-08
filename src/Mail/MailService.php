@@ -24,6 +24,7 @@ class MailService
     private Mailer $mailer;
     private string $fromEmail;
     private string $fromName;
+
     public function __construct(array $config)
     {
 

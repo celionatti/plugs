@@ -6,7 +6,7 @@ namespace Plugs\Database\Contracts;
 
 /**
  * CastsAttributes
- * 
+ *
  * Interface for custom model cast classes.
  */
 interface CastsAttributes

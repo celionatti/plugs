@@ -169,7 +169,7 @@ class Pagination implements \IteratorAggregate, \Countable, \ArrayAccess, \JsonS
 
     /**
      * Append CSS classes to specific elements
-     * 
+     *
      * @param array $classes Mapping of key to class string (e.g. ['container_class' => 'my-custom-class'])
      */
     public function addClasses(array $classes): self
@@ -199,6 +199,7 @@ class Pagination implements \IteratorAggregate, \Countable, \ArrayAccess, \JsonS
     public function setPresenter(callable $presenter): self
     {
         $this->presenter = $presenter;
+
         return $this;
     }
 
@@ -296,7 +297,6 @@ class Pagination implements \IteratorAggregate, \Countable, \ArrayAccess, \JsonS
         return $this->hasNextPage() ? $this->url($this->nextPage()) : null;
     }
 
-
     /**
      * Get page range with ellipsis support
      */
@@ -352,8 +352,10 @@ class Pagination implements \IteratorAggregate, \Countable, \ArrayAccess, \JsonS
     {
         if (isset($_SERVER['PHP_SELF']) && strpos($_SERVER['PHP_SELF'], 'index.php') !== false) {
             $path = $_SERVER['REQUEST_URI'] ?? '/';
+
             return strtok($path, '?');
         }
+
         return strtok($_SERVER['REQUEST_URI'] ?? '/', '?');
     }
 
@@ -425,7 +427,7 @@ class Pagination implements \IteratorAggregate, \Countable, \ArrayAccess, \JsonS
         if ($view) {
             return view($view, array_merge([
                 'paginator' => $this,
-                'elements' => $this->elements()
+                'elements' => $this->elements(),
             ], $data));
         }
 
@@ -447,7 +449,7 @@ class Pagination implements \IteratorAggregate, \Countable, \ArrayAccess, \JsonS
             'type' => 'page',
             'page' => 1,
             'url' => $this->url(1),
-            'is_active' => $this->currentPage === 1
+            'is_active' => $this->currentPage === 1,
         ];
 
         if ($range['show_first_ellipsis']) {
@@ -459,7 +461,7 @@ class Pagination implements \IteratorAggregate, \Countable, \ArrayAccess, \JsonS
                 'type' => 'page',
                 'page' => $page,
                 'url' => $this->url($page),
-                'is_active' => $this->currentPage === $page
+                'is_active' => $this->currentPage === $page,
             ];
         }
 
@@ -472,7 +474,7 @@ class Pagination implements \IteratorAggregate, \Countable, \ArrayAccess, \JsonS
                 'type' => 'page',
                 'page' => $this->lastPage,
                 'url' => $this->url($this->lastPage),
-                'is_active' => $this->currentPage === $this->lastPage
+                'is_active' => $this->currentPage === $this->lastPage,
             ];
         }
 
@@ -539,7 +541,6 @@ class Pagination implements \IteratorAggregate, \Countable, \ArrayAccess, \JsonS
 
         return $html;
     }
-
 
     /**
      * Render pagination with ellipsis (1 ... 5 6 7 ... 20)
@@ -705,6 +706,7 @@ class Pagination implements \IteratorAggregate, \Countable, \ArrayAccess, \JsonS
     protected function renderPageLink(int $page, ?string $text = null): string
     {
         $text = $text ?? (string) $page;
+
         return sprintf(
             '<li class="%s"><a href="%s" class="%s" aria-label="Page %d">%s</a></li>',
             $this->options['item_class'],
@@ -803,7 +805,6 @@ class Pagination implements \IteratorAggregate, \Countable, \ArrayAccess, \JsonS
         );
     }
 
-
     /**
      * Render JSON-LD metadata for search engines
      */
@@ -822,7 +823,7 @@ class Pagination implements \IteratorAggregate, \Countable, \ArrayAccess, \JsonS
                 'itemsPerPage' => $this->perPage,
                 'currentPage' => $this->currentPage,
                 'totalPages' => $this->lastPage,
-            ]
+            ],
         ];
 
         // Add typical list items if data available
@@ -862,12 +863,16 @@ class Pagination implements \IteratorAggregate, \Countable, \ArrayAccess, \JsonS
     protected function getThemeClasses(): string
     {
         $classes = 'plugs-theme-' . $this->options['theme'];
-        if ($this->options['rounded'])
+        if ($this->options['rounded']) {
             $classes .= ' plugs-rounded';
-        if ($this->options['shadow'])
+        }
+        if ($this->options['shadow']) {
             $classes .= ' plugs-shadow';
-        if ($this->options['animated'])
+        }
+        if ($this->options['animated']) {
             $classes .= ' plugs-animated';
+        }
+
         return $classes;
     }
 
@@ -1063,7 +1068,6 @@ document.addEventListener('DOMContentLoaded', function() {
 JS;
     }
 
-
     /**
      * Convert to array
      */
@@ -1129,12 +1133,14 @@ JS;
     public function offsetExists($offset): bool
     {
         $array = $this->toArray();
+
         return array_key_exists($offset, $array);
     }
 
     public function offsetGet($offset): mixed
     {
         $array = $this->toArray();
+
         return $array[$offset] ?? null;
     }
 

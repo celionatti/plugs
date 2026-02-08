@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace Plugs\Console\Commands;
 
 use Plugs\Console\Command;
-use Plugs\Console\Support\Filesystem;
 
 class MakePdfTemplateCommand extends Command
 {
@@ -32,6 +31,7 @@ class MakePdfTemplateCommand extends Command
 
         if (!isset($this->templates[$type])) {
             $this->error("Template [{$type}] not found.");
+
             return 1;
         }
 
@@ -45,6 +45,7 @@ class MakePdfTemplateCommand extends Command
         if (file_exists($path)) {
             if (!$this->confirm("Template [{$type}] already exists. Overwrite?")) {
                 $this->warning("Skipped.");
+
                 return 0;
             }
         }
@@ -53,6 +54,7 @@ class MakePdfTemplateCommand extends Command
 
         if ($content === null) {
             $this->error("Could not load template source for [{$type}].");
+
             return 1;
         }
 

@@ -8,9 +8,9 @@ use DateTime;
 
 /**
  * Faker
- * 
+ *
  * A lightweight, zero-dependency fake data generator for Plugs.
- * 
+ *
  * @package Plugs\Database\Factory
  */
 class Faker
@@ -65,7 +65,7 @@ class Faker
         'George',
         'Deborah',
         'Edward',
-        'Stephanie'
+        'Stephanie',
     ];
     private static array $lastNames = [
         'Smith',
@@ -117,7 +117,7 @@ class Faker
         'Hall',
         'Rivera',
         'Campbell',
-        'Mitchell'
+        'Mitchell',
     ];
     private static array $cities = [
         'New York',
@@ -154,7 +154,7 @@ class Faker
         'Beijing',
         'Sydney',
         'Toronto',
-        'Dubai'
+        'Dubai',
     ];
     private static array $countries = [
         'United States',
@@ -176,7 +176,7 @@ class Faker
         'Netherlands',
         'Sweden',
         'Switzerland',
-        'Singapore'
+        'Singapore',
     ];
     private static array $domains = ['example.com', 'test.org', 'sample.net', 'demo.io', 'plugs.dev', 'dummy.com', 'fake.net', 'celio.io'];
     private static array $words = [
@@ -577,7 +577,7 @@ class Faker
         'travel',
         'wood',
         'fire',
-        'upon'
+        'upon',
     ];
     private static array $companies = ['Google', 'Microsoft', 'Apple', 'Meta', 'Amazon', 'Antigravity', 'Celionatti', 'Innovate', 'Pixel', 'Vertex', 'Cyberdyne', 'Umbrella', 'Stark', 'Wayne', 'Oscorp', 'Aperture', 'Hooli', 'Pied Piper'];
     private static array $companySuffixes = ['Inc', 'Corp', 'LLC', 'Group', 'Solutions', 'Tech', 'Ventures', 'Associates', 'International', 'Limited'];
@@ -595,6 +595,7 @@ class Faker
     public function unique(): static
     {
         $this->useUnique = true;
+
         return $this;
     }
 
@@ -725,7 +726,7 @@ class Faker
 
     /**
      * Generate random words
-     * 
+     *
      * @param int $count Number of words to generate
      * @param bool $asText Whether to return as a space-separated string
      * @return array|string
@@ -747,6 +748,7 @@ class Faker
     {
         $words = $this->words($wordCount);
         $sentence = implode(' ', $words);
+
         return ucfirst($sentence) . '.';
     }
 
@@ -785,6 +787,7 @@ class Faker
     public function randomFloat(int $decimals = 2, float $min = 0, float $max = 100): float
     {
         $scale = pow(10, $decimals);
+
         return rand((int) ($min * $scale), (int) ($max * $scale)) / $scale;
     }
 
@@ -802,6 +805,7 @@ class Faker
     public function date(string $format = 'Y-m-d'): string
     {
         $timestamp = rand(1, time());
+
         return date($format, $timestamp);
     }
 
@@ -811,6 +815,7 @@ class Faker
     public function dateTime(string $format = 'Y-m-d H:i:s'): string
     {
         $timestamp = rand(1, time());
+
         return date($format, $timestamp);
     }
 
@@ -880,9 +885,9 @@ class Faker
     public function userName(): string
     {
         $formats = [
-            fn() => strtolower($this->firstName()) . rand(1, 999),
-            fn() => strtolower($this->firstName()) . '.' . strtolower($this->lastName()),
-            fn() => strtolower($this->firstName()) . '_' . strtolower($this->lastName()),
+            fn () => strtolower($this->firstName()) . rand(1, 999),
+            fn () => strtolower($this->firstName()) . '.' . strtolower($this->lastName()),
+            fn () => strtolower($this->firstName()) . '_' . strtolower($this->lastName()),
         ];
 
         return $this->randomElement($formats)();
@@ -932,6 +937,7 @@ class Faker
         for ($i = 0; $i < $count; $i++) {
             $html .= '<p>' . $this->paragraph(rand(2, 5)) . '</p>';
         }
+
         return $html;
     }
 
@@ -968,6 +974,7 @@ class Faker
         for ($i = 0; $i < 8; $i++) {
             $res[] = dechex(mt_rand(0, 65535));
         }
+
         return implode(':', $res);
     }
 
@@ -980,6 +987,7 @@ class Faker
         for ($i = 0; $i < 6; $i++) {
             $res[] = str_pad(dechex(mt_rand(0, 255)), 2, '0', STR_PAD_LEFT);
         }
+
         return strtoupper(implode(':', $res));
     }
 
@@ -993,8 +1001,9 @@ class Faker
             'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
             'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
             'Mozilla/5.0 (iPhone; CPU iPhone OS 14_6 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/14.1.1 Mobile/15E148 Safari/604.1',
-            'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:89.0) Gecko/20100101 Firefox/89.0'
+            'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:89.0) Gecko/20100101 Firefox/89.0',
         ];
+
         return $this->randomElement($agents);
     }
 
@@ -1004,7 +1013,7 @@ class Faker
     public function password(int $length = 12): string
     {
         $chars = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*()-_=+';
+
         return substr(str_shuffle($chars), 0, $length);
     }
-
 }

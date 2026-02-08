@@ -16,7 +16,6 @@ namespace Plugs\Http;
 
 use Plugs\Http\Message\Response;
 use Plugs\Http\Message\Stream;
-use Plugs\Http\RedirectResponse;
 use Psr\Http\Message\ResponseInterface;
 
 class ResponseFactory

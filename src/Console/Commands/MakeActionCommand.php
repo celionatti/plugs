@@ -85,6 +85,7 @@ class MakeActionCommand extends Command
         if (Filesystem::exists($path) && !$options['force']) {
             if (!$this->confirm("Action {$name} already exists. Overwrite?", false)) {
                 $this->warning('Action generation cancelled.');
+
                 return 0;
             }
         }

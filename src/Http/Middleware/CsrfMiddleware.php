@@ -42,7 +42,6 @@ namespace Plugs\Http\Middleware;
 * @package Plugs\Http\Middleware
 */
 
-use Plugs\Http\ResponseFactory;
 use Plugs\Security\Csrf;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;

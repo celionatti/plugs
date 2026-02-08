@@ -43,6 +43,7 @@ class MakeMigrationCommand extends Command
         if (Filesystem::exists($path) && !$this->isForce()) {
             if (!$this->confirm("Migration already exists at {$path}. Overwrite?", false)) {
                 $this->warning('Migration generation cancelled.');
+
                 return 0;
             }
         }

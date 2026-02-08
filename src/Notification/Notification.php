@@ -6,7 +6,7 @@ namespace Plugs\Notification;
 
 /**
  * Class Notification
- * 
+ *
  * Base class for all application notifications.
  */
 abstract class Notification
@@ -35,6 +35,7 @@ abstract class Notification
     public function withId(string $id): self
     {
         $this->id = $id;
+
         return $this;
     }
 }

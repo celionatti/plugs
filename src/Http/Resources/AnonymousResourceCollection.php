@@ -8,10 +8,10 @@ use Plugs\Database\Collection;
 
 /**
  * AnonymousResourceCollection
- * 
+ *
  * A resource collection used when calling PlugResource::collection().
  * Allows creating collections without a dedicated collection class.
- * 
+ *
  * @package Plugs\Http\Resources
  */
 class AnonymousResourceCollection extends PlugResourceCollection

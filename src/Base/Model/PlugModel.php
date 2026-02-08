@@ -13,17 +13,17 @@ use Plugs\Database\Connection;
 use Plugs\Database\Traits\HasAttributes;
 use Plugs\Database\Traits\HasConnection;
 use Plugs\Database\Traits\HasEvents;
+use Plugs\Database\Traits\HasFactory;
 use Plugs\Database\Traits\HasQueryBuilder;
 use Plugs\Database\Traits\HasRelationships;
 use Plugs\Database\Traits\HasTimestamps;
 use Plugs\Database\Traits\HasValidation;
 use Plugs\Database\Traits\Searchable;
 use Plugs\Database\Traits\SoftDeletes;
-use Plugs\Database\Traits\HasFactory;
 
 /**
  * PlugModel
- * 
+ *
  * @method mixed getAttribute(string $key)
  * @method void setAttribute(string $key, mixed $value)
  * @phpstan-consistent-constructor
@@ -496,6 +496,7 @@ abstract class PlugModel
         $scopeMethod = 'scope' . ucfirst($method);
         if (method_exists($this, $scopeMethod)) {
             array_unshift($parameters, $this->newQuery());
+
             return call_user_func_array([$this, $scopeMethod], $parameters);
         }
 
@@ -532,7 +533,7 @@ abstract class PlugModel
 
     /**
      * Convert the model to an API resource
-     * 
+     *
      * @param string|null $resourceClass The resource class to use (auto-detected if null)
      * @return \Plugs\Http\Resources\PlugResource
      */

@@ -6,7 +6,7 @@ namespace Plugs\Event;
 
 /**
  * Class Event
- * 
+ *
  * Base class for all application events.
  */
 abstract class Event

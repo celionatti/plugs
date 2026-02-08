@@ -24,7 +24,6 @@ namespace Plugs\Router;
 use Plugs\Base\Page;
 use RecursiveDirectoryIterator;
 use RecursiveIteratorIterator;
-use RuntimeException;
 
 class PageRouter
 {

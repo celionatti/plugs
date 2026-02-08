@@ -294,19 +294,20 @@ class View
 
     /**
      * Add headers to the response
-     * 
+     *
      * @param array $headers Key-value pairs of headers
      * @return self Fluent interface
      */
     public function withHeaders(array $headers): self
     {
         $this->headers = array_merge($this->headers, $headers);
+
         return $this;
     }
 
     /**
      * Add a single header to the response
-     * 
+     *
      * @param string $name Header name
      * @param string $value Header value
      * @return self Fluent interface
@@ -314,24 +315,26 @@ class View
     public function withHeader(string $name, string $value): self
     {
         $this->headers[$name] = $value;
+
         return $this;
     }
 
     /**
      * Set the HTTP status code
-     * 
+     *
      * @param int $code HTTP status code
      * @return self Fluent interface
      */
     public function withStatus(int $code): self
     {
         $this->statusCode = $code;
+
         return $this;
     }
 
     /**
      * Get the configured headers
-     * 
+     *
      * @return array
      */
     public function getHeaders(): array
@@ -341,7 +344,7 @@ class View
 
     /**
      * Get the configured status code
-     * 
+     *
      * @return int
      */
     public function getStatusCode(): int
@@ -351,7 +354,7 @@ class View
 
     /**
      * Send the response to the browser
-     * 
+     *
      * @return void
      */
     public function send(): void
@@ -376,7 +379,7 @@ class View
 
     /**
      * Render only a specific section/fragment from the view
-     * 
+     *
      * @param string $section Section name to render
      * @return string Rendered section content
      */
@@ -387,7 +390,7 @@ class View
 
     /**
      * Exclude sections from rendering
-     * 
+     *
      * @param string|array $sections Section name(s) to exclude
      * @return self Fluent interface
      */
@@ -396,13 +399,14 @@ class View
         $sections = is_array($sections) ? $sections : [$sections];
         $this->excludedSections = array_merge($this->excludedSections, $sections);
         $this->data['__excludedSections'] = $this->excludedSections;
+
         return $this;
     }
 
     /**
      * Get a specific fragment from the view
      * Alias for renderOnly for HTMX/Turbo usage
-     * 
+     *
      * @param string $name Fragment name
      * @return string Fragment content
      */
@@ -414,7 +418,7 @@ class View
     /**
      * Render the view smartly based on request type
      * Uses HTMX/Turbo headers to determine partial vs full rendering
-     * 
+     *
      * @return string Rendered content
      */
     public function renderSmart(): string
@@ -428,7 +432,7 @@ class View
 
     /**
      * Dump view data and die
-     * 
+     *
      * @return never
      */
     public function dd(): never
@@ -439,7 +443,7 @@ class View
 
     /**
      * Dump view data for debugging
-     * 
+     *
      * @return self Fluent interface
      */
     public function dump(): self
@@ -466,7 +470,7 @@ class View
 
     /**
      * Get debug information as array
-     * 
+     *
      * @return array Debug info
      */
     public function debug(): array
@@ -483,7 +487,7 @@ class View
 
     /**
      * Convert view to JSON for AJAX/API responses
-     * 
+     *
      * @return string JSON encoded data
      */
     public function toJson(): string
@@ -497,7 +501,7 @@ class View
     /**
      * Create a response for HTMX requests
      * Includes rendered HTML and any configured headers
-     * 
+     *
      * @return void
      */
     public function htmxResponse(): void
@@ -511,4 +515,3 @@ class View
         $this->send();
     }
 }
-

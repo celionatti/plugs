@@ -26,6 +26,7 @@ class StorageLinkCommand extends Command
         if (file_exists($link)) {
             $this->error('The "public/storage" link already exists.');
             $this->checkpoint('finished');
+
             return 1;
         }
 

@@ -12,10 +12,10 @@ use Plugs\Utils\Str;
 
 /**
  * PlugResource
- * 
+ *
  * Base class for API resources that transform models/data for API responses.
  * Inspired by Laravel's API Resources with unique Plugs enhancements.
- * 
+ *
  * @package Plugs\Http\Resources
  * @phpstan-consistent-constructor
  */
@@ -90,7 +90,7 @@ abstract class PlugResource implements JsonSerializable
 
     /**
      * Conditionally include a value
-     * 
+     *
      * @param bool|callable $condition The condition to evaluate
      * @param mixed $value The value if condition is true (can be callable)
      * @param mixed $default The default value if condition is false
@@ -113,7 +113,7 @@ abstract class PlugResource implements JsonSerializable
 
     /**
      * Conditionally include a relationship when it's loaded
-     * 
+     *
      * @param string $relationship The relationship name
      * @param mixed $value Optional value/transformation (defaults to relationship data)
      * @param mixed $default Default value if not loaded
@@ -133,6 +133,7 @@ abstract class PlugResource implements JsonSerializable
             if (func_num_args() >= 3) {
                 return is_callable($default) ? $default() : $default;
             }
+
             return new MissingValue();
         }
 
@@ -170,7 +171,7 @@ abstract class PlugResource implements JsonSerializable
 
     /**
      * Conditionally include an attribute when it exists on the resource
-     * 
+     *
      * @param string $attribute The attribute name
      * @param mixed $value Optional value/transformation (defaults to attribute value)
      * @param mixed $default Default value if attribute doesn't exist
@@ -190,11 +191,13 @@ abstract class PlugResource implements JsonSerializable
             if (func_num_args() >= 3) {
                 return is_callable($default) ? $default() : $default;
             }
+
             return new MissingValue();
         }
 
         if (func_num_args() >= 2 && $value !== null) {
             $attrValue = $this->__get($attribute);
+
             return is_callable($value) ? $value($attrValue) : $value;
         }
 
@@ -203,7 +206,7 @@ abstract class PlugResource implements JsonSerializable
 
     /**
      * Conditionally include a relationship count
-     * 
+     *
      * @param string $relationship The relationship name
      * @param mixed $value Optional value/transformation
      * @param mixed $default Default value if count is missing
@@ -218,7 +221,7 @@ abstract class PlugResource implements JsonSerializable
 
     /**
      * Conditionally merge an array of values
-     * 
+     *
      * @param bool|callable $condition The condition to evaluate
      * @param array|callable $values The values to merge
      * @return array|MissingValue
@@ -248,6 +251,7 @@ abstract class PlugResource implements JsonSerializable
     public function additional(array $data): static
     {
         $this->additional = array_merge($this->additional, $data);
+
         return $this;
     }
 
@@ -257,6 +261,7 @@ abstract class PlugResource implements JsonSerializable
     public function withResponse(\Closure $callback): static
     {
         $this->responseCallback = $callback;
+
         return $this;
     }
 

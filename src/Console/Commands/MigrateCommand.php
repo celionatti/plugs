@@ -38,6 +38,7 @@ class MigrateCommand extends Command
 
             if (!$this->confirm('Run pending migrations?', true)) {
                 $this->warning('Migration execution cancelled.');
+
                 return 0;
             }
 
@@ -51,6 +52,7 @@ class MigrateCommand extends Command
             if (empty($result['migrations'])) {
                 $this->newLine();
                 $this->note($result['message']);
+
                 return 0;
             }
 
@@ -73,6 +75,7 @@ class MigrateCommand extends Command
             return 0;
         } catch (\Exception $e) {
             $this->error("Migration failed: " . $e->getMessage());
+
             return 1;
         }
     }

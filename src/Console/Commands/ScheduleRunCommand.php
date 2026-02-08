@@ -32,6 +32,7 @@ class ScheduleRunCommand extends Command
         if (count($dueEvents) === 0) {
             $this->info('No scheduled commands are due at this time.');
             $this->checkpoint('finished');
+
             return 0;
         }
 

@@ -225,7 +225,7 @@ class QueryBuilder
             'type' => 'Raw',
             'sql' => "EXISTS ({$sql})",
             'boolean' => $boolean,
-            'params' => $subQuery->getParams()
+            'params' => $subQuery->getParams(),
         ];
 
         $this->params = array_merge($this->params, $subQuery->getParams());
@@ -349,7 +349,7 @@ class QueryBuilder
         $results = $this->connection->fetchAll($sql, $this->params);
 
         if ($this->model && !empty($results)) {
-            $models = array_map(fn($item) => new $this->model($item, true), $results);
+            $models = array_map(fn ($item) => new $this->model($item, true), $results);
 
             if (!empty($this->with)) {
                 $collection = new Collection($models);
@@ -565,6 +565,7 @@ class QueryBuilder
 
             if (method_exists($instance, $scopeMethod)) {
                 array_unshift($parameters, $this);
+
                 return $instance->$scopeMethod(...$parameters);
             }
         }

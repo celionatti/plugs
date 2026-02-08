@@ -33,6 +33,7 @@ class Pdf
     {
         $this->html = $this->view->render($view, $data);
         $this->dompdf->loadHtml($this->html);
+
         return $this;
     }
 
@@ -43,6 +44,7 @@ class Pdf
     {
         $this->html = $html;
         $this->dompdf->loadHtml($this->html);
+
         return $this;
     }
 
@@ -52,6 +54,7 @@ class Pdf
     public function setPaper(string $paper, string $orientation = 'portrait'): self
     {
         $this->dompdf->setPaper($paper, $orientation);
+
         return $this;
     }
 
@@ -99,6 +102,7 @@ class Pdf
         if (!$this->dompdf->getCanvas()) {
             $this->render();
         }
+
         return $this->dompdf->output() ?: '';
     }
 

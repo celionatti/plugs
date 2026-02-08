@@ -224,10 +224,9 @@ trait HasQueryBuilder
         return static::count() > 0;
     }
 
-
     /**
      * Paginate results (Production Ready)
-     * 
+     *
      * @return Pagination
      */
     public static function paginate(int $perPage = 15, ?int $page = null, array $columns = ['*']): Pagination
@@ -238,7 +237,6 @@ trait HasQueryBuilder
         return static::query()->paginate($perPage, $page, $columns);
     }
 
-
     /**
      * Paginate results and return a Pagination object
      *
@@ -248,7 +246,6 @@ trait HasQueryBuilder
     {
         return static::paginate($perPage, $page, $columns);
     }
-
 
     /**
      * Get paginated results as a standardized API response.
@@ -318,9 +315,11 @@ trait HasQueryBuilder
         unset($queryParams['page']);
 
         $buildUrl = function ($p) use ($baseUrl, $queryParams) {
-            if (!$p)
+            if (!$p) {
                 return null;
+            }
             $params = array_merge($queryParams, ['page' => $p]);
+
             return $baseUrl . '?' . http_build_query($params);
         };
 
@@ -337,7 +336,7 @@ trait HasQueryBuilder
             'links' => [
                 'next' => $hasMore ? $buildUrl($page + 1) : null,
                 'prev' => $page > 1 ? $buildUrl($page - 1) : null,
-            ]
+            ],
         ];
     }
 
@@ -405,7 +404,6 @@ trait HasQueryBuilder
         return $query;
     }
 
-
     /**
      * Search and paginate with request parameters
      *
@@ -426,11 +424,10 @@ trait HasQueryBuilder
         $query = static::filter($params);
 
         $paginator = $query->paginate($perPage, $page);
-        $paginator->appends(array_filter($params, fn($k) => !in_array($k, ['page', 'per_page']), ARRAY_FILTER_USE_KEY));
+        $paginator->appends(array_filter($params, fn ($k) => !in_array($k, ['page', 'per_page']), ARRAY_FILTER_USE_KEY));
 
         return $paginator;
     }
-
 
     /**
      * Search and paginate results as a standardized API response.
@@ -450,7 +447,7 @@ trait HasQueryBuilder
             'to' => $paginated['to'],
             'path' => $paginated['path'],
             // specific to search, filters might be needed, but Pagination object doesn't carry them explicitly in toArray usually unless added
-            // Pagination has 'filters' only if we added it? 
+            // Pagination has 'filters' only if we added it?
             // In Model::search and HasQueryBuilder::search, I added $paginator->appends(...)
             // Pagination appends to query string, but does it put it in toArray?
             // Pagination::toArray() does NOT include 'filters' key.

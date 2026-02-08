@@ -5,21 +5,21 @@ declare(strict_types=1);
 namespace Plugs\Concurrency;
 
 use Fiber;
-use Throwable;
 use GuzzleHttp\Promise\Utils;
+use Throwable;
 
 /**
  * FiberManager
- * 
+ *
  * A simple scheduler for managing PHP Fibers.
- * This allows for cooperative multitasking, primarily useful for 
+ * This allows for cooperative multitasking, primarily useful for
  * parallelizing I/O operations like HTTP requests.
  */
 class FiberManager
 {
     /**
      * Start a new fiber.
-     * 
+     *
      * @param callable $callback
      * @param mixed ...$args
      * @return void
@@ -37,7 +37,7 @@ class FiberManager
 
     /**
      * Run multiple tasks concurrently and wait for all to complete.
-     * 
+     *
      * @param callable[] $tasks An array of callables strictly returning Promises or values.
      * @return array The results keyed by the input array keys.
      */

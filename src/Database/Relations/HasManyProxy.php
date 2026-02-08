@@ -5,8 +5,8 @@ declare(strict_types=1);
 namespace Plugs\Database\Relations;
 
 use Plugs\Base\Model\PlugModel;
-use Plugs\Database\QueryBuilder;
 use Plugs\Database\Collection;
+use Plugs\Database\QueryBuilder;
 
 class HasManyProxy
 {
@@ -33,6 +33,7 @@ class HasManyProxy
         $attributes[$this->foreignKey] = $this->parent->getAttribute($this->localKey);
 
         $relatedModel = $this->builder->getModel();
+
         return $relatedModel::create($attributes);
     }
 
@@ -42,12 +43,14 @@ class HasManyProxy
         foreach ($records as $record) {
             $instances[] = $this->create($record);
         }
+
         return new Collection($instances);
     }
 
     public function save(PlugModel $model)
     {
         $model->setAttribute($this->foreignKey, $this->parent->getAttribute($this->localKey));
+
         return $model->save();
     }
 

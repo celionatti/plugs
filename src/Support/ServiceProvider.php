@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Plugs\Support;
 
 use Plugs\Container\Container;
+
 abstract class ServiceProvider
 {
     /**

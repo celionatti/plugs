@@ -25,6 +25,7 @@ class MakeNotificationCommand extends Command
 
         if (Filesystem::exists($path) && !$this->confirm('File already exists. Overwrite?', false)) {
             $this->warning('Operation cancelled');
+
             return 0;
         }
 

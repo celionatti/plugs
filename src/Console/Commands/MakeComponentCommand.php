@@ -11,7 +11,6 @@ namespace Plugs\Console\Commands;
 */
 
 use Plugs\Console\Command;
-use Plugs\Console\Support\Filesystem;
 use Plugs\Console\Support\Str;
 
 class MakeComponentCommand extends Command
@@ -70,6 +69,7 @@ class MakeComponentCommand extends Command
         if (file_exists($viewPath) && !$force) {
             if (!$this->confirm("View for {$viewName} already exists. Overwrite?", false)) {
                 $this->warning("View generation skipped.");
+
                 return;
             }
         }
@@ -91,6 +91,7 @@ class MakeComponentCommand extends Command
         if (file_exists($classPath) && !$force) {
             if (!$this->confirm("Class for {$className} already exists. Overwrite?", false)) {
                 $this->warning("Class generation skipped.");
+
                 return;
             }
         }
@@ -104,6 +105,7 @@ class MakeComponentCommand extends Command
         if (file_exists($viewPath) && !$force) {
             if (!$this->confirm("View for {$viewName} already exists. Overwrite?", false)) {
                 $this->warning("View generation skipped.");
+
                 return;
             }
         }

@@ -80,6 +80,7 @@ class ValidationException extends PlugsException
     public function redirectTo(string $url): static
     {
         $this->redirectTo = $url;
+
         return $this;
     }
 

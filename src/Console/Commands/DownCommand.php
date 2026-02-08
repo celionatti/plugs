@@ -22,16 +22,19 @@ class DownCommand extends Command
 
         $this->section('Configuration');
         $this->keyValue('Status', 'Down (Maintenance)');
-        if ($message)
+        if ($message) {
             $this->keyValue('Message', (string) $message);
+        }
         $this->keyValue('Retry After', (string) $retry . ' seconds');
-        if ($secret)
+        if ($secret) {
             $this->keyValue('Bypass Secret', (string) $secret);
+        }
         $this->newLine();
 
         if ($this->isProduction() && !$this->isForce()) {
             if (!$this->confirm('Application is in PRODUCTION. Are you sure you want to take it down?', false)) {
                 $this->warning('Maintenance mode cancelled.');
+
                 return 0;
             }
         }

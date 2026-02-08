@@ -12,13 +12,17 @@ use Plugs\Console\Commands\InspireCommand;
 use Plugs\Console\Commands\MakeActionCommand;
 use Plugs\Console\Commands\MakeApiRequestCommand;
 use Plugs\Console\Commands\MakeCommandCommand;
+use Plugs\Console\Commands\MakeComponentCommand;
 use Plugs\Console\Commands\MakeConnectorCommand;
 use Plugs\Console\Commands\MakeControllerCommand;
 use Plugs\Console\Commands\MakeDTOCommand;
+use Plugs\Console\Commands\MakeEventCommand;
 use Plugs\Console\Commands\MakeFactoryCommand;
+use Plugs\Console\Commands\MakeListenerCommand;
 use Plugs\Console\Commands\MakeMiddlewareCommand;
 use Plugs\Console\Commands\MakeMigrationCommand;
 use Plugs\Console\Commands\MakeModelCommand;
+use Plugs\Console\Commands\MakeNotificationCommand;
 use Plugs\Console\Commands\MakePaginationTemplateCommand;
 use Plugs\Console\Commands\MakePdfTemplateCommand;
 use Plugs\Console\Commands\MakeRepositoryCommand;
@@ -26,6 +30,7 @@ use Plugs\Console\Commands\MakeRequestCommand;
 use Plugs\Console\Commands\MakeResourceCommand;
 use Plugs\Console\Commands\MakeSeederCommand;
 use Plugs\Console\Commands\MakeServiceCommand;
+use Plugs\Console\Commands\MakeSpaAssetCommand;
 use Plugs\Console\Commands\MigrateCommand;
 use Plugs\Console\Commands\MigrateFreshCommand;
 use Plugs\Console\Commands\MigrateResetCommand;
@@ -40,12 +45,6 @@ use Plugs\Console\Commands\RouteTestCommand;
 use Plugs\Console\Commands\SeedCommand;
 use Plugs\Console\Commands\ServeCommand;
 use Plugs\Console\Commands\StorageLinkCommand;
-
-use Plugs\Console\Commands\MakeComponentCommand;
-use Plugs\Console\Commands\MakeEventCommand;
-use Plugs\Console\Commands\MakeListenerCommand;
-use Plugs\Console\Commands\MakeNotificationCommand;
-use Plugs\Console\Commands\MakeSpaAssetCommand;
 
 /*
 |--------------------------------------------------------------------------

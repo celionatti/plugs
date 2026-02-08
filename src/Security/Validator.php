@@ -1101,7 +1101,7 @@ class Validator
             '/data:/i',
             '/<iframe/i',
             '/<object/i',
-            '/<embed/i'
+            '/<embed/i',
         ];
 
         foreach ($dangerousPatterns as $pattern) {
@@ -1361,6 +1361,7 @@ class Validator
         // Check if it's only digits
         if (!ctype_digit($number)) {
             $this->addError($field, 'credit_card');
+
             return;
         }
 
@@ -1455,4 +1456,3 @@ class Validator
         }
     }
 }
-

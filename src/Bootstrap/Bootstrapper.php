@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Plugs\Bootstrap;
 
 use Plugs\Base\Model\PlugModel;
+use Plugs\Container\Container;
 use Plugs\Http\Message\ServerRequest;
 use Plugs\Http\Middleware\CorsMiddleware;
 use Plugs\Http\Middleware\CsrfMiddleware;
@@ -16,7 +17,6 @@ use Plugs\Http\ResponseFactory;
 use Plugs\Middlewares\SecurityShieldMiddleware;
 use Plugs\Plugs;
 use Plugs\Router\Router;
-use Plugs\Container\Container;
 use Plugs\Session\SessionManager;
 use Psr\Http\Message\ServerRequestInterface;
 
@@ -50,18 +50,24 @@ class Bootstrapper
 
     protected function defineConstants(): void
     {
-        if (!defined('BASE_PATH'))
+        if (!defined('BASE_PATH')) {
             define('BASE_PATH', $this->basePath);
-        if (!defined('APP_PATH'))
+        }
+        if (!defined('APP_PATH')) {
             define('APP_PATH', BASE_PATH . 'app/');
-        if (!defined('CONFIG_PATH'))
+        }
+        if (!defined('CONFIG_PATH')) {
             define('CONFIG_PATH', BASE_PATH . 'config/');
-        if (!defined('PUBLIC_PATH'))
+        }
+        if (!defined('PUBLIC_PATH')) {
             define('PUBLIC_PATH', BASE_PATH . 'public/');
-        if (!defined('STORAGE_PATH'))
+        }
+        if (!defined('STORAGE_PATH')) {
             define('STORAGE_PATH', BASE_PATH . 'storage/');
-        if (!defined('VENDOR_PATH'))
+        }
+        if (!defined('VENDOR_PATH')) {
             define('VENDOR_PATH', BASE_PATH . 'vendor/');
+        }
     }
 
     protected function loadEnvironment(): void
@@ -163,8 +169,8 @@ class Bootstrapper
     {
         $router = new Router();
 
-        $this->container->singleton('router', fn() => $router);
-        $this->container->singleton(Router::class, fn() => $router);
+        $this->container->singleton('router', fn () => $router);
+        $this->container->singleton(Router::class, fn () => $router);
         \Plugs\Facades\Route::setFacadeInstance('router', $router);
 
         $this->app->pipe(new RoutingMiddleware($router));
@@ -175,7 +181,7 @@ class Bootstrapper
         $request = ServerRequest::fromGlobals();
 
         // Register request as singleton
-        $this->container->singleton(ServerRequestInterface::class, fn() => $request);
+        $this->container->singleton(ServerRequestInterface::class, fn () => $request);
     }
 
     protected function loadRoutes(): void

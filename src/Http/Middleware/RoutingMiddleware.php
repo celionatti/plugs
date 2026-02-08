@@ -12,7 +12,6 @@ namespace Plugs\Http\Middleware;
 | This middleware handles routing for incoming requests.
 */
 
-use Plugs\Container\Container;
 use Plugs\Router\Router;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;

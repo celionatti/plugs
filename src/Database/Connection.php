@@ -122,6 +122,7 @@ class Connection
 
         while ($attempt < $this->maxRetries) {
             $attempt++;
+
             try {
                 if ($driver === 'sqlite') {
                     $database = $config['database'];
@@ -150,6 +151,7 @@ class Connection
                 if ($e->getCode() === '08004') {
                     $host = is_array($config['host']) ? implode(',', $config['host']) : ($config['host'] ?? 'unknown');
                     $db = $config['database'] ?? 'unknown';
+
                     throw new \Plugs\Exceptions\DatabaseException(
                         "Database connection failed: Too many connections (SQLSTATE 08004) for [{$host}] database [{$db}]",
                         null,
@@ -160,6 +162,7 @@ class Connection
 
                 if ($attempt === $this->maxRetries) {
                     $this->auditLog("Connection failure for [{$this->connectionName}]: " . $e->getMessage(), 'CRITICAL');
+
                     throw \Plugs\Exceptions\DatabaseException::fromPDOException($e);
                 }
                 usleep(100000 * $attempt);
@@ -464,7 +467,7 @@ class Connection
                     'query' => $sql,
                     'bindings' => $params,
                     'time' => $executionTime,
-                    'connection' => ($pdo === $this->pdo ? 'write' : 'read')
+                    'connection' => ($pdo === $this->pdo ? 'write' : 'read'),
                 ];
             }
 
@@ -473,10 +476,12 @@ class Connection
             // Try to reconnect once on connection errors
             if ($this->isConnectionError($e)) {
                 $this->reconnect();
+
                 return $this->query($sql, $params);
             }
 
             $this->auditLog("Query error: " . $e->getMessage() . " | SQL: " . $sql, 'WARNING');
+
             throw $e;
         }
     }
@@ -853,10 +858,12 @@ class Connection
             if ($this->pdo && $this->pdo->inTransaction()) {
                 return $this->pdo->commit();
             }
+
             return false;
         }
 
         $this->pdo->exec("RELEASE SAVEPOINT trans{$this->transactions}");
+
         return true;
     }
 
@@ -872,10 +879,12 @@ class Connection
             if ($this->pdo && $this->pdo->inTransaction()) {
                 return $this->pdo->rollBack();
             }
+
             return false;
         }
 
         $this->pdo->exec("ROLLBACK TO SAVEPOINT trans{$this->transactions}");
+
         return true;
     }
 
@@ -901,6 +910,7 @@ class Connection
             try {
                 $result = $callback($this);
                 $this->commit();
+
                 return $result;
             } catch (\Throwable $e) {
                 $this->rollBack();
@@ -1037,6 +1047,7 @@ class Connection
     public function setStrictMode(bool $strict = true): self
     {
         $this->strictMode = $strict;
+
         return $this;
     }
 
@@ -1074,6 +1085,7 @@ class Connection
 
         if ($isWrite) {
             $this->lastWriteTimestamp = microtime(true);
+
             return true;
         }
 

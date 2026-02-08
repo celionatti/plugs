@@ -38,7 +38,6 @@ class ServerRequest implements ServerRequestInterface
 
     private const MAX_JSON_BODY_SIZE = 10485760;
 
-
     public function __construct(
         string $method,
         $uri,
@@ -790,6 +789,7 @@ class ServerRequest implements ServerRequestInterface
     {
         return $this->parsedBody;
     }
+
     public function withParsedBody($data): ServerRequestInterface
     {
         // @phpstan-ignore-next-line

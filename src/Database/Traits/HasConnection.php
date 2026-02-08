@@ -4,9 +4,7 @@ declare(strict_types=1);
 
 namespace Plugs\Database\Traits;
 
-use Exception;
 use PDO;
-use PDOException;
 use Plugs\Database\Connection;
 
 /**

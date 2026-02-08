@@ -8,9 +8,9 @@ use Plugs\Database\Factory\PlugFactory;
 
 /**
  * Trait HasFactory
- * 
+ *
  * Add this trait to your models to enable factory support.
- * 
+ *
  * @package Plugs\Database\Traits
  */
 /**
@@ -20,7 +20,7 @@ trait HasFactory
 {
     /**
      * Create a new factory instance for the model
-     * 
+     *
      * @param int|null $count Number of models to create
      * @return PlugFactory
      */
@@ -63,7 +63,7 @@ trait HasFactory
         }
 
         // Generic fallback factory if specific one not found
-        return new class extends PlugFactory {
+        return new class () extends PlugFactory {
             public function definition(): array
             {
                 return [];

@@ -38,6 +38,7 @@ class MigrateRollbackCommand extends Command
 
             if (!$this->confirm('Rollback last migration batch?', true)) {
                 $this->warning('Rollback cancelled.');
+
                 return 0;
             }
 
@@ -51,6 +52,7 @@ class MigrateRollbackCommand extends Command
             if (empty($result['migrations'])) {
                 $this->newLine();
                 $this->note($result['message'] ?? 'No migrations found to rollback.');
+
                 return 0;
             }
 
@@ -72,6 +74,7 @@ class MigrateRollbackCommand extends Command
             return 0;
         } catch (\Exception $e) {
             $this->error("Rollback failed: " . $e->getMessage());
+
             return 1;
         }
     }

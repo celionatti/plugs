@@ -4,14 +4,14 @@ declare(strict_types=1);
 
 namespace Plugs\Database\Seeders;
 
-use Plugs\Database\Connection;
 use Plugs\Console\Support\Output;
+use Plugs\Database\Connection;
 
 /**
  * PlugSeeder
- * 
+ *
  * Base class for database seeders in Plugs.
- * 
+ *
  * @package Plugs\Database\Seeders
  */
 abstract class PlugSeeder
@@ -42,7 +42,7 @@ abstract class PlugSeeder
 
     /**
      * Seed the given seeder class
-     * 
+     *
      * @param string|array $class
      */
     public function call(string|array $class): void

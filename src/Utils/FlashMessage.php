@@ -354,8 +354,9 @@ CSS;
         if ($type === null) {
             foreach ($allFlsh as $key => $flash) {
                 // Filter out internal keys like _delete_next if present
-                if (is_string($key) && str_starts_with($key, '_'))
+                if (is_string($key) && str_starts_with($key, '_')) {
                     continue;
+                }
 
                 $messages[$key] = $flash;
                 if ($clear) {
@@ -381,6 +382,7 @@ CSS;
     public static function peek(string $key, $default = null)
     {
         self::ensureSession();
+
         return $_SESSION[self::SESSION_KEY][$key] ?? $default;
     }
 
@@ -406,7 +408,7 @@ CSS;
         } else {
             $_SESSION[self::SESSION_KEY] = array_filter(
                 $_SESSION[self::SESSION_KEY],
-                fn($flash) => $flash['type'] !== $type
+                fn ($flash) => $flash['type'] !== $type
             );
             $_SESSION[self::SESSION_KEY] = array_values($_SESSION[self::SESSION_KEY]);
         }
@@ -705,7 +707,7 @@ CSS;
 
         return count(array_filter(
             $_SESSION[self::SESSION_KEY],
-            fn($flash) => $flash['type'] === $type
+            fn ($flash) => $flash['type'] === $type
         ));
     }
 

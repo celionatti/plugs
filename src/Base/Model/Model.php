@@ -18,7 +18,6 @@ use Plugs\Database\Collection;
 use Plugs\Database\Connection;
 use Plugs\Database\QueryBuilder;
 use Plugs\Database\Traits\HasQueryBuilder;
-use Plugs\Paginator\Pagination;
 
 /**
  * @phpstan-consistent-constructor
@@ -141,14 +140,6 @@ abstract class Model
         return static::count() > 0;
     }
 
-
-
-
-
-
-
-
-
     /**
      * Get searchable columns - override this in your model
      */
@@ -156,8 +147,6 @@ abstract class Model
     {
         return $this->searchableColumns;
     }
-
-
 
     public static function create(array $attributes): self
     {

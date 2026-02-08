@@ -85,6 +85,7 @@ class MakeDTOCommand extends Command
         if (Filesystem::exists($path) && !$options['force']) {
             if (!$this->confirm("DTO {$name} already exists. Overwrite?", false)) {
                 $this->warning('DTO generation cancelled.');
+
                 return 0;
             }
         }

@@ -6,10 +6,10 @@ namespace Plugs\Database\Factory;
 
 /**
  * SequenceGenerator
- * 
+ *
  * Generates cyclic or sequential values from a set of data.
  * Useful for ensuring variety in seeded data.
- * 
+ *
  * @package Plugs\Database\Factory
  */
 class SequenceGenerator

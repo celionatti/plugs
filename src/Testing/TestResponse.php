@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace Plugs\Testing;
 
-use Psr\Http\Message\ResponseInterface;
 use PHPUnit\Framework\Assert as PHPUnit;
+use Psr\Http\Message\ResponseInterface;
 
 /**
  * TestResponse

@@ -97,7 +97,7 @@ interface FilesystemDriverInterface
 
     /**
      * Get the relative path for the given absolute path.
-     * 
+     *
      * @param string $absolutePath
      * @return string
      */

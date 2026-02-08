@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace Plugs\Database\Exception;
 
 use RuntimeException;
-use Throwable;
 
 class ModelNotFoundException extends RuntimeException
 {

@@ -48,7 +48,7 @@ abstract class FormRequest
 
     /**
      * Run validation and authorization.
-     * 
+     *
      * @throws \Plugs\Http\Exceptions\ValidationException
      */
     public function validateInternal(): void
@@ -192,4 +192,3 @@ abstract class FormRequest
         return $this->data;
     }
 }
-

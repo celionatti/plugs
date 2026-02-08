@@ -42,6 +42,7 @@ class Paginator
         $pagination = Pagination::fromQuery($query, $perPage, $currentPage);
         $instance = new self([], $perPage, $currentPage, $pagination->total());
         $instance->pagination = $pagination;
+
         return $instance;
     }
 
@@ -51,6 +52,7 @@ class Paginator
     public static function simple(array $items, int|string $perPage = 15, int|string $currentPage = 1): self
     {
         $instance = new self($items, $perPage, $currentPage);
+
         return $instance;
     }
 
@@ -60,6 +62,7 @@ class Paginator
     public function setOptions(array $options): self
     {
         $this->pagination->setOptions($options);
+
         return $this;
     }
 
@@ -69,6 +72,7 @@ class Paginator
     public function setPath(string $path): self
     {
         $this->pagination->setPath($path);
+
         return $this;
     }
 
@@ -78,6 +82,7 @@ class Paginator
     public function appends(array $query): self
     {
         $this->pagination->appends($query);
+
         return $this;
     }
 
@@ -257,4 +262,3 @@ class Paginator
         return (string) $this->pagination;
     }
 }
-

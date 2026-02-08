@@ -11,7 +11,7 @@ use Plugs\Facade;
  * @method static bool hasListeners(string $eventName)
  * @method static array|null dispatch($event, $payload = [], bool $halt = false)
  * @method static void forget(string $event)
- * 
+ *
  * @see \Plugs\Event\Dispatcher
  */
 class Event extends Facade

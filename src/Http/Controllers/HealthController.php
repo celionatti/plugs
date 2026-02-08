@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace Plugs\Http\Controllers;
 
 use Plugs\Base\Controller\Controller;
-use Plugs\Database\Connection;
 use Plugs\Support\Enums\HttpStatus;
 use Psr\Http\Message\ResponseInterface;
 
@@ -24,7 +23,7 @@ class HealthController extends Controller
                 'database' => $this->checkDatabase(),
                 'cache' => $this->checkCache(),
                 'storage' => $this->checkStorage(),
-            ]
+            ],
         ];
 
         $statusCode = HttpStatus::OK;
@@ -33,6 +32,7 @@ class HealthController extends Controller
             if ($check['status'] !== 'ok') {
                 $status['status'] = 'error';
                 $statusCode = HttpStatus::SERVICE_UNAVAILABLE;
+
                 break;
             }
         }
@@ -46,8 +46,10 @@ class HealthController extends Controller
             // Check if DB is bound in container
             if ($this->db) {
                 $this->db->query('SELECT 1');
+
                 return ['status' => 'ok'];
             }
+
             return ['status' => 'skipped', 'message' => 'Database not configured'];
         } catch (\Throwable $e) {
             return ['status' => 'fail', 'message' => $e->getMessage()];
@@ -61,8 +63,10 @@ class HealthController extends Controller
             if ($cache) {
                 $cache->set('_health_check', true, 10);
                 $cache->get('_health_check');
+
                 return ['status' => 'ok'];
             }
+
             return ['status' => 'skipped', 'message' => 'Cache not configured'];
         } catch (\Throwable $e) {
             return ['status' => 'fail', 'message' => $e->getMessage()];
@@ -75,6 +79,7 @@ class HealthController extends Controller
         if (is_writable($storagePath)) {
             return ['status' => 'ok'];
         }
+
         return ['status' => 'fail', 'message' => 'Storage directory is not writable'];
     }
 }

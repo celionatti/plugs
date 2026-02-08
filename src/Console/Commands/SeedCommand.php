@@ -10,9 +10,9 @@ use Plugs\Database\SeederRunner;
 
 /**
  * SeedCommand
- * 
+ *
  * Seed the database with records.
- * 
+ *
  * @package Plugs\Console\Commands
  */
 class SeedCommand extends Command
@@ -50,6 +50,7 @@ class SeedCommand extends Command
 
         if (!$this->confirm("Run seeder [{$class}]?", true)) {
             $this->warning('Seeding cancelled.');
+
             return 0;
         }
 
@@ -67,6 +68,7 @@ class SeedCommand extends Command
                 $this->warning("Default seeder [{$class}] not found.");
                 $this->info("You can create it using: php theplugs make:seeder DatabaseSeeder");
                 $this->info("Or run a specific seeder using: php theplugs db:seed --class=YourSeeder");
+
                 return 0;
             }
 
@@ -87,6 +89,7 @@ class SeedCommand extends Command
             return 0;
         } catch (\Exception $e) {
             $this->error("Seeding failed: " . $e->getMessage());
+
             return 1;
         }
     }

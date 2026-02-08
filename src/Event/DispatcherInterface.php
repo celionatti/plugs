@@ -6,7 +6,7 @@ namespace Plugs\Event;
 
 /**
  * Interface DispatcherInterface
- * 
+ *
  * Defines the contract for an event dispatcher.
  */
 interface DispatcherInterface

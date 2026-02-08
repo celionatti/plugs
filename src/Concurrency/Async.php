@@ -11,7 +11,7 @@ class Async
 {
     /**
      * Run an array of tasks in parallel.
-     * 
+     *
      * @param array<callable|PromiseInterface> $tasks
      * @return array
      */

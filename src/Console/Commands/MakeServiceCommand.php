@@ -89,6 +89,7 @@ class MakeServiceCommand extends Command
         if (Filesystem::exists($path) && !$options['force']) {
             if (!$this->confirm("Service {$name} already exists. Overwrite?", false)) {
                 $this->warning('Service generation cancelled.');
+
                 return 0;
             }
         }

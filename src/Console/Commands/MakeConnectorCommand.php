@@ -61,6 +61,7 @@ class MakeConnectorCommand extends Command
         if (Filesystem::exists($path) && !$this->isForce()) {
             if (!$this->confirm("Connector already exists at {$path}. Overwrite?", false)) {
                 $this->warning('Connector generation cancelled.');
+
                 return 0;
             }
         }

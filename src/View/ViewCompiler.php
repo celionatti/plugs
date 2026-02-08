@@ -178,6 +178,7 @@ class ViewCompiler
     public function enableSourceMaps(bool $enabled = true): self
     {
         $this->sourceMapEnabled = $enabled;
+
         return $this;
     }
 
@@ -187,6 +188,7 @@ class ViewCompiler
     public function setViewCache(ViewCache $cache): self
     {
         $this->viewCache = $cache;
+
         return $this;
     }
 
@@ -196,6 +198,7 @@ class ViewCompiler
     public function setFragmentRenderer(FragmentRenderer $renderer): self
     {
         $this->fragmentRenderer = $renderer;
+
         return $this;
     }
 
@@ -228,6 +231,7 @@ class ViewCompiler
                 }
             }
         }
+
         return $result;
     }
 
@@ -341,6 +345,7 @@ class ViewCompiler
     private function kebabToPascalCase(string $input): string
     {
         $input = str_replace(['-', '_'], ' ', $input);
+
         return str_replace(' ', '', ucwords($input));
     }
 
@@ -401,7 +406,7 @@ class ViewCompiler
     {
         // CRITICAL: Order matters for correct compilation
         // Helper to safely apply preg-based compilation
-        $safeCompile = fn(callable $method, string $c) => $method($c) ?? $c;
+        $safeCompile = fn (callable $method, string $c) => $method($c) ?? $c;
 
         // 1. Comments first (remove them entirely)
         $content = $safeCompile([$this, 'compileComments'], $content);
@@ -780,6 +785,7 @@ class ViewCompiler
                 if (isset($matches[1]) && !empty(trim($matches[1]))) {
                     return sprintf('<?php if (%s) continue; ?>', $matches[1]);
                 }
+
                 return '<?php continue; ?>';
             },
             $content
@@ -792,6 +798,7 @@ class ViewCompiler
                 if (isset($matches[1]) && !empty(trim($matches[1]))) {
                     return sprintf('<?php if (%s) break; ?>', $matches[1]);
                 }
+
                 return '<?php break; ?>';
             },
             $content
@@ -1064,7 +1071,7 @@ class ViewCompiler
     {
         // Sort directives by length descending to prevent prefix conflicts
         $directives = $this->customDirectives;
-        uksort($directives, fn($a, $b) => strlen($b) <=> strlen($a));
+        uksort($directives, fn ($a, $b) => strlen($b) <=> strlen($a));
 
         foreach ($directives as $name => $handler) {
             $content = preg_replace_callback(
@@ -2204,11 +2211,11 @@ class ViewCompiler
     /**
      * Compile @readtime directive
      * Calculates estimated reading time for content
-     * 
+     *
      * Usage: @readtime($content)
      * Usage: @readtime($content, 200) - custom words per minute
      * Usage: @readtime($content, 200, 'short') - format: 'short', 'long', 'minutes'
-     * 
+     *
      * Output examples:
      * - short: "5 min read"
      * - long: "5 minutes read"
@@ -2250,7 +2257,7 @@ class ViewCompiler
     /**
      * Compile @wordcount directive
      * Returns the word count of content
-     * 
+     *
      * Usage: @wordcount($content)
      */
     private function compileWordCount(string $content): string
@@ -2269,4 +2276,3 @@ class ViewCompiler
         ) ?? $content;
     }
 }
-

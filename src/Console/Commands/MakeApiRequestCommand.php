@@ -69,6 +69,7 @@ class MakeApiRequestCommand extends Command
         if (Filesystem::exists($path) && !$this->isForce()) {
             if (!$this->confirm("Request already exists at {$path}. Overwrite?", false)) {
                 $this->warning('API Request generation cancelled.');
+
                 return 0;
             }
         }

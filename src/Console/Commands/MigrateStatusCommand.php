@@ -32,6 +32,7 @@ class MigrateStatusCommand extends Command
 
             if (empty($status)) {
                 $this->note('No migrations found in the database.');
+
                 return 0;
             }
 
@@ -58,7 +59,7 @@ class MigrateStatusCommand extends Command
                     $ranLabel,
                     $batchLabel,
                     $ranAt,
-                    $statusText
+                    $statusText,
                 ];
             }
 
@@ -70,6 +71,7 @@ class MigrateStatusCommand extends Command
 
         } catch (\Exception $e) {
             $this->error("Failed to retrieve status: " . $e->getMessage());
+
             return 1;
         }
 

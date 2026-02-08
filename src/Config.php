@@ -49,6 +49,7 @@ class Config
         if (empty($parts)) {
             self::$config[$file] = $value;
             self::$loaded[$file] = true;
+
             return;
         }
 
@@ -192,6 +193,7 @@ class Config
                 foreach (self::$config as $file => $values) {
                     self::$loaded[$file] = true;
                 }
+
                 return true;
             }
         }

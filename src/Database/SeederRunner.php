@@ -4,14 +4,13 @@ declare(strict_types=1);
 
 namespace Plugs\Database;
 
-use Plugs\Database\Seeders\PlugSeeder;
 use Plugs\Console\Support\Output;
 
 /**
  * SeederRunner
- * 
+ *
  * Utility to run database seeders.
- * 
+ *
  * @package Plugs\Database
  */
 class SeederRunner
@@ -65,6 +64,7 @@ class SeederRunner
                 $this->output->info("Search path: " . $this->seederPath);
                 $this->output->info("Is file readable: " . (is_readable($this->seederPath) ? 'Yes' : 'No'));
             }
+
             throw new \RuntimeException($msg);
         }
 
@@ -79,7 +79,7 @@ class SeederRunner
         return [
             'class' => $class,
             'time' => $elapsed,
-            'status' => 'success'
+            'status' => 'success',
         ];
     }
 

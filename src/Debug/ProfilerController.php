@@ -69,7 +69,7 @@ class ProfilerController
         return ResponseFactory::json([
             'success' => true,
             'message' => sprintf('Successfully cleared %d profiles', $count),
-            'deleted' => $count
+            'deleted' => $count,
         ]);
     }
 

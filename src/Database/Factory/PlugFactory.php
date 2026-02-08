@@ -7,13 +7,12 @@ namespace Plugs\Database\Factory;
 use Closure;
 use Plugs\Base\Model\PlugModel;
 use Plugs\Database\Collection;
-use Plugs\Database\Connection;
 
 /**
  * PlugFactory
- * 
+ *
  * Base class for model factories in Plugs.
- * 
+ *
  * @package Plugs\Database\Factory
  */
 /**
@@ -78,6 +77,7 @@ abstract class PlugFactory
     public function count(int $count): static
     {
         $this->count = $count;
+
         return $this;
     }
 
@@ -87,6 +87,7 @@ abstract class PlugFactory
     public function state(array|Closure $state): static
     {
         $this->states[] = $state;
+
         return $this;
     }
 
@@ -96,6 +97,7 @@ abstract class PlugFactory
     public function sequence(...$sequences): static
     {
         $this->sequence = new SequenceGenerator($sequences);
+
         return $this;
     }
 

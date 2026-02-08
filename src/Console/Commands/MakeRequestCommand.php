@@ -83,6 +83,7 @@ class MakeRequestCommand extends Command
         if (Filesystem::exists($path) && !$options['force']) {
             if (!$this->confirm("Request {$name} already exists. Overwrite?", false)) {
                 $this->warning('Request generation cancelled.');
+
                 return 0;
             }
         }

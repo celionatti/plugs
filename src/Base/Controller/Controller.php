@@ -15,7 +15,6 @@ namespace Plugs\Base\Controller;
 */
 
 
-use Plugs\Database\DatabaseManager;
 use Plugs\Http\ResponseFactory;
 use Plugs\Security\Validator;
 use Plugs\View\ErrorMessage;
@@ -269,6 +268,7 @@ abstract class Controller
             if (!$formRequest->validate()) {
                 $this->back()->withErrors($formRequest->errors())->withInput()->send();
             }
+
             return $formRequest->sanitized();
         }
 
@@ -367,6 +367,7 @@ abstract class Controller
     protected function input(string $key, $default = null): mixed
     {
         $all = $this->all();
+
         return $all[$key] ?? $default;
     }
 

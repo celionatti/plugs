@@ -32,7 +32,7 @@ class MigrateValidateCommand extends Command
             $runner = new MigrationRunner($connection, $migrationPath);
             $status = $runner->status();
 
-            $modified = array_filter($status, fn($item) => $item['modified']);
+            $modified = array_filter($status, fn ($item) => $item['modified']);
 
             $this->checkpoint('finished');
 
@@ -67,6 +67,7 @@ class MigrateValidateCommand extends Command
             return 1;
         } catch (\Exception $e) {
             $this->error("Integrity check failed: " . $e->getMessage());
+
             return 1;
         }
     }

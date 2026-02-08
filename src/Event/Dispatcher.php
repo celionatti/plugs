@@ -86,7 +86,7 @@ class Dispatcher implements DispatcherInterface
         // Gather all listeners as tasks
         $tasks = [];
         foreach ($this->getListeners($eventName) as $listener) {
-            $tasks[] = fn() => $this->callListener($listener, $payload);
+            $tasks[] = fn () => $this->callListener($listener, $payload);
         }
 
         // Run them in parallel using our FiberManager/Async helper
@@ -187,6 +187,7 @@ class Dispatcher implements DispatcherInterface
         if (strpos($listener, '@') !== false) {
             [$class, $method] = explode('@', $listener);
             $instance = $this->container->make($class);
+
             return [$instance, $method];
         }
 

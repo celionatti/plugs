@@ -75,7 +75,7 @@ if (!function_exists('resolve')) {
 if (!function_exists('config')) {
     /**
      * Get / set configuration value
-     * 
+     *
      * @param string|array|null $key
      * @param mixed $default
      * @return mixed
@@ -102,6 +102,7 @@ if (!function_exists('base_path')) {
     function base_path(string $path = ''): string
     {
         $basePath = defined('BASE_PATH') ? BASE_PATH : dirname(__DIR__, 3) . '/';
+
         return $basePath . ltrim($path, '/');
     }
 }

@@ -32,12 +32,14 @@ class HasOneProxy
         $attributes[$this->foreignKey] = $this->parent->getAttribute($this->localKey);
 
         $relatedModel = $this->builder->getModel();
+
         return $relatedModel::create($attributes);
     }
 
     public function save(PlugModel $model)
     {
         $model->setAttribute($this->foreignKey, $this->parent->getAttribute($this->localKey));
+
         return $model->save();
     }
 

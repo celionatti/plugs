@@ -16,7 +16,7 @@ use Plugs\Facade;
  * @method static void stream(string $filename = 'document.pdf', array $options = ['Attachment' => 0])
  * @method static void download(string $filename = 'document.pdf')
  * @method static bool save(string $path)
- * 
+ *
  * @see \Plugs\Pdf\Pdf
  */
 class Pdf extends Facade

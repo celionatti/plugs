@@ -108,7 +108,7 @@ class ConsolePlugs
         if (!empty($similar)) {
             $output->box(
                 "Did you mean one of these?\n\n" .
-                implode("\n", array_map(fn($cmd) => "  • {$cmd}", $similar)),
+                implode("\n", array_map(fn ($cmd) => "  • {$cmd}", $similar)),
                 "💡 Suggestions",
                 "warning"
             );

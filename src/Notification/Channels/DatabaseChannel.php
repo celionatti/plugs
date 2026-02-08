@@ -4,8 +4,6 @@ declare(strict_types=1);
 
 namespace Plugs\Notification\Channels;
 
-use Plugs\Container\Container;
-
 class DatabaseChannel
 {
     /**

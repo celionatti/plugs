@@ -38,11 +38,13 @@ class MakeProviderCommand extends Command
 
         if (file_exists($path)) {
             $this->error("Provider [{$name}] already exists!");
+
             return 1;
         }
 
         if (!$this->confirm('Proceed with generation?', true)) {
             $this->warning('Provider generation cancelled.');
+
             return 0;
         }
 
@@ -78,6 +80,7 @@ class MakeProviderCommand extends Command
         }
 
         $this->error("Failed to create provider.");
+
         return 1;
     }
 

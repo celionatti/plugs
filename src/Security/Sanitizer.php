@@ -87,7 +87,7 @@ class Sanitizer
                 'th',
                 'td',
                 'div',
-                'hr'
+                'hr',
             ];
         }
 

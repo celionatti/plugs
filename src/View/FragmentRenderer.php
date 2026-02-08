@@ -171,7 +171,7 @@ class FragmentRenderer
      */
     public function getTeleports(): array
     {
-        return array_map(fn($t) => $t['content'] ?? '', $this->teleports);
+        return array_map(fn ($t) => $t['content'] ?? '', $this->teleports);
     }
 
     /**

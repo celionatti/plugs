@@ -13,8 +13,8 @@ namespace Plugs\View;
 | It manages view paths, caching, and shared data across views.
 */
 
-use RuntimeException;
 use Plugs\Exceptions\ViewException;
+use RuntimeException;
 use Throwable;
 
 class ViewEngine
@@ -162,6 +162,7 @@ class ViewEngine
     public function setFastCache(bool $enabled): self
     {
         $this->fastCache = $enabled;
+
         return $this;
     }
 
@@ -284,6 +285,7 @@ class ViewEngine
 
         $this->directive('auth', function ($expression) {
             $guards = $expression ? "{$expression}" : '';
+
             return "<?php if (function_exists('auth') && auth()->check($guards)): ?>";
         });
 
@@ -293,6 +295,7 @@ class ViewEngine
 
         $this->directive('guest', function ($expression) {
             $guards = $expression ? "{$expression}" : '';
+
             return "<?php if (function_exists('auth') && !auth()->check($guards)): ?>";
         });
 
@@ -330,6 +333,7 @@ class ViewEngine
 
         $this->directive('error', function ($expression) {
             $key = trim($expression, " '\"");
+
             return "<?php if (isset(\$errors) && \$errors->has('$key')): ?>";
         });
 
@@ -521,7 +525,7 @@ class ViewEngine
         ob_start();
 
         try {
-            eval ('?>' . $compiledContent);
+            eval('?>' . $compiledContent);
             $result = ob_get_clean();
             error_reporting($previousErrorLevel);
 
@@ -659,7 +663,7 @@ class ViewEngine
         ob_start();
 
         try {
-            eval ('?>' . $compiledContent);
+            eval('?>' . $compiledContent);
             $childContent = ob_get_clean() ?: '';
             error_reporting($previousErrorLevel);
 
@@ -785,7 +789,7 @@ class ViewEngine
         ob_start();
 
         try {
-            eval ('?>' . $compiledParent);
+            eval('?>' . $compiledParent);
             $result = ob_get_clean();
             error_reporting($previousErrorLevel);
 
@@ -995,6 +999,7 @@ class ViewEngine
         if ($this->fragmentRenderer === null) {
             $this->fragmentRenderer = new FragmentRenderer();
         }
+
         return $this->fragmentRenderer;
     }
 
@@ -1006,6 +1011,7 @@ class ViewEngine
         if ($this->viewCache === null) {
             $this->viewCache = new ViewCache($this->cachePath);
         }
+
         return $this->viewCache;
     }
 
@@ -1015,6 +1021,7 @@ class ViewEngine
     public function setViewCache(ViewCache $cache): self
     {
         $this->viewCache = $cache;
+
         return $this;
     }
 
@@ -1025,6 +1032,7 @@ class ViewEngine
     public function alias(string $alias, string $component): self
     {
         $this->componentAliases[$alias] = $component;
+
         return $this;
     }
 
@@ -1047,6 +1055,7 @@ class ViewEngine
                 $this->preloadedViews[$view] = file_get_contents($viewPath);
             }
         }
+
         return $this;
     }
 
@@ -1168,6 +1177,7 @@ class ViewEngine
     public function enableStreaming(bool $enable = true): self
     {
         $this->streamingEnabled = $enable;
+
         return $this;
     }
 
@@ -1223,6 +1233,7 @@ class ViewEngine
         if (!isset($this->pathCache[$view])) {
             $this->pathCache[$view] = $this->getViewPath($view);
         }
+
         return $this->pathCache[$view];
     }
 
@@ -1232,6 +1243,7 @@ class ViewEngine
     public function clearPathCache(): self
     {
         $this->pathCache = [];
+
         return $this;
     }
 
@@ -1241,6 +1253,7 @@ class ViewEngine
     public function exists(string $view): bool
     {
         $path = $this->getViewPathCached($view);
+
         return file_exists($path);
     }
 
@@ -1319,6 +1332,7 @@ class ViewEngine
         if (!isset($this->fileExistsCache[$path])) {
             $this->fileExistsCache[$path] = file_exists($path);
         }
+
         return $this->fileExistsCache[$path];
     }
 
@@ -1333,6 +1347,7 @@ class ViewEngine
         } else {
             $this->fileExistsCache = [];
         }
+
         return $this;
     }
 
@@ -1343,6 +1358,7 @@ class ViewEngine
     {
         unset($this->fileExistsCache[$path]);
         unset($this->pathCache[$path]);
+
         return $this;
     }
 
@@ -1352,6 +1368,7 @@ class ViewEngine
     public function setOpcacheEnabled(bool $enabled): self
     {
         $this->opcacheEnabled = $enabled;
+
         return $this;
     }
 
@@ -1414,6 +1431,7 @@ class ViewEngine
     public function registerLazyComponent(string $name, callable $loader): self
     {
         $this->lazyComponents[$name] = $loader;
+
         return $this;
     }
 
@@ -1431,6 +1449,7 @@ class ViewEngine
         if (isset($this->lazyComponents[$name])) {
             $loader = $this->lazyComponents[$name];
             $this->componentDefinitionCache[$name] = $loader();
+
             return $this->componentDefinitionCache[$name];
         }
 
@@ -1448,6 +1467,7 @@ class ViewEngine
                 $this->componentDefinitionCache[$name] = file_get_contents($path);
             }
         }
+
         return $this;
     }
 
@@ -1457,6 +1477,7 @@ class ViewEngine
     public function getOptimizedCompiledPath(string $view): string
     {
         $hash = self::fastHash($view);
+
         return $this->cachePath . DIRECTORY_SEPARATOR . $hash . '.php';
     }
 

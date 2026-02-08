@@ -255,10 +255,13 @@ if (!function_exists('session')) {
 
             return $session->get($key, $default);
         } catch (\Exception $e) {
-            if (session_status() === PHP_SESSION_NONE)
+            if (session_status() === PHP_SESSION_NONE) {
                 session_start();
-            if ($key === null)
+            }
+            if ($key === null) {
                 return $_SESSION;
+            }
+
             return $_SESSION[$key] ?? $default;
         }
     }

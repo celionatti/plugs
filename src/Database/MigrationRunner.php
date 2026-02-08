@@ -298,6 +298,7 @@ class MigrationRunner
     private function calculateChecksum(string $migration): string
     {
         $file = $this->migrationPath . '/' . $migration . '.php';
+
         return file_exists($file) ? md5_file($file) : '';
     }
 
@@ -446,11 +447,12 @@ class MigrationRunner
         // Check for circular dependencies
         if (count($sorted) !== count($migrations)) {
             // Cycle detected or disconnected components behaving oddly.
-            // Fallback: return original order but log warning? 
+            // Fallback: return original order but log warning?
             // Or throw error.
-            // For now, let's append remaining items (broken) to end, 
+            // For now, let's append remaining items (broken) to end,
             // ensuring we return all migrations.
             $remaining = array_diff($migrations, $sorted);
+
             return array_merge($sorted, $remaining);
         }
 
@@ -533,6 +535,7 @@ class MigrationRunner
 
         if ($instance instanceof Migration) {
             $instance->setConnection($this->connection);
+
             return $instance;
         }
 

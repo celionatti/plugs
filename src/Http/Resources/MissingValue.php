@@ -6,10 +6,10 @@ namespace Plugs\Http\Resources;
 
 /**
  * MissingValue
- * 
+ *
  * Marker class for conditional values that should be excluded from resource output.
  * Used internally by PlugResource::when() and PlugResource::whenLoaded().
- * 
+ *
  * @package Plugs\Http\Resources
  */
 class MissingValue
