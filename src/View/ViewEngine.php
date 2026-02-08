@@ -346,6 +346,11 @@ class ViewEngine
     {
         $startTime = microtime(true);
 
+        // Clear previous fragments to ensure clean state
+        if (!$isComponent) {
+            $this->getFragmentRenderer()->clearFragments();
+        }
+
         // OPTIMIZATION: Resolve any Async/Promise data in parallel before rendering
         // This allows controllers to pass promises directly to views
         $promises = [];
@@ -525,7 +530,7 @@ class ViewEngine
         ob_start();
 
         try {
-            eval('?>' . $compiledContent);
+            eval ('?>' . $compiledContent);
             $result = ob_get_clean();
             error_reporting($previousErrorLevel);
 
@@ -663,7 +668,7 @@ class ViewEngine
         ob_start();
 
         try {
-            eval('?>' . $compiledContent);
+            eval ('?>' . $compiledContent);
             $childContent = ob_get_clean() ?: '';
             error_reporting($previousErrorLevel);
 
@@ -789,7 +794,7 @@ class ViewEngine
         ob_start();
 
         try {
-            eval('?>' . $compiledParent);
+            eval ('?>' . $compiledParent);
             $result = ob_get_clean();
             error_reporting($previousErrorLevel);
 
@@ -1131,24 +1136,33 @@ class ViewEngine
      */
     public function renderFragment(string $view, string $fragment, array $data = []): string
     {
-        // Render the full view (fragments are captured)
-        $this->render($view, array_merge($data, [
-            '__fragmentRenderer' => $this->getFragmentRenderer(),
-        ]));
+        // Suppress layout since we only need fragments from the view itself
+        $previousSuppress = $this->isLayoutSuppressed();
+        $this->suppressLayout(true);
 
-        // Return only the requested fragment
-        $content = $this->getFragmentRenderer()->getFragment($fragment);
+        try {
+            // Render the view (fragments are captured)
+            $this->render($view, array_merge($data, [
+                '__fragmentRenderer' => $this->getFragmentRenderer(),
+            ]));
 
-        if ($content === null) {
-            throw new ViewException(
-                sprintf('Fragment [%s] not found in view [%s]', $fragment, $view),
-                0,
-                null,
-                $view
-            );
+            // Return only the requested fragment
+            $content = $this->getFragmentRenderer()->getFragment($fragment);
+
+            if ($content === null) {
+                throw new ViewException(
+                    sprintf('Fragment [%s] not found in view [%s]', $fragment, $view),
+                    0,
+                    null,
+                    $view
+                );
+            }
+
+            return $content;
+        } finally {
+            // Restore previous layout suppression state
+            $this->suppressLayout($previousSuppress);
         }
-
-        return $content;
     }
 
     /**
@@ -1274,7 +1288,7 @@ class ViewEngine
         if (FragmentRenderer::isPartialRequest()) {
             $requestedFragment = FragmentRenderer::getRequestedFragment();
 
-            if ($requestedFragment !== null) {
+            if (!empty($requestedFragment)) {
                 try {
                     return $this->renderFragment($view, $requestedFragment, $data);
                 } catch (ViewException) {

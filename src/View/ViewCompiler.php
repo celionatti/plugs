@@ -406,7 +406,7 @@ class ViewCompiler
     {
         // CRITICAL: Order matters for correct compilation
         // Helper to safely apply preg-based compilation
-        $safeCompile = fn (callable $method, string $c) => $method($c) ?? $c;
+        $safeCompile = fn(callable $method, string $c) => $method($c) ?? $c;
 
         // 1. Comments first (remove them entirely)
         $content = $safeCompile([$this, 'compileComments'], $content);
@@ -1071,7 +1071,7 @@ class ViewCompiler
     {
         // Sort directives by length descending to prevent prefix conflicts
         $directives = $this->customDirectives;
-        uksort($directives, fn ($a, $b) => strlen($b) <=> strlen($a));
+        uksort($directives, fn($a, $b) => strlen($b) <=> strlen($a));
 
         foreach ($directives as $name => $handler) {
             $content = preg_replace_callback(
@@ -2006,7 +2006,7 @@ class ViewCompiler
         // End fragment
         $content = preg_replace(
             self::$patterns['endfragment'] ?? '/@endfragment\s*/',
-            '<?php $__fragmentRenderer->endFragment(); ?>',
+            '<?php echo $__fragmentRenderer->endFragment(); ?>',
             $content
         ) ?? $content;
 

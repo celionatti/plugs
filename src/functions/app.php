@@ -130,11 +130,11 @@ if (!function_exists('resource_path')) {
 }
 
 if (!function_exists('view')) {
-    function view(string $view, array $data = []): string
+    function view(string $view, array $data = []): \Plugs\View\View
     {
         $engine = app(\Plugs\View\ViewEngine::class);
 
-        return $engine->render($view, $data);
+        return new \Plugs\View\View($engine, $view, $data);
     }
 }
 

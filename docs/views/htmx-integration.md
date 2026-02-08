@@ -11,6 +11,13 @@ HTMX allows you to update parts of your page by making AJAX requests and swappin
 - **Smart Rendering** - Automatically detect HTMX requests
 - **Fragment Extraction** - Return only the requested fragment
 
+> [!IMPORTANT]
+> To use HTMX, ensure you have included the HTMX script in your layout. The default layouts (`default` and `docs`) already include this via CDN.
+
+## Live Demo
+Check out the live HTMX demo in your application:
+[HTMX Live Demo](/htmx-demo)
+
 ---
 
 ## Fragments

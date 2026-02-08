@@ -171,7 +171,7 @@ class FragmentRenderer
      */
     public function getTeleports(): array
     {
-        return array_map(fn ($t) => $t['content'] ?? '', $this->teleports);
+        return array_map(fn($t) => $t['content'] ?? '', $this->teleports);
     }
 
     /**
@@ -216,7 +216,11 @@ class FragmentRenderer
      */
     public static function isHtmxRequest(): bool
     {
-        return isset($_SERVER['HTTP_HX_REQUEST']) && $_SERVER['HTTP_HX_REQUEST'] === 'true';
+        $request = function_exists('request') ? request() : null;
+        if ($request) {
+            return strtolower($request->getHeaderLine('hx-request')) === 'true';
+        }
+        return isset($_SERVER['HTTP_HX_REQUEST']) && strtolower((string) $_SERVER['HTTP_HX_REQUEST']) === 'true';
     }
 
     /**
@@ -226,6 +230,10 @@ class FragmentRenderer
      */
     public static function getHtmxTarget(): ?string
     {
+        $request = function_exists('request') ? request() : null;
+        if ($request) {
+            return $request->getHeaderLine('hx-target') ?: null;
+        }
         return $_SERVER['HTTP_HX_TARGET'] ?? null;
     }
 
@@ -236,6 +244,10 @@ class FragmentRenderer
      */
     public static function getHtmxTrigger(): ?string
     {
+        $request = function_exists('request') ? request() : null;
+        if ($request) {
+            return $request->getHeaderLine('hx-trigger') ?: null;
+        }
         return $_SERVER['HTTP_HX_TRIGGER'] ?? null;
     }
 
@@ -246,6 +258,10 @@ class FragmentRenderer
      */
     public static function getHtmxTriggerName(): ?string
     {
+        $request = function_exists('request') ? request() : null;
+        if ($request) {
+            return $request->getHeaderLine('hx-trigger-name') ?: null;
+        }
         return $_SERVER['HTTP_HX_TRIGGER_NAME'] ?? null;
     }
 
@@ -256,6 +272,10 @@ class FragmentRenderer
      */
     public static function getHtmxCurrentUrl(): ?string
     {
+        $request = function_exists('request') ? request() : null;
+        if ($request) {
+            return $request->getHeaderLine('hx-current-url') ?: null;
+        }
         return $_SERVER['HTTP_HX_CURRENT_URL'] ?? null;
     }
 
@@ -266,6 +286,10 @@ class FragmentRenderer
      */
     public static function isTurboFrameRequest(): bool
     {
+        $request = function_exists('request') ? request() : null;
+        if ($request) {
+            return $request->hasHeader('turbo-frame');
+        }
         return isset($_SERVER['HTTP_TURBO_FRAME']);
     }
 
@@ -276,6 +300,10 @@ class FragmentRenderer
      */
     public static function getTurboFrameId(): ?string
     {
+        $request = function_exists('request') ? request() : null;
+        if ($request) {
+            return $request->getHeaderLine('turbo-frame') ?: null;
+        }
         return $_SERVER['HTTP_TURBO_FRAME'] ?? null;
     }
 
@@ -286,7 +314,7 @@ class FragmentRenderer
      */
     public static function isPartialRequest(): bool
     {
-        return self::isHtmxRequest() || self::isTurboFrameRequest();
+        return !empty(self::getRequestedFragment()) || self::isHtmxRequest() || self::isTurboFrameRequest();
     }
 
     /**
@@ -296,6 +324,19 @@ class FragmentRenderer
      */
     public static function getRequestedFragment(): ?string
     {
+        $request = function_exists('request') ? request() : null;
+        if ($request) {
+            if ($request->hasHeader('hx-target')) {
+                return ltrim($request->getHeaderLine('hx-target'), '#');
+            }
+            if ($request->hasHeader('turbo-frame')) {
+                return $request->getHeaderLine('turbo-frame');
+            }
+            if ($request->hasHeader('x-fragment')) {
+                return $request->getHeaderLine('x-fragment');
+            }
+        }
+
         // HTMX
         if (isset($_SERVER['HTTP_HX_TARGET'])) {
             return ltrim($_SERVER['HTTP_HX_TARGET'], '#');
