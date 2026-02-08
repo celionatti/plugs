@@ -16,21 +16,24 @@ class MethodNotAllowedException extends HttpException
 {
     /**
      * The allowed methods for the requested route.
-     *
+     /**
      * @var array
      */
-    protected array $allowedMethods = [];
+    protected $allowedMethods;
 
     /**
      * Create a new method not allowed exception.
      *
-     * @param array $allowedMethods
+     * @param int $statusCode
      * @param string $message
+     * @param \Throwable|null $previous
+     * @param array $headers
+     * @param array $allowedMethods
      */
-    public function __construct(array $allowedMethods = [], string $message = 'Method Not Allowed')
+    public function __construct(int $statusCode = 405, string $message = 'Method Not Allowed', ?\Throwable $previous = null, array $headers = [], array $allowedMethods = [])
     {
         $this->allowedMethods = $allowedMethods;
-        parent::__construct(405, $message);
+        parent::__construct($statusCode, $message, $previous, $headers);
     }
 
     /**

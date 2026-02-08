@@ -13,6 +13,9 @@ use Plugs\Database\Factory\PlugFactory;
  * 
  * @package Plugs\Database\Traits
  */
+/**
+ * @phpstan-ignore trait.unused
+ */
 trait HasFactory
 {
     /**

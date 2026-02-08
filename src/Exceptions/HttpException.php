@@ -12,6 +12,9 @@ namespace Plugs\Exceptions;
 | Generic HTTP exception for returning specific HTTP status codes.
 */
 
+/**
+ * @phpstan-consistent-constructor
+ */
 class HttpException extends PlugsException
 {
     /**

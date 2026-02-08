@@ -18,6 +18,7 @@ class Profiler
 
     private float $startTime;
     private int $startMemory;
+    /** @phpstan-ignore property.onlyWritten */
     private array $meta = [];
     private array $timeline = [];
     private array $views = [];

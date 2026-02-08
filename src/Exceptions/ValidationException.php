@@ -12,6 +12,9 @@ namespace Plugs\Exceptions;
 | Thrown when validation fails. Contains the validation errors.
 */
 
+/**
+ * @phpstan-consistent-constructor
+ */
 class ValidationException extends PlugsException
 {
     /**
@@ -48,9 +51,9 @@ class ValidationException extends PlugsException
     }
 
     /**
-     * Create a new validation exception from a validator instance.
+     * Create a new validation exception from messages.
      *
-     * @param mixed $validator
+     * @param array $messages
      * @return static
      */
     public static function withMessages(array $messages): static

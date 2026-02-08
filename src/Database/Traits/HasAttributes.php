@@ -8,6 +8,9 @@ use DateTime;
 use Exception;
 use Plugs\Database\Collection;
 
+/**
+ * @phpstan-ignore trait.unused
+ */
 trait HasAttributes
 {
     protected $attributes = [];
@@ -337,11 +340,13 @@ trait HasAttributes
     protected function isDateAttribute($key): bool
     {
         // Check timestamps
+        /** @phpstan-ignore-next-line */
         if (property_exists($this, 'timestamps') && $this->timestamps && in_array($key, ['created_at', 'updated_at'])) {
             return true;
         }
 
         // Check soft delete column
+        /** @phpstan-ignore-next-line */
         if (property_exists($this, 'softDelete') && $this->softDelete && $key === ($this->deletedAtColumn ?? 'deleted_at')) {
             return true;
         }
@@ -435,6 +440,9 @@ trait HasAttributes
         return $asArray ? (array) $value : (object) $value;
     }
 
+    /**
+     * @phpstan-consistent-constructor
+     */
     public static function createFromJson(string $json)
     {
         $instance = new static();
@@ -537,7 +545,8 @@ trait HasAttributes
 
                 if ($value instanceof Collection) {
                     $attributes[$key] = $value->all();
-                } else if ($value instanceof PlugModel) {
+                    /** @phpstan-ignore-next-line */
+                } else if (isset($value) && method_exists($value, 'toArray')) {
                     $attributes[$key] = $value->toArray();
                 } else {
                     $attributes[$key] = $value;

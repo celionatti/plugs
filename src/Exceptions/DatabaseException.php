@@ -12,6 +12,9 @@ namespace Plugs\Exceptions;
 | Thrown when a database operation fails.
 */
 
+/**
+ * @phpstan-consistent-constructor
+ */
 class DatabaseException extends PlugsException
 {
     /**

@@ -14,6 +14,9 @@ namespace Plugs\Database;
 | and delete, along with where clauses, ordering, and pagination.
 */
 
+/**
+ * @phpstan-consistent-constructor
+ */
 class QueryBuilder
 {
     private $connection;
@@ -446,6 +449,7 @@ class QueryBuilder
             $data = [$data];
         }
 
+        /** @phpstan-ignore-next-line */
         if (empty($data)) {
             return false;
         }

@@ -36,6 +36,10 @@
     ],
     "minimum-stability": "stable",
     "require": {
+        "illuminate/container": "^11.0",
+        "illuminate/database": "^11.0",
+        "illuminate/events": "^11.0",
+        "illuminate/support": "^11.0",
         "php": "^8.2",
         "dompdf/dompdf": "^3.1",
         "guzzlehttp/guzzle": "^7.10",

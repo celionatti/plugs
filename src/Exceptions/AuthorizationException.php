@@ -12,6 +12,9 @@ namespace Plugs\Exceptions;
 | Thrown when a user is not authorized to perform an action.
 */
 
+/**
+ * @phpstan-consistent-constructor
+ */
 class AuthorizationException extends PlugsException
 {
     /**

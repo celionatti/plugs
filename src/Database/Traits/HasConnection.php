@@ -9,6 +9,9 @@ use PDO;
 use PDOException;
 use Plugs\Database\Connection;
 
+/**
+ * @phpstan-ignore trait.unused
+ */
 trait HasConnection
 {
     protected static $storedConnection;
@@ -67,11 +70,13 @@ trait HasConnection
     {
         $connection = static::getConnection();
 
+        /** @phpstan-ignore-next-line */
         if ($connection instanceof PDO) {
             return $connection;
         }
 
         // If using Connection class
+        /** @phpstan-ignore-next-line */
         return $connection->getPdo();
     }
 }

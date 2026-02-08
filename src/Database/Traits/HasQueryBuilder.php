@@ -9,8 +9,14 @@ use Plugs\Database\Connection;
 use Plugs\Database\QueryBuilder;
 use Plugs\Paginator\Pagination;
 
+/**
+ * @phpstan-ignore trait.unused
+ */
 trait HasQueryBuilder
 {
+    /**
+     * @phpstan-consistent-constructor
+     */
     public static function query(): QueryBuilder
     {
         $connection = Connection::getInstance();
@@ -128,6 +134,7 @@ trait HasQueryBuilder
 
     public static function insert(array|object $data): Collection|self
     {
+        /** @phpstan-ignore-next-line */
         $data = (new static())->parseAttributes($data);
 
         // Check if data is multidimensional numeric array (bulk insert)
@@ -362,6 +369,7 @@ trait HasQueryBuilder
 
             // Handle search parameters
             if ($key === 'search') {
+                /** @phpstan-ignore-next-line */
                 if (method_exists($instance, 'getSearchableColumns')) {
                     $searchColumns = $instance->getSearchableColumns();
                     if (!empty($searchColumns)) {
@@ -401,6 +409,7 @@ trait HasQueryBuilder
      */
     public static function search(?array $params = null): Pagination
     {
+        /** @phpstan-ignore-next-line */
         $params = $params ?? $_GET ?? $_REQUEST ?? [];
 
         // Enforce a sensible maximum

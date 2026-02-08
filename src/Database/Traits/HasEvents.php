@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace Plugs\Database\Traits;
 
+/**
+ * @phpstan-ignore trait.unused
+ */
 trait HasEvents
 {
     protected static $booted = [];

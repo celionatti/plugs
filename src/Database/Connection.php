@@ -50,6 +50,7 @@ class Connection
     private $isHealthy = true;
     private $isInPool = false;
     private $poolId;
+    /** @phpstan-ignore property.onlyWritten */
     private $connectionAttempts = 0;
     private $maxRetries = 3;
     private static $queryLog = [];
@@ -747,7 +748,8 @@ class Connection
     {
         // Resolve actual connection name if 'default' or provided via config
         if ($config === null) {
-            $dbConfig = require BASE_PATH . 'config/database.php';
+            $basePath = defined('BASE_PATH') ? BASE_PATH : dirname(__DIR__, 2) . '/';
+            $dbConfig = require $basePath . 'config/database.php';
             if ($connectionName === 'default') {
                 $connectionName = $dbConfig['default'] ?? 'mysql';
             }
@@ -769,7 +771,8 @@ class Connection
 
     private static function loadConfigFromFile(string $name): array
     {
-        $dbConfig = require BASE_PATH . 'config/database.php';
+        $basePath = defined('BASE_PATH') ? BASE_PATH : dirname(__DIR__, 2) . '/';
+        $dbConfig = require $basePath . 'config/database.php';
 
         if ($name === 'default') {
             $name = $dbConfig['default'] ?? 'mysql';

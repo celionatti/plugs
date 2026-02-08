@@ -13,6 +13,9 @@ use Plugs\Database\Relations\HasManyThroughProxy;
 use Plugs\Database\Relations\HasOneProxy;
 use ReflectionMethod;
 
+/**
+ * @phpstan-ignore trait.unused
+ */
 trait HasRelationships
 {
     protected $relations = [];

@@ -16,6 +16,9 @@ use Plugs\Database\Connection;
  * 
  * @package Plugs\Database\Factory
  */
+/**
+ * @phpstan-consistent-constructor
+ */
 abstract class PlugFactory
 {
     /**

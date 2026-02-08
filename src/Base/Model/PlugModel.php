@@ -21,6 +21,12 @@ use Plugs\Database\Traits\Searchable;
 use Plugs\Database\Traits\SoftDeletes;
 use Plugs\Database\Traits\HasFactory;
 
+/**
+ * PlugModel
+ * 
+ * @method mixed getAttribute(string $key)
+ * @method void setAttribute(string $key, mixed $value)
+ */
 abstract class PlugModel
 {
     use Debuggable;

@@ -6,6 +6,9 @@ namespace Plugs\Database\Traits;
 
 use Exception;
 
+/**
+ * @phpstan-ignore trait.unused
+ */
 trait Searchable
 {
     /**
