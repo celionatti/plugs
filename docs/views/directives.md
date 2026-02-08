@@ -363,6 +363,36 @@ Available inside `@foreach` and `@forelse`:
 
 ---
 
+## Content Helpers
+
+### Reading Time
+
+Calculate estimated reading time for blog content:
+
+```blade
+{{-- Default: 200 words/min, short format --}}
+@readtime($post->content)
+{{-- Output: "5 min read" --}}
+
+{{-- Custom words per minute --}}
+@readtime($post->content, 250)
+{{-- Output: "4 min read" --}}
+
+{{-- Different formats --}}
+@readtime($post->content, 200, 'short')   {{-- "5 min read" --}}
+@readtime($post->content, 200, 'long')    {{-- "5 minutes read" --}}
+@readtime($post->content, 200, 'minutes') {{-- "5" --}}
+```
+
+### Word Count
+
+```blade
+@wordcount($post->content)
+{{-- Output: "1250" --}}
+```
+
+---
+
 ## Service Injection
 
 ```blade

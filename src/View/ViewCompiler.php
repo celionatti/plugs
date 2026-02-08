@@ -417,6 +417,8 @@ class ViewCompiler
         $content = $safeCompile([$this, 'compileOld'], $content);
         $content = $safeCompile([$this, 'compileFlashMessages'], $content);
         $content = $safeCompile([$this, 'compileErrorDirectives'], $content);
+        $content = $safeCompile([$this, 'compileReadTime'], $content);
+        $content = $safeCompile([$this, 'compileWordCount'], $content);
 
         // 11. Echo statements LAST (after all directives)
         $content = $safeCompile([$this, 'compileRawEchos'], $content);
@@ -2162,6 +2164,74 @@ class ViewCompiler
         return preg_replace(
             '/@autofocus(?:\s*\((.+?)\))?/',
             '<?php if(${1:-true}) echo "autofocus"; ?>',
+            $content
+        ) ?? $content;
+    }
+
+    /**
+     * Compile @readtime directive
+     * Calculates estimated reading time for content
+     * 
+     * Usage: @readtime($content)
+     * Usage: @readtime($content, 200) - custom words per minute
+     * Usage: @readtime($content, 200, 'short') - format: 'short', 'long', 'minutes'
+     * 
+     * Output examples:
+     * - short: "5 min read"
+     * - long: "5 minutes read"
+     * - minutes: "5"
+     */
+    private function compileReadTime(string $content): string
+    {
+        return preg_replace_callback(
+            '/@readtime\s*\((.+?)(?:\s*,\s*(\d+))?(?:\s*,\s*[\'"](.+?)[\'"])?\)/s',
+            function ($matches) {
+                $input = trim($matches[1]);
+                $wpm = $matches[2] ?? '200';
+                $format = $matches[3] ?? 'short';
+
+                return sprintf(
+                    '<?php
+                    echo (function($text, $wpm, $format) {
+                        // Strip HTML and count words
+                        $plainText = strip_tags($text);
+                        $wordCount = str_word_count($plainText);
+                        $minutes = max(1, (int) ceil($wordCount / $wpm));
+                        
+                        return match($format) {
+                            "minutes" => (string) $minutes,
+                            "long" => $minutes . " " . ($minutes === 1 ? "minute" : "minutes") . " read",
+                            default => $minutes . " min read",
+                        };
+                    })(%s, %s, \'%s\');
+                    ?>',
+                    $input,
+                    $wpm,
+                    $format
+                );
+            },
+            $content
+        ) ?? $content;
+    }
+
+    /**
+     * Compile @wordcount directive
+     * Returns the word count of content
+     * 
+     * Usage: @wordcount($content)
+     */
+    private function compileWordCount(string $content): string
+    {
+        return preg_replace_callback(
+            '/@wordcount\s*\((.+?)\)/s',
+            function ($matches) {
+                $input = trim($matches[1]);
+
+                return sprintf(
+                    '<?php echo str_word_count(strip_tags(%s)); ?>',
+                    $input
+                );
+            },
             $content
         ) ?? $content;
     }
