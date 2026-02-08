@@ -36,6 +36,7 @@ class TailwindTheme implements ThemeInterface
             $field->attributes(['class' => trim(($field->getAttributes()['class'] ?? '') . ' w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2' . $errorClass)]);
         } elseif ($field->getType() === 'checkbox' || $field->getType() === 'radio') {
             $field->attributes(['class' => trim(($field->getAttributes()['class'] ?? '') . ' h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500')]);
+            /** @phpstan-ignore-next-line */
         } elseif ($field->getType() === 'submit' || $field->getType() === 'button') {
             $field->attributes(['class' => trim(($field->getAttributes()['class'] ?? '') . ' px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2')]);
         }

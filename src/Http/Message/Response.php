@@ -26,7 +26,10 @@ class Response implements ResponseInterface
     private string $protocol;
     private array $headerNames = []; // For case-insensitive lookup
 
-    /** @var array HTTP status code reason phrases */
+    /**
+     * @var array HTTP status code reason phrases
+     * @phpstan-ignore classConstant.unused
+     */
     private const REASON_PHRASES = []; // Managed by HttpStatus Enum
 
     public function __construct(
@@ -126,6 +129,7 @@ class Response implements ResponseInterface
 
     public function withStatus($code, $reasonPhrase = ''): ResponseInterface
     {
+        /** @phpstan-ignore-next-line */
         if (!is_int($code)) {
             throw new InvalidArgumentException('Status code must be an integer');
         }
@@ -163,6 +167,7 @@ class Response implements ResponseInterface
 
     public function withProtocolVersion($version): ResponseInterface
     {
+        /** @phpstan-ignore-next-line */
         if (!is_string($version)) {
             $version = (string) $version;
         }
@@ -437,7 +442,7 @@ class Response implements ResponseInterface
      * Add validation errors to the session
      *
      * @param array $errors
-     * @return ResponseInterface
+     * @return static
      */
     public function withErrors(array $errors): static
     {
@@ -454,7 +459,7 @@ class Response implements ResponseInterface
      * Add input data to the session
      *
      * @param array $input
-     * @return ResponseInterface
+     * @return static
      */
     public function withInput(array $input): static
     {

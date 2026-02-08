@@ -6,6 +6,9 @@ namespace Plugs\Forms;
 
 use Plugs\View\ComponentAttributes;
 
+/**
+ * @phpstan-consistent-constructor
+ */
 abstract class Field
 {
     protected string $type;

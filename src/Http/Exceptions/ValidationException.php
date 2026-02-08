@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace Plugs\Http\Exceptions;
 
 use Plugs\View\ErrorMessage;
-use PSR\Http\Message\ServerRequestInterface;
+use Psr\Http\Message\ServerRequestInterface;
 use RuntimeException;
 
 class ValidationException extends RuntimeException

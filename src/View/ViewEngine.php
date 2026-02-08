@@ -36,6 +36,15 @@ class ViewEngine
     private ?string $cspNonce = null;
     private array $compilationAttempts = [];
 
+    /**
+     * Get the number of compilation attempts for each view.
+     * @return array<string, int>
+     */
+    public function getCompilationAttempts(): array
+    {
+        return $this->compilationAttempts;
+    }
+
     private array $composers = [];
 
     /**
@@ -67,6 +76,14 @@ class ViewEngine
      * Enable streaming mode
      */
     private bool $streamingEnabled = false;
+
+    /**
+     * Check if streaming is enabled.
+     */
+    public function isStreamingEnabled(): bool
+    {
+        return $this->streamingEnabled;
+    }
 
     /**
      * File existence cache to reduce I/O
@@ -594,9 +611,9 @@ class ViewEngine
                 }
 
                 // Include layout information for SPA to detect if a full reload is needed
-                /** @phpstan-ignore-next-line */
+                /** @var string|null $__extends */
                 if (isset($__extends) && $__extends) {
-                    $output = "<meta name=\"plugs-layout\" content=\"" . (string) ($__extends ?? '') . "\">\n" . $output;
+                    $output = "<meta name=\"plugs-layout\" content=\"" . (string) $__extends . "\">\n" . $output;
                 }
 
                 return $output;
@@ -678,9 +695,9 @@ class ViewEngine
                 }
 
                 // Include layout information for SPA to detect if a full reload is needed
-                /** @phpstan-ignore-next-line */
+                /** @var string|null $__extends */
                 if (isset($__extends) && $__extends) {
-                    $output = "<meta name=\"plugs-layout\" content=\"" . (string) ($__extends ?? '') . "\">\n" . $output;
+                    $output = "<meta name=\"plugs-layout\" content=\"" . (string) $__extends . "\">\n" . $output;
                 }
 
                 return $output;

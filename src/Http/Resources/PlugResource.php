@@ -17,6 +17,7 @@ use Plugs\Utils\Str;
  * Inspired by Laravel's API Resources with unique Plugs enhancements.
  * 
  * @package Plugs\Http\Resources
+ * @phpstan-consistent-constructor
  */
 abstract class PlugResource implements JsonSerializable
 {

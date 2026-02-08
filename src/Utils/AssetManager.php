@@ -30,6 +30,14 @@ class AssetManager
     private bool $precompress = false;
     private array $imageOptions = [];
 
+    /**
+     * Get image processing options.
+     */
+    public function getImageOptions(): array
+    {
+        return $this->imageOptions;
+    }
+
     public function __construct(
         ?string $publicPath = null,
         ?string $cachePath = null,

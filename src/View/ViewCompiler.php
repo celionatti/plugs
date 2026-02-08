@@ -52,6 +52,46 @@ class ViewCompiler
     private ?ViewCache $viewCache = null;
 
     /**
+     * Check if source maps are enabled
+     */
+    public function isSourceMapEnabled(): bool
+    {
+        return $this->sourceMapEnabled;
+    }
+
+    /**
+     * Get the current line number
+     */
+    public function getCurrentLine(): int
+    {
+        return $this->currentLine;
+    }
+
+    /**
+     * Get the source map
+     */
+    public function getSourceMap(): array
+    {
+        return $this->sourceMap;
+    }
+
+    /**
+     * Get the fragment renderer
+     */
+    public function getFragmentRenderer(): ?FragmentRenderer
+    {
+        return $this->fragmentRenderer;
+    }
+
+    /**
+     * Get the view cache
+     */
+    public function getViewCache(): ?ViewCache
+    {
+        return $this->viewCache;
+    }
+
+    /**
      * Parent component data stack for @aware directive
      */
     private static array $parentDataStack = [];
@@ -139,14 +179,6 @@ class ViewCompiler
     {
         $this->sourceMapEnabled = $enabled;
         return $this;
-    }
-
-    /**
-     * Get source map for debugging
-     */
-    public function getSourceMap(): array
-    {
-        return $this->sourceMap;
     }
 
     /**
@@ -419,6 +451,7 @@ class ViewCompiler
         $content = $safeCompile([$this, 'compileErrorDirectives'], $content);
         $content = $safeCompile([$this, 'compileReadTime'], $content);
         $content = $safeCompile([$this, 'compileWordCount'], $content);
+        $content = $safeCompile([$this, 'compileAutofocus'], $content);
 
         // 11. Echo statements LAST (after all directives)
         $content = $safeCompile([$this, 'compileRawEchos'], $content);

@@ -7,34 +7,38 @@ namespace Plugs\Testing;
 use Psr\Http\Message\ResponseInterface;
 use PHPUnit\Framework\Assert as PHPUnit;
 
+/**
+ * TestResponse
+ */
 class TestResponse
 {
     /**
-     * Create a new test response instance.
-     *
-     * @param ResponseInterface $baseResponse
+     * The response instance.
      */
-    public function __construct(
-        public readonly ResponseInterface $baseResponse
-    ) {
+    protected ResponseInterface $response;
+
+    /**
+     * Create a new test response instance.
+     */
+    public function __construct(ResponseInterface $response)
+    {
+        $this->response = $response;
     }
 
     /**
      * Assert that the response has a given status code.
-     *
-     * @param int $status
-     * @return $this
      */
     public function assertStatus(int $status): self
     {
-        PHPUnit::assertEquals($status, $this->baseResponse->getStatusCode());
+        /** @phpstan-ignore-next-line */
+        PHPUnit::assertEquals($status, $this->response->getStatusCode(), "Expected status code {$status} but received " . $this->response->getStatusCode());
+
         return $this;
     }
 
     /**
      * Assert that the response has a success status code.
-     *
-     * @return $this
+     * @return self
      */
     public function assertOk(): self
     {
@@ -49,13 +53,16 @@ class TestResponse
      */
     public function assertJson(array $data): self
     {
-        $actual = json_decode((string) $this->baseResponse->getBody(), true);
+        $json = json_decode((string) $this->response->getBody(), true);
 
-        PHPUnit::assertIsArray($actual, 'Response is not valid JSON');
+        /** @phpstan-ignore-next-line */
+        PHPUnit::assertIsArray($json, "Response body is not valid JSON.");
 
         foreach ($data as $key => $value) {
-            PHPUnit::assertArrayHasKey($key, $actual);
-            PHPUnit::assertEquals($value, $actual[$key]);
+            /** @phpstan-ignore-next-line */
+            PHPUnit::assertArrayHasKey($key, $json, "Response JSON does not contain key {$key}.");
+            /** @phpstan-ignore-next-line */
+            PHPUnit::assertEquals($value, $json[$key], "Response JSON key {$key} does not match expected value.");
         }
 
         return $this;
@@ -68,12 +75,14 @@ class TestResponse
      * @param string|null $value
      * @return $this
      */
-    public function assertHeader(string $header, string $value = null): self
+    public function assertHeader(string $header, ?string $value = null): self
     {
-        PHPUnit::assertTrue($this->baseResponse->hasHeader($header));
+        /** @phpstan-ignore-next-line */
+        PHPUnit::assertTrue($this->response->hasHeader($header), "Response does not have header {$header}.");
 
         if ($value !== null) {
-            PHPUnit::assertEquals($value, $this->baseResponse->getHeaderLine($header));
+            /** @phpstan-ignore-next-line */
+            PHPUnit::assertEquals($value, $this->response->getHeaderLine($header), "Response header {$header} does not match expected value.");
         }
 
         return $this;
@@ -84,6 +93,6 @@ class TestResponse
      */
     public function __call($method, $args)
     {
-        return $this->baseResponse->{$method}(...$args);
+        return $this->response->{$method}(...$args);
     }
 }

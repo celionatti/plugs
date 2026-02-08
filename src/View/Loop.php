@@ -36,13 +36,13 @@ class Loop
     /**
      * Create a new Loop instance.
      *
-     * @param int|Countable|array $count The total count of items or the iterable itself
+     * @param int|Countable|array<mixed> $count The total count of items or the iterable itself
      * @param Loop|null $parent The parent loop
      * @param int $depth The nesting depth
      */
-    public function __construct($count, ?Loop $parent = null, int $depth = 1)
+    public function __construct(int|Countable|array $count, ?Loop $parent = null, int $depth = 1)
     {
-        $this->count = is_countable($count) ? count($count) : (is_array($count) ? count($count) : (int) $count);
+        $this->count = is_int($count) ? $count : count($count);
         $this->parent = $parent;
         $this->depth = $depth;
     }

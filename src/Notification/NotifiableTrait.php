@@ -6,6 +6,7 @@ namespace Plugs\Notification;
 
 use Plugs\Container\Container;
 
+/** @phpstan-ignore trait.unused */
 trait NotifiableTrait
 {
     /**

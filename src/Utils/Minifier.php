@@ -17,7 +17,6 @@ class Minifier
      * Minify JavaScript content
      * 
      * @param string $js
-     * @param bool $removeConsole Remove console.log statements
      * @return string
      */
     public static function js(string $js): string
@@ -33,6 +32,7 @@ class Minifier
 
         $js = preg_replace_callback($pattern, function ($matches) {
             // If the second group (index 1) matches, it's a comment
+            /** @phpstan-ignore-next-line */
             if (isset($matches[1]) && $matches[1] !== '') {
                 return '';
             }

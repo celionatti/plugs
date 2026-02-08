@@ -17,6 +17,7 @@ use Plugs\Paginator\Paginator;
  * Supports pagination, meta data, and links.
  * 
  * @package Plugs\Http\Resources
+ * @phpstan-consistent-constructor
  */
 class PlugResourceCollection implements JsonSerializable
 {
@@ -66,7 +67,7 @@ class PlugResourceCollection implements JsonSerializable
     public function __construct(mixed $resource, ?string $collects = null)
     {
         if ($resource instanceof Paginator) {
-            $this->collection = $resource->items() instanceof Collection ? $resource->items() : new Collection($resource->items());
+            $this->collection = new Collection((array) $resource->items());
 
             $this->withPagination(
                 $resource->total(),

@@ -207,6 +207,7 @@ if (!function_exists('dp')) {
     {
         $modelClass = 'Plugs\\Base\\Model\\PlugModel';
 
+        /** @phpstan-ignore-next-line */
         if (class_exists($modelClass) && method_exists($modelClass, 'profile')) {
             $profile = call_user_func([$modelClass, 'profile'], $callback);
             plugs_dump([$profile], $die, 'profile');

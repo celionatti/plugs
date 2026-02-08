@@ -14,10 +14,14 @@ use Plugs\Base\Model\PlugModel;
  */
 class BelongsToManyProxy
 {
-    protected $parent;
-    protected $relationName;
-    protected $config;
+    protected PlugModel $parent;
+    protected string $relationName;
+    /** @var array{pivotTable: string, foreignPivotKey: string, relatedPivotKey: string, parentKey: string} */
+    protected array $config;
 
+    /**
+     * @param array{pivotTable: string, foreignPivotKey: string, relatedPivotKey: string, parentKey: string} $config
+     */
     public function __construct(PlugModel $parent, string $relationName, array $config)
     {
         $this->parent = $parent;
@@ -37,9 +41,9 @@ class BelongsToManyProxy
      * Sync pivot table relationships
      * Replaces all existing relationships with the provided IDs
      *
-     * @param array|int $ids Array of IDs or single ID to sync
+     * @param array<int>|int $ids Array of IDs or single ID to sync
      * @param bool $detaching Whether to detach records not in the list
-     * @return array Returns ['attached' => [], 'detached' => [], 'updated' => []]
+     * @return array{attached: array<int>, detached: array<int>, updated: array<int>}
      */
     public function sync($ids, bool $detaching = true): array
     {
@@ -48,7 +52,10 @@ class BelongsToManyProxy
             $ids = [$ids];
         }
 
-        extract($this->config); // $pivotTable, $foreignPivotKey, $relatedPivotKey, $parentKey
+        $pivotTable = $this->config['pivotTable'];
+        $foreignPivotKey = $this->config['foreignPivotKey'];
+        $relatedPivotKey = $this->config['relatedPivotKey'];
+        $parentKey = $this->config['parentKey'];
 
         $parentId = $this->parent->getAttribute($parentKey);
 
@@ -106,8 +113,8 @@ class BelongsToManyProxy
      * Attach relationships to pivot table
      * Adds new relationships without removing existing ones
      *
-     * @param array|int $ids Array of IDs or single ID to attach
-     * @param array $attributes Additional pivot attributes
+     * @param array<int>|int $ids Array of IDs or single ID to attach
+     * @param array<string, mixed> $attributes Additional pivot attributes
      * @param bool $touch Whether to update timestamps
      * @return void
      */
@@ -118,8 +125,7 @@ class BelongsToManyProxy
             $ids = [$ids];
         }
 
-        extract($this->config); // $pivotTable, $foreignPivotKey, $relatedPivotKey, $parentKey
-
+        $parentKey = $this->config['parentKey'];
         $parentId = $this->parent->getAttribute($parentKey);
 
         if (!$parentId) {
@@ -156,13 +162,12 @@ class BelongsToManyProxy
      * Detach relationships from pivot table
      * Removes relationships without affecting others
      *
-     * @param array|int|null $ids Array of IDs, single ID, or null to detach all
+     * @param array<int>|int|null $ids Array of IDs, single ID, or null to detach all
      * @return int Number of relationships detached
      */
     public function detach($ids = null): int
     {
-        extract($this->config); // $pivotTable, $foreignPivotKey, $relatedPivotKey, $parentKey
-
+        $parentKey = $this->config['parentKey'];
         $parentId = $this->parent->getAttribute($parentKey);
 
         if (!$parentId) {
@@ -196,8 +201,8 @@ class BelongsToManyProxy
      * Toggle relationships in pivot table
      * Attaches if not present, detaches if present
      *
-     * @param array|int $ids Array of IDs or single ID to toggle
-     * @return array Returns ['attached' => [], 'detached' => []]
+     * @param array<int>|int $ids Array of IDs or single ID to toggle
+     * @return array{attached: array<int>, detached: array<int>}
      */
     public function toggle($ids): array
     {
@@ -206,8 +211,7 @@ class BelongsToManyProxy
             $ids = [$ids];
         }
 
-        extract($this->config); // $pivotTable, $foreignPivotKey, $relatedPivotKey, $parentKey
-
+        $parentKey = $this->config['parentKey'];
         $parentId = $this->parent->getAttribute($parentKey);
 
         if (!$parentId) {
@@ -258,12 +262,15 @@ class BelongsToManyProxy
      * Update existing pivot record attributes
      *
      * @param int $id The related model ID
-     * @param array $attributes Attributes to update
+     * @param array<string, mixed> $attributes Attributes to update
      * @return bool
      */
     public function updatePivot(int $id, array $attributes): bool
     {
-        extract($this->config); // $pivotTable, $foreignPivotKey, $relatedPivotKey, $parentKey
+        $pivotTable = $this->config['pivotTable'];
+        $foreignPivotKey = $this->config['foreignPivotKey'];
+        $relatedPivotKey = $this->config['relatedPivotKey'];
+        $parentKey = $this->config['parentKey'];
 
         $parentId = $this->parent->getAttribute($parentKey);
 
@@ -289,7 +296,7 @@ class BelongsToManyProxy
         $bindings[] = $id;
 
         $sql = "UPDATE {$pivotTable} SET " . implode(', ', $setClauses) .
-               " WHERE {$foreignPivotKey} = ? AND {$relatedPivotKey} = ?";
+            " WHERE {$foreignPivotKey} = ? AND {$relatedPivotKey} = ?";
 
         try {
             $this->executeQuery($sql, $bindings);
@@ -307,10 +314,14 @@ class BelongsToManyProxy
 
     /**
      * Get current pivot IDs
+     * @return array<int>
      */
     private function getCurrentPivotIds(): array
     {
-        extract($this->config); // $pivotTable, $foreignPivotKey, $relatedPivotKey, $parentKey
+        $pivotTable = $this->config['pivotTable'];
+        $foreignPivotKey = $this->config['foreignPivotKey'];
+        $relatedPivotKey = $this->config['relatedPivotKey'];
+        $parentKey = $this->config['parentKey'];
 
         $parentId = $this->parent->getAttribute($parentKey);
 
@@ -323,6 +334,8 @@ class BelongsToManyProxy
 
     /**
      * Attach pivot records
+     * @param array<int> $ids
+     * @param array<string, mixed> $attributes
      */
     private function attachPivot(array $ids, array $attributes = [], bool $touch = true): void
     {
@@ -330,7 +343,10 @@ class BelongsToManyProxy
             return;
         }
 
-        extract($this->config); // $pivotTable, $foreignPivotKey, $relatedPivotKey, $parentKey
+        $pivotTable = $this->config['pivotTable'];
+        $foreignPivotKey = $this->config['foreignPivotKey'];
+        $relatedPivotKey = $this->config['relatedPivotKey'];
+        $parentKey = $this->config['parentKey'];
 
         $parentId = $this->parent->getAttribute($parentKey);
         $records = [];
@@ -352,31 +368,33 @@ class BelongsToManyProxy
         }
 
         // Batch insert
-        if (!empty($records)) {
-            $columns = array_keys($records[0]);
-            $columnList = implode(', ', $columns);
-            $placeholders = '(' . implode(', ', array_fill(0, count($columns), '?')) . ')';
-            $values = implode(', ', array_fill(0, count($records), $placeholders));
+        $columns = array_keys($records[0]);
+        $columnList = implode(', ', $columns);
+        $placeholders = '(' . implode(', ', array_fill(0, count($columns), '?')) . ')';
+        $values = implode(', ', array_fill(0, count($records), $placeholders));
 
-            $sql = "INSERT INTO {$pivotTable} ({$columnList}) VALUES {$values}";
+        $sql = "INSERT INTO {$pivotTable} ({$columnList}) VALUES {$values}";
 
-            $bindings = [];
-            foreach ($records as $record) {
-                foreach ($columns as $column) {
-                    $bindings[] = $record[$column] ?? null;
-                }
+        $bindings = [];
+        foreach ($records as $record) {
+            foreach ($columns as $column) {
+                $bindings[] = $record[$column] ?? null;
             }
-
-            $this->executeQuery($sql, $bindings);
         }
+
+        $this->executeQuery($sql, $bindings);
     }
 
     /**
      * Detach pivot records
+     * @param array<int>|null $ids
      */
     private function detachPivot(?array $ids = null): int
     {
-        extract($this->config); // $pivotTable, $foreignPivotKey, $relatedPivotKey, $parentKey
+        $pivotTable = $this->config['pivotTable'];
+        $foreignPivotKey = $this->config['foreignPivotKey'];
+        $relatedPivotKey = $this->config['relatedPivotKey'];
+        $parentKey = $this->config['parentKey'];
 
         $parentId = $this->parent->getAttribute($parentKey);
 
@@ -402,8 +420,10 @@ class BelongsToManyProxy
 
     /**
      * Execute query using parent model's connection
+     * @param array<mixed> $bindings
+     * @return \PDOStatement
      */
-    private function executeQuery(string $sql, array $bindings = [])
+    private function executeQuery(string $sql, array $bindings = []): \PDOStatement
     {
         // Use reflection to call protected method
         $reflection = new \ReflectionMethod($this->parent, 'executeQuery');

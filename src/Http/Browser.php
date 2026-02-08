@@ -13,6 +13,9 @@ namespace Plugs\Http;
 | and parsing User Agent strings to detect browser, OS, and device type.
 */
 
+/**
+ * @phpstan-consistent-constructor
+ */
 class Browser
 {
     /** @var string|null */

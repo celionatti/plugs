@@ -75,6 +75,14 @@ class Router
     private string $cachePath = '';
 
     /**
+     * Get the route cache path.
+     */
+    public function getCachePath(): string
+    {
+        return $this->cachePath;
+    }
+
+    /**
      * Fallback route for unmatched requests.
      * @var Route|null
      */
@@ -290,7 +298,7 @@ class Router
     /**
      * Register routes for a subdomain.
      *
-     * @param string $subdomain
+     * @param string $domain
      * @param callable $callback
      * @return void
      */
@@ -1290,7 +1298,8 @@ class Router
 
     private function getPersistentCachePath(): string
     {
-        return BASE_PATH . 'storage/framework/routes.php';
+        $basePath = defined('BASE_PATH') ? BASE_PATH : dirname(__DIR__, 2) . DIRECTORY_SEPARATOR;
+        return $basePath . 'storage/framework/routes.php';
     }
 
     private function ensureCacheDirectoryExists(string $path): void

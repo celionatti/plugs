@@ -36,6 +36,7 @@ class BootstrapTheme implements ThemeInterface
             $field->attributes(['class' => trim(($field->getAttributes()['class'] ?? '') . ' form-control' . $errorClass)]);
         } elseif ($field->getType() === 'checkbox' || $field->getType() === 'radio') {
             $field->attributes(['class' => trim(($field->getAttributes()['class'] ?? '') . ' form-check-input' . $errorClass)]);
+            /** @phpstan-ignore-next-line */
         } elseif ($field->getType() === 'submit' || $field->getType() === 'button') {
             $field->attributes(['class' => trim(($field->getAttributes()['class'] ?? '') . ' btn btn-primary')]);
         }

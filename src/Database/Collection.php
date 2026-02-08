@@ -6,6 +6,9 @@ namespace Plugs\Database;
 
 use Plugs\Base\Model\PlugModel;
 
+/**
+ * @phpstan-consistent-constructor
+ */
 class Collection implements \ArrayAccess, \Iterator, \Countable, \JsonSerializable
 {
     protected $items = [];
@@ -510,6 +513,7 @@ class Collection implements \ArrayAccess, \Iterator, \Countable, \JsonSerializab
 
     /**
      * Mode value(s)
+     * @return array<mixed>|null
      */
     public function mode(?string $key = null)
     {
@@ -520,6 +524,7 @@ class Collection implements \ArrayAccess, \Iterator, \Countable, \JsonSerializab
         }
 
         $counts = array_count_values($values);
+        /** @phpstan-ignore argument.type */
         $maxCount = max($counts);
 
         return array_keys($counts, $maxCount);
@@ -666,8 +671,9 @@ class Collection implements \ArrayAccess, \Iterator, \Countable, \JsonSerializab
 
     /**
      * Flatten multi-dimensional collection
+     * @param int $depth Maximum depth to flatten (use PHP_INT_MAX for infinite)
      */
-    public function flatten(int $depth = INF): Collection
+    public function flatten(int $depth = PHP_INT_MAX): Collection
     {
         $result = [];
 
@@ -983,8 +989,7 @@ class Collection implements \ArrayAccess, \Iterator, \Countable, \JsonSerializab
             $ids = [$ids];
         }
 
-        extract($this->_pivotConfig); // $pivotTable, $foreignPivotKey, $relatedPivotKey, $parentKey
-
+        $parentKey = $this->_pivotConfig['parentKey'];
         $parentId = $this->_pivotModel->getAttribute($parentKey);
 
         if (!$parentId) {
@@ -1007,6 +1012,10 @@ class Collection implements \ArrayAccess, \Iterator, \Countable, \JsonSerializab
 
         // Begin transaction
         $modelClass = get_class($this->_pivotModel);
+        if (!is_string($modelClass) || !class_exists($modelClass)) {
+            throw new \Exception("Invalid model class");
+        }
+        /** @var class-string<PlugModel> $modelClass */
         $modelClass::beginTransaction();
 
         try {
@@ -1059,8 +1068,7 @@ class Collection implements \ArrayAccess, \Iterator, \Countable, \JsonSerializab
             $ids = [$ids];
         }
 
-        extract($this->_pivotConfig); // $pivotTable, $foreignPivotKey, $relatedPivotKey, $parentKey
-
+        $parentKey = $this->_pivotConfig['parentKey'];
         $parentId = $this->_pivotModel->getAttribute($parentKey);
 
         if (!$parentId) {
@@ -1078,6 +1086,10 @@ class Collection implements \ArrayAccess, \Iterator, \Countable, \JsonSerializab
         }
 
         $modelClass = get_class($this->_pivotModel);
+        if (!is_string($modelClass) || !class_exists($modelClass)) {
+            throw new \Exception("Invalid model class");
+        }
+        /** @var class-string<PlugModel> $modelClass */
         $modelClass::beginTransaction();
 
         try {
@@ -1110,8 +1122,7 @@ class Collection implements \ArrayAccess, \Iterator, \Countable, \JsonSerializab
     {
         $this->ensurePivotContext();
 
-        extract($this->_pivotConfig); // $pivotTable, $foreignPivotKey, $relatedPivotKey, $parentKey
-
+        $parentKey = $this->_pivotConfig['parentKey'];
         $parentId = $this->_pivotModel->getAttribute($parentKey);
 
         if (!$parentId) {
@@ -1124,6 +1135,10 @@ class Collection implements \ArrayAccess, \Iterator, \Countable, \JsonSerializab
         }
 
         $modelClass = get_class($this->_pivotModel);
+        if (!is_string($modelClass) || !class_exists($modelClass)) {
+            throw new \Exception("Invalid model class");
+        }
+        /** @var class-string<PlugModel> $modelClass */
         $modelClass::beginTransaction();
 
         try {
@@ -1161,8 +1176,7 @@ class Collection implements \ArrayAccess, \Iterator, \Countable, \JsonSerializab
             $ids = [$ids];
         }
 
-        extract($this->_pivotConfig); // $pivotTable, $foreignPivotKey, $relatedPivotKey, $parentKey
-
+        $parentKey = $this->_pivotConfig['parentKey'];
         $parentId = $this->_pivotModel->getAttribute($parentKey);
 
         if (!$parentId) {
@@ -1182,6 +1196,10 @@ class Collection implements \ArrayAccess, \Iterator, \Countable, \JsonSerializab
         ];
 
         $modelClass = get_class($this->_pivotModel);
+        if (!is_string($modelClass) || !class_exists($modelClass)) {
+            throw new \Exception("Invalid model class");
+        }
+        /** @var class-string<PlugModel> $modelClass */
         $modelClass::beginTransaction();
 
         try {
@@ -1224,7 +1242,10 @@ class Collection implements \ArrayAccess, \Iterator, \Countable, \JsonSerializab
     {
         $this->ensurePivotContext();
 
-        extract($this->_pivotConfig); // $pivotTable, $foreignPivotKey, $relatedPivotKey, $parentKey
+        $pivotTable = $this->_pivotConfig['pivotTable'];
+        $foreignPivotKey = $this->_pivotConfig['foreignPivotKey'];
+        $relatedPivotKey = $this->_pivotConfig['relatedPivotKey'];
+        $parentKey = $this->_pivotConfig['parentKey'];
 
         $parentId = $this->_pivotModel->getAttribute($parentKey);
 
@@ -1279,10 +1300,14 @@ class Collection implements \ArrayAccess, \Iterator, \Countable, \JsonSerializab
 
     /**
      * Get current pivot IDs
+     * @return array<int>
      */
     private function getCurrentPivotIds(): array
     {
-        extract($this->_pivotConfig); // $pivotTable, $foreignPivotKey, $relatedPivotKey, $parentKey
+        $pivotTable = $this->_pivotConfig['pivotTable'];
+        $foreignPivotKey = $this->_pivotConfig['foreignPivotKey'];
+        $relatedPivotKey = $this->_pivotConfig['relatedPivotKey'];
+        $parentKey = $this->_pivotConfig['parentKey'];
 
         $parentId = $this->_pivotModel->getAttribute($parentKey);
 
@@ -1295,6 +1320,8 @@ class Collection implements \ArrayAccess, \Iterator, \Countable, \JsonSerializab
 
     /**
      * Attach pivot records
+     * @param array<int> $ids
+     * @param array<string, mixed> $attributes
      */
     private function attachPivot(array $ids, array $attributes = [], bool $touch = true): void
     {
@@ -1302,7 +1329,10 @@ class Collection implements \ArrayAccess, \Iterator, \Countable, \JsonSerializab
             return;
         }
 
-        extract($this->_pivotConfig); // $pivotTable, $foreignPivotKey, $relatedPivotKey, $parentKey
+        $pivotTable = $this->_pivotConfig['pivotTable'];
+        $foreignPivotKey = $this->_pivotConfig['foreignPivotKey'];
+        $relatedPivotKey = $this->_pivotConfig['relatedPivotKey'];
+        $parentKey = $this->_pivotConfig['parentKey'];
 
         $parentId = $this->_pivotModel->getAttribute($parentKey);
         $records = [];
@@ -1324,31 +1354,33 @@ class Collection implements \ArrayAccess, \Iterator, \Countable, \JsonSerializab
         }
 
         // Batch insert
-        if (!empty($records)) {
-            $columns = array_keys($records[0]);
-            $columnList = implode(', ', $columns);
-            $placeholders = '(' . implode(', ', array_fill(0, count($columns), '?')) . ')';
-            $values = implode(', ', array_fill(0, count($records), $placeholders));
+        $columns = array_keys($records[0]);
+        $columnList = implode(', ', $columns);
+        $placeholders = '(' . implode(', ', array_fill(0, count($columns), '?')) . ')';
+        $values = implode(', ', array_fill(0, count($records), $placeholders));
 
-            $sql = "INSERT INTO {$pivotTable} ({$columnList}) VALUES {$values}";
+        $sql = "INSERT INTO {$pivotTable} ({$columnList}) VALUES {$values}";
 
-            $bindings = [];
-            foreach ($records as $record) {
-                foreach ($columns as $column) {
-                    $bindings[] = $record[$column] ?? null;
-                }
+        $bindings = [];
+        foreach ($records as $record) {
+            foreach ($columns as $column) {
+                $bindings[] = $record[$column] ?? null;
             }
-
-            $this->executePivotQuery($sql, $bindings);
         }
+
+        $this->executePivotQuery($sql, $bindings);
     }
 
     /**
      * Detach pivot records
+     * @param array<int>|null $ids
      */
     private function detachPivot(?array $ids = null): int
     {
-        extract($this->_pivotConfig); // $pivotTable, $foreignPivotKey, $relatedPivotKey, $parentKey
+        $pivotTable = $this->_pivotConfig['pivotTable'];
+        $foreignPivotKey = $this->_pivotConfig['foreignPivotKey'];
+        $relatedPivotKey = $this->_pivotConfig['relatedPivotKey'];
+        $parentKey = $this->_pivotConfig['parentKey'];
 
         $parentId = $this->_pivotModel->getAttribute($parentKey);
 
@@ -1390,12 +1422,16 @@ class Collection implements \ArrayAccess, \Iterator, \Countable, \JsonSerializab
     private function clearPivotCache(): void
     {
         $modelClass = get_class($this->_pivotModel);
+        if (!is_string($modelClass) || !class_exists($modelClass)) {
+            return;
+        }
 
         try {
             $reflection = new \ReflectionProperty($modelClass, 'cacheEnabled');
             $reflection->setAccessible(true);
 
             if ($reflection->getValue()) {
+                /** @var class-string<PlugModel> $modelClass */
                 $modelClass::flushCache();
             }
         } catch (\Exception $e) {
@@ -1441,7 +1477,7 @@ class Collection implements \ArrayAccess, \Iterator, \Countable, \JsonSerializab
         if ($this->isNotEmpty() && $this->first() instanceof PlugModel) {
             $modelClass = get_class($this->first());
 
-            // Check if loadRelations exists (it's in HasRelationships trait)
+            /** @phpstan-ignore function.alreadyNarrowedType */
             if (method_exists($modelClass, 'loadRelations')) {
                 $modelClass::loadRelations($this, $relations);
             }
@@ -1472,6 +1508,7 @@ class Collection implements \ArrayAccess, \Iterator, \Countable, \JsonSerializab
 
             if ($modelsToLoad->isNotEmpty()) {
                 $modelClass = get_class($this->first());
+                /** @phpstan-ignore function.alreadyNarrowedType */
                 if (method_exists($modelClass, 'loadRelations')) {
                     $modelClass::loadRelations($modelsToLoad, $relation);
                 }

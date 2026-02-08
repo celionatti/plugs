@@ -404,7 +404,8 @@ class Plugs
      */
     private function loadFunctions(): void
     {
-        $cacheFile = STORAGE_PATH . 'framework/functions.php';
+        $storagePath = defined('STORAGE_PATH') ? STORAGE_PATH : (function_exists('storage_path') ? storage_path() : dirname(__DIR__, 2) . '/storage/');
+        $cacheFile = rtrim($storagePath, '/\\') . '/framework/functions.php';
 
         // Try to load from cache in production
         if (self::isProduction() && file_exists($cacheFile)) {

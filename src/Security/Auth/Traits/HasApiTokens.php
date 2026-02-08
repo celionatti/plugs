@@ -6,6 +6,7 @@ namespace Plugs\Security\Auth\Traits;
 
 use Plugs\Security\Token;
 
+/** @phpstan-ignore trait.unused */
 trait HasApiTokens
 {
     /**

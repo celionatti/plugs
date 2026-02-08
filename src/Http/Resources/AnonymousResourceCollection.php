@@ -19,7 +19,7 @@ class AnonymousResourceCollection extends PlugResourceCollection
     /**
      * Create a new anonymous resource collection
      */
-    public function __construct(mixed $resource, string $collects)
+    public function __construct(mixed $resource, ?string $collects = null)
     {
         parent::__construct($resource, $collects);
     }

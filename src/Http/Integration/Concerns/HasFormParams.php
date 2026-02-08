@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Plugs\Http\Integration\Concerns;
 
+/** @phpstan-ignore trait.unused */
 trait HasFormParams
 {
     protected array $data = [];

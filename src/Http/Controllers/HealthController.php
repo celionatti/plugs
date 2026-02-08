@@ -71,7 +71,7 @@ class HealthController extends Controller
 
     private function checkStorage(): array
     {
-        $storagePath = STORAGE_PATH ?? __DIR__ . '/../../storage';
+        $storagePath = defined('STORAGE_PATH') ? STORAGE_PATH : (function_exists('storage_path') ? storage_path() : dirname(__DIR__, 2) . '/storage/');
         if (is_writable($storagePath)) {
             return ['status' => 'ok'];
         }

@@ -17,7 +17,7 @@ class Arr
      * Get an item from an array using "dot" notation.
      *
      * @param  array   $array
-     * @param  string  $key
+     * @param  string|null  $key
      * @param  mixed   $default
      * @return mixed
      */
@@ -50,7 +50,7 @@ class Arr
      * Check if an item exists in an array using "dot" notation.
      *
      * @param  array   $array
-     * @param  string  $key
+     * @param  string|null  $key
      * @return bool
      */
     public static function has($array, $key): bool
@@ -82,7 +82,7 @@ class Arr
      * Set an array item to a given value using "dot" notation.
      *
      * @param  array   $array
-     * @param  string  $key
+     * @param  string|null  $key
      * @param  mixed   $value
      * @return array
      */

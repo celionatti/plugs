@@ -12,6 +12,8 @@ declare(strict_types=1);
 | src directory to protect them from accidental user modification.
 */
 
+/** @var \Plugs\Router\Router $router */
+
 /*
 |--------------------------------------------------------------------------
 | Profiler Dashboard Routes (Development Only)

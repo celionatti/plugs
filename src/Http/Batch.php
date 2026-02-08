@@ -187,7 +187,7 @@ class Batch
                     call_user_func($this->beforeSendCallback, $request, $key);
                 }
 
-                yield $key => function () use ($request, $key) {
+                yield $key => function () use ($request) {
                     return $this->client->requestAsync(
                         $request['method'],
                         $request['url'],

@@ -100,6 +100,7 @@ class StandardResponse implements JsonSerializable
             ];
 
             // Add query stats if available
+            /** @phpstan-ignore-next-line */
             if (method_exists(\Plugs\Base\Model\PlugModel::class, 'getDebugStats')) {
                 $debugParams['queries'] = \Plugs\Base\Model\PlugModel::getDebugStats();
             }
