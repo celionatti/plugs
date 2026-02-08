@@ -445,6 +445,18 @@ User::chunk(100, function ($users) {
 > [!TIP]
 > Chunking is memory-efficient for processing thousands of records without loading them all into memory at once.
 
+### Chunking By ID
+
+If you are updating database records while chunking results, your chunk results could change in unexpected ways. So, when updating records while chunking, it is always best to use the `chunkById` method. This method will automatically paginate the results based on the record's primary key:
+
+```php
+User::chunkById(100, function ($users) {
+    foreach ($users as $user) {
+        $user->update(['processed' => true]);
+    }
+});
+```
+
 ## API Responses
 
 ### Model to Response

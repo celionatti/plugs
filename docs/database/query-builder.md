@@ -131,6 +131,43 @@ $users = DB::table('users')
                 ->get();
 ```
 
+## Chunking Results
+
+If you need to work with thousands of database records, consider using the `chunk` method. This method retrieves a small chunk of the results at a time and feeds each chunk into a `Closure` for processing. This method is very useful for writing console commands that process thousands of records. For example, let's work with the entire `users` table in chunks of 100 records at a time:
+
+```php
+DB::table('users')->orderBy('id')->chunk(100, function ($users) {
+    foreach ($users as $user) {
+        //
+    }
+});
+```
+
+You may stop further chunks from being processed by returning `false` from the `Closure`:
+
+```php
+DB::table('users')->orderBy('id')->chunk(100, function ($users) {
+    // Process the records...
+
+    return false;
+});
+```
+
+### Chunking By ID
+
+If you are updating database records while chunking results, your chunk results could change in unexpected ways. So, when updating records while chunking, it is always best to use the `chunkById` method. This method will automatically paginate the results based on the record's primary key:
+
+```php
+DB::table('users')->where('active', false)
+    ->chunkById(100, function ($users) {
+        foreach ($users as $user) {
+            DB::table('users')
+                ->where('id', $user->id)
+                ->update(['active' => true]);
+        }
+    });
+```
+
 ## Inserts, Updates, Deletes
 
 ### Insert
