@@ -32,7 +32,30 @@ if (config('security.profiler.enabled', false)) {
 
 $router->post('/plugs/component/action', [\Plugs\View\ReactiveController::class, 'handle']);
 
-$router->get('/plugs/up', [\Plugs\Http\Controllers\HealthController::class]);
+/*
+|--------------------------------------------------------------------------
+| Framework Health & Metrics Routes
+|--------------------------------------------------------------------------
+|
+| These routes use the `/_plugs/` prefix (with leading underscore) to avoid
+| conflicts with user-defined routes in production projects.
+|
+*/
+$router->group(['prefix' => '_plugs'], function () use ($router) {
+    // Health checks (Kubernetes-compatible)
+    $router->get('/health', [\Plugs\Http\Controllers\HealthController::class, 'index'])->name('plugs.health');
+    $router->get('/health/detailed', [\Plugs\Http\Controllers\HealthController::class, 'detailed'])->name('plugs.health.detailed');
+    $router->get('/health/liveness', [\Plugs\Http\Controllers\HealthController::class, 'liveness'])->name('plugs.health.liveness');
+    $router->get('/health/readiness', [\Plugs\Http\Controllers\HealthController::class, 'readiness'])->name('plugs.health.readiness');
+
+    // Metrics (Prometheus-compatible)
+    $router->get('/metrics', [\Plugs\Http\Controllers\MetricsController::class, 'prometheus'])->name('plugs.metrics');
+    $router->get('/metrics/json', [\Plugs\Http\Controllers\MetricsController::class, 'json'])->name('plugs.metrics.json');
+
+    // API Documentation (OpenAPI/Swagger)
+    $router->get('/docs', [\Plugs\Http\Controllers\OpenApiController::class, 'ui'])->name('plugs.docs');
+    $router->get('/docs/spec', [\Plugs\Http\Controllers\OpenApiController::class, 'spec'])->name('plugs.docs.spec');
+});
 
 $router->get('/reactive-test', function () {
     return view('reactive_test');

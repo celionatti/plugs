@@ -1244,7 +1244,7 @@ class Router
 
                 // We must handle the handler separately as it might be a closure
                 $handler = $route->getHandler();
-                if ($handler instanceof \Closure) {
+                if ($handler instanceof Closure) {
                     throw new RuntimeException("Route [{$route->getPath()}] uses a closure and cannot be cached. Use controller actions instead.");
                 }
 
