@@ -38,12 +38,79 @@ class Async
     }
 
     /**
-     * Run a task in a Fiber (Fire and forget, or managed by a scheduler if we had one running).
-     * For now, this just starts a fiber.
+     * Run a task in a Fiber.
      */
-    public static function run(callable $callback): void
+    public static function run(callable $callback): PromiseInterface
     {
-        $fiber = new \Fiber($callback);
+        $promise = new \GuzzleHttp\Promise\Promise(function () use (&$promise) {
+            // Valid wait strategy: run the task queue until resolved
+            while ($promise->getState() === PromiseInterface::PENDING) {
+                Utils::queue()->run();
+            }
+        });
+
+        $fiber = new \Fiber(function () use ($callback, $promise) {
+            try {
+                $result = $callback();
+                if ($result instanceof PromiseInterface) {
+                    $result->then(
+                        fn($v) => $promise->resolve($v),
+                        fn($e) => $promise->reject($e)
+                    );
+                } else {
+                    $promise->resolve($result);
+                }
+            } catch (\Throwable $e) {
+                $promise->reject($e);
+            }
+        });
+
         $fiber->start();
+
+        return $promise;
+    }
+
+    /**
+     * Await a promise resolution.
+     * Suspends the current Fiber until the promise is settled.
+     */
+    public static function await(PromiseInterface $promise): mixed
+    {
+        if (!\Fiber::getCurrent()) {
+            return $promise->wait();
+        }
+
+        $fiber = \Fiber::getCurrent();
+        $isSettled = false;
+        $result = null;
+        $error = null;
+
+        $promise->then(
+            function ($value) use ($fiber, &$isSettled, &$result) {
+                $isSettled = true;
+                $result = $value;
+                // Resume logic: if we are not in the same tick as suspend (usually true for async)
+                if ($fiber->isSuspended()) {
+                    $fiber->resume();
+                }
+            },
+            function ($reason) use ($fiber, &$isSettled, &$error) {
+                $isSettled = true;
+                $error = $reason;
+                if ($fiber->isSuspended()) {
+                    $fiber->resume();
+                }
+            }
+        );
+
+        if (!$isSettled) {
+            \Fiber::suspend();
+        }
+
+        if ($error) {
+            throw $error instanceof Throwable ? $error : new \Exception((string) $error);
+        }
+
+        return $result;
     }
 }
