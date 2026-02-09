@@ -30,13 +30,26 @@ trait Prunable
     /**
      * Prune the model instance.
      *
+     * @param  bool  $force
      * @return bool|null
      */
-    public function prune()
+    public function prune(bool $force = false)
     {
-        $this->firingPruningEvent();
+        if ($this->hasLegalHold()) {
+            return false;
+        }
 
-        return $this->delete();
+        if ($this->fireModelEvent('pruning', ['force' => $force]) === false) {
+            return false;
+        }
+
+        $result = $force ? $this->forceDelete() : $this->delete();
+
+        if ($result) {
+            $this->fireModelEvent('pruned', ['force' => $force]);
+        }
+
+        return $result;
     }
 
     /**
@@ -48,18 +61,43 @@ trait Prunable
      */
     public function prunable(): QueryBuilder
     {
-        throw new \LogicException('Please implement the prunable method on your model.');
+        $query = static::query();
+
+        foreach ($this->retentionRules() as $rule) {
+            $query = $rule->apply($query);
+        }
+
+        return $query;
+    }
+
+    /**
+     * Define the retention rules for the model.
+     *
+     * @return array
+     */
+    public function retentionRules(): array
+    {
+        return [];
+    }
+
+    /**
+     * Determine if the model has a legal hold.
+     *
+     * @return bool
+     */
+    public function hasLegalHold(): bool
+    {
+        return false;
     }
 
     /**
      * Fire the "pruning" event for the model.
      *
+     * @deprecated Use fireModelEvent('pruning')
      * @return void
      */
     protected function firingPruningEvent(): void
     {
-        if (method_exists($this, 'pruning')) {
-            $this->pruning();
-        }
+        // Handled via fireModelEvent in prune()
     }
 }

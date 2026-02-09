@@ -349,11 +349,21 @@ abstract class PlugModel implements \JsonSerializable
 
     public function save(): bool
     {
-        if ($this->exists()) {
-            return $this->performUpdate();
+        if ($this->fireModelEvent('saving') === false) {
+            return false;
         }
 
-        return $this->performInsert();
+        if ($this->exists()) {
+            $saved = $this->performUpdate();
+        } else {
+            $saved = $this->performInsert();
+        }
+
+        if ($saved) {
+            $this->fireModelEvent('saved');
+        }
+
+        return $saved;
     }
 
     protected function performInsert(): bool
@@ -365,6 +375,10 @@ abstract class PlugModel implements \JsonSerializable
             $data['updated_at'] = date('Y-m-d H:i:s');
         }
 
+        if ($this->fireModelEvent('creating') === false) {
+            return false;
+        }
+
         $result = static::query()->insert($data);
 
         if ($result) {
@@ -373,6 +387,8 @@ abstract class PlugModel implements \JsonSerializable
                 $this->attributes[$this->primaryKey] = $connection->lastInsertId();
             }
             $this->original = $this->attributes;
+
+            $this->fireModelEvent('created');
         }
 
         return $result;
@@ -394,6 +410,10 @@ abstract class PlugModel implements \JsonSerializable
         // Domain Rule: State Transitions
         $this->validateStateTransitions();
 
+        if ($this->fireModelEvent('updating', ['dirty' => $dirty]) === false) {
+            return false;
+        }
+
         if ($this->timestamps) {
             $dirty['updated_at'] = date('Y-m-d H:i:s');
         }
@@ -404,6 +424,8 @@ abstract class PlugModel implements \JsonSerializable
 
         if ($result) {
             $this->original = $this->attributes;
+
+            $this->fireModelEvent('updated', ['dirty' => $dirty]);
         }
 
         return $result;
@@ -420,6 +442,24 @@ abstract class PlugModel implements \JsonSerializable
             throw new \DomainException("Deletion denied by domain rules.");
         }
 
+        if ($this->fireModelEvent('deleting') === false) {
+            return false;
+        }
+
+        $result = $this->performDelete();
+
+        if ($result) {
+            $this->fireModelEvent('deleted');
+        }
+
+        return $result;
+    }
+
+    /**
+     * Perform the actual delete query.
+     */
+    protected function performDelete(): bool
+    {
         return static::query()
             ->where($this->primaryKey, '=', $this->attributes[$this->primaryKey])
             ->delete();

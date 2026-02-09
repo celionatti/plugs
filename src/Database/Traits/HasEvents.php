@@ -34,21 +34,25 @@ trait HasEvents
         static::$observers[static::class][] = $observer;
     }
 
-    protected function fireObserverEvent(string $event, ...$args): void
+    protected function fireObserverEvent(string $event, array $context = []): bool
     {
         $class = static::class;
         if (!isset(static::$observers[$class])) {
-            return;
+            return true;
         }
 
         foreach (static::$observers[$class] as $observer) {
             if (method_exists($observer, $event)) {
-                $observer->$event($this, ...$args);
+                if ($observer->$event($this, $context) === false) {
+                    return false;
+                }
             }
         }
+
+        return true;
     }
 
-    protected function fireModelEvent(string $event)
+    protected function fireModelEvent(string $event, array $context = [])
     {
         // Record event in Profiler if available
         if (class_exists(\Plugs\Debug\Profiler::class)) {
@@ -59,18 +63,20 @@ trait HasEvents
         $class = static::class;
         if (isset(static::$eventListeners[$class][$event])) {
             foreach (static::$eventListeners[$class][$event] as $callback) {
-                if ($callback($this) === false) {
+                if ($callback($this, $context) === false) {
                     return false;
                 }
             }
         }
 
         // Fire observer events
-        $this->fireObserverEvent($event);
+        if ($this->fireObserverEvent($event, $context) === false) {
+            return false;
+        }
 
         $method = 'on' . ucfirst($event);
         if (method_exists($this, $method)) {
-            return $this->$method();
+            return $this->$method($context);
         }
 
         return true;
