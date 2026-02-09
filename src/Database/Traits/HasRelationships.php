@@ -43,7 +43,7 @@ trait HasRelationships
         $foreignKey = $foreignKey ?? strtolower(class_basename(static::class)) . '_id';
         $localKey = $localKey ?? $this->primaryKey;
 
-        $builder = $instance->instanceWhere($foreignKey, $this->getAttribute($localKey));
+        $builder = $instance->where($foreignKey, $this->getAttribute($localKey));
 
         return new HasOneProxy($this, $builder, $foreignKey, $localKey);
     }
@@ -57,7 +57,7 @@ trait HasRelationships
         $foreignKey = $foreignKey ?? strtolower(class_basename(static::class)) . '_id';
         $localKey = $localKey ?? $this->primaryKey;
 
-        $builder = $instance->instanceWhere($foreignKey, $this->getAttribute($localKey));
+        $builder = $instance->where($foreignKey, $this->getAttribute($localKey));
 
         return new HasManyProxy($this, $builder, $foreignKey, $localKey);
     }
@@ -71,7 +71,7 @@ trait HasRelationships
         $foreignKey = $foreignKey ?? strtolower(class_basename($related)) . '_id';
         $ownerKey = $ownerKey ?? $instance->primaryKey;
 
-        $builder = $instance->instanceWhere($ownerKey, $this->getAttribute($foreignKey));
+        $builder = $instance->where($ownerKey, $this->getAttribute($foreignKey));
 
         return new BelongsToProxy($this, $builder, $foreignKey, $ownerKey);
     }
@@ -113,8 +113,8 @@ trait HasRelationships
         $localKey = $localKey ?? $this->primaryKey;
         $secondLocalKey = $secondLocalKey ?? $throughInstance->primaryKey;
 
-        $builder = $relatedInstance->instanceJoin($throughInstance->getTable(), "{$throughInstance->getTable()}.{$secondLocalKey}", '=', "{$relatedInstance->getTable()}.{$secondKey}")
-            ->instanceWhere("{$throughInstance->getTable()}.{$firstKey}", $this->getAttribute($localKey));
+        $builder = $relatedInstance->join($throughInstance->getTable(), "{$throughInstance->getTable()}.{$secondLocalKey}", '=', "{$relatedInstance->getTable()}.{$secondKey}")
+            ->where("{$throughInstance->getTable()}.{$firstKey}", $this->getAttribute($localKey));
 
         return new HasManyThroughProxy($this, $builder, $firstKey, $secondKey);
     }
@@ -163,8 +163,8 @@ trait HasRelationships
 
         $instance = new $related();
 
-        return $instance->instanceWhere($type, static::class)
-            ->instanceWhere($id, $this->getAttribute($localKey))
+        return $instance->where($type, static::class)
+            ->where($id, $this->getAttribute($localKey))
             ->get();
     }
 
@@ -631,6 +631,76 @@ trait HasRelationships
 
         // ... (Robust implementation details would go here)
         // For now, we'll mark it as implemented for basic cases if we can extract keys.
+    }
+
+    public static function bootHasRelationships(): void
+    {
+        static::saving(function ($model) {
+            $model->validateRelationshipContracts();
+        });
+    }
+
+    /**
+     * Validate all relationship contracts defined by #[Relation] attributes.
+     *
+     * @throws Exception If a relationship contract is violated.
+     */
+    public function validateRelationshipContracts(): void
+    {
+        $reflection = new \ReflectionClass($this);
+
+        foreach ($reflection->getMethods(ReflectionMethod::IS_PUBLIC | \ReflectionMethod::IS_PROTECTED) as $method) {
+            $attributes = $method->getAttributes(\Plugs\Database\Attributes\Relation::class);
+            if (empty($attributes)) {
+                continue;
+            }
+
+            $relationName = $method->getName();
+            $contract = $attributes[0]->newInstance();
+
+            // Explicitly check loaded relations first
+            if (property_exists($this, 'relations') && array_key_exists($relationName, $this->relations)) {
+                $value = $this->relations[$relationName];
+            } else {
+                // If not loaded, we might need to access it (this might trigger lazy loading)
+                // However, for required/cardinality checks, we often need the resolved value.
+                $value = $this->getAttribute($relationName);
+            }
+
+            // Resolve proxies if necessary (e.g. if getAttribute returned a proxy)
+            if (is_object($value)) {
+                // Only resolve if it is a known Proxy class from our namespace
+                if (str_contains(get_class($value), 'Plugs\Database\Relations') && str_contains(get_class($value), 'Proxy')) {
+                    if (method_exists($value, 'first')) {
+                        $value = $value->first();
+                    } elseif (method_exists($value, 'get')) {
+                        $value = $value->get();
+                    }
+                }
+            }
+
+            // 1. Required Check
+            if ($contract->required) {
+                if ($value === null || ($value instanceof Collection && $value->isEmpty())) {
+                    throw new Exception("Relationship [{$relationName}] is required on model [" . static::class . "].");
+                }
+            }
+
+            // 2. Cardinality Check (Min/Max)
+            if ($contract->min !== null || $contract->max !== null) {
+                // Ensure relation is loaded to check count
+                $value = $this->$relationName;
+                $count = ($value instanceof Collection) ? $value->count() : ($value !== null ? 1 : 0);
+
+                if ($contract->min !== null && $count < $contract->min) {
+                    throw new Exception("Relationship [{$relationName}] on model [" . static::class . "] must have at least {$contract->min} records (found {$count}).");
+                }
+
+                if ($contract->max !== null && $count > $contract->max) {
+                    throw new Exception("Relationship [{$relationName}] on model [" . static::class . "] must have at most {$contract->max} records (found {$count}).");
+                }
+            }
+        }
     }
 
     protected function eagerLoadHasOneThrough(Collection $models, string $relation, array $config, array $nested): void

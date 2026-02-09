@@ -93,8 +93,8 @@ class QueryBuilder
             return $this;
         }
 
-        // Handle standard where: where('col', 'val') -> where('col', '=', 'val')
-        if ($value === null && $operator !== null) {
+        // Handle standard where: where('col', 'val') or where('col', null)
+        if (func_num_args() === 2) {
             $value = $operator;
             $operator = '=';
         }
@@ -599,16 +599,48 @@ class QueryBuilder
         return $sql;
     }
 
+    /**
+     * Get a scope proxy for the builder.
+     *
+     * @return ScopeProxy
+     */
+    public function scoped(): ScopeProxy
+    {
+        return new ScopeProxy($this);
+    }
+
     public function __call($method, $parameters)
     {
         if ($this->model) {
             $instance = new $this->model();
             $scopeMethod = 'scope' . ucfirst($method);
 
+            // Prefer methods marked with #[QueryScope]
+            $reflection = new \ReflectionClass($instance);
+
+            // Try the exact method name if it has the attribute
+            if ($reflection->hasMethod($method)) {
+                $refMethod = $reflection->getMethod($method);
+                if (!empty($refMethod->getAttributes(\Plugs\Database\Attributes\QueryScope::class))) {
+                    array_unshift($parameters, $this);
+                    return $instance->$method(...$parameters);
+                }
+            }
+
+            // Fallback to legacy scopeMethod (scopeName)
             if (method_exists($instance, $scopeMethod)) {
                 array_unshift($parameters, $this);
 
                 return $instance->$scopeMethod(...$parameters);
+            }
+
+            // Check if scopeMethod has the attribute (even if called by short name)
+            if (method_exists($instance, $scopeMethod)) {
+                $refMethod = $reflection->getMethod($scopeMethod);
+                if (!empty($refMethod->getAttributes(\Plugs\Database\Attributes\QueryScope::class))) {
+                    array_unshift($parameters, $this);
+                    return $instance->$scopeMethod(...$parameters);
+                }
             }
         }
 

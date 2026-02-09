@@ -24,6 +24,7 @@ use Plugs\Database\Traits\HasValidation;
 use Plugs\Database\Traits\Searchable;
 use Plugs\Database\Traits\SoftDeletes;
 use Plugs\Database\Traits\HasDomainRules;
+use Plugs\Database\Traits\HasScopes;
 
 /**
  * PlugModel
@@ -46,6 +47,7 @@ abstract class PlugModel implements \JsonSerializable
     use SoftDeletes;
     use HasFactory;
     use HasDomainRules;
+    use HasScopes;
 
     protected $table;
     protected $primaryKey = 'id';
@@ -66,6 +68,8 @@ abstract class PlugModel implements \JsonSerializable
     // Transaction tracking
     protected static $transactionDepth = 0;
     protected static $transactionConnection = null;
+
+    protected static bool $preventLazyLoading = false;
 
     public function __construct(array|object $attributes = [], bool $exists = false)
     {
@@ -125,6 +129,16 @@ abstract class PlugModel implements \JsonSerializable
         $this->allowRawQueries = $enable;
 
         return $this;
+    }
+
+    public static function preventLazyLoading(bool $prevent = true): void
+    {
+        static::$preventLazyLoading = $prevent;
+    }
+
+    public static function isLazyLoadingPrevented(): bool
+    {
+        return static::$preventLazyLoading;
     }
 
     /**

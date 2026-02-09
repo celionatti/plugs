@@ -21,7 +21,16 @@ trait HasQueryBuilder
     public static function query(): QueryBuilder
     {
         $connection = Connection::getInstance();
-        $builder = new QueryBuilder($connection);
+
+        // Search for a dedicated Query class in the same namespace or sub-namespace
+        $modelClass = static::class;
+        $queryClass = $modelClass . 'Query';
+
+        if (class_exists($queryClass)) {
+            $builder = new $queryClass($connection);
+        } else {
+            $builder = new QueryBuilder($connection);
+        }
 
         /** @phpstan-ignore new.static */
         $instance = new static();
@@ -189,9 +198,9 @@ trait HasQueryBuilder
         return static::query()->chunkById($count, $callback, $column, $alias);
     }
 
-    public static function where(string $column, string $operator, $value = null): QueryBuilder
+    public static function where(string $column, $operator = null, $value = null): QueryBuilder
     {
-        if ($value === null) {
+        if (func_num_args() === 2) {
             $value = $operator;
             $operator = '=';
         }

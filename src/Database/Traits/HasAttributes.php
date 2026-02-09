@@ -110,6 +110,12 @@ trait HasAttributes
 
     public function getAttribute(string $key)
     {
+        // Check for relationship first to avoid triggering method calls via getAttributeFromObject
+        /** @phpstan-ignore-next-line */
+        if (property_exists($this, 'relations') && array_key_exists($key, $this->relations)) {
+            return $this->relations[$key];
+        }
+
         // Check for Attribute object (Modern Laravel Style)
         if ($attribute = $this->getAttributeFromObject($key)) {
             return $attribute->get ? ($attribute->get)($this->attributes[$key] ?? null, $this->attributes) : ($this->attributes[$key] ?? null);
@@ -121,12 +127,6 @@ trait HasAttributes
             $value = $this->attributes[$key] ?? null;
 
             return $this->$accessor($value);
-        }
-
-        // Check for relationship
-        /** @phpstan-ignore-next-line */
-        if (property_exists($this, 'relations') && isset($this->relations[$key])) {
-            return $this->relations[$key];
         }
 
         // Check if it's a relationship method
@@ -150,7 +150,12 @@ trait HasAttributes
      */
     protected function getRelationValue(string $key)
     {
-        if (!isset($this->relations[$key])) {
+        if (!isset($this->relations) || !array_key_exists($key, $this->relations)) {
+            /** @phpstan-ignore-next-line */
+            if (property_exists($this, 'preventLazyLoading') && static::$preventLazyLoading) {
+                throw new \Plugs\Database\Exception\LazyLoadingDisabledException(static::class, $key);
+            }
+
             $this->relations[$key] = $this->$key();
         }
 
