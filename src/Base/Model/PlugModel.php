@@ -23,6 +23,7 @@ use Plugs\Database\Traits\Prunable;
 use Plugs\Database\Traits\HasValidation;
 use Plugs\Database\Traits\Searchable;
 use Plugs\Database\Traits\SoftDeletes;
+use Plugs\Database\Traits\HasDomainRules;
 
 /**
  * PlugModel
@@ -44,6 +45,7 @@ abstract class PlugModel implements \JsonSerializable
     use HasTimestamps;
     use SoftDeletes;
     use HasFactory;
+    use HasDomainRules;
 
     protected $table;
     protected $primaryKey = 'id';
@@ -175,7 +177,7 @@ abstract class PlugModel implements \JsonSerializable
 
     public function exists(): bool
     {
-        return isset($this->attributes[$this->primaryKey]);
+        return $this->exists || isset($this->attributes[$this->primaryKey]);
     }
 
     public static function create(array|object $attributes): self
@@ -354,7 +356,7 @@ abstract class PlugModel implements \JsonSerializable
         return $this->performInsert();
     }
 
-    private function performInsert(): bool
+    protected function performInsert(): bool
     {
         $data = $this->attributes;
 
@@ -376,13 +378,21 @@ abstract class PlugModel implements \JsonSerializable
         return $result;
     }
 
-    private function performUpdate(): bool
+    protected function performUpdate(): bool
     {
         $dirty = $this->getDirty();
 
         if (empty($dirty)) {
             return true;
         }
+
+        // Domain Rule: Update Restriction
+        if (!$this->canBeUpdated($dirty)) {
+            throw new \DomainException("Update denied by domain rules.");
+        }
+
+        // Domain Rule: State Transitions
+        $this->validateStateTransitions();
 
         if ($this->timestamps) {
             $dirty['updated_at'] = date('Y-m-d H:i:s');
@@ -403,6 +413,11 @@ abstract class PlugModel implements \JsonSerializable
     {
         if (!$this->exists()) {
             return false;
+        }
+
+        // Domain Rule: Deletion Restriction
+        if (!$this->canBeDeleted()) {
+            throw new \DomainException("Deletion denied by domain rules.");
         }
 
         return static::query()

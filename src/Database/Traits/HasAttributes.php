@@ -27,6 +27,20 @@ trait HasAttributes
     protected $visible = [];
     protected $castNulls = true;
 
+    /**
+     * Indicates if the model should enforce strict casting.
+     *
+     * @var bool
+     */
+    protected bool $strictCasting = true;
+
+    /**
+     * Cache for typed properties of the model.
+     *
+     * @var array
+     */
+    protected static array $typedPropertyCache = [];
+
     public function setRawAttributes(array|object $attributes, bool $sync = true): self
     {
         $this->attributes = $this->parseAttributes($attributes);
@@ -34,6 +48,8 @@ trait HasAttributes
         if ($sync) {
             $this->syncOriginal();
         }
+
+        $this->syncAttributesToTypedProperties();
 
         return $this;
     }
@@ -61,7 +77,7 @@ trait HasAttributes
 
         foreach ($attributes as $key => $value) {
             if ($this->isFillable($key)) {
-                $this->attributes[$key] = $value;
+                $this->setAttribute($key, $value);
             }
         }
 
@@ -175,6 +191,9 @@ trait HasAttributes
         }
 
         $this->attributes[$key] = $value;
+
+        // Sync to typed property if it exists
+        $this->syncAttributeToTypedProperty($key, $value);
     }
 
     /**
@@ -248,7 +267,11 @@ trait HasAttributes
 
         $castType = $casts[$key];
 
-        // Handle custom cast classes
+        // Handle custom cast classes or instances
+        if ($castType instanceof \Plugs\Database\Contracts\CastsAttributes) {
+            return $castType->get($this, $key, $value, $this->attributes);
+        }
+
         if (is_string($castType) && class_exists($castType) && is_subclass_of($castType, \Plugs\Database\Contracts\CastsAttributes::class)) {
             $caster = new $castType();
 
@@ -275,11 +298,13 @@ trait HasAttributes
         switch ($castType) {
             case 'int':
             case 'integer':
+                $this->validateScalarCast($key, 'integer', $value);
                 return (int) $value;
 
             case 'float':
             case 'double':
             case 'real':
+                $this->validateScalarCast($key, 'float', $value);
                 return (float) $value;
 
             case 'decimal':
@@ -293,10 +318,12 @@ trait HasAttributes
                 return number_format((float) $value, 2, '.', '');
 
             case 'string':
+                $this->validateScalarCast($key, 'string', $value);
                 return (string) $value;
 
             case 'bool':
             case 'boolean':
+                $this->validateScalarCast($key, 'boolean', $value);
                 return $this->castToBoolean($value);
 
             case 'array':
@@ -343,6 +370,10 @@ trait HasAttributes
 
     protected function getNullCastValue($castType)
     {
+        if (!is_string($castType)) {
+            return null;
+        }
+
         switch ($castType) {
             case 'array':
             case 'json':
@@ -535,6 +566,7 @@ trait HasAttributes
 
     private function getDirty(): array
     {
+        $this->syncTypedPropertiesToAttributes();
         $dirty = [];
 
         foreach ($this->attributes as $key => $value) {
@@ -688,5 +720,112 @@ trait HasAttributes
         }
 
         return null;
+    }
+
+    /**
+     * Sync all attributes to typed properties of the class.
+     */
+    protected function syncAttributesToTypedProperties(): void
+    {
+        $typedProperties = $this->getTypedProperties();
+
+        foreach ($typedProperties as $name => $type) {
+            if (array_key_exists($name, $this->attributes)) {
+                $this->syncAttributeToTypedProperty($name, $this->attributes[$name]);
+            }
+        }
+    }
+
+    /**
+     * Sync typed properties back to the attributes array.
+     */
+    protected function syncTypedPropertiesToAttributes(): void
+    {
+        $typedProperties = $this->getTypedProperties();
+
+        foreach (array_keys($typedProperties) as $name) {
+            if (isset($this->{$name})) {
+                $this->attributes[$name] = $this->{$name};
+            }
+        }
+    }
+
+    /**
+     * Sync a single attribute to a typed property.
+     */
+    protected function syncAttributeToTypedProperty(string $key, $value): void
+    {
+        $typedProperties = $this->getTypedProperties();
+
+        if (array_key_exists($key, $typedProperties)) {
+            $type = $typedProperties[$key];
+
+            // Apply casting before setting typed property if not already cast
+            $casts = $this->getCasts();
+            if (isset($casts[$key])) {
+                $value = $this->castAttribute($key, $value);
+            }
+
+            try {
+                $this->{$key} = $value;
+            } catch (\TypeError $e) {
+                if ($this->strictCasting) {
+                    throw new \InvalidArgumentException(
+                        "Type mismatch for property [{$key}]. Expected [{$type}], got [" . gettype($value) . "]. " . $e->getMessage()
+                    );
+                }
+            }
+        }
+    }
+
+    /**
+     * Get the typed properties of the model.
+     */
+    protected function getTypedProperties(): array
+    {
+        $class = static::class;
+
+        if (isset(self::$typedPropertyCache[$class])) {
+            return self::$typedPropertyCache[$class];
+        }
+
+        $reflection = new \ReflectionClass($this);
+        $properties = $reflection->getProperties(\ReflectionProperty::IS_PUBLIC | \ReflectionProperty::IS_PROTECTED);
+        $typedProperties = [];
+
+        foreach ($properties as $property) {
+            if ($property->hasType()) {
+                $type = $property->getType();
+                if ($type instanceof \ReflectionNamedType) {
+                    $typedProperties[$property->getName()] = $type->getName();
+                }
+            }
+        }
+
+
+        return self::$typedPropertyCache[$class] = $typedProperties;
+    }
+
+    /**
+     * Validate scalar cast for strict mode.
+     */
+    protected function validateScalarCast(string $key, string $type, $value): void
+    {
+        if (!$this->strictCasting) {
+            return;
+        }
+
+        $isValid = match ($type) {
+            'integer', 'float' => is_numeric($value) || is_bool($value),
+            'string' => is_scalar($value) || (is_object($value) && method_exists($value, '__toString')),
+            'boolean' => is_scalar($value),
+            default => true,
+        };
+
+        if (!$isValid) {
+            throw new \InvalidArgumentException(
+                "Strict cast failure for [{$key}]. Cannot cast [" . gettype($value) . "] to [{$type}]."
+            );
+        }
     }
 }
