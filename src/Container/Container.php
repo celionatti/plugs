@@ -32,7 +32,11 @@ class Container implements ContainerInterface
 
     private $bindings = [];
     private $instances = [];
+    private $scopedInstances = [];
     private $aliases = [];
+    private $contextual = [];
+
+    private ?Inspector $inspector = null;
 
     /**
      * Get singleton instance
@@ -46,10 +50,20 @@ class Container implements ContainerInterface
         return self::$instance;
     }
 
+    public function setInspector(Inspector $inspector): void
+    {
+        $this->inspector = $inspector;
+    }
+
+    public function getInspector(): ?Inspector
+    {
+        return $this->inspector;
+    }
+
     /**
      * Bind a class or interface to an implementation
      */
-    public function bind(string $abstract, $concrete = null, bool $shared = false): void
+    public function bind(string $abstract, $concrete = null, bool $shared = false, bool $scoped = false): void
     {
         if ($concrete === null) {
             $concrete = $abstract;
@@ -58,6 +72,7 @@ class Container implements ContainerInterface
         $this->bindings[$abstract] = [
             'concrete' => $concrete,
             'shared' => $shared,
+            'scoped' => $scoped,
         ];
     }
 
@@ -67,6 +82,14 @@ class Container implements ContainerInterface
     public function singleton(string $abstract, $concrete = null): void
     {
         $this->bind($abstract, $concrete, true);
+    }
+
+    /**
+     * Bind a scoped instance (per-request/context)
+     */
+    public function scoped(string $abstract, $concrete = null): void
+    {
+        $this->bind($abstract, $concrete, false, true);
     }
 
     /**
@@ -87,10 +110,6 @@ class Container implements ContainerInterface
 
     /**
      * PSR-11: Finds an entry of the container by its identifier and returns it.
-     *
-     * @param string $id Identifier of the entry to look for.
-     * @return mixed Entry.
-     * @throws ContainerNotFoundException No entry was found for this identifier.
      */
     public function get(string $id): mixed
     {
@@ -103,9 +122,6 @@ class Container implements ContainerInterface
 
     /**
      * PSR-11: Returns true if the container can return an entry for the given identifier.
-     *
-     * @param string $id Identifier of the entry to look for.
-     * @return bool
      */
     public function has(string $id): bool
     {
@@ -117,28 +133,49 @@ class Container implements ContainerInterface
      */
     public function make(string $abstract, array $parameters = [])
     {
-        // Check for alias
-        if (isset($this->aliases[$abstract])) {
-            $abstract = $this->aliases[$abstract];
+        $this->inspector?->start($abstract, $parameters);
+
+        try {
+            // Check for alias
+            if (isset($this->aliases[$abstract])) {
+                $abstract = $this->aliases[$abstract];
+            }
+
+            // Check if singleton instance exists
+            if (isset($this->instances[$abstract])) {
+                $this->inspector?->end($abstract, $this->instances[$abstract]);
+                return $this->instances[$abstract];
+            }
+
+            // Check if scoped instance exists
+            if (isset($this->scopedInstances[$abstract])) {
+                $this->inspector?->end($abstract, $this->scopedInstances[$abstract]);
+                return $this->scopedInstances[$abstract];
+            }
+
+            // Get concrete implementation
+            $concrete = $this->getConcrete($abstract);
+
+            // Build the object
+            $object = $this->build($concrete, $parameters);
+
+            // Store as singleton if needed
+            if (isset($this->bindings[$abstract]) && $this->bindings[$abstract]['shared']) {
+                $this->instances[$abstract] = $object;
+            }
+
+            // Store as scoped if needed
+            if (isset($this->bindings[$abstract]) && $this->bindings[$abstract]['scoped']) {
+                $this->scopedInstances[$abstract] = $object;
+            }
+
+            $this->inspector?->end($abstract, $object);
+            return $object;
+
+        } catch (\Throwable $e) {
+            $this->inspector?->end($abstract, null); // Log failure?
+            throw $e;
         }
-
-        // Check if instance exists
-        if (isset($this->instances[$abstract])) {
-            return $this->instances[$abstract];
-        }
-
-        // Get concrete implementation
-        $concrete = $this->getConcrete($abstract);
-
-        // Build the object
-        $object = $this->build($concrete, $parameters);
-
-        // Store as singleton if needed
-        if (isset($this->bindings[$abstract]) && $this->bindings[$abstract]['shared']) {
-            $this->instances[$abstract] = $object;
-        }
-
-        return $object;
     }
 
     /**
@@ -203,7 +240,14 @@ class Container implements ContainerInterface
             // Check if primitive value provided
             if (isset($primitives[$name])) {
                 $dependencies[] = $primitives[$name];
+                continue;
+            }
 
+            // Check for attributes (Contextual Binding)
+            $attribute = $parameter->getAttributes(\Plugs\Container\Attributes\Inject::class)[0] ?? null;
+            if ($attribute) {
+                $inject = $attribute->newInstance();
+                $dependencies[] = $this->make($inject->service);
                 continue;
             }
 
@@ -311,15 +355,13 @@ class Container implements ContainerInterface
         unset(
             $this->bindings[$abstract],
             $this->instances[$abstract],
-            $this->aliases[$abstract]
+            $this->aliases[$abstract],
+            $this->scopedInstances[$abstract]
         );
     }
 
     /**
      * Remove a shared instance from the container.
-     *
-     * @param string $abstract
-     * @return void
      */
     public function forgetInstance(string $abstract): void
     {
@@ -328,12 +370,11 @@ class Container implements ContainerInterface
 
     /**
      * Clear all shared instances from the container.
-     *
-     * @return void
      */
     public function forgetInstances(): void
     {
         $this->instances = [];
+        $this->scopedInstances = [];
     }
 
     /**
@@ -344,5 +385,7 @@ class Container implements ContainerInterface
         $this->bindings = [];
         $this->instances = [];
         $this->aliases = [];
+        $this->scopedInstances = [];
+        $this->contextual = [];
     }
 }

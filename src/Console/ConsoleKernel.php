@@ -45,6 +45,8 @@ use Plugs\Console\Commands\RouteTestCommand;
 use Plugs\Console\Commands\SeedCommand;
 use Plugs\Console\Commands\ServeCommand;
 use Plugs\Console\Commands\StorageLinkCommand;
+use Plugs\Console\Commands\TypeGenCommand;
+
 
 /*
 |--------------------------------------------------------------------------
@@ -110,7 +112,9 @@ class ConsoleKernel
         'down' => \Plugs\Console\Commands\DownCommand::class,
         'schedule:run' => \Plugs\Console\Commands\ScheduleRunCommand::class,
         'schedule:list' => \Plugs\Console\Commands\ScheduleListCommand::class,
+        'type:gen' => TypeGenCommand::class,
     ];
+
 
     protected array $aliases = [
         'g:c' => 'make:controller',
@@ -173,7 +177,8 @@ class ConsoleKernel
             'make:notification',
         ],
         'Routes' => ['route:list', 'route:cache', 'route:clear', 'route:test'],
-        'Utility' => ['serve', 'cache:clear', 'config:cache', 'optimize', 'queue:work', 'health', 'storage:link'],
+        'Utility' => ['serve', 'cache:clear', 'config:cache', 'optimize', 'queue:work', 'health', 'storage:link', 'type:gen'],
+
         'Scheduling' => ['schedule:run', 'schedule:list'],
         'Database' => ['migrate', 'migrate:rollback', 'migrate:status', 'migrate:fresh', 'migrate:validate', 'migrate:reset', 'make:migration', 'db:seed'],
     ];
