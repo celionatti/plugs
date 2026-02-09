@@ -1,71 +1,59 @@
 # Dependency Injection Container
 
-The Plugs Framework features a powerful, modern Dependency Injection (DI) Container. It supports auto-wiring, scoped services, and attribute-based contextual binding.
+Plugs features a PSR-11 compliant container with advanced features for high-performance applications.
 
-## 1. Basic Binding
+## 1. Scoped Bindings (Per-Request singletons)
 
-You can bind interfaces to implementations in your Service Providers.
-
-```php
-// Bind a new instance every time
-$container->bind(UserRepositoryInterface::class, UserRepository::class);
-
-// Bind a singleton (shared instance)
-$container->singleton(Database::class, MySQLDatabase::class);
-
-// Bind an existing instance
-$container->instance('config', $configArray);
-```
-
-## 2. Scoped Services (Per-Request)
-
-Scoped services are created once per "scope" (e.g., per HTTP Request) and then reused. They are flushed when the scope ends.
+Scoped services are instances that are shared within a single request cycle but are fresh for every new request. This is perfect for State managers or Request-specific contexts.
 
 ```php
-// Created once per request
-$container->scoped(CurrentContext::class);
+// In a Service Provider
+$this->container->scoped(PaymentProcessor::class);
 ```
 
-To use this in your application lifecycle (e.g., in a middleware):
-```php
-// Clear scoped instances at the end of a request
-Container::getInstance()->forgetInstances(); 
-// Note: This clears ALL instances. For precise control, use logic to clear only scoped ones if needed, 
-// though typically frameworks flush everything between requests in long-running processes.
-```
+## 2. Contextual Binding with Attributes
 
-## 3. Contextual Binding with Attributes
-
-You can inject specific implementations using PHP 8 Attributes, without writing configuration in a provider.
+Inject specific implementations directly via PHP 8 attributes. This reduces boilerplate in your providers.
 
 ```php
 use Plugs\Container\Attributes\Inject;
 
-class reportService
+class OrderService
 {
     public function __construct(
-        #[Inject('reports_database')] 
-        protected Database $db
+        #[Inject('fast_cache')] 
+        protected CacheInterface $cache
     ) {}
 }
 ```
 
-This tells the container: "When resolving `ReportService`, inject the service bound to key `reports_database` into `$db`."
+## 3. Visual Dependency Inspector
 
-## 4. Visual Debugging
-
-The Container includes an `Inspector` to visualize your dependency graph.
+Debug complex dependency chains by generating visual graphs.
 
 ```php
-$container = Container::getInstance();
+use Plugs\Container\Inspector;
+
 $inspector = new Inspector();
-$inspector->enable();
-$container->setInspector($inspector);
+$inspector->trace(function() {
+    return app(ComplexService::class);
+});
 
-// ... resolve your application ...
-
-// Get Mermaid JS graph syntax
-echo $inspector->generateMermaid();
+// Outputs a Mermaid.js diagram
+echo $inspector->toMermaid();
 ```
 
-This output can be rendered specifically in tools like Mermaid Live Editor to visualize complexity and cycles.
+## 4. Auto-Wiring
+
+The container uses reflection to automatically resolve dependencies for any class it instantiates.
+
+```php
+class UserController
+{
+    // UserRepository and ValidationService are auto-injected
+    public function __construct(
+        protected UserRepository $users,
+        protected ValidationService $val
+    ) {}
+}
+```

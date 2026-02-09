@@ -1,93 +1,56 @@
-# Microservices & Event-Driven Patterns
+# Microservices & Event-Driven Architecture
 
-Plugs provides native support for building microservices and event-driven applications.
+Plugs is designed for distributed systems. It provides first-class support for Event Sourcing and Worker Orchestration.
 
-## Event Bus
+## 1. Event Bus (Redis Streams)
 
-The event bus enables publish-subscribe messaging between services.
+For production environments, Plugs uses Redis Streams via the `redis` driver to ensure message persistence and delivery guarantees.
 
-### Publishing Events
-
-```php
-use Plugs\EventBus\EventBusManager;
-
-// Publish an event
-EventBusManager::publish('user.created', [
-    'user_id' => 123,
-    'email' => 'user@example.com',
-]);
-
-// With delay
-EventBusManager::publish('reminder.send', $data, ['delay' => 300]);
+```bash
+# .env
+EVENT_BUS_DRIVER=redis
+REDIS_HOST=127.0.0.1
 ```
 
-### Subscribing to Events
+### Publishing & Subscribing
 
 ```php
-EventBusManager::subscribe('user.created', function (array $payload, array $meta) {
-    // Handle event
-    sendWelcomeEmail($payload['email']);
+// Dispatch to the cloud
+EventBus::publish('user.signed_up', ['id' => 1]);
+
+// Listen in a long-running process
+EventBus::subscribe('user.signed_up', function($data) {
+    Mail::to($data['email'])->send(new WelcomeMail());
 });
 ```
 
-### Drivers
+## 2. Distributed Workers
 
-| Driver | Use Case | Config |
-|--------|----------|--------|
-| `sync` | Local development | Default |
-| `redis` | Production (Redis Streams) | `EVENT_BUS_DRIVER=redis` |
-
-## Workers
-
-Lightweight workers process messages from the event bus.
-
-### CLI Usage
+Plugs workers are lightweight Fiber-based processes. You can run them via the CLI:
 
 ```bash
-# Start a worker
-php plg worker:run --queue=default --concurrency=4
-
-# With options
-php plg worker:run \
-    --queue=emails \
-    --name=email-worker \
-    --timeout=30 \
-    --max-jobs=1000
+# Run a specific queue with 4 concurrent fibers
+php theplugs worker:run --queue=emails --concurrency=4
 ```
 
-### Programmatic Usage
+## 3. Worker Orchestrator (Auto-Scaling)
 
-```php
-use Plugs\Worker\Worker;
-
-$worker = new Worker('email-processor', concurrency: 4);
-
-$worker->on('email.send', function (array $payload) {
-    // Process email
-});
-
-$worker->run();
-```
-
-## Orchestrator
-
-Manage distributed workers with auto-scaling.
+The Orchestrator manages worker pools and scales them based on queue pressure.
 
 ```bash
-# Start orchestrator with 3 workers
-php plg orchestrator:run --workers=3 --queue=default
-
-# With auto-scaling
-php plg orchestrator:run \
-    --workers=2 \
-    --auto-scale \
-    --min-workers=1 \
-    --max-workers=10
+# Start orchestrator with auto-scaling enabled
+php theplugs orchestrator:run --auto-scale --min-workers=2 --max-workers=20
 ```
 
-### Scaling Hints
+### Scaling Metrics
+- **Throughput**: Jobs processed per second.
+- **Latency**: Average job execution time.
+- **Backpressure**: Queue length vs. Worker capacity.
 
-Workers provide metrics for scaling decisions:
-- `jobs_per_second` - Throughput
-- `avg_process_time_ms` - Latency
-- `should_scale_up` / `should_scale_down` - Recommendations
+## 4. Health Monitoring
+
+Monitor your cluster's health via the built-in collector:
+
+```bash
+php theplugs health:check
+```

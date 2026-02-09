@@ -1,77 +1,51 @@
 # Configuration System
 
-The Plugs Framework uses a "Smart Defaults" configuration system. This means you don't need to maintain a folder full of configuration files. Most settings are handled automatically with sensible defaults, and environment-specific values are managed via your `.env` file.
+Plugs features a **Zero-Config** philosophy. By using "Smart Defaults" and internal auto-wiring, you can run a full-featured application with just a `.env` file.
 
-## 1. Environment Variables (.env)
+## 1. Zero-Config & Smart Defaults
 
-The primary way to configure your application is through the `.env` file in the root directory.
+The framework maintains internal defaults for all core components (Mail, Cache, Database, etc.) in `Plugs\Config\DefaultConfig`. You **do not** need to create files in `config/` unless you want deep customization.
 
-### Common Settings
+### Native .env Integration
 
-**Application**
-- `APP_NAME`: The name of your application.
-- `APP_ENV`: `local` or `production`.
-- `APP_DEBUG`: `true` to show errors, `false` to hide them.
-- `APP_URL`: The base URL of your app.
+Most common settings are mapped directly to environment variables:
 
-**Database**
-- `DB_CONNECTION`: `mysql`, `pgsql`, or `sqlite`.
-- `DB_HOST`: Database host (e.g., `127.0.0.1`).
-- `DB_PORT`: Database port (e.g., `3306`).
-- `DB_DATABASE`: Database name.
-- `DB_USERNAME`: Database user.
-- `DB_PASSWORD`: Database password.
+| Feature | Key | Default |
+|---------|-----|---------|
+| **Cache** | `CACHE_DEFAULT` | `file` |
+| **Session** | `SESSION_DRIVER` | `file` |
+| **Queue** | `QUEUE_CONNECTION` | `sync` |
+| **Event Bus**| `EVENT_BUS_DRIVER` | `sync` |
+| **Security** | `SECURITY_SHIELD` | `true` |
 
-**Mail**
-- `MAIL_MAILER`: `smtp`.
-- `MAIL_HOST`: SMTP host (e.g., `smtp.mailtrap.io`).
-- `MAIL_PORT`: SMTP port.
-- `MAIL_USERNAME`: SMTP username.
-- `MAIL_PASSWORD`: SMTP password.
-- `MAIL_FROM_ADDRESS`: Default sender address.
+## 2. Auto-Discovery
 
-**Security**
-- `CSRF_ENABLED`: `true` or `false`.
-- `SECURITY_SHIELD`: `true` to enable the security shield middleware.
+Plugs automatically discovers and registers your application's Service Providers.
 
-## 2. Default Configuration
+- **Location**: All classes in `app/Providers/` are scanned and loaded automatically.
+- **Customization**: You no longer need to manually list providers in an `app.php` config file.
 
-If a configuration file does not exist in the `config/` directory, the framework loads default values from `Plugs\Config\DefaultConfig`.
+## 3. Deployment Optimization
 
-Key defaults include:
-- **Cache**: Uses `file` driver by default.
-- **Session**: Uses `file` driver with a 120-minute lifetime.
-- **Logging**: Logs to `storage/logs/plugs.log` using the `file` channel.
-- **Queue**: Uses `sync` (synchronous) driver by default.
+For production, you can cache your configuration to eliminate filesystem hits:
 
-## 3. Customizing Configuration
+```bash
+# Compile defaults and .env into a single cache file
+php theplugs optimize
+```
 
-If you need to override a default setting that isn't exposed in `.env`, or if you need to add custom configuration logic, you can create a PHP file in the `config/` directory.
+## 4. Manual Overrides
 
-The framework will **merge** your custom file with the defaults. You only need to return the specific keys you want to override.
+To override a default that isn't in `.env`, create a corresponding file in `config/`. The framework will **recursively merge** your settings into the defaults.
 
-**Example: Customizing Mail**
-Create `config/mail.php`:
-
+**Example: `config/mail.php`**
 ```php
 <?php
-
 return [
     'from' => [
-        'address' => 'hello@mydomain.com',
-        'name' => 'Support Team',
-    ],
-    // All other settings (driver, host, etc.) are still loaded from defaults/.env
+        'address' => 'noreply@yourdomain.com',
+        'name' => 'System'
+    ]
 ];
 ```
-
-## 4. Service Providers
-
-Service Providers in `app/Providers` are **automatically discovered** and registered. You do not need to manually add them to a configuration file.
-
-To create a new provider:
-```bash
-php plg make:provider MyServiceProvider
-```
-
-It will be automatically loaded on the next request.
+*Note: You only need to return the keys you wish to change.*

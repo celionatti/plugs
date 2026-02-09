@@ -1,63 +1,42 @@
 # Async & Concurrency
 
-Plugs provides first-class support for asynchronous programming using PHP Fibers and Promises. This allows you to write non-blocking code that looks synchronous.
+Plugs leverages PHP Fibers to provide a non-blocking execution model that scales.
 
-## Core Concepts
+## 1. Async & Await
 
-### Async & Await
-
-Use the global `async` and `await` helpers to manage non-blocking tasks.
+Use the `async()` and `await()` helpers to execute promises without blocking the main process loop.
 
 ```php
-use Plugs\Http\Client\AsyncClient;
-
-async(function () {
-    $client = new AsyncClient();
-    
-    // Non-blocking request
-    $promise = $client->getAsync('https://api.example.com/data');
-    
-    // Suspend execution until resolved
-    $response = await($promise);
-    
-    echo $response->getBody();
+$result = async(function() {
+    $response = await(Http::getAsync('...'));
+    return $response->json();
 });
 ```
 
-### Promises
+## 2. Parallel Processing
 
-The `Plugs\Concurrency\Promise` class wraps Guzzle promises, providing a fluent interface.
-
-```php
-use Plugs\Concurrency\Promise;
-
-$promise = new Promise($guzzlePromise);
-
-$promise->then(fn($val) => echo $val)
-        ->catch(fn($err) => echo $err);
-```
-
-### Parallel Execution
-
-Run multiple tasks concurrently and wait for all of them.
+Need to run multiple tasks at once? `Async::parallel` handles orchestration and wait logic for you.
 
 ```php
 use Plugs\Concurrency\Async;
 
-$results = Async::parallel([
-    'users' => fn() => $client->getAsync('/users'),
-    'posts' => fn() => $client->getAsync('/posts'),
+[$users, $posts] = Async::parallel([
+    fn() => Http::get('.../users'),
+    fn() => Http::get('.../posts')
 ]);
-
-// $results['users'] and $results['posts'] are resolved values.
 ```
 
-## HTTP Client
+## 3. Async HTTP Client
 
-The `Plugs\Http\Client\AsyncClient` provides methods like `getAsync`, `postAsync`, etc., which return `Promise` objects compatible with `await()`.
+The built-in client is built on Guzzle with Fiber-aware handlers.
 
 ```php
+use Plugs\Http\Client\AsyncClient;
+
 $client = new AsyncClient();
-$promise = $client->postAsync('/users', ['json' => ['name' => 'John']]);
-$response = await($promise);
+$promise = $client->getAsync('/api/data');
 ```
+
+## 4. Why Fibers?
+
+Unlike ReactPHP or Swoole, Plugs' Fiber-based async allows you to write code that *looks* synchronous but performs asynchronously under the hood, maintaining high readability.

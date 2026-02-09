@@ -1,72 +1,37 @@
-# Health Checks & Metrics
+# Health, Metrics & Observability
 
-Plugs provides standardized health checks and metrics for monitoring.
+Understand exactly how your application is performing with built-in monitoring tools.
 
-## Health Endpoints
+## 1. Health Checks
 
-### Basic Health Check
+Plugs provides a standard endpoint for load balancers and monitoring tools.
 
-```php
-// routes/api.php
-$router->get('/health', [HealthController::class, 'index']);
-```
-
-**Response:**
-```json
-{
-    "status": "healthy",
-    "timestamp": "2024-01-15T10:30:00+00:00",
-    "checks": {
-        "database": {"status": "ok", "latency_ms": 2.5},
-        "cache": {"status": "ok", "latency_ms": 0.3},
-        "disk": {"status": "ok", "used_percent": 45.2},
-        "memory": {"status": "ok", "used_percent": 32.1}
-    }
-}
-```
-
-### Kubernetes Probes
+- **Endpoint**: `/health` (configurable)
+- **Checks**: Database connection, Redis availability, Disk space, and custom logic.
 
 ```php
-$router->get('/health/liveness', [HealthController::class, 'liveness']);
-$router->get('/health/readiness', [HealthController::class, 'readiness']);
-$router->get('/health/detailed', [HealthController::class, 'detailed']);
+// Register a custom check in a Provider
+Health::addCheck('api_external', fn() => Http::get('...')->ok());
 ```
 
-## Metrics
+## 2. Metrics Collector (Prometheus)
 
-### Enable Metrics Middleware
+Expose application metrics (RAM, CPU, Request Latency) in a format Prometheus understands.
 
-```php
-// Middleware stack
-$middlewareStack = [
-    MetricsMiddleware::class,
-    // ...
-];
-```
+- **Endpoint**: `/metrics`
+- **Dashboards**: Ships with a pre-built Grafana template.
 
-### Prometheus Endpoint
+## 3. OpenAPI & Swagger UI
 
-```php
-$router->get('/metrics', [MetricsController::class, 'prometheus']);
-```
+Keep your API documentation alive and interactive.
 
-**Output:**
-```
-# TYPE http_requests_total counter
-http_requests_total{route="/api/users",method="GET",status="200"} 1523
-# TYPE http_request_duration_seconds histogram
-http_request_duration_seconds_count{route="/api/users"} 1523
-http_request_duration_seconds_sum{route="/api/users"} 45.67
-```
+- **Docs**: `/api/docs`
+- **JSON**: `/api/openapi.json`
 
-## OpenAPI Documentation
+## 4. Profiler
 
-### Auto-Serve Docs
-
-```php
-$router->get('/api/docs', [OpenApiController::class, 'ui']);
-$router->get('/api/docs/spec', [OpenApiController::class, 'spec']);
-```
-
-Docs auto-update when routes change.
+In `local` mode, a floating profiler bar provides deep insights into:
+- Executed SQL queries
+- Registered Routes
+- Memory usage per middleware
+- Event Bus activity

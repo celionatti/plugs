@@ -1,83 +1,61 @@
 # Type Safety Features
 
-The Plugs Framework encourages strict typing to improve code reliability and developer experience.
+Plugs is built for strict typing, helping you catch errors at development time rather than in production.
 
 ## 1. Typed Events
 
-Instead of using string-based event names, you should extend the `Plugs\Event\TypedEvent` class. This allows you to attach data directly to the event object.
+Plugs encourages the use of `TypedEvent` classes instead of string-based event names.
 
 ```php
 use Plugs\Event\TypedEvent;
 
-class UserRegistered extends TypedEvent
+class OrderPaid extends TypedEvent
 {
     public function __construct(
-        public readonly User $user
+        public readonly int $orderId,
+        public readonly float $amount
     ) {}
 }
 
-// Dispatching
-Event::dispatch(new UserRegistered($user));
+// Dispatching (fully typed)
+Event::dispatch(new OrderPaid(1234, 99.99));
 
 // Listening
-Event::listen(UserRegistered::class, function (UserRegistered $event) {
-    // $event->user is fully typed
+Event::listen(OrderPaid::class, function (OrderPaid $event) {
+    // $event->amount is float
 });
 ```
 
-## 2. Value Objects
+## 2. Value Objects & Route Binding
 
-Use `Plugs\Support\ValueObject` to create immutable domain types.
+Domain Driven Design (DDD) is first-class. If you define a controller argument as a `ValueObject`, the router automatically hydrates it from the URL.
 
 ```php
 use Plugs\Support\ValueObject;
 
-class Email extends ValueObject
+class UserId extends ValueObject {}
+
+// In Controller
+public function show(UserId $id) 
 {
-    public function __toString(): string
-    {
-        return $this->value;
-    }
-}
-
-$email = Email::from('test@example.com');
-```
-
-**Automatic Route Binding:**
-
-The Router automatically hydrates `ValueObject`s from route parameters.
-
-```php
-// Route
-$router->get('/users/{id}', [UserController::class, 'show']);
-
-// Controller
-public function show(UserId $id)
-{
-    // $id is an instance of UserId, populated from the URI
+    // $id is automatically instantiated from path parameter
 }
 ```
 
 ## 3. Strict Routing
 
-We recommend using array-based callables for routes to ensure refactoring safety.
+Always use the array-callable syntax for route definitions. This allows IDEs to track usages and enables refactoring safety.
 
 ```php
-use App\Controllers\HomeController;
-
-// ✅ Preferred (Safe)
-$router->get('/', [HomeController::class, 'index']);
-
-// ⚠️ Supported (Brittle)
-$router->get('/', 'HomeController@index');
+// Safe and Refactorable
+$router->get('/profile', [ProfileController::class, 'index']);
 ```
 
-## 4. IDE Helpers
+## 4. IDE Helpers & Generators
 
-To improve auto-completion for dynamic features like `config()`, run:
+Keep your IDE smart with the Plugs Generator:
 
 ```bash
-php plg type:gen
+# Generates auto-completion for config(), view(), etc.
+php theplugs type:gen
 ```
-
-This will generate helper files in your project root that your IDE (pbl PHPStorm or VS Code) can index.

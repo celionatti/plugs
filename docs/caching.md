@@ -1,90 +1,43 @@
-# Smarter Caching & Performance Intelligence
+# Caching & Performance
 
-Plugs provides intelligent caching with tiered storage, tagging, and warm-up capabilities.
+Plugs implements a high-performance **Tiered Caching** system that ensures your application stays snappy even under heavy load.
 
-## Tiered Cache
+## 1. Tiered Cache (L1/L2)
 
-Automatically use the fastest available storage with fallback.
-
-```php
-use Plugs\Cache\TieredCache;
-
-$cache = new TieredCache([
-    'memory' => new MemoryCache(),   // Fastest (per-request)
-    'file' => new FileCacheDriver(), // Fast (disk)
-    'redis' => new RedisCache(),     // Persistent
-]);
-
-// Get promotes value to faster tiers
-$value = $cache->get('key');
-```
-
-### Automatic Promotion
-
-When a value is found in a slower tier, it's automatically promoted to faster tiers for subsequent requests.
-
-## Cache Tagging
-
-Invalidate related cache entries by tag.
+The framework can use multiple cache layers simultaneously:
+- **L1 (Local)**: Fast in-memory/APC cache for hot data.
+- **L2 (Distributed)**: Redis or Memcached for shared data across nodes.
 
 ```php
-use Plugs\Cache\CacheTagManager;
-
-$cache = new CacheTagManager($driver);
-
-// Set with tags
-$cache->tags(['users', 'profile'])->set('user:123', $userData);
-$cache->tags(['users', 'list'])->set('users:all', $allUsers);
-
-// Flush all 'users' tagged entries
-$cache->flushTags(['users']); // Clears user:123 and users:all
+// Automatically handles tiered lookups
+$data = Cache::remember('users.count', 3600, fn() => User::count());
 ```
 
-## Cache Warming
+## 2. Tagged Caching
 
-Pre-populate caches on deploy for zero cold-start latency.
+Group related cache entries and invalidate them all at once.
 
-### CLI Usage
+```php
+Cache::tags(['people', 'authors'])->put('John', $user, $seconds);
+
+// Flush all 'people' entries
+Cache::tags('people')->flush();
+```
+
+## 3. Cache Warmer
+
+Proactively warm your cache before users hit the application.
 
 ```bash
-# Warm all caches
-php plg cache:warm
-
-# Warm specific warmer
-php plg cache:warm config
+# Invoke your custom warmers
+php theplugs cache:warm
 ```
 
-### Custom Warmers
+## 4. Route & Config Caching
 
-```php
-// config/cache.php
-return [
-    'warmers' => [
-        'products' => function () {
-            return [
-                'products:featured' => ['value' => Product::featured()->get()],
-                'products:categories' => ['value' => Category::all()],
-            ];
-        },
-    ],
-];
+Eliminate bootstrap overhead in production by freezing your application state.
+
+```bash
+# Compile everything for maximum speed
+php theplugs optimize
 ```
-
-### Programmatic Usage
-
-```php
-use Plugs\Cache\CacheWarmer;
-
-$warmer = CacheWarmer::withDefaults()
-    ->register('custom', fn() => ['key' => 'value']);
-
-$warmer->warmAll();
-```
-
-## Performance Tips
-
-| Tier | Speed | Persistence | Use Case |
-|------|-------|-------------|----------|
-| Memory | ~0.001ms | No | Hot data, same request |
-| File | ~1ms | Yes | Compiled views, config |
-| Redis | ~5ms | Yes | Shared state, sessions |
