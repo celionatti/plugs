@@ -25,7 +25,7 @@ namespace Plugs\Http\Middleware;
  * - Configurable excluded routes
  * - Support for AJAX/API requests
  * - Custom error responses
- * - Integration with SecurityShieldMiddleware
+ * - Integration with \Plugs\Http\Middleware\SecurityShieldMiddleware
  * - Logging of CSRF validation failures
  * - Easy configuration and customization
  * - PSR-15 Middleware compliant

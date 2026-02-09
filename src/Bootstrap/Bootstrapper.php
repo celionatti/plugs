@@ -14,7 +14,7 @@ use Plugs\Http\Middleware\RateLimitMiddleware;
 use Plugs\Http\Middleware\RoutingMiddleware;
 use Plugs\Http\Middleware\SecurityHeadersMiddleware;
 use Plugs\Http\ResponseFactory;
-use Plugs\Middlewares\SecurityShieldMiddleware;
+use Plugs\Http\Middleware\SecurityShieldMiddleware;
 use Plugs\Plugs;
 use Plugs\Router\Router;
 use Plugs\Session\SessionManager;

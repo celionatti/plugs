@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Plugs\Middlewares;
+namespace Plugs\Http\Middleware;
 
 /*
 |--------------------------------------------------------------------------
@@ -49,7 +49,6 @@ class SecurityShieldMiddleware implements MiddlewareInterface
         $this->whitelistedIps = [];
         $this->blacklistedIps = [];
         $this->initializeRules();
-        // Removed eager loadWhitelistBlacklist()
     }
 
     private function ensureListsLoaded(): void
@@ -820,16 +819,8 @@ class SecurityShieldMiddleware implements MiddlewareInterface
      */
     public function addToWhitelist(string $ip): self
     {
-        $this->whitelistedIps[] = $ip;
-
-        try {
-            $this->db->query(
-                "INSERT INTO whitelisted_ips (ip, created_at) VALUES (?, NOW()) 
-                 ON DUPLICATE KEY UPDATE active = 1",
-                [$ip]
-            );
-        } catch (\Exception $e) {
-            // Silent fail
+        if (!in_array($ip, $this->whitelistedIps)) {
+            $this->whitelistedIps[] = $ip;
         }
 
         return $this;

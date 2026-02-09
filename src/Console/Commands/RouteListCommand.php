@@ -47,6 +47,11 @@ class RouteListCommand extends Command
 
         $routes = $router->getRoutes();
 
+        // Flatten nested routes array if necessary (method => [routes])
+        if (!empty($routes) && is_array(reset($routes))) {
+            $routes = array_merge(...array_values($routes));
+        }
+
         if (empty($routes)) {
             $this->warning('No routes registered.');
 
@@ -133,7 +138,7 @@ class RouteListCommand extends Command
         $reverse = $this->hasOption('reverse') || $this->hasOption('r');
 
         usort($routes, function ($a, $b) use ($sortBy) {
-            return match($sortBy) {
+            return match ($sortBy) {
                 'method' => strcmp($a->getMethod(), $b->getMethod()),
                 'name' => strcmp($a->getName() ?? '', $b->getName() ?? ''),
                 'middleware' => count($a->getMiddleware()) <=> count($b->getMiddleware()),
@@ -215,15 +220,15 @@ class RouteListCommand extends Command
             }
         }
 
-        $this->keyValue('Total Routes', (string)count($routes));
-        $this->keyValue('Named Routes', (string)$named);
-        $this->keyValue('Protected Routes', (string)$withMiddleware);
+        $this->keyValue('Total Routes', (string) count($routes));
+        $this->keyValue('Named Routes', (string) $named);
+        $this->keyValue('Protected Routes', (string) $withMiddleware);
 
         $this->newLine();
         $this->info('Routes by Method:');
 
         foreach ($methods as $method => $count) {
-            $this->keyValue("  {$method}", (string)$count);
+            $this->keyValue("  {$method}", (string) $count);
         }
 
         $this->newLine();
@@ -231,7 +236,7 @@ class RouteListCommand extends Command
 
     private function colorizeMethod(string $method): string
     {
-        return match($method) {
+        return match ($method) {
             'GET' => "\033[32m{$method}\033[0m",      // Green
             'POST' => "\033[33m{$method}\033[0m",     // Yellow
             'PUT' => "\033[34m{$method}\033[0m",      // Blue
