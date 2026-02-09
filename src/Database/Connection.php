@@ -820,11 +820,11 @@ class Connection
         return $stmt->fetchAll();
     }
 
-    public function execute(string $sql, array $params = []): bool
+    public function execute(string $sql, array $params = []): int
     {
         $stmt = $this->query($sql, $params);
 
-        return $stmt->rowCount() > 0;
+        return $stmt->rowCount();
     }
 
     public function lastInsertId(): string

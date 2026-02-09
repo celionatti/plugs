@@ -27,6 +27,9 @@ use Plugs\Database\Traits\HasDomainRules;
 use Plugs\Database\Traits\HasScopes;
 use Plugs\Database\Traits\HasTenancy;
 use Plugs\Database\Traits\Authorizable;
+use Plugs\Database\Traits\HasImmutability;
+use Plugs\Database\Traits\HasVersioning;
+use Plugs\Database\Exceptions\ConcurrencyException;
 
 /**
  * PlugModel
@@ -52,6 +55,8 @@ abstract class PlugModel implements \JsonSerializable
     use HasScopes;
     use HasTenancy;
     use Authorizable;
+    use HasImmutability;
+    use HasVersioning;
 
     protected $table;
     protected $primaryKey = 'id';
@@ -436,17 +441,27 @@ abstract class PlugModel implements \JsonSerializable
             $dirty['updated_at'] = date('Y-m-d H:i:s');
         }
 
-        $result = static::query()
-            ->where($this->primaryKey, '=', $this->attributes[$this->primaryKey])
-            ->update($dirty);
+        $query = static::query()
+            ->where($this->primaryKey, '=', $this->attributes[$this->primaryKey]);
 
-        if ($result) {
+        // Apply Versioning Constraints if applicable
+        if (method_exists($this, 'applyVersioningConstraints')) {
+            $this->applyVersioningConstraints($query);
+        }
+
+        $result = $query->update($dirty);
+
+        if ($result === 0 && property_exists($this, 'original_version') && $this->original_version !== null) {
+            throw new ConcurrencyException("Concurrent update detected. The record was modified by another process.");
+        }
+
+        if ($result > 0) {
             $this->original = $this->attributes;
 
             $this->fireModelEvent('updated', ['dirty' => $dirty]);
         }
 
-        return $result;
+        return $result > 0;
     }
 
     public function delete(): bool
@@ -480,7 +495,7 @@ abstract class PlugModel implements \JsonSerializable
     {
         return static::query()
             ->where($this->primaryKey, '=', $this->attributes[$this->primaryKey])
-            ->delete();
+            ->delete() > 0;
     }
 
     public static function destroy($ids): int

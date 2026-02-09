@@ -516,10 +516,10 @@ class QueryBuilder
 
         $sql = "INSERT INTO {$this->table} (" . implode(', ', $columns) . ") VALUES " . implode(', ', $placeholders);
 
-        return $this->connection->execute($sql, $params);
+        return $this->connection->execute($sql, $params) > 0;
     }
 
-    public function update(array $data): bool
+    public function update(array $data): int
     {
         $sets = [];
         $params = $this->params;
@@ -536,7 +536,7 @@ class QueryBuilder
         return $this->connection->execute($sql, $params);
     }
 
-    public function delete(): bool
+    public function delete(): int
     {
         $sql = "DELETE FROM {$this->table}";
         $sql .= $this->getWhereClause();
