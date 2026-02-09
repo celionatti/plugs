@@ -100,7 +100,7 @@ class Route
 
         $this->middleware = array_filter(
             $this->middleware,
-            fn ($mw) => !in_array($mw, $middlewareToRemove, true)
+            fn($mw) => !in_array($mw, $middlewareToRemove, true)
         );
 
         return $this;
@@ -239,11 +239,17 @@ class Route
         );
 
         // Optional parameters: {param?}
+        // Also handle the preceding slash for optional parameters
         $pattern = preg_replace_callback(
-            '/\{([a-zA-Z_][a-zA-Z0-9_]*)\?\}/',
+            '/\/?\{([a-zA-Z_][a-zA-Z0-9_]*)\?\}/',
             function ($matches) {
                 $param = $matches[1];
                 $constraint = $this->where[$param] ?? '[^/]*';
+                $hasSlash = str_starts_with($matches[0], '/');
+
+                if ($hasSlash) {
+                    return "(?:\/(?P<{$param}>{$constraint}))?";
+                }
 
                 return "(?P<{$param}>{$constraint})?";
             },
@@ -541,7 +547,12 @@ class Route
                 (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http'
             );
             $host = $this->domain ?? ($_SERVER['HTTP_HOST'] ?? 'localhost');
-            $path = $scheme . '://' . $host . $path;
+
+            $basePath = function_exists('get_base_path') ? get_base_path() : '/';
+            $path = $scheme . '://' . $host . rtrim($basePath, '/') . '/' . ltrim($path, '/');
+        } else {
+            $basePath = function_exists('get_base_path') ? get_base_path() : '/';
+            $path = rtrim($basePath, '/') . '/' . ltrim($path, '/');
         }
 
         return $path;

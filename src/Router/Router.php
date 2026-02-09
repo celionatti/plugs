@@ -508,6 +508,16 @@ class Router
         $method = $request->getMethod();
         $path = $request->getUri()->getPath();
 
+        // Strip base path (subdirectory) if present
+        if (function_exists('get_base_path')) {
+            $basePath = get_base_path();
+            if ($basePath !== '/' && str_starts_with($path, $basePath)) {
+                $path = substr($path, strlen($basePath));
+            }
+        }
+
+        $path = '/' . ltrim($path, '/');
+
         // Support Laravel-style method spoofing via _method field
         if ($method === 'POST') {
             $method = $this->getMethodFromRequest($request);

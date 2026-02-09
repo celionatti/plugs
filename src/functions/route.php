@@ -30,6 +30,24 @@ if (!function_exists('route')) {
     }
 }
 
+if (!function_exists('get_base_path')) {
+    /**
+     * Get the application base path (subdirectory)
+     */
+    function get_base_path(): string
+    {
+        static $basePath;
+        if ($basePath !== null) {
+            return $basePath;
+        }
+
+        $scriptName = $_SERVER['SCRIPT_NAME'] ?? '';
+        $basePath = rtrim(dirname($scriptName), '/\\');
+
+        return $basePath ?: '/';
+    }
+}
+
 if (!function_exists('url')) {
     /**
      * Generate a full URL from a path
@@ -39,24 +57,28 @@ if (!function_exists('url')) {
         // Prioritize configuration from .env
         $baseUrl = env('APP_URL');
 
-        if ($baseUrl) {
-            $url = rtrim($baseUrl, '/') . '/' . ltrim($path, '/');
+        // Normalize path
+        $path = '/' . ltrim($path, '/');
+
+        if ($baseUrl && (str_starts_with($baseUrl, 'http://') || str_starts_with($baseUrl, 'https://'))) {
+            $url = rtrim($baseUrl, '/') . $path;
         } else {
-            // Fallback to dynamic derivation
+            // Fallback to dynamic derivation with subdirectory awareness
+            $basePath = get_base_path();
             $request = request();
+
             if ($request === null) {
                 $scheme = isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off' ? 'https' : 'http';
                 $host = $_SERVER['HTTP_HOST'] ?? 'localhost';
-                $basePath = '/' . ltrim($path, '/');
             } else {
                 $uri = $request->getUri();
                 $scheme = $uri->getScheme();
                 $host = $uri->getHost();
                 $port = $uri->getPort();
                 $host .= ($port && !in_array($port, [80, 443])) ? ":$port" : '';
-                $basePath = '/' . ltrim($path, '/');
             }
-            $url = "$scheme://$host$basePath";
+
+            $url = $scheme . '://' . $host . rtrim($basePath, '/') . $path;
         }
 
         if (!empty($parameters)) {
