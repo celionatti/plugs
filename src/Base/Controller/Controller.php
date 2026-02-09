@@ -288,10 +288,18 @@ abstract class Controller
      */
     protected function authorize(string $ability, $arguments = []): void
     {
-        // Implementation for simple authorization
-        // This could integrate with a Gate or similar system later
+        // 1. Check if arguments contains a model that supports Authorizable
+        $args = is_array($arguments) ? $arguments : [$arguments];
+        foreach ($args as $arg) {
+            if (is_object($arg) && method_exists($arg, 'authorize')) {
+                $arg->authorize($ability, ...array_filter($args, fn($a) => $a !== $arg));
+                return;
+            }
+        }
+
+        // 2. Legacy/Simple authorization fallback
         if (method_exists($this, 'can') && !$this->can($ability, $arguments)) {
-            throw new RuntimeException("This action is unauthorized.", 403);
+            throw new \Plugs\Exceptions\AuthorizationException("This action is unauthorized.");
         }
     }
 

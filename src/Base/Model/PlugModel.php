@@ -26,6 +26,7 @@ use Plugs\Database\Traits\SoftDeletes;
 use Plugs\Database\Traits\HasDomainRules;
 use Plugs\Database\Traits\HasScopes;
 use Plugs\Database\Traits\HasTenancy;
+use Plugs\Database\Traits\Authorizable;
 
 /**
  * PlugModel
@@ -50,6 +51,7 @@ abstract class PlugModel implements \JsonSerializable
     use HasDomainRules;
     use HasScopes;
     use HasTenancy;
+    use Authorizable;
 
     protected $table;
     protected $primaryKey = 'id';
