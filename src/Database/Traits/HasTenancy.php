@@ -1,0 +1,55 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Plugs\Database\Traits;
+
+use Plugs\Multitenancy\TenantManager;
+use Plugs\Database\Attributes\TenantAware;
+use ReflectionClass;
+
+trait HasTenancy
+{
+    public static function bootHasTenancy(): void
+    {
+        $reflection = new ReflectionClass(static::class);
+        $attributes = $reflection->getAttributes(TenantAware::class);
+
+        if (empty($attributes)) {
+            return;
+        }
+
+        $tenantAware = $attributes[0]->newInstance();
+        $column = $tenantAware->column;
+
+        // 1. Add Global Scope for filtering by tenant
+        static::addGlobalScope('tenancy', function ($builder) use ($column) {
+            $manager = TenantManager::getInstance();
+            if ($manager->hasTenant()) {
+                return $builder->where($column, $manager->getTenantId());
+            }
+            return $builder;
+        });
+
+        // 2. Automatically inject tenant_id on creating
+        static::creating(function ($model) use ($column) {
+            $manager = TenantManager::getInstance();
+            if ($manager->hasTenant() && !isset($model->attributes[$column])) {
+                $model->setAttribute($column, $manager->getTenantId());
+            }
+        });
+    }
+
+    /**
+     * Scope a query to only include results for the current tenant.
+     * Manual override if needed.
+     */
+    public function scopeForTenant($query, $tenantId)
+    {
+        $reflection = new ReflectionClass(static::class);
+        $attributes = $reflection->getAttributes(TenantAware::class);
+        $column = !empty($attributes) ? $attributes[0]->newInstance()->column : 'tenant_id';
+
+        return $query->where($column, $tenantId);
+    }
+}

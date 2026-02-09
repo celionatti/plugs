@@ -25,6 +25,7 @@ use Plugs\Database\Traits\Searchable;
 use Plugs\Database\Traits\SoftDeletes;
 use Plugs\Database\Traits\HasDomainRules;
 use Plugs\Database\Traits\HasScopes;
+use Plugs\Database\Traits\HasTenancy;
 
 /**
  * PlugModel
@@ -48,6 +49,7 @@ abstract class PlugModel implements \JsonSerializable
     use HasFactory;
     use HasDomainRules;
     use HasScopes;
+    use HasTenancy;
 
     protected $table;
     protected $primaryKey = 'id';

@@ -249,18 +249,17 @@ trait HasEvents
     /**
      * Apply global scopes to query
      */
-    protected function applyGlobalScopes()
+    protected function applyGlobalScopes(\Plugs\Database\QueryBuilder $builder): \Plugs\Database\QueryBuilder
     {
         $class = static::class;
         if (!isset(static::$globalScopes[$class])) {
-            return $this;
+            return $builder;
         }
 
-        $clone = $this;
         foreach (static::$globalScopes[$class] as $scope) {
-            $clone = $scope($clone);
+            $builder = $scope($builder);
         }
 
-        return $clone;
+        return $builder;
     }
 }

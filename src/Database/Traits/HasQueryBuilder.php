@@ -36,7 +36,15 @@ trait HasQueryBuilder
         $instance = new static();
         $table = $instance->getTable();
 
-        return $builder->table($table)->setModel(static::class);
+        $builder = $builder->table($table)->setModel(static::class);
+
+        // Apply global scopes
+        if (method_exists($instance, 'applyGlobalScopes')) {
+            /** @phpstan-ignore-next-line */
+            $builder = $instance->applyGlobalScopes($builder);
+        }
+
+        return $builder;
     }
 
     public static function get(array $columns = ['*']): array|Collection
