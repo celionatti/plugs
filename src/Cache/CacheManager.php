@@ -6,19 +6,33 @@ namespace Plugs\Cache;
 
 use InvalidArgumentException;
 use Plugs\Cache\Drivers\FileCacheDriver;
+use Plugs\Cache\Drivers\MemoryCache;
 
 class CacheManager
 {
     private array $drivers = [];
-    private string $defaultDriver = 'file';
+    private string $defaultDriver = 'tiered';
 
     public function __construct()
     {
-        $this->defaultDriver = config('cache.default', 'file');
+        $this->defaultDriver = config('cache.default', 'tiered');
 
-        // Register default file driver
+        // Register tiered driver (memory → file) as default
+        $this->extend('tiered', function () {
+            return new TieredCache([
+                'memory' => new MemoryCache(),
+                'file' => new FileCacheDriver(),
+            ]);
+        });
+
+        // Keep file driver available for explicit use
         $this->extend('file', function () {
             return new FileCacheDriver();
+        });
+
+        // Memory-only driver
+        $this->extend('memory', function () {
+            return new MemoryCache();
         });
     }
 
