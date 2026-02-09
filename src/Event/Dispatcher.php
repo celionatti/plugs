@@ -86,7 +86,7 @@ class Dispatcher implements DispatcherInterface
         // Gather all listeners as tasks
         $tasks = [];
         foreach ($this->getListeners($eventName) as $listener) {
-            $tasks[] = fn () => $this->callListener($listener, $payload);
+            $tasks[] = fn() => $this->callListener($listener, $payload);
         }
 
         // Run them in parallel using our FiberManager/Async helper
@@ -107,10 +107,14 @@ class Dispatcher implements DispatcherInterface
         // If the event is an object, we use its class name as the event name
         $eventName = is_object($event) ? get_class($event) : $event;
 
-        // Check if event implements AsyncEventInterface and auto-dispatch async if so
-        // Note: Halt is not supported in async mode effectively as they run in parallel.
         if (is_object($event) && $event instanceof AsyncEventInterface && !$halt) {
             return $this->dispatchAsync($event, $payload);
+        }
+
+        // Optional: Enforce TypedEvent usage for object events
+        if (is_object($event) && !$event instanceof \Plugs\Event\Event) {
+            // We can log a warning or just proceed. For now, we proceed to maintain BC.
+            // But we can ensure it follows our TypedEvent contract if strict mode was enabled.
         }
 
         if (is_object($event) && empty($payload)) {

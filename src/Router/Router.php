@@ -954,6 +954,16 @@ class Router
                 return ResponseFactory::createResponse();
             }
 
+            // ValueObject Binding
+            if (is_subclass_of($typeName, \Plugs\Support\ValueObject::class)) {
+                // Try to find a matching route parameter or request attribute
+                $value = $routeParams[$paramName] ?? $request->getAttribute($paramName);
+                if ($value !== null && (is_string($value) || is_numeric($value))) {
+                    return $typeName::from((string) $value);
+                }
+            }
+
+
             // Try dependency injection from container
             try {
                 // FormRequest Automatic Validation
@@ -978,8 +988,9 @@ class Router
                 // Rethrow these so they can be handled by middleware or global handler
                 throw $e;
             } catch (Exception $e) {
-                // Fall through to other resolution methods for other DI failures
             }
+
+
         }
 
         // Check route parameters (highest priority for scalars)

@@ -43,6 +43,21 @@ class Email extends ValueObject
 $email = Email::from('test@example.com');
 ```
 
+**Automatic Route Binding:**
+
+The Router automatically hydrates `ValueObject`s from route parameters.
+
+```php
+// Route
+$router->get('/users/{id}', [UserController::class, 'show']);
+
+// Controller
+public function show(UserId $id)
+{
+    // $id is an instance of UserId, populated from the URI
+}
+```
+
 ## 3. Strict Routing
 
 We recommend using array-based callables for routes to ensure refactoring safety.
