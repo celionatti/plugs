@@ -337,7 +337,7 @@ class ViewEngine
         });
 
         $this->directive('error', function ($expression) {
-            $key = trim($expression, " '\"");
+            $key = trim($expression ?? '', " '\"");
 
             return "<?php if (isset(\$errors) && \$errors->has('$key')): ?>";
         });
