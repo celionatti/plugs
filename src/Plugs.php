@@ -120,7 +120,7 @@ class Plugs
     {
         $container = \Plugs\Container\Container::getInstance();
 
-        $config = (include base_path('config/logging.php'));
+        $config = config('logging');
         $channel = $config['default'];
         $path = $config['channels'][$channel]['path'] ?? storage_path('logs/plugs.log');
 
@@ -161,7 +161,7 @@ class Plugs
     {
         $container = \Plugs\Container\Container::getInstance();
 
-        $config = (include base_path('config/filesystems.php'));
+        $config = config('filesystems');
         $storage = new \Plugs\Filesystem\StorageManager($config);
         $container->instance('storage', $storage);
     }

@@ -70,7 +70,6 @@ class MakeProviderCommand extends Command
 
             $this->section('Next Steps');
             $this->bulletList([
-                "Register it in config/app.php in the 'providers' array",
                 "Implement your bindings in the register() method",
                 "Implement your boot logic in the boot() method",
             ]);

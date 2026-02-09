@@ -90,14 +90,16 @@ class Config
         }
 
         $configPath = self::getConfigPath($file);
+        $defaults = \Plugs\Config\DefaultConfig::get($file);
 
         if (file_exists($configPath)) {
-            self::$config[$file] = require $configPath;
-            self::$loaded[$file] = true;
+            $userConfig = require $configPath;
+            self::$config[$file] = array_replace_recursive($defaults, is_array($userConfig) ? $userConfig : []);
         } else {
-            self::$config[$file] = [];
-            self::$loaded[$file] = true;
+            self::$config[$file] = $defaults;
         }
+
+        self::$loaded[$file] = true;
     }
 
     /**
