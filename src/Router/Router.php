@@ -336,6 +336,15 @@ class Router
         if (isset($attributes['prefix'])) {
             $prefix = trim($attributes['prefix'], '/');
             $this->groupPrefix = $previousPrefix . ($prefix ? '/' . $prefix : '');
+        } else {
+            $this->groupPrefix = $previousPrefix;
+        }
+
+        // Versioning Support
+        if (isset($attributes['version'])) {
+            $version = $attributes['version']; // e.g., 'v1'
+            $this->groupPrefix = rtrim($this->groupPrefix, '/') . '/' . $version;
+            // Store version metadata for future OpenAPI logic if needed
         }
 
         // Apply middleware
@@ -1618,25 +1627,25 @@ class Router
     /**
      * Macro support - Add custom methods to router
      */
-    private array $macros = [];
+    private static array $macros = [];
 
-    public function macro(string $name, callable $callback): void
+    public static function macro(string $name, callable $callback): void
     {
-        $this->macros[$name] = $callback;
+        self::$macros[$name] = $callback;
     }
 
-    public function hasMacro(string $name): bool
+    public static function hasMacro(string $name): bool
     {
-        return isset($this->macros[$name]);
+        return isset(self::$macros[$name]);
     }
 
     public function __call(string $name, array $arguments)
     {
-        if (!$this->hasMacro($name)) {
+        if (!self::hasMacro($name)) {
             throw new RuntimeException("Method [{$name}] does not exist on Router");
         }
 
-        $macro = $this->macros[$name];
+        $macro = self::$macros[$name];
 
         if ($macro instanceof Closure) {
             return call_user_func_array($macro->bindTo($this, static::class), $arguments);
