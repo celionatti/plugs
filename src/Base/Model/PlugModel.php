@@ -17,6 +17,9 @@ use Plugs\Database\Traits\HasFactory;
 use Plugs\Database\Traits\HasQueryBuilder;
 use Plugs\Database\Traits\HasRelationships;
 use Plugs\Database\Traits\HasTimestamps;
+use Plugs\Database\Traits\HasUuids;
+use Plugs\Database\Traits\HasUlids;
+use Plugs\Database\Traits\Prunable;
 use Plugs\Database\Traits\HasValidation;
 use Plugs\Database\Traits\Searchable;
 use Plugs\Database\Traits\SoftDeletes;
@@ -28,7 +31,7 @@ use Plugs\Database\Traits\SoftDeletes;
  * @method void setAttribute(string $key, mixed $value)
  * @phpstan-consistent-constructor
  */
-abstract class PlugModel
+abstract class PlugModel implements \JsonSerializable
 {
     use Debuggable;
     use Searchable;
@@ -81,6 +84,33 @@ abstract class PlugModel
         }
 
         static::trackModelLoading();
+    }
+
+    protected static function boot(): void
+    {
+        static::bootTraits();
+    }
+
+    /**
+     * Boot all of the bootable traits on the model.
+     *
+     * @return void
+     */
+    protected static function bootTraits(): void
+    {
+        $class = static::class;
+
+        static::$bootTraits[$class] = static::$bootTraits[$class] ?? [];
+
+        foreach (class_uses_recursive($class) as $trait) {
+            $method = 'boot' . class_basename($trait);
+
+            if (method_exists($class, $method) && !in_array($method, static::$bootTraits[$class])) {
+                forward_static_call([$class, $method]);
+
+                static::$bootTraits[$class][] = $method;
+            }
+        }
     }
 
     protected function validateModelConfiguration(): void
@@ -337,7 +367,9 @@ abstract class PlugModel
 
         if ($result) {
             $connection = Connection::getInstance();
-            $this->attributes[$this->primaryKey] = $connection->lastInsertId();
+            if (empty($this->attributes[$this->primaryKey])) {
+                $this->attributes[$this->primaryKey] = $connection->lastInsertId();
+            }
             $this->original = $this->attributes;
         }
 
@@ -452,6 +484,20 @@ abstract class PlugModel
         static::getConnection()->exec("ROLLBACK TO SAVEPOINT trans_" . static::$transactionDepth);
 
         return true;
+    }
+
+    /**
+     * Execute a Closure within a transaction.
+     *
+     * @param  \Closure  $callback
+     * @param  int  $attempts
+     * @return mixed
+     *
+     * @throws \Throwable
+     */
+    public static function transaction(\Closure $callback, int $attempts = 1)
+    {
+        return static::connection(static::$connectionName)->transaction($callback, $attempts);
     }
 
     // ==================== RAW & BATCH OPERATIONS ====================
@@ -573,6 +619,54 @@ abstract class PlugModel
             'table' => $this->getTable(),
         ];
     }
+
+    /**
+     * Convert the model instance to JSON.
+     *
+     * @return mixed
+     */
+    public function jsonSerialize(): mixed
+    {
+        return $this->toArray();
+    }
+}
+
+/**
+ * Get all traits used by a class, including traits used by traits.
+ *
+ * @param  object|string  $class
+ * @return array
+ */
+function class_uses_recursive($class): array
+{
+    if (is_object($class)) {
+        $class = get_class($class);
+    }
+
+    $results = [];
+
+    foreach (array_reverse(class_parents($class)) + [$class => $class] as $class) {
+        $results += trait_uses_recursive($class);
+    }
+
+    return array_unique($results);
+}
+
+/**
+ * Get all traits used by a trait, including traits used by traits.
+ *
+ * @param  string  $trait
+ * @return array
+ */
+function trait_uses_recursive($trait): array
+{
+    $traits = class_uses($trait) ?: [];
+
+    foreach ($traits as $trait) {
+        $traits += trait_uses_recursive($trait);
+    }
+
+    return $traits;
 }
 
 if (!function_exists('class_basename')) {

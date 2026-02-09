@@ -23,6 +23,7 @@ trait HasAttributes
     protected $appends = [];
     protected $dates = [];
     protected $dateFormat = 'Y-m-d H:i:s';
+    protected $attributeCache = [];
     protected $visible = [];
     protected $castNulls = true;
 
@@ -42,6 +43,16 @@ trait HasAttributes
         $this->original = $this->attributes;
 
         return $this;
+    }
+
+    /**
+     * Get all of the current attributes on the model.
+     *
+     * @return array
+     */
+    public function getAttributes(): array
+    {
+        return $this->attributes;
     }
 
     public function fill(array|object $attributes)
@@ -83,6 +94,11 @@ trait HasAttributes
 
     public function getAttribute(string $key)
     {
+        // Check for Attribute object (Modern Laravel Style)
+        if ($attribute = $this->getAttributeFromObject($key)) {
+            return $attribute->get ? ($attribute->get)($this->attributes[$key] ?? null, $this->attributes) : ($this->attributes[$key] ?? null);
+        }
+
         // Check for accessor method (getXxxAttribute)
         $accessor = 'get' . $this->studly($key) . 'Attribute';
         if (method_exists($this, $accessor)) {
@@ -105,7 +121,8 @@ trait HasAttributes
         $value = $this->attributes[$key] ?? null;
 
         // Apply casts
-        if (isset($this->casts[$key]) && $value !== null) {
+        $casts = $this->getCasts();
+        if (isset($casts[$key]) && $value !== null) {
             return $this->castAttribute($key, $value);
         }
 
@@ -126,6 +143,23 @@ trait HasAttributes
 
     public function setAttribute(string $key, $value): void
     {
+        // Check for Attribute object (Modern Laravel Style)
+        if ($attribute = $this->getAttributeFromObject($key)) {
+            if ($attribute->set) {
+                $value = ($attribute->set)($value, $this->attributes);
+
+                if (is_array($value)) {
+                    $this->attributes = array_merge($this->attributes, $value);
+                } else {
+                    $this->attributes[$key] = $value;
+                }
+            } else {
+                $this->attributes[$key] = $value;
+            }
+
+            return;
+        }
+
         // Check for mutator method (setXxxAttribute)
         $mutator = 'set' . $this->studly($key) . 'Attribute';
         if (method_exists($this, $mutator)) {
@@ -135,7 +169,8 @@ trait HasAttributes
         }
 
         // Cast value before storing if cast is defined
-        if (isset($this->casts[$key])) {
+        $casts = $this->getCasts();
+        if (isset($casts[$key])) {
             $value = $this->castForStorage($key, $value);
         }
 
@@ -147,7 +182,8 @@ trait HasAttributes
      */
     protected function castForStorage(string $key, $value)
     {
-        $castType = $this->casts[$key];
+        $casts = $this->getCasts();
+        $castType = $casts[$key];
 
         // Handle custom cast classes
         if (is_string($castType) && class_exists($castType) && is_subclass_of($castType, \Plugs\Database\Contracts\CastsAttributes::class)) {
@@ -196,11 +232,9 @@ trait HasAttributes
 
     protected function castAttribute($key, $value)
     {
-        if ($value === null && !$this->castNulls) {
-            return null;
-        }
+        $casts = $this->getCasts();
 
-        if (!isset($this->casts[$key])) {
+        if (!isset($casts[$key])) {
             // Check if it's in the dates array or a timestamp column
             if ($this->isDateAttribute($key)) {
                 $datetime = $this->asDateTime($value);
@@ -212,7 +246,7 @@ trait HasAttributes
             return $value;
         }
 
-        $castType = $this->casts[$key];
+        $castType = $casts[$key];
 
         // Handle custom cast classes
         if (is_string($castType) && class_exists($castType) && is_subclass_of($castType, \Plugs\Database\Contracts\CastsAttributes::class)) {
@@ -606,5 +640,53 @@ trait HasAttributes
     public function __unset($key)
     {
         unset($this->attributes[$key]);
+    }
+
+    /**
+     * Get the casts array.
+     *
+     * @return array
+     */
+    public function getCasts(): array
+    {
+        if (method_exists($this, 'casts')) {
+            return array_merge($this->casts, $this->casts());
+        }
+
+        return $this->casts;
+    }
+
+    /**
+     * Get an attribute from an Attribute object.
+     *
+     * @param  string  $key
+     * @return \Plugs\Database\Eloquent\Attribute|null
+     */
+    protected function getAttributeFromObject(string $key): ?\Plugs\Database\Eloquent\Attribute
+    {
+        if (isset($this->attributeCache[$key])) {
+            return $this->attributeCache[$key];
+        }
+
+        $methods = [$key];
+        if (str_contains($key, '_')) {
+            $methods[] = \Plugs\Utils\Str::camel($key);
+        }
+
+        foreach (array_unique($methods) as $method) {
+            if (method_exists($this, $method)) {
+                $reflection = new \ReflectionMethod($this, $method);
+
+                if ($reflection->getNumberOfParameters() === 0) {
+                    $result = $this->$method();
+
+                    if ($result instanceof \Plugs\Database\Eloquent\Attribute) {
+                        return $this->attributeCache[$key] = $result;
+                    }
+                }
+            }
+        }
+
+        return null;
     }
 }

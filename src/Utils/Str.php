@@ -515,6 +515,23 @@ class Str
     }
 
     /**
+     * Generate a ULID.
+     */
+    public static function ulid(): string
+    {
+        $time = (int) (microtime(true) * 1000);
+        $timeHex = str_pad(base_convert((string) $time, 10, 32), 10, '0', STR_PAD_LEFT);
+
+        $characters = '0123456789ABCDEFGHJKMNPQRSTVWXYZ';
+        $random = '';
+        for ($i = 0; $i < 16; $i++) {
+            $random .= $characters[random_int(0, 31)];
+        }
+
+        return strtoupper($timeHex . $random);
+    }
+
+    /**
      * Generate a ordered UUID (version 7).
      */
     public static function orderedUuid(): string

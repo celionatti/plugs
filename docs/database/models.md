@@ -115,6 +115,37 @@ class User extends PlugModel
 
 When you call the `delete` method on a model, the `deleted_at` column will be set to the current date and time. You may use `restore()` to un-delete a model.
 
+## Attribute Casting
+
+Attribute casting provides a convenient way to transform attributes to common data types. You may define a `$casts` property or a `casts()` method on your model:
+
+```php
+class User extends PlugModel
+{
+    /**
+     * The attributes that should be cast.
+     *
+     * @var array
+     */
+    protected $casts = [
+        'is_admin' => 'boolean',
+        'options' => 'array',
+    ];
+
+    /**
+     * Or use the modern casts() method for dynamic casting:
+     */
+    protected function casts(): array
+    {
+        return [
+            'email_verified_at' => 'datetime',
+        ];
+    }
+}
+```
+
+Supported cast types include: `integer`, `float`, `string`, `boolean`, `object`, `array`, `json`, `collection`, `date`, `datetime`, and `timestamp`.
+
 ## Accessors & Mutators
 
 ### Accessors
@@ -133,10 +164,6 @@ class User extends PlugModel
 }
 ```
 
-### Mutators
-
-A mutator transforms a model attribute value when it is set. To define a mutator, create a `set{Attribute}Attribute` method on your model where `{Attribute}` is the "studly" case name of the column you wish to access.
-
 ```php
 class User extends PlugModel
 {
@@ -146,6 +173,27 @@ class User extends PlugModel
     }
 }
 ```
+
+### Modern Attributes (Recommended)
+
+You may also define accessors and mutators using a single method that returns a `Plugs\Database\Eloquent\Attribute` object. This is the recommended approach for modern applications:
+
+```php
+use Plugs\Database\Eloquent\Attribute;
+
+class User extends PlugModel
+{
+    protected function firstName(): Attribute
+    {
+        return Attribute::make(
+            get: fn ($value) => ucfirst($value),
+            set: fn ($value) => strtolower($value),
+        );
+    }
+}
+```
+
+For more details on modern attributes, see the [Modern Model Features](modern-features.md) documentation.
 
 ## Eager Loading
 

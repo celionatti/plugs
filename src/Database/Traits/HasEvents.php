@@ -10,8 +10,10 @@ namespace Plugs\Database\Traits;
 trait HasEvents
 {
     protected static $booted = [];
+    protected static $bootTraits = [];
     protected static $globalScopes = [];
     protected static $observers = [];
+    protected static $eventListeners = [];
 
     protected function bootIfNotBooted(): void
     {
@@ -46,14 +48,27 @@ trait HasEvents
         }
     }
 
-    protected function fireModelEvent($event)
+    protected function fireModelEvent(string $event)
     {
         // Record event in Profiler if available
         if (class_exists(\Plugs\Debug\Profiler::class)) {
             \Plugs\Debug\Profiler::getInstance()->recordModelEvent(static::class, $event);
         }
 
-        $method = $event;
+        // Fire static closures
+        $class = static::class;
+        if (isset(static::$eventListeners[$class][$event])) {
+            foreach (static::$eventListeners[$class][$event] as $callback) {
+                if ($callback($this) === false) {
+                    return false;
+                }
+            }
+        }
+
+        // Fire observer events
+        $this->fireObserverEvent($event);
+
+        $method = 'on' . ucfirst($event);
         if (method_exists($this, $method)) {
             return $this->$method();
         }
@@ -61,51 +76,151 @@ trait HasEvents
         return true;
     }
 
-    protected function retrieving()
+    /**
+     * Register a model event with the dispatcher.
+     *
+     * @param  string  $event
+     * @param  \Closure  $callback
+     * @return void
+     */
+    protected static function registerModelEvent(string $event, \Closure $callback): void
+    {
+        static::$eventListeners[static::class][$event][] = $callback;
+    }
+
+    /**
+     * Register a creating model event with the dispatcher.
+     *
+     * @param  \Closure  $callback
+     * @return void
+     */
+    public static function creating(\Closure $callback): void
+    {
+        static::registerModelEvent('creating', $callback);
+    }
+
+    /**
+     * Register a created model event with the dispatcher.
+     *
+     * @param  \Closure  $callback
+     * @return void
+     */
+    public static function created(\Closure $callback): void
+    {
+        static::registerModelEvent('created', $callback);
+    }
+
+    /**
+     * Register an updating model event with the dispatcher.
+     *
+     * @param  \Closure  $callback
+     * @return void
+     */
+    public static function updating(\Closure $callback): void
+    {
+        static::registerModelEvent('updating', $callback);
+    }
+
+    /**
+     * Register an updated model event with the dispatcher.
+     *
+     * @param  \Closure  $callback
+     * @return void
+     */
+    public static function updated(\Closure $callback): void
+    {
+        static::registerModelEvent('updated', $callback);
+    }
+
+    /**
+     * Register a saving model event with the dispatcher.
+     *
+     * @param  \Closure  $callback
+     * @return void
+     */
+    public static function saving(\Closure $callback): void
+    {
+        static::registerModelEvent('saving', $callback);
+    }
+
+    /**
+     * Register a saved model event with the dispatcher.
+     *
+     * @param  \Closure  $callback
+     * @return void
+     */
+    public static function saved(\Closure $callback): void
+    {
+        static::registerModelEvent('saved', $callback);
+    }
+
+    /**
+     * Register a deleting model event with the dispatcher.
+     *
+     * @param  \Closure  $callback
+     * @return void
+     */
+    public static function deleting(\Closure $callback): void
+    {
+        static::registerModelEvent('deleting', $callback);
+    }
+
+    /**
+     * Register a deleted model event with the dispatcher.
+     *
+     * @param  \Closure  $callback
+     * @return void
+     */
+    public static function deleted(\Closure $callback): void
+    {
+        static::registerModelEvent('deleted', $callback);
+    }
+
+    protected function onRetrieving()
     {
     }
 
-    protected function retrieved()
+    protected function onRetrieved()
     {
     }
 
-    protected function creating()
+    protected function onCreating()
     {
     }
 
-    protected function created()
+    protected function onCreated()
     {
     }
 
-    protected function updating()
+    protected function onUpdating()
     {
     }
 
-    protected function updated()
+    protected function onUpdated()
     {
     }
 
-    protected function saving()
+    protected function onSaving()
     {
     }
 
-    protected function saved()
+    protected function onSaved()
     {
     }
 
-    protected function deleting()
+    protected function onDeleting()
     {
     }
 
-    protected function deleted()
+    protected function onDeleted()
     {
     }
 
-    protected function restoring()
+    protected function onRestoring()
     {
     }
 
-    protected function restored()
+    protected function onRestored()
     {
     }
 
