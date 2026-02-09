@@ -19,20 +19,38 @@ use Psr\Http\Server\RequestHandlerInterface;
 
 class SecurityHeadersMiddleware implements MiddlewareInterface
 {
-    private $config = [];
+    private array $config = [];
+
+    private array $defaultHeaders = [
+        'X-Content-Type-Options' => 'nosniff',
+        'X-Frame-Options' => 'SAMEORIGIN',
+        'X-XSS-Protection' => '1; mode=block',
+        'Referrer-Policy' => 'strict-origin-when-cross-origin',
+        'Strict-Transport-Security' => 'max-age=31536000; includeSubDomains; preload',
+        'Permissions-Policy' => 'geolocation=(), microphone=(), camera=()',
+    ];
+
+    private array $defaultCsp = [
+        'default-src' => ["'self'"],
+        'script-src' => ["'self'"],
+        'style-src' => ["'self'", "'unsafe-inline'"],
+        'img-src' => ["'self'", 'data:'],
+        'font-src' => ["'self'"],
+        'connect-src' => ["'self'"],
+        'frame-ancestors' => ["'self'"],
+    ];
 
     public function __construct(array $config = [])
     {
-        $this->config = array_merge(config('security.headers', []), $config);
+        // Merge user config with defaults
+        $this->config = array_merge($this->defaultHeaders, config('security.headers', []), $config);
 
-        // Add CSP if enabled in config
-        if (config('security.csp.enabled', false)) {
-            $this->config['Content-Security-Policy'] = $this->buildCspHeader();
-        }
-
-        // Add HSTS if not already present
-        if (!isset($this->config['Strict-Transport-Security'])) {
-            $this->config['Strict-Transport-Security'] = 'max-age=31536000; includeSubDomains; preload';
+        // Build CSP: merge user config with sensible defaults
+        $cspEnabled = config('security.csp.enabled', true); // Enabled by default now
+        if ($cspEnabled) {
+            $userCsp = config('security.csp', []);
+            $mergedCsp = array_merge($this->defaultCsp, $userCsp);
+            $this->config['Content-Security-Policy'] = $this->buildCspHeader(null, $mergedCsp);
         }
     }
 
@@ -71,9 +89,9 @@ class SecurityHeadersMiddleware implements MiddlewareInterface
         return $response;
     }
 
-    private function buildCspHeader(?string $nonce = null): string
+    private function buildCspHeader(?string $nonce = null, ?array $cspConfig = null): string
     {
-        $cspConfig = config('security.csp', []);
+        $cspConfig = $cspConfig ?? config('security.csp', $this->defaultCsp);
         $directives = [];
 
         foreach ($cspConfig as $key => $values) {
