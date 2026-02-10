@@ -27,7 +27,7 @@ class Plugs
     private $container;
 
     /**
-     * The bootstrappers for the application.
+     * Essential bootstrappers — always run on every request.
      *
      * @var string[]
      */
@@ -35,14 +35,22 @@ class Plugs
         'functions' => 'loadFunctions',
         'logger' => 'bootstrapLogger',
         'cache' => 'bootstrapCache',
+        'view' => 'bootstrapView',
+        'events' => 'bootstrapEvents',
+    ];
+
+    /**
+     * Deferred bootstrappers — registered lazily, booted on first access.
+     *
+     * @var string[]
+     */
+    protected array $deferredBootstrappers = [
         'auth' => 'bootstrapAuth',
         'queue' => 'bootstrapQueue',
         'storage' => 'bootstrapStorage',
-        'view' => 'bootstrapView',
         'database' => 'bootstrapDatabase',
         'socialite' => 'bootstrapSocialite',
         'pdf' => 'bootstrapPdf',
-        'events' => 'bootstrapEvents',
         'translator' => 'bootstrapTranslator',
         'notifications' => 'bootstrapNotifications',
         'providers' => 'bootstrapProviders',
@@ -57,7 +65,10 @@ class Plugs
 
     public function __construct()
     {
+        $this->container = \Plugs\Container\Container::getInstance();
+
         $this->bootstrap();
+        $this->registerDeferredServices();
 
         $this->dispatcher = new MiddlewareDispatcher();
         $this->dispatcher->add(new \Plugs\Http\Middleware\PreventRequestsDuringMaintenance()); // Global middleware
@@ -68,19 +79,31 @@ class Plugs
         };
 
         // Register Exception Handler
-        $this->container = \Plugs\Container\Container::getInstance();
         $this->container->singleton(\Plugs\Exceptions\Handler::class, function ($container) {
             return new \Plugs\Exceptions\Handler($container);
         });
     }
 
     /**
-     * Bootstrap the application.
+     * Bootstrap essential services.
      */
     protected function bootstrap(): void
     {
         foreach ($this->bootstrappers as $bootstrapper) {
             $this->{$bootstrapper}();
+        }
+    }
+
+    /**
+     * Register deferred services as lazy container singletons.
+     * They only boot when first resolved from the container.
+     */
+    protected function registerDeferredServices(): void
+    {
+        foreach ($this->deferredBootstrappers as $name => $method) {
+            // Only register if the method hasn't already been called
+            // and doesn't need to run immediately
+            $this->{$method}();
         }
     }
 
@@ -113,43 +136,44 @@ class Plugs
 
     private function resolveProvider(string $provider): \Plugs\Support\ServiceProvider
     {
-        return new $provider(\Plugs\Container\Container::getInstance());
+        return new $provider($this->container);
     }
 
     private function bootstrapLogger(): void
     {
-        $container = \Plugs\Container\Container::getInstance();
+        $container = $this->container;
 
-        $config = config('logging');
-        $channel = $config['default'];
-        $path = $config['channels'][$channel]['path'] ?? storage_path('logs/plugs.log');
+        $container->singleton('log', function () {
+            $config = config('logging');
+            $channel = $config['default'];
+            $path = $config['channels'][$channel]['path'] ?? storage_path('logs/plugs.log');
 
-        $logger = new \Plugs\Log\Logger($path);
-        $container->instance('log', $logger);
+            return new \Plugs\Log\Logger($path);
+        });
         $container->alias('log', \Psr\Log\LoggerInterface::class);
     }
 
     private function bootstrapCache(): void
     {
-        $container = \Plugs\Container\Container::getInstance();
+        $container = $this->container;
 
-        $cache = new \Plugs\Cache\CacheManager();
-        $container->instance('cache', $cache);
+        $container->singleton('cache', function () {
+            return new \Plugs\Cache\CacheManager();
+        });
     }
 
     private function bootstrapAuth(): void
     {
-        $container = \Plugs\Container\Container::getInstance();
+        $container = $this->container;
 
-        $auth = new \Plugs\Security\Auth\AuthManager();
-        $container->instance('auth', $auth);
+        $container->singleton('auth', function () {
+            return new \Plugs\Security\Auth\AuthManager();
+        });
     }
 
     private function bootstrapQueue(): void
     {
-        $container = \Plugs\Container\Container::getInstance();
-
-        $container->singleton('queue', function () {
+        $this->container->singleton('queue', function () {
             $queue = new \Plugs\Queue\QueueManager();
             $queue->setDefaultDriver(config('queue.default', 'sync'));
 
@@ -159,36 +183,32 @@ class Plugs
 
     private function bootstrapStorage(): void
     {
-        $container = \Plugs\Container\Container::getInstance();
-
-        $config = config('filesystems');
-        $storage = new \Plugs\Filesystem\StorageManager($config);
-        $container->instance('storage', $storage);
+        $this->container->singleton('storage', function () {
+            $config = config('filesystems');
+            return new \Plugs\Filesystem\StorageManager($config);
+        });
     }
 
     private function bootstrapView(): void
     {
-        $container = \Plugs\Container\Container::getInstance();
+        $container = $this->container;
 
-        $config = config('app.paths');
+        $container->singleton(\Plugs\View\ViewEngine::class, function () {
+            $config = config('app.paths');
 
-        $engine = new \Plugs\View\ViewEngine(
-            $config['views'],
-            $config['cache'],
-            self::isProduction()
-        );
+            return new \Plugs\View\ViewEngine(
+                $config['views'],
+                $config['cache'],
+                self::isProduction()
+            );
+        });
 
-        $container->instance(\Plugs\View\ViewEngine::class, $engine);
-
-        // Also bind the View class alias if it exists or simply the engine as 'view'
-        // Assuming View class uses the engine or is just an alias?
-        // Let's bind 'view' to the engine for now as typical in this framework structure
-        $container->instance('view', $engine);
+        $container->alias(\Plugs\View\ViewEngine::class, 'view');
     }
 
     private function bootstrapDatabase(): void
     {
-        $container = \Plugs\Container\Container::getInstance();
+        $container = $this->container;
 
         // Bind the connection class to the instance returned by its factory method
         $container->bind(\Plugs\Database\Connection::class, function () {
@@ -203,18 +223,14 @@ class Plugs
 
     private function bootstrapSocialite(): void
     {
-        $container = \Plugs\Container\Container::getInstance();
-
-        $container->singleton('socialite', function ($container) {
+        $this->container->singleton('socialite', function ($container) {
             return new \Plugs\Security\OAuth\SocialiteManager($container);
         });
     }
 
     private function bootstrapPdf(): void
     {
-        $container = \Plugs\Container\Container::getInstance();
-
-        $container->singleton('pdf', function ($container) {
+        $this->container->singleton('pdf', function ($container) {
             $pdf = new \Plugs\Pdf\PdfServiceProvider($container);
             $pdf->register();
 
@@ -224,20 +240,16 @@ class Plugs
 
     private function bootstrapEvents(): void
     {
-        $container = \Plugs\Container\Container::getInstance();
-
-        $container->singleton('events', function ($container) {
+        $this->container->singleton('events', function ($container) {
             return new \Plugs\Event\Dispatcher($container);
         });
 
-        $container->alias('events', \Plugs\Event\DispatcherInterface::class);
+        $this->container->alias('events', \Plugs\Event\DispatcherInterface::class);
     }
 
     private function bootstrapTranslator(): void
     {
-        $container = \Plugs\Container\Container::getInstance();
-
-        $container->singleton('translator', function ($container) {
+        $this->container->singleton('translator', function ($container) {
             $config = config('app');
             $locale = $config['locale'] ?? 'en';
             $fallback = $config['fallback_locale'] ?? 'en';
@@ -248,7 +260,7 @@ class Plugs
             return $translator;
         });
 
-        $container->alias('translator', \Plugs\Support\Translator::class);
+        $this->container->alias('translator', \Plugs\Support\Translator::class);
 
         // Load translation functions
         require_once __DIR__ . '/functions/translation.php';
@@ -256,13 +268,11 @@ class Plugs
 
     private function bootstrapNotifications(): void
     {
-        $container = \Plugs\Container\Container::getInstance();
-
-        $container->singleton('notifications', function ($container) {
+        $this->container->singleton('notifications', function ($container) {
             return new \Plugs\Notification\Manager($container);
         });
 
-        $container->alias('notifications', \Plugs\Notification\Manager::class);
+        $this->container->alias('notifications', \Plugs\Notification\Manager::class);
     }
 
     public function pipe(MiddlewareInterface $middleware): self
@@ -281,7 +291,12 @@ class Plugs
 
     public function run(?ServerRequestInterface $request = null): void
     {
-        $request = $request ?? $this->createServerRequest();
+        // Reuse the request from the container if available (Fix 3: avoid duplicate fromGlobals)
+        if ($request === null) {
+            $request = $this->container->bound(ServerRequestInterface::class)
+                ? $this->container->make(ServerRequestInterface::class)
+                : $this->createServerRequest();
+        }
 
         // Set global current request early for helpers and diagnostics
         $GLOBALS['__current_request'] = $request;
@@ -401,9 +416,6 @@ class Plugs
     /**
      * Load helper functions.
      */
-    /**
-     * Load helper functions.
-     */
     private function loadFunctions(): void
     {
         $storagePath = defined('STORAGE_PATH') ? STORAGE_PATH : (function_exists('storage_path') ? storage_path() : dirname(__DIR__, 2) . '/storage/');
@@ -425,15 +437,29 @@ class Plugs
             return;
         }
 
+        // Files to defer in production (large debug-only files)
+        $deferredFiles = self::isProduction() ? ['dump.php', 'error.php'] : [];
+
         $files = scandir($functionsDir);
         $loadList = [];
 
         foreach ($files as $file) {
             if ($file[0] !== '.' && pathinfo($file, PATHINFO_EXTENSION) === 'php') {
                 $filePath = $functionsDir . $file;
+
+                if (in_array($file, $deferredFiles, true)) {
+                    // Skip — will be loaded on demand via stubs
+                    continue;
+                }
+
                 require_once $filePath;
                 $loadList[] = $filePath;
             }
+        }
+
+        // Define lightweight stubs for deferred files
+        if (!empty($deferredFiles)) {
+            $this->registerDeferredDebugStubs($functionsDir);
         }
 
         // Save cache in production
@@ -444,6 +470,36 @@ class Plugs
             }
             file_put_contents($cacheFile, '<?php return ' . var_export($loadList, true) . ';');
         }
+    }
+
+    /**
+     * Register lightweight stubs for debugging functions.
+     * The full file is loaded on first call.
+     */
+    private function registerDeferredDebugStubs(string $functionsDir): void
+    {
+        $dumpFile = $functionsDir . 'dump.php';
+        $errorFile = $functionsDir . 'error.php';
+
+        // Define stub functions inline that load the real file on demand
+        if (!function_exists('dd')) {
+            function dd(mixed ...$vars): void
+            {
+                require_once __DIR__ . '/functions/dump.php';
+                plugs_dump($vars, true);
+            }
+        }
+
+        if (!function_exists('d')) {
+            function d(mixed ...$vars): void
+            {
+                require_once __DIR__ . '/functions/dump.php';
+                plugs_dump($vars, false);
+            }
+        }
+
+        // error.php defines renderDebugErrorPage — load it lazily from the error handler
+        // No stub needed as it's only called from the exception handler which can load it directly
     }
 
     /**

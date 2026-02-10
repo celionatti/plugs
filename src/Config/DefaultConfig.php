@@ -52,8 +52,15 @@ class DefaultConfig
         ];
     }
 
+    /** @var array|null Cached discovered providers */
+    private static ?array $discoveredProviders = null;
+
     private static function discoverProviders(): array
     {
+        if (self::$discoveredProviders !== null) {
+            return self::$discoveredProviders;
+        }
+
         // Simple auto-discovery for App\Providers
         $providers = [];
         $path = base_path('app/Providers');
@@ -67,6 +74,8 @@ class DefaultConfig
                 }
             }
         }
+
+        self::$discoveredProviders = $providers;
 
         return $providers;
     }

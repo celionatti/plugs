@@ -485,6 +485,15 @@ class Route
             return false;
         }
 
+        return $this->matchesPath($path);
+    }
+
+    /**
+     * Match only on path (skip method check).
+     * Use when routes are already grouped by HTTP method in the Router.
+     */
+    public function matchesPath(string $path): bool
+    {
         if ($this->domain !== null) {
             $host = $_SERVER['HTTP_HOST'] ?? '';
             $domainPattern = '#^' . str_replace('\*', '.*', preg_quote($this->domain, '#')) . '$#i';

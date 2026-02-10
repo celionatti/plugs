@@ -36,6 +36,9 @@ class ViewEngine
     private ?string $cspNonce = null;
     private array $compilationAttempts = [];
 
+    /** @var bool|null Cached result of class_exists(Profiler) */
+    private static ?bool $profilerAvailable = null;
+
     /**
      * Get the number of compilation attempts for each view.
      * @return array<string, int>
@@ -392,8 +395,11 @@ class ViewEngine
             ? $this->renderCached($view, $viewFile, $data, $isComponent)
             : $this->renderDirect($viewFile, $data);
 
-        // Record in Profiler
-        if (class_exists(\Plugs\Debug\Profiler::class)) {
+        // Record in Profiler (cached class_exists check)
+        if (self::$profilerAvailable === null) {
+            self::$profilerAvailable = class_exists(\Plugs\Debug\Profiler::class);
+        }
+        if (self::$profilerAvailable) {
             $duration = (microtime(true) - $startTime) * 1000;
             \Plugs\Debug\Profiler::getInstance()->addView($view, $duration);
         }

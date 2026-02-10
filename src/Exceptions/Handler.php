@@ -384,6 +384,12 @@ class Handler
      */
     protected function renderDebugPage(Throwable $e): ResponseInterface
     {
+        // Ensure error.php is loaded (may have been deferred in production)
+        $errorFile = dirname(__DIR__) . '/functions/error.php';
+        if (!function_exists('renderDebugErrorPage') && file_exists($errorFile)) {
+            require_once $errorFile;
+        }
+
         ob_start();
         renderDebugErrorPage($e);
         $html = ob_get_clean();

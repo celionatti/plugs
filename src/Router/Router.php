@@ -536,7 +536,7 @@ class Router
         $routes = $this->routes[$method] ?? [];
 
         foreach ($routes as $route) {
-            if (!$route->matches($method, $path)) {
+            if (!$route->matchesPath($path)) {
                 continue;
             }
 
