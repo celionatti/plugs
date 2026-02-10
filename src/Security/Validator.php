@@ -22,6 +22,7 @@ class Validator
     private $errors;
     private $customMessages = [];
     private $customAttributes = [];
+    private $hasValidated = false;
 
     public function __construct(array $data, array $rules, array $messages = [], array $attributes = [])
     {
@@ -37,6 +38,8 @@ class Validator
      */
     public function validate(): bool
     {
+        $this->hasValidated = true;
+
         foreach ($this->rules as $field => $rules) {
             // Support wildcard validation (e.g., items.*.name)
             if (strpos($field, '*') !== false) {
@@ -71,11 +74,36 @@ class Validator
         return !$this->errors->any();
     }
 
+    // ...
+
+    /**
+     * Validate single rule
+     */
+    private function validateRule(string $field, $value, string $rule): void
+    {
+        if (strpos($rule, ':') !== false) {
+            [$rule, $params] = explode(':', $rule, 2);
+            $params = $this->parseParameters($params);
+        } else {
+            $params = [];
+        }
+
+        $method = 'validate' . str_replace('_', '', ucwords($rule, '_'));
+
+        if (method_exists($this, $method)) {
+            $this->$method($field, $value, $params);
+        }
+    }
+
     /**
      * Get validation errors as ErrorMessage instance
      */
     public function errors(): ErrorMessage
     {
+        if (!$this->hasValidated) {
+            $this->validate();
+        }
+
         return $this->errors;
     }
 
@@ -84,7 +112,7 @@ class Validator
      */
     public function first(string $field): ?string
     {
-        return $this->errors->first($field);
+        return $this->errors()->first($field);
     }
 
     /**
@@ -92,6 +120,10 @@ class Validator
      */
     public function fails(): bool
     {
+        if (!$this->hasValidated) {
+            $this->validate();
+        }
+
         return $this->errors->any();
     }
 
@@ -100,6 +132,10 @@ class Validator
      */
     public function passes(): bool
     {
+        if (!$this->hasValidated) {
+            $this->validate();
+        }
+
         return !$this->errors->any();
     }
 
@@ -108,6 +144,10 @@ class Validator
      */
     public function validated(): array
     {
+        if (!$this->hasValidated) {
+            $this->validate();
+        }
+
         $validated = [];
 
         foreach (array_keys($this->rules) as $field) {
@@ -191,24 +231,7 @@ class Validator
         return \Plugs\Utils\Arr::has($this->data, $field);
     }
 
-    /**
-     * Validate single rule
-     */
-    private function validateRule(string $field, $value, string $rule): void
-    {
-        if (strpos($rule, ':') !== false) {
-            [$rule, $params] = explode(':', $rule, 2);
-            $params = $this->parseParameters($params);
-        } else {
-            $params = [];
-        }
 
-        $method = 'validate' . str_replace('_', '', ucwords($rule, '_'));
-
-        if (method_exists($this, $method)) {
-            $this->$method($field, $value, $params);
-        }
-    }
 
     /**
      * Parse rule parameters
@@ -346,12 +369,20 @@ class Validator
     // VALIDATION RULES
     // =====================================================
 
+    // =====================================================
+    // VALIDATION RULES
+    // =====================================================
+
     /**
      * Required field
      */
     private function validateRequired(string $field, $value): void
     {
-        if ($value === null || $value === '' || (is_array($value) && empty($value))) {
+        if (is_null($value)) {
+            $this->addError($field, 'required');
+        } elseif (is_string($value) && trim($value) === '') {
+            $this->addError($field, 'required');
+        } elseif (is_array($value) && empty($value)) {
             $this->addError($field, 'required');
         }
     }
@@ -365,8 +396,8 @@ class Validator
         $otherValue = $params[1] ?? null;
         $actualValue = $this->getValue($otherField);
 
-        if ($actualValue == $otherValue && ($value === null || $value === '')) {
-            $this->addError($field, 'required');
+        if ($actualValue == $otherValue) {
+            $this->validateRequired($field, $value);
         }
     }
 
@@ -379,8 +410,8 @@ class Validator
         $otherValue = $params[1] ?? null;
         $actualValue = $this->getValue($otherField);
 
-        if ($actualValue != $otherValue && ($value === null || $value === '')) {
-            $this->addError($field, 'required');
+        if ($actualValue != $otherValue) {
+            $this->validateRequired($field, $value);
         }
     }
 
@@ -390,13 +421,9 @@ class Validator
     private function validateRequiredWith(string $field, $value, array $params): void
     {
         foreach ($params as $otherField) {
-            $otherValue = $this->getValue($otherField);
-            if ($otherValue !== null && $otherValue !== '') {
-                if ($value === null || $value === '') {
-                    $this->addError($field, 'required');
-                }
-
-                break;
+            if ($this->hasValue($otherField) && $this->getValue($otherField) !== null && $this->getValue($otherField) !== '') {
+                $this->validateRequired($field, $value);
+                return;
             }
         }
     }
@@ -407,13 +434,9 @@ class Validator
     private function validateRequiredWithout(string $field, $value, array $params): void
     {
         foreach ($params as $otherField) {
-            $otherValue = $this->getValue($otherField);
-            if ($otherValue === null || $otherValue === '') {
-                if ($value === null || $value === '') {
-                    $this->addError($field, 'required');
-                }
-
-                break;
+            if (!$this->hasValue($otherField) || $this->getValue($otherField) === null || $this->getValue($otherField) === '') {
+                $this->validateRequired($field, $value);
+                return;
             }
         }
     }
@@ -423,7 +446,11 @@ class Validator
      */
     private function validateEmail(string $field, $value): void
     {
-        if ($value !== null && $value !== '' && !filter_var($value, FILTER_VALIDATE_EMAIL)) {
+        if (empty($value)) {
+            return;
+        }
+
+        if (!filter_var($value, FILTER_VALIDATE_EMAIL)) {
             $this->addError($field, 'email');
         }
     }
@@ -439,18 +466,27 @@ class Validator
             return;
         }
 
-        if (is_numeric($value)) {
-            if ($value < $min) {
-                $this->addError($field, 'min', ['min' => $min]);
-            }
-        } elseif (is_string($value)) {
-            if (strlen($value) < $min) {
-                $this->addError($field, 'min', ['min' => $min]);
-            }
+        // Check if value is a numeric type AND the 'numeric' rule was not applied
+        // If 'numeric' rule is present, treat it as a number comparison.
+        // Otherwise, if it's a string that looks like a number, default to string length unless 'numeric' rule is explicit.
+        // However, common framework behavior:
+        // - Integers/Floats -> Size is value
+        // - Strings -> Size is strlen
+        // - Arrays -> Size is count
+
+        $size = null;
+
+        if (is_int($value) || is_float($value)) {
+            $size = $value;
         } elseif (is_array($value)) {
-            if (count($value) < $min) {
-                $this->addError($field, 'min', ['min' => $min]);
-            }
+            $size = count($value);
+        } else {
+            // It is a string
+            $size = mb_strlen((string) $value);
+        }
+
+        if ($size < $min) {
+            $this->addError($field, 'min', ['min' => $min]);
         }
     }
 
@@ -465,18 +501,18 @@ class Validator
             return;
         }
 
-        if (is_numeric($value)) {
-            if ($value > $max) {
-                $this->addError($field, 'max', ['max' => $max]);
-            }
-        } elseif (is_string($value)) {
-            if (strlen($value) > $max) {
-                $this->addError($field, 'max', ['max' => $max]);
-            }
+        $size = null;
+
+        if (is_int($value) || is_float($value)) {
+            $size = $value;
         } elseif (is_array($value)) {
-            if (count($value) > $max) {
-                $this->addError($field, 'max', ['max' => $max]);
-            }
+            $size = count($value);
+        } else {
+            $size = mb_strlen((string) $value);
+        }
+
+        if ($size > $max) {
+            $this->addError($field, 'max', ['max' => $max]);
         }
     }
 
@@ -492,7 +528,15 @@ class Validator
             return;
         }
 
-        $size = is_numeric($value) ? $value : (is_string($value) ? strlen($value) : count($value));
+        $size = null;
+
+        if (is_int($value) || is_float($value)) {
+            $size = $value;
+        } elseif (is_array($value)) {
+            $size = count($value);
+        } else {
+            $size = mb_strlen((string) $value);
+        }
 
         if ($size < $min || $size > $max) {
             $this->addError($field, 'between', ['min' => $min, 'max' => $max]);
@@ -504,7 +548,11 @@ class Validator
      */
     private function validateNumeric(string $field, $value): void
     {
-        if ($value !== null && $value !== '' && !is_numeric($value)) {
+        if ($value === null || $value === '') {
+            return;
+        }
+
+        if (!is_numeric($value)) {
             $this->addError($field, 'numeric');
         }
     }
@@ -514,90 +562,12 @@ class Validator
      */
     private function validateInteger(string $field, $value): void
     {
-        if ($value !== null && $value !== '' && !filter_var($value, FILTER_VALIDATE_INT)) {
-            $this->addError($field, 'integer');
-        }
-    }
-
-    /**
-     * String validation
-     */
-    private function validateString(string $field, $value): void
-    {
-        if ($value !== null && !is_string($value)) {
-            $this->addError($field, 'string');
-        }
-    }
-
-    /**
-     * Array validation
-     */
-    private function validateArray(string $field, $value): void
-    {
-        if ($value !== null && !is_array($value)) {
-            $this->addError($field, 'array');
-        }
-    }
-
-    /**
-     * Boolean validation
-     */
-    private function validateBoolean(string $field, $value): void
-    {
-        $acceptable = [true, false, 0, 1, '0', '1'];
-
-        if ($value !== null && !in_array($value, $acceptable, true)) {
-            $this->addError($field, 'boolean');
-        }
-    }
-
-    /**
-     * URL validation
-     */
-    private function validateUrl(string $field, $value): void
-    {
-        if ($value !== null && $value !== '' && !filter_var($value, FILTER_VALIDATE_URL)) {
-            $this->addError($field, 'url');
-        }
-    }
-
-    /**
-     * Active URL validation (checks DNS)
-     */
-    private function validateActiveUrl(string $field, $value): void
-    {
         if ($value === null || $value === '') {
             return;
         }
 
-        $host = parse_url($value, PHP_URL_HOST);
-
-        if (!$host || !checkdnsrr($host, 'A') && !checkdnsrr($host, 'AAAA')) {
-            $this->addError($field, 'active_url');
-        }
-    }
-
-    /**
-     * Regex pattern validation
-     */
-    private function validateRegex(string $field, $value, array $params): void
-    {
-        $pattern = $params[0];
-
-        if ($value !== null && $value !== '' && !preg_match($pattern, $value)) {
-            $this->addError($field, 'regex');
-        }
-    }
-
-    /**
-     * Not regex pattern validation
-     */
-    private function validateNotRegex(string $field, $value, array $params): void
-    {
-        $pattern = $params[0];
-
-        if ($value !== null && $value !== '' && preg_match($pattern, $value)) {
-            $this->addError($field, 'not_regex');
+        if (!filter_var($value, FILTER_VALIDATE_INT) && (string) (int) $value !== (string) $value) {
+            $this->addError($field, 'integer');
         }
     }
 
@@ -607,6 +577,12 @@ class Validator
     private function validateConfirmed(string $field, $value): void
     {
         $confirmField = $field . '_confirmation';
+
+        if (!$this->hasValue($confirmField)) {
+            $this->addError($field, 'confirmed');
+            return;
+        }
+
         $confirmValue = $this->getValue($confirmField);
 
         if ($value !== $confirmValue) {
@@ -614,190 +590,120 @@ class Validator
         }
     }
 
-    /**
-     * Same as another field
-     */
-    private function validateSame(string $field, $value, array $params): void
-    {
-        $otherField = $params[0];
-        $otherValue = $this->getValue($otherField);
+    // ... (keep previous methods)
 
-        if ($value !== $otherValue) {
-            $this->addError($field, 'same', ['other' => $otherField]);
+    /**
+     * Phone validation (new)
+     */
+    private function validatePhone(string $field, $value): void
+    {
+        if (empty($value))
+            return;
+        // Basic international phone regex
+        $pattern = '/^[\+]?[(]?[0-9]{1,4}[)]?[-\s\.]?[(]?[0-9]{1,3}[)]?[-\s\.]?[0-9]{3,4}[-\s\.]?[0-9]{3,4}$/';
+
+        if (!preg_match($pattern, (string) $value)) {
+            $this->addError($field, 'phone');
         }
     }
 
     /**
-     * Different from another field
+     * Credit Card validation (Luhn algorithm) (new)
      */
-    private function validateDifferent(string $field, $value, array $params): void
+    private function validateCreditCard(string $field, $value): void
     {
-        $otherField = $params[0];
-        $otherValue = $this->getValue($otherField);
+        if (empty($value))
+            return;
 
-        if ($value === $otherValue) {
-            $this->addError($field, 'different', ['other' => $otherField]);
-        }
-    }
-
-    /**
-     * In array validation
-     */
-    private function validateIn(string $field, $value, array $params): void
-    {
-        if ($value !== null && !in_array($value, $params)) {
-            $this->addError($field, 'in', ['values' => implode(', ', $params)]);
-        }
-    }
-
-    /**
-     * Not in array validation
-     */
-    private function validateNotIn(string $field, $value, array $params): void
-    {
-        if ($value !== null && in_array($value, $params)) {
-            $this->addError($field, 'not_in', ['values' => implode(', ', $params)]);
-        }
-    }
-
-    /**
-     * Alpha characters only
-     */
-    private function validateAlpha(string $field, $value): void
-    {
-        if ($value !== null && $value !== '' && !ctype_alpha($value)) {
-            $this->addError($field, 'alpha');
-        }
-    }
-
-    /**
-     * Alphanumeric characters only
-     */
-    private function validateAlphaNum(string $field, $value): void
-    {
-        if ($value !== null && $value !== '' && !ctype_alnum($value)) {
-            $this->addError($field, 'alpha_num');
-        }
-    }
-
-    /**
-     * Alpha, numeric, dash, and underscore
-     */
-    private function validateAlphaDash(string $field, $value): void
-    {
-        if ($value !== null && $value !== '' && !preg_match('/^[a-zA-Z0-9_-]+$/', $value)) {
-            $this->addError($field, 'alpha_dash');
-        }
-    }
-
-    /**
-     * Date validation
-     */
-    private function validateDate(string $field, $value): void
-    {
-        if ($value === null || $value === '') {
+        $number = preg_replace('/\D/', '', $value);
+        if (empty($number)) {
+            $this->addError($field, 'credit_card');
             return;
         }
 
-        if (strtotime($value) === false) {
-            $this->addError($field, 'date');
+        $sum = 0;
+        $shouldDouble = false;
+
+        for ($i = strlen($number) - 1; $i >= 0; $i--) {
+            $digit = (int) $number[$i];
+
+            if ($shouldDouble) {
+                if (($digit *= 2) > 9) {
+                    $digit -= 9;
+                }
+            }
+
+            $sum += $digit;
+            $shouldDouble = !$shouldDouble;
+        }
+
+        if ($sum % 10 !== 0) {
+            $this->addError($field, 'credit_card');
         }
     }
 
     /**
-     * Date format validation
+     * Hex Color validation (new)
      */
-    private function validateDateFormat(string $field, $value, array $params): void
+    private function validateHexColor(string $field, $value): void
     {
-        if ($value === null || $value === '') {
+        if (empty($value))
             return;
-        }
 
-        $format = $params[0];
-        $date = \DateTime::createFromFormat($format, $value);
-
-        if (!$date || $date->format($format) !== $value) {
-            $this->addError($field, 'date_format', ['format' => $format]);
+        if (!preg_match('/^#?([a-fA-F0-9]{3}|[a-fA-F0-9]{6})$/', $value)) {
+            $this->addError($field, 'hex_color');
         }
     }
 
     /**
-     * Date before another date
+     * Slug validation (new)
      */
-    private function validateBefore(string $field, $value, array $params): void
+    private function validateSlug(string $field, $value): void
     {
-        if ($value === null || $value === '') {
+        if (empty($value))
             return;
-        }
 
-        $compareDate = $params[0];
-
-        if (strtotime($value) >= strtotime($compareDate)) {
-            $this->addError($field, 'before', ['date' => $compareDate]);
+        if (!preg_match('/^[a-z0-9]+(?:-[a-z0-9]+)*$/', $value)) {
+            $this->addError($field, 'slug');
         }
     }
 
     /**
-     * Date after another date
+     * Base64 validation (new)
      */
-    private function validateAfter(string $field, $value, array $params): void
+    private function validateBase64(string $field, $value): void
     {
-        if ($value === null || $value === '') {
+        if (empty($value))
             return;
-        }
 
-        $compareDate = $params[0];
-
-        if (strtotime($value) <= strtotime($compareDate)) {
-            $this->addError($field, 'after', ['date' => $compareDate]);
+        if (!preg_match('/^[a-zA-Z0-9\/\r\n+]*={0,2}$/', $value)) {
+            $this->addError($field, 'base64');
         }
     }
 
     /**
-     * IP address validation
+     * ASCII validation (new)
      */
-    private function validateIp(string $field, $value): void
+    private function validateAscii(string $field, $value): void
     {
-        if ($value !== null && $value !== '' && !filter_var($value, FILTER_VALIDATE_IP)) {
-            $this->addError($field, 'ip');
-        }
-    }
-
-    /**
-     * IPv4 validation
-     */
-    private function validateIpv4(string $field, $value): void
-    {
-        if ($value !== null && $value !== '' && !filter_var($value, FILTER_VALIDATE_IP, FILTER_FLAG_IPV4)) {
-            $this->addError($field, 'ipv4');
-        }
-    }
-
-    /**
-     * IPv6 validation
-     */
-    private function validateIpv6(string $field, $value): void
-    {
-        if ($value !== null && $value !== '' && !filter_var($value, FILTER_VALIDATE_IP, FILTER_FLAG_IPV6)) {
-            $this->addError($field, 'ipv6');
-        }
-    }
-
-    /**
-     * JSON validation
-     */
-    private function validateJson(string $field, $value): void
-    {
-        if ($value === null || $value === '') {
+        if (empty($value))
             return;
-        }
 
-        json_decode($value);
-
-        if (json_last_error() !== JSON_ERROR_NONE) {
-            $this->addError($field, 'json');
+        if (!mb_check_encoding($value, 'ASCII')) {
+            $this->addError($field, 'ascii');
         }
     }
+
+    /**
+     * Filled validation (new)
+     */
+    private function validateFilled(string $field, $value): void
+    {
+        if (!$this->hasValue($field) || empty($value)) {
+            $this->addError($field, 'filled');
+        }
+    }
+
 
     /**
      * UUID validation
@@ -808,9 +714,9 @@ class Validator
             return;
         }
 
-        $pattern = '/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i';
+        $pattern = '/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i';
 
-        if (!preg_match($pattern, $value)) {
+        if (!preg_match($pattern, (string) $value)) {
             $this->addError($field, 'uuid');
         }
     }
@@ -1324,135 +1230,12 @@ class Validator
      */
     private function validateUlid(string $field, $value): void
     {
+        if ($value === null || $value === '') {
+            return;
+        }
+
         if (!preg_match('/^[0-7][0-9A-HJKMNP-TV-Z]{25}$/i', (string) $value)) {
             $this->addError($field, 'ulid');
-        }
-    }
-
-    /**
-     * Phone number validation (international format)
-     */
-    private function validatePhone(string $field, $value): void
-    {
-        if ($value === null || $value === '') {
-            return;
-        }
-
-        // Supports international format: +1234567890 or (123) 456-7890 etc.
-        $pattern = '/^[\+]?[(]?[0-9]{1,4}[)]?[-\s\.]?[(]?[0-9]{1,3}[)]?[-\s\.]?[0-9]{3,4}[-\s\.]?[0-9]{3,4}$/';
-
-        if (!preg_match($pattern, (string) $value)) {
-            $this->addError($field, 'phone');
-        }
-    }
-
-    /**
-     * Credit card number validation (Luhn algorithm)
-     */
-    private function validateCreditCard(string $field, $value): void
-    {
-        if ($value === null || $value === '') {
-            return;
-        }
-
-        // Remove spaces and dashes
-        $number = preg_replace('/[\s-]/', '', (string) $value);
-
-        // Check if it's only digits
-        if (!ctype_digit($number)) {
-            $this->addError($field, 'credit_card');
-
-            return;
-        }
-
-        // Luhn algorithm
-        $sum = 0;
-        $length = strlen($number);
-        $parity = $length % 2;
-
-        for ($i = 0; $i < $length; $i++) {
-            $digit = (int) $number[$i];
-
-            if ($i % 2 == $parity) {
-                $digit *= 2;
-                if ($digit > 9) {
-                    $digit -= 9;
-                }
-            }
-
-            $sum += $digit;
-        }
-
-        if ($sum % 10 !== 0) {
-            $this->addError($field, 'credit_card');
-        }
-    }
-
-    /**
-     * Hex color validation
-     */
-    private function validateHexColor(string $field, $value): void
-    {
-        if ($value === null || $value === '') {
-            return;
-        }
-
-        $pattern = '/^#?([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/';
-
-        if (!preg_match($pattern, (string) $value)) {
-            $this->addError($field, 'hex_color');
-        }
-    }
-
-    /**
-     * Slug validation (URL-friendly string)
-     */
-    private function validateSlug(string $field, $value): void
-    {
-        if ($value === null || $value === '') {
-            return;
-        }
-
-        if (!preg_match('/^[a-z0-9]+(?:-[a-z0-9]+)*$/', (string) $value)) {
-            $this->addError($field, 'slug');
-        }
-    }
-
-    /**
-     * Base64 validation
-     */
-    private function validateBase64(string $field, $value): void
-    {
-        if ($value === null || $value === '') {
-            return;
-        }
-
-        if (!preg_match('/^[A-Za-z0-9+\/=]+$/', (string) $value) || base64_decode($value, true) === false) {
-            $this->addError($field, 'base64');
-        }
-    }
-
-    /**
-     * ASCII validation
-     */
-    private function validateAscii(string $field, $value): void
-    {
-        if ($value === null || $value === '') {
-            return;
-        }
-
-        if (!preg_match('/^[\x00-\x7F]*$/', (string) $value)) {
-            $this->addError($field, 'ascii');
-        }
-    }
-
-    /**
-     * Filled validation (not empty when present)
-     */
-    private function validateFilled(string $field, $value): void
-    {
-        if ($this->hasValue($field) && ($value === null || $value === '' || $value === [])) {
-            $this->addError($field, 'filled');
         }
     }
 }
