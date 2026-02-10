@@ -330,6 +330,16 @@ class QueryBuilder
         return $this;
     }
 
+    public function latest(string $column = 'created_at'): self
+    {
+        return $this->orderBy($column, 'DESC');
+    }
+
+    public function oldest(string $column = 'created_at'): self
+    {
+        return $this->orderBy($column, 'ASC');
+    }
+
     public function limit(int $limit): self
     {
         $this->limit = $limit;
