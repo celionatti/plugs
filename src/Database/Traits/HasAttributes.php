@@ -841,6 +841,12 @@ trait HasAttributes
         $typedProperties = [];
 
         foreach ($properties as $property) {
+            // Internal framework properties should be excluded
+            $declaringClass = $property->getDeclaringClass()->getName();
+            if (str_starts_with($declaringClass, 'Plugs\\')) {
+                continue;
+            }
+
             if ($property->hasType()) {
                 $type = $property->getType();
                 if ($type instanceof \ReflectionNamedType) {
