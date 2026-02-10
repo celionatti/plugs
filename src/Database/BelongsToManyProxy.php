@@ -37,6 +37,24 @@ class BelongsToManyProxy
         return $this->parent->{$this->relationName};
     }
 
+    public function getBuilder(): QueryBuilder
+    {
+        // For BelongsToMany, the builder is often transient or reconstructed. 
+        // We'll return a fresh builder for the related class for configuration purposes.
+        $related = $this->config['relatedClass'];
+        return $related::query();
+    }
+
+    public function getRelated(): string
+    {
+        return $this->config['relatedClass'];
+    }
+
+    public function getConfig(): array
+    {
+        return $this->config;
+    }
+
     /**
      * Sync pivot table relationships
      * Replaces all existing relationships with the provided IDs

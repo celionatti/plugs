@@ -27,6 +27,16 @@ class HasManyThroughProxy
         return $this->builder->get();
     }
 
+    public function getBuilder(): QueryBuilder
+    {
+        return $this->builder;
+    }
+
+    public function getRelated(): string
+    {
+        return $this->builder->getModel();
+    }
+
     public function __call($method, $parameters)
     {
         $result = call_user_func_array([$this->builder, $method], $parameters);

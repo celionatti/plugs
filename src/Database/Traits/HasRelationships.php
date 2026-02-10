@@ -256,88 +256,47 @@ trait HasRelationships
             return self::$relationConfigCache[$cacheKey];
         }
 
-        $reflection = new ReflectionMethod($model, $relation);
+        // Execute the relationship method to get the proxy object
+        $proxy = $model->$relation();
 
-        // Get the method source code
-        $filename = $reflection->getFileName();
-        $startLine = $reflection->getStartLine();
-        $endLine = $reflection->getEndLine();
-
-        if (!$filename) {
-            throw new Exception("Could not read source file for relation: {$relation}");
+        if (!$proxy) {
+            throw new Exception("Relationship method {$relation} on " . get_class($model) . " returned null.");
         }
 
-        $lines = file($filename);
-        $methodCode = implode('', array_slice($lines, $startLine - 1, $endLine - $startLine + 1));
-
-        // Enhanced regex patterns that handle different code styles
         $config = [];
+        $config['type'] = $type;
+        $config['related'] = $proxy->getRelated();
 
-        // Extract related class name with multiple patterns
-        $patterns = [
-            // hasMany(Post::class, ...)
-            '/\$this->\w+\s*\(\s*([A-Za-z0-9_\\\\]+)::class/',
-
-            // hasMany('App\Models\Post', ...)
-            '/\$this->\w+\s*\(\s*[\'"]([A-Za-z0-9_\\\\]+)[\'"]/',
-
-            // $related = Post::class; return $this->hasMany($related, ...)
-            '/\$\w+\s*=\s*([A-Za-z0-9_\\\\]+)::class/',
-
-            // new Post()
-            '/new\s+([A-Za-z0-9_\\\\]+)\s*\(/',
-        ];
-
-        foreach ($patterns as $pattern) {
-            if (preg_match($pattern, $methodCode, $matches)) {
-                $config['related'] = $matches[1];
-
-                break;
-            }
+        // Extract parameters based on proxy type
+        if (method_exists($proxy, 'getForeignKey')) {
+            $config['foreignKey'] = $proxy->getForeignKey();
         }
 
-        if (empty($config['related'])) {
-            throw new Exception("Could not extract related class from relation method: {$relation}\nCode: " . substr($methodCode, 0, 200));
+        if (method_exists($proxy, 'getLocalKey')) {
+            $config['localKey'] = $proxy->getLocalKey();
         }
 
-        // Extract other parameters
+        if (method_exists($proxy, 'getOwnerKey')) {
+            $config['ownerKey'] = $proxy->getOwnerKey();
+        }
+
+        if (method_exists($proxy, 'getConfig')) {
+            $config = array_merge($config, $proxy->getConfig());
+        }
+
+        // Default fallbacks if not provided by proxy
         switch ($type) {
             case 'hasOne':
             case 'hasMany':
-                // Try to extract foreign key from method parameters
-                if (preg_match('/\$this->\w+\s*\([^,]+,\s*[\'"]([^\'"]+)[\'"]/', $methodCode, $matches)) {
-                    $config['foreignKey'] = $matches[1];
-                } else {
-                    $config['foreignKey'] = strtolower(class_basename(get_class($model))) . '_id';
-                }
-
-                $config['localKey'] = $model->getKeyName();
-
+                $config['foreignKey'] = $config['foreignKey'] ?? strtolower(class_basename(get_class($model))) . '_id';
+                $config['localKey'] = $config['localKey'] ?? $model->getKeyName();
                 break;
-
             case 'belongsTo':
-                if (preg_match('/\$this->\w+\s*\([^,]+,\s*[\'"]([^\'"]+)[\'"]/', $methodCode, $matches)) {
-                    $config['foreignKey'] = $matches[1];
-                } else {
-                    $config['foreignKey'] = strtolower($relation) . '_id';
-                }
-
-                $config['ownerKey'] = 'id';
-
-                break;
-
-            case 'belongsToMany':
-                $relatedClass = $config['related'];
-                $config['pivotTable'] = $this->getPivotTableName($model, $relatedClass);
-                $config['foreignPivotKey'] = strtolower(class_basename(get_class($model))) . '_id';
-                $config['relatedPivotKey'] = strtolower(class_basename($relatedClass)) . '_id';
-                $config['parentKey'] = $model->getKeyName();
-                $config['relatedKey'] = 'id';
-
+                $config['foreignKey'] = $config['foreignKey'] ?? strtolower($relation) . '_id';
+                $config['ownerKey'] = $config['ownerKey'] ?? 'id';
                 break;
         }
 
-        $config['type'] = $type;
         self::$relationConfigCache[$cacheKey] = $config;
 
         return $config;
