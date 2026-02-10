@@ -156,7 +156,18 @@ trait HasAttributes
                 throw new \Plugs\Database\Exception\LazyLoadingDisabledException(static::class, $key);
             }
 
-            $this->relations[$key] = $this->$key();
+            $relation = $this->$key();
+
+            // Resolve relationship proxies if necessary
+            if (is_object($relation)) {
+                if (method_exists($relation, 'first') && (str_contains(get_class($relation), 'BelongsToProxy') || str_contains(get_class($relation), 'HasOneProxy'))) {
+                    $relation = $relation->first();
+                } elseif (method_exists($relation, 'get') && str_contains(get_class($relation), 'Proxy')) {
+                    $relation = $relation->get();
+                }
+            }
+
+            $this->relations[$key] = $relation;
         }
 
         return $this->relations[$key];

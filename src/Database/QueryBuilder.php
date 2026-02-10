@@ -381,7 +381,14 @@ class QueryBuilder
         $result = $this->connection->fetch($sql, $this->params);
 
         if ($this->model && $result) {
-            return new $this->model($result, true);
+            $model = new $this->model($result, true);
+
+            if (!empty($this->with)) {
+                $collection = new Collection([$model]);
+                $this->model::loadRelations($collection, $this->with);
+            }
+
+            return $model;
         }
 
         return $result;
