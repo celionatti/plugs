@@ -462,6 +462,139 @@ class ServerRequest implements ServerRequestInterface
     }
 
     /**
+     * Get input value as integer
+     *
+     * @param string $key
+     * @param int $default
+     * @return int
+     */
+    public function integer(string $key, int $default = 0): int
+    {
+        return (int) $this->input($key, $default);
+    }
+
+    /**
+     * Clamp input value between min and max
+     *
+     * @param string $key
+     * @param int $min
+     * @param int $max
+     * @return int
+     */
+    public function clamp(string $key, int $min, int $max): int
+    {
+        $value = $this->integer($key);
+
+        return max($min, min($max, $value));
+    }
+
+    /**
+     * Get input value as string
+     *
+     * @param string $key
+     * @param string $default
+     * @return string
+     */
+    public function string(string $key, string $default = ''): string
+    {
+        return (string) $this->input($key, $default);
+    }
+
+    /**
+     * Get input value as boolean
+     *
+     * @param string $key
+     * @param bool $default
+     * @return bool
+     */
+    public function boolean(string $key, bool $default = false): bool
+    {
+        $value = $this->input($key);
+
+        if ($value === null) {
+            return $default;
+        }
+
+        return filter_var($value, FILTER_VALIDATE_BOOLEAN);
+    }
+
+    /**
+     * Get input value as float
+     *
+     * @param string $key
+     * @param float $default
+     * @return float
+     */
+    public function float(string $key, float $default = 0.0): float
+    {
+        return (float) $this->input($key, $default);
+    }
+
+    /**
+     * Get input value as Date
+     *
+     * @param string $key
+     * @param string|null $format
+     * @param string|null $timezone
+     * @return \DateTimeImmutable|null
+     */
+    public function date(string $key, ?string $format = null, ?string $timezone = null): ?\DateTimeImmutable
+    {
+        $value = $this->input($key);
+
+        if ($value === null || $value === '') {
+            return null;
+        }
+
+        try {
+            $tz = $timezone ? new \DateTimeZone($timezone) : null;
+
+            if ($format) {
+                $date = \DateTimeImmutable::createFromFormat($format, (string) $value, $tz);
+            } else {
+                $date = new \DateTimeImmutable((string) $value, $tz);
+            }
+
+            return $date !== false ? $date : null;
+        } catch (\Throwable $e) {
+            return null;
+        }
+    }
+
+    /**
+     * Get input value as Enum
+     *
+     * @param string $key
+     * @param string $enumClass
+     * @param mixed $default
+     * @return mixed
+     */
+    public function enum(string $key, string $enumClass, $default = null)
+    {
+        $value = $this->input($key);
+
+        if ($value === null || !function_exists('enum_exists') || !enum_exists($enumClass)) {
+            return $default;
+        }
+
+        try {
+            if (method_exists($enumClass, 'tryFrom')) {
+                return $enumClass::tryFrom($value) ?? $default;
+            }
+
+            // For non-backed enums, we can't easily map from value without reflection or convention
+            // Assuming backed enum usage mainly for request inputs
+            return $default;
+
+        } catch (\Throwable $e) {
+            return $default;
+        }
+    }
+
+
+
+
+    /**
      * Get uploaded file by key
      *
      * @param string $key
