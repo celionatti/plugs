@@ -67,6 +67,15 @@ class AuthManager
         );
     }
 
+    protected function createJwtDriver(string $name, array $config): Guards\JwtGuard
+    {
+        return new Guards\JwtGuard(
+            $name,
+            config("auth.providers.{$config['provider']}.model", 'App\\Models\\User'),
+            new \Plugs\Security\Jwt\JwtService()
+        );
+    }
+
     public function extend(string $name, callable $callback): void
     {
         $this->customCreators[$name] = $callback;
