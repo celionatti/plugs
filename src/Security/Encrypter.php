@@ -32,7 +32,7 @@ class Encrypter
         $tag = '';
 
         $encrypted = openssl_encrypt(
-            serialize($data),
+            json_encode($data, JSON_THROW_ON_ERROR),
             $this->cipher,
             $this->key,
             OPENSSL_RAW_DATA,
@@ -49,13 +49,18 @@ class Encrypter
 
     public function decrypt(string $encrypted)
     {
-        $data = base64_decode($encrypted);
+        $data = base64_decode($encrypted, true);
 
-        if (!$data) {
+        if ($data === false) {
             throw new \RuntimeException('Invalid encrypted data');
         }
 
         $ivLength = openssl_cipher_iv_length($this->cipher);
+
+        if (strlen($data) < $ivLength + 16) {
+            throw new \RuntimeException('Encrypted data is too short');
+        }
+
         $iv = substr($data, 0, $ivLength);
         $tag = substr($data, $ivLength, 16);
         $ciphertext = substr($data, $ivLength + 16);
@@ -69,10 +74,10 @@ class Encrypter
             $tag
         );
 
-        if (!$decrypted) {
-            throw new \RuntimeException('Decryption failed');
+        if ($decrypted === false) {
+            throw new \RuntimeException('Decryption failed — data may be tampered');
         }
 
-        return unserialize($decrypted);
+        return json_decode($decrypted, true, 512, JSON_THROW_ON_ERROR);
     }
 }

@@ -17,13 +17,26 @@ class ThreatDetector
         '/<script\b[^>]*>/i',
         '/javascript:/i',
         '/on\w+\s*=/i',
+        '/\bexpression\s*\(/i',
         // SQL injection patterns
         '/(\bunion\b.*\bselect\b|\bselect\b.*\bfrom\b|\binsert\b.*\binto\b|\bdelete\b.*\bfrom\b)/i',
         '/(\bor\b|\band\b)\s+[\'"]\d+[\'"]?\s*=\s*[\'"]\d+/i',
         "/(--|#|;)/",
+        '/\bwaitfor\b\s+\bdelay\b/i',
+        '/\bbenchmark\s*\(/i',
         // Path traversal
         '/\.\.\//',
         '/\.\.\\\\/',
+        // Command injection
+        '/;\s*(ls|cat|rm|wget|curl|bash|sh|nc|netcat|python|perl|php)\b/i',
+        '/\|\s*(ls|cat|rm|wget|curl|bash|sh)\b/i',
+        '/`[^`]+`/',
+        '/\$\([^)]+\)/',
+        // Null byte injection
+        '/\x00/',
+        '/\\\\0/',
+        // LDAP injection
+        '/[()\\\\*\x00]/',
     ];
 
     private static array $threatScores = [];
@@ -57,6 +70,12 @@ class ThreatDetector
             foreach ($header as $value) {
                 $score += self::scanValue($value);
             }
+        }
+
+        // Check uploaded file names for traversal
+        $uploadedFiles = $request->getUploadedFiles();
+        if (!empty($uploadedFiles)) {
+            $score += self::scanUploadedFiles($uploadedFiles);
         }
 
         // Accumulate score for IP
@@ -118,10 +137,48 @@ class ThreatDetector
 
         $score = 0;
         foreach (self::$suspiciousPatterns as $pattern) {
-            if (preg_match($pattern, $value)) {
+            if (@preg_match($pattern, $value)) {
                 $score += 5; // Each pattern match adds 5 points
             }
         }
+        return $score;
+    }
+
+    /**
+     * Scan uploaded file names for path traversal and dangerous extensions.
+     */
+    private static function scanUploadedFiles(array $files): int
+    {
+        $score = 0;
+        $dangerousExtensions = ['php', 'phtml', 'phar', 'exe', 'sh', 'bat', 'cmd', 'cgi'];
+
+        foreach ($files as $file) {
+            if (is_array($file)) {
+                $score += self::scanUploadedFiles($file);
+                continue;
+            }
+
+            if (method_exists($file, 'getClientFilename')) {
+                $name = $file->getClientFilename() ?? '';
+
+                // Check for path traversal in filename
+                if (preg_match('/\.\.[\\/\\\\]/', $name) || str_contains($name, "\0")) {
+                    $score += 10;
+                }
+
+                // Check for dangerous extensions (double extension attacks)
+                $extension = strtolower(pathinfo($name, PATHINFO_EXTENSION));
+                if (in_array($extension, $dangerousExtensions, true)) {
+                    $score += 8;
+                }
+
+                // Double extension: file.php.jpg
+                if (preg_match('/\.(' . implode('|', $dangerousExtensions) . ')\.\w+$/i', $name)) {
+                    $score += 8;
+                }
+            }
+        }
+
         return $score;
     }
 
@@ -141,3 +198,4 @@ class ThreatDetector
         self::$threatScores = [];
     }
 }
+

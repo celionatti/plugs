@@ -421,6 +421,10 @@ class ViewCompiler
         $content = $safeCompile([$this, 'compileConditionals'], $content);
         $content = $safeCompile([$this, 'compileLoops'], $content);
 
+        // 4b. Auth & environment conditionals
+        $content = $safeCompile([$this, 'compileAuthDirectives'], $content);
+        $content = $safeCompile([$this, 'compileEnvironmentDirectives'], $content);
+
         // 5. Custom directives (user-defined)
         $content = $safeCompile([$this, 'compileCustomDirectives'], $content);
 
@@ -436,6 +440,10 @@ class ViewCompiler
         $content = $safeCompile([$this, 'compileCsrf'], $content);
         $content = $safeCompile([$this, 'compileMethod'], $content);
         $content = $safeCompile([$this, 'compileFormHelpers'], $content);
+
+        // 8b. Security directives
+        $content = $safeCompile([$this, 'compileNonce'], $content);
+        $content = $safeCompile([$this, 'compileHoneypot'], $content);
 
         // 9. NEW DIRECTIVES - Component & HTMX support
         $content = $safeCompile([$this, 'compileProps'], $content);
@@ -457,6 +465,15 @@ class ViewCompiler
         $content = $safeCompile([$this, 'compileReadTime'], $content);
         $content = $safeCompile([$this, 'compileWordCount'], $content);
         $content = $safeCompile([$this, 'compileAutofocus'], $content);
+
+        // 10b. UI utilities & content directives
+        $content = $safeCompile([$this, 'compileActive'], $content);
+        $content = $safeCompile([$this, 'compileSvg'], $content);
+        $content = $safeCompile([$this, 'compileSkeleton'], $content);
+        $content = $safeCompile([$this, 'compileConfirm'], $content);
+        $content = $safeCompile([$this, 'compileTooltip'], $content);
+        $content = $safeCompile([$this, 'compileDump'], $content);
+        $content = $safeCompile([$this, 'compileMarkdown'], $content);
 
         // 11. Echo statements LAST (after all directives)
         $content = $safeCompile([$this, 'compileRawEchos'], $content);
@@ -2265,6 +2282,371 @@ class ViewCompiler
                 return sprintf(
                     '<?php echo str_word_count(strip_tags(%s)); ?>',
                     $input
+                );
+            },
+            $content
+        ) ?? $content;
+    }
+
+    // ============================================
+    // AUTHENTICATION & AUTHORIZATION DIRECTIVES
+    // ============================================
+
+    /**
+     * Compile @auth / @endauth directives
+     * Usage: @auth ... @endauth
+     * Usage: @auth('admin') ... @endauth
+     */
+    private function compileAuthDirectives(string $content): string
+    {
+        // @auth('guard') or @auth
+        $content = preg_replace_callback(
+            '/@auth\s*(?:\(\s*[\'"](.+?)[\'"]\s*\))?/',
+            function ($matches) {
+                $guard = $matches[1] ?? 'null';
+                if ($guard !== 'null') {
+                    $guard = "'{$guard}'";
+                }
+                return "<?php if(function_exists('auth') && auth({$guard})->check()): ?>";
+            },
+            $content
+        ) ?? $content;
+
+        $content = str_replace('@endauth', '<?php endif; ?>', $content);
+
+        // @guest('guard') or @guest
+        $content = preg_replace_callback(
+            '/@guest\s*(?:\(\s*[\'"](.+?)[\'"]\s*\))?/',
+            function ($matches) {
+                $guard = $matches[1] ?? 'null';
+                if ($guard !== 'null') {
+                    $guard = "'{$guard}'";
+                }
+                return "<?php if(!function_exists('auth') || auth({$guard})->guest()): ?>";
+            },
+            $content
+        ) ?? $content;
+
+        $content = str_replace('@endguest', '<?php endif; ?>', $content);
+
+        // @role('admin')
+        $content = preg_replace_callback(
+            '/@role\s*\(\s*[\'"](.+?)[\'"]\s*\)/',
+            function ($matches) {
+                $role = addslashes($matches[1]);
+                return "<?php if(function_exists('auth') && auth()->check() && auth()->user()->hasRole('{$role}')): ?>";
+            },
+            $content
+        ) ?? $content;
+
+        $content = str_replace('@endrole', '<?php endif; ?>', $content);
+
+        // @can('ability')
+        $content = preg_replace_callback(
+            '/@can\s*\(\s*[\'"](.+?)[\'"]\s*\)/',
+            function ($matches) {
+                $ability = addslashes($matches[1]);
+                return "<?php if(function_exists('auth') && auth()->check() && auth()->user()->can('{$ability}')): ?>";
+            },
+            $content
+        ) ?? $content;
+
+        $content = str_replace('@endcan', '<?php endif; ?>', $content);
+
+        // @cannot('ability')
+        $content = preg_replace_callback(
+            '/@cannot\s*\(\s*[\'"](.+?)[\'"]\s*\)/',
+            function ($matches) {
+                $ability = addslashes($matches[1]);
+                return "<?php if(!function_exists('auth') || !auth()->check() || !auth()->user()->can('{$ability}')): ?>";
+            },
+            $content
+        ) ?? $content;
+
+        $content = str_replace('@endcannot', '<?php endif; ?>', $content);
+
+        return $content;
+    }
+
+    // ============================================
+    // ENVIRONMENT CONDITIONAL DIRECTIVES
+    // ============================================
+
+    /**
+     * Compile @production / @endproduction, @local / @endlocal,
+     * @envIs('staging') / @endenvIs directives
+     */
+    private function compileEnvironmentDirectives(string $content): string
+    {
+        // @production ... @endproduction
+        $content = str_replace(
+            '@production',
+            "<?php if((getenv('APP_ENV') ?: (\$_ENV['APP_ENV'] ?? 'production')) === 'production'): ?>",
+            $content
+        );
+        $content = str_replace('@endproduction', '<?php endif; ?>', $content);
+
+        // @local ... @endlocal
+        $content = str_replace(
+            '@local',
+            "<?php if(in_array(getenv('APP_ENV') ?: (\$_ENV['APP_ENV'] ?? 'production'), ['local', 'development'])): ?>",
+            $content
+        );
+        $content = str_replace('@endlocal', '<?php endif; ?>', $content);
+
+        // @envIs('staging') ... @endenvIs
+        $content = preg_replace_callback(
+            '/@envIs\s*\(\s*[\'"](.+?)[\'"]\s*\)/',
+            function ($matches) {
+                $env = addslashes($matches[1]);
+                return "<?php if((getenv('APP_ENV') ?: (\$_ENV['APP_ENV'] ?? 'production')) === '{$env}'): ?>";
+            },
+            $content
+        ) ?? $content;
+
+        $content = str_replace('@endenvIs', '<?php endif; ?>', $content);
+
+        // @debug ... @enddebug (shows only when APP_DEBUG is true)
+        $content = str_replace(
+            '@debug',
+            "<?php if(function_exists('config') ? config('app.debug', false) : (filter_var(getenv('APP_DEBUG') ?: (\$_ENV['APP_DEBUG'] ?? false), FILTER_VALIDATE_BOOLEAN))): ?>",
+            $content
+        );
+        $content = str_replace('@enddebug', '<?php endif; ?>', $content);
+
+        return $content;
+    }
+
+    // ============================================
+    // SECURITY VIEW DIRECTIVES
+    // ============================================
+
+    /**
+     * Compile @nonce — outputs the CSP nonce for inline scripts/styles
+     * Usage: <script nonce="@nonce">...</script>
+     */
+    private function compileNonce(string $content): string
+    {
+        return str_replace(
+            '@nonce',
+            '<?php echo isset($__cspNonce) ? $__cspNonce : ""; ?>',
+            $content
+        );
+    }
+
+    /**
+     * Compile @honeypot — outputs a hidden anti-spam field
+     * Usage: @honeypot or @honeypot('custom_field_name')
+     */
+    private function compileHoneypot(string $content): string
+    {
+        return preg_replace_callback(
+            '/@honeypot\s*(?:\(\s*[\'"](.+?)[\'"]\s*\))?/',
+            function ($matches) {
+                $fieldName = $matches[1] ?? '_hp_' . substr(md5(uniqid()), 0, 8);
+                return '<div style="position:absolute;left:-9999px;top:-9999px;opacity:0;height:0;width:0;overflow:hidden;" aria-hidden="true">'
+                    . '<input type="text" name="' . htmlspecialchars($fieldName, ENT_QUOTES) . '" value="" tabindex="-1" autocomplete="off">'
+                    . '</div>';
+            },
+            $content
+        ) ?? $content;
+    }
+
+    // ============================================
+    // UI UTILITY DIRECTIVES
+    // ============================================
+
+    /**
+     * Compile @active directive — outputs 'active' class if route matches
+     * Usage: <a class="@active('home')">Home</a>
+     * Usage: <a class="@active('/dashboard', 'nav-active')">Dashboard</a>
+     */
+    private function compileActive(string $content): string
+    {
+        return preg_replace_callback(
+            '/@active\s*\(\s*[\'"](.+?)[\'"]\s*(?:,\s*[\'"](.+?)[\'"]\s*)?\)/',
+            function ($matches) {
+                $route = addslashes($matches[1]);
+                $class = $matches[2] ?? 'active';
+
+                return "<?php echo (function_exists('request_path') ? request_path() : (\$_SERVER['REQUEST_URI'] ?? '')) === '/{$route}' || (function_exists('request_path') ? request_path() : (\$_SERVER['REQUEST_URI'] ?? '')) === '{$route}' ? '{$class}' : ''; ?>";
+            },
+            $content
+        ) ?? $content;
+    }
+
+    /**
+     * Compile @svg directive — inline SVG from resources/svg/
+     * Usage: @svg('icon-name')
+     * Usage: @svg('icon-name', 'w-6 h-6 text-blue-500')
+     */
+    private function compileSvg(string $content): string
+    {
+        return preg_replace_callback(
+            '/@svg\s*\(\s*[\'"](.+?)[\'"]\s*(?:,\s*[\'"](.+?)[\'"]\s*)?\)/',
+            function ($matches) {
+                $icon = addslashes($matches[1]);
+                $class = $matches[2] ?? '';
+
+                return sprintf(
+                    '<?php echo (function($name, $class) {
+                    $paths = [
+                        rtrim($_SERVER["DOCUMENT_ROOT"] ?? "", "/") . "/../resources/svg/" . $name . ".svg",
+                        rtrim($_SERVER["DOCUMENT_ROOT"] ?? "", "/") . "/assets/svg/" . $name . ".svg",
+                    ];
+                    foreach ($paths as $path) {
+                        if (file_exists($path)) {
+                            $svg = file_get_contents($path);
+                            if ($class) {
+                                $svg = preg_replace("/<svg/", "<svg class=\"" . htmlspecialchars($class, ENT_QUOTES) . "\"", $svg, 1);
+                            }
+                            return $svg;
+                        }
+                    }
+                    return "<!-- SVG \'$name\' not found -->";
+                })(\'%s\', \'%s\'); ?>',
+                    $icon,
+                    addslashes($class)
+                );
+            },
+            $content
+        ) ?? $content;
+    }
+
+    /**
+     * Compile @skeleton directive — outputs a CSS skeleton loader placeholder
+     * Usage: @skeleton('100%%', '20px')
+     * Usage: @skeleton('200px', '16px', 'rounded')
+     */
+    private function compileSkeleton(string $content): string
+    {
+        return preg_replace_callback(
+            '/@skeleton\s*\(\s*[\'"](.+?)[\'"]\s*,\s*[\'"](.+?)[\'"]\s*(?:,\s*[\'"](.+?)[\'"]\s*)?\)/',
+            function ($matches) {
+                $width = htmlspecialchars($matches[1], ENT_QUOTES);
+                $height = htmlspecialchars($matches[2], ENT_QUOTES);
+                $extra = $matches[3] ?? '';
+
+                $borderRadius = ($extra === 'rounded') ? 'border-radius:9999px;' :
+                    (($extra === 'circle') ? 'border-radius:50%;' : 'border-radius:4px;');
+
+                return '<div class="skeleton-loader" style="width:' . $width . ';height:' . $height . ';'
+                    . $borderRadius . 'background:linear-gradient(90deg,#e0e0e0 25%,#f0f0f0 50%,#e0e0e0 75%);'
+                    . 'background-size:200% 100%;animation:skeleton-pulse 1.5s ease-in-out infinite;"></div>';
+            },
+            $content
+        ) ?? $content;
+    }
+
+    /**
+     * Compile @confirm directive — adds onclick confirmation
+     * Usage: <button @confirm('Are you sure?')>Delete</button>
+     */
+    private function compileConfirm(string $content): string
+    {
+        return preg_replace_callback(
+            '/@confirm\s*\(\s*[\'"](.+?)[\'"]\s*\)/',
+            function ($matches) {
+                $message = htmlspecialchars($matches[1], ENT_QUOTES);
+                return 'onclick="return confirm(\'' . addslashes($message) . '\')"';
+            },
+            $content
+        ) ?? $content;
+    }
+
+    /**
+     * Compile @tooltip directive — adds data-tooltip attribute
+     * Usage: <span @tooltip('Helpful tip')>Info</span>
+     */
+    private function compileTooltip(string $content): string
+    {
+        return preg_replace_callback(
+            '/@tooltip\s*\(\s*[\'"](.+?)[\'"]\s*\)/',
+            function ($matches) {
+                $text = htmlspecialchars($matches[1], ENT_QUOTES);
+                return 'title="' . $text . '" data-tooltip="' . $text . '"';
+            },
+            $content
+        ) ?? $content;
+    }
+
+    // ============================================
+    // DEVELOPMENT/DEBUG DIRECTIVES
+    // ============================================
+
+    /**
+     * Compile @dump directive — inline dump without dying (debug mode only)
+     * Usage: @dump($variable)
+     */
+    private function compileDump(string $content): string
+    {
+        return preg_replace_callback(
+            '/@dump\s*\((.+?)\)/',
+            function ($matches) {
+                $var = trim($matches[1]);
+                return sprintf(
+                    '<?php if(function_exists("config") ? config("app.debug", false) : true) { echo "<pre style=\"background:#1e1e2e;color:#cdd6f4;padding:12px;border-radius:8px;font-size:13px;overflow-x:auto;margin:8px 0;\">"; var_export(%s); echo "</pre>"; } ?>',
+                    $var
+                );
+            },
+            $content
+        ) ?? $content;
+    }
+
+    // ============================================
+    // CONTENT DIRECTIVES
+    // ============================================
+
+    /**
+     * Compile @markdown / @endmarkdown — parse markdown to HTML
+     * Usage: @markdown ... @endmarkdown
+     * Supports: headings, bold, italic, links, code blocks, lists, blockquotes, hr
+     */
+    private function compileMarkdown(string $content): string
+    {
+        return preg_replace_callback(
+            '/@markdown\s*\n?(.*?)@endmarkdown/s',
+            function ($matches) {
+                $md = addslashes(trim($matches[1]));
+
+                return sprintf(
+                    '<?php echo (function($md) {
+                    // Code blocks (fenced)
+                    $md = preg_replace_callback("/```(\\w+)?\\n(.*?)```/s", function($m) {
+                        $lang = $m[1] ?? "";
+                        return "<pre><code class=\"language-" . htmlspecialchars($lang) . "\">" . htmlspecialchars($m[2]) . "</code></pre>";
+                    }, $md);
+                    // Inline code
+                    $md = preg_replace("/`([^`]+)`/", "<code>$1</code>", $md);
+                    // Headings
+                    $md = preg_replace("/^######\\s+(.+)$/m", "<h6>$1</h6>", $md);
+                    $md = preg_replace("/^#####\\s+(.+)$/m", "<h5>$1</h5>", $md);
+                    $md = preg_replace("/^####\\s+(.+)$/m", "<h4>$1</h4>", $md);
+                    $md = preg_replace("/^###\\s+(.+)$/m", "<h3>$1</h3>", $md);
+                    $md = preg_replace("/^##\\s+(.+)$/m", "<h2>$1</h2>", $md);
+                    $md = preg_replace("/^#\\s+(.+)$/m", "<h1>$1</h1>", $md);
+                    // Bold and italic
+                    $md = preg_replace("/\\*\\*\\*(.+?)\\*\\*\\*/s", "<strong><em>$1</em></strong>", $md);
+                    $md = preg_replace("/\\*\\*(.+?)\\*\\*/s", "<strong>$1</strong>", $md);
+                    $md = preg_replace("/\\*(.+?)\\*/s", "<em>$1</em>", $md);
+                    // Links
+                    $md = preg_replace("/\\[([^\\]]+)\\]\\(([^)]+)\\)/", "<a href=\"$2\">$1</a>", $md);
+                    // Images
+                    $md = preg_replace("/!\\[([^\\]]*?)\\]\\(([^)]+)\\)/", "<img src=\"$2\" alt=\"$1\">", $md);
+                    // Blockquotes
+                    $md = preg_replace("/^>\\s+(.+)$/m", "<blockquote>$1</blockquote>", $md);
+                    // Horizontal rule
+                    $md = preg_replace("/^---$/m", "<hr>", $md);
+                    // Unordered lists
+                    $md = preg_replace("/^[\\-\\*]\\s+(.+)$/m", "<li>$1</li>", $md);
+                    $md = preg_replace("/((?:<li>.*?<\\/li>\\n?)+)/s", "<ul>$1</ul>", $md);
+                    // Paragraphs
+                    $md = preg_replace("/\\n\\n+/", "</p><p>", trim($md));
+                    $md = "<p>" . $md . "</p>";
+                    $md = str_replace("<p></p>", "", $md);
+                    return $md;
+                })(\'%s\'); ?>',
+                    $md
                 );
             },
             $content
