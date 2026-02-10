@@ -1364,9 +1364,36 @@ class Router
     }
 
     /**
-     * Global middleware
+     * Create a RouteRegistrar with the given middleware.
+     * Enables fluent syntax: Route::middleware(['web'])->group(...) or Route::middleware('auth')->get(...)
+     *
+     * @param string|array $middleware
+     * @return RouteRegistrar
      */
-    public function middleware($middleware): self
+    public function middleware($middleware): RouteRegistrar
+    {
+        return (new RouteRegistrar($this))->middleware($middleware);
+    }
+
+    /**
+     * Create a RouteRegistrar with the given prefix.
+     * Enables fluent syntax: Route::prefix('admin')->group(...)
+     *
+     * @param string $prefix
+     * @return RouteRegistrar
+     */
+    public function prefix(string $prefix): RouteRegistrar
+    {
+        return (new RouteRegistrar($this))->prefix($prefix);
+    }
+
+    /**
+     * Push middleware to the global stack (applied to ALL routes).
+     *
+     * @param string|array $middleware
+     * @return self
+     */
+    public function pushGlobalMiddleware($middleware): self
     {
         if (is_array($middleware)) {
             $this->globalMiddleware = array_merge($this->globalMiddleware, $middleware);

@@ -29,6 +29,8 @@ use Plugs\Facade;
  * @method static \Plugs\Router\Route patch(string $path, $handler, array $middleware = [])
  * @method static \Plugs\Router\Route match(array $methods, string $path, $handler, array $middleware = [])
  * @method static \Plugs\Router\Route any(string $path, $handler, array $middleware = [])
+ * @method static \Plugs\Router\RouteRegistrar middleware(string|array $middleware)
+ * @method static \Plugs\Router\RouteRegistrar prefix(string $prefix)
  * @method static void resource(string $name, string $controller, array $options = [])
  * @method static void apiResource(string $name, string $controller, array $options = [])
  * @method static void apiResources(array $resources)
