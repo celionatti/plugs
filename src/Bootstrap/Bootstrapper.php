@@ -174,6 +174,20 @@ class Bootstrapper
         \Plugs\Facades\Route::setFacadeInstance('router', $router);
 
         $this->app->pipe(new RoutingMiddleware($router));
+
+        // Register Default Middleware Groups
+        $router->middlewareGroup('web', [
+            // 'csrf', // We can use aliases in groups now that Router expands them
+            // But for safety let's use what we know works
+        ]);
+
+        // Load groups from config if available
+        $middlewareConfig = config('middleware');
+        if (isset($middlewareConfig['groups'])) {
+            foreach ($middlewareConfig['groups'] as $group => $middlewares) {
+                $router->middlewareGroup($group, $middlewares);
+            }
+        }
     }
 
     protected function setupRequest(): void

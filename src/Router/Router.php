@@ -663,8 +663,9 @@ class Router
         $handler = $route->getHandler();
 
         $stack = new MiddlewareDispatcher();
+        $expandedMiddleware = $this->expandMiddleware($middleware);
 
-        foreach ($middleware as $mw) {
+        foreach ($expandedMiddleware as $mw) {
             if (is_string($mw)) {
                 $mw = $this->resolveMiddleware($mw);
             }
@@ -676,6 +677,24 @@ class Router
         });
 
         return $stack->handle($request);
+    }
+
+    /**
+     * Expand middleware groups recursively
+     */
+    private function expandMiddleware(array $middleware): array
+    {
+        $results = [];
+
+        foreach ($middleware as $mw) {
+            if (is_string($mw) && isset($this->middlewareGroups[$mw])) {
+                $results = array_merge($results, $this->expandMiddleware($this->middlewareGroups[$mw]));
+            } else {
+                $results[] = $mw;
+            }
+        }
+
+        return $results;
     }
 
     /**
