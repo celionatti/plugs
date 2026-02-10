@@ -471,6 +471,9 @@ class Connection
                 ];
             }
 
+            // --- Observability & Metrics ---
+            $this->recordObservabilityMetrics($sql, $params, $executionTime);
+
             return $stmt;
         } catch (PDOException $e) {
             // Try to reconnect once on connection errors
@@ -1125,5 +1128,105 @@ class Connection
         }
 
         @file_put_contents($basePath . self::$auditLogPath, $log, FILE_APPEND);
+    }
+
+    /**
+     * Record metrics and check for slow queries.
+     */
+    private function recordObservabilityMetrics(string $sql, array $params, float $time): void
+    {
+        $backtrace = $this->captureBacktrace();
+        $modelClass = null;
+
+        // Try to identify the model class from the backtrace
+        foreach (debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS) as $frame) {
+            if (isset($frame['class']) && is_subclass_of($frame['class'], \Plugs\Base\Model\PlugModel::class)) {
+                $modelClass = $frame['class'];
+                break;
+            }
+        }
+
+        $threshold = 0.1; // Default 100ms
+        $shouldAlert = true;
+
+        if ($modelClass && property_exists($modelClass, 'observabilityConfig') && $modelClass::$observabilityConfig) {
+            $threshold = $modelClass::$observabilityConfig->slowQueryThreshold;
+            $shouldAlert = $modelClass::$observabilityConfig->alertOnSlow;
+        }
+
+        $isSlow = $time > $threshold;
+
+        \Plugs\Database\Observability\MetricsManager::getInstance()->recordQuery(
+            (string) $modelClass,
+            $sql,
+            $time,
+            $isSlow
+        );
+
+        if ($isSlow && $shouldAlert) {
+            $this->auditLog("SLOW QUERY DETECTED ({$time}s): " . $sql, 'ALERT');
+
+            // Fire event if event dispatcher is available
+            if (method_exists(\Plugs\Facades\Auth::class, 'user')) { // Dummy check to see if framework is booted enough
+                // Potential for $this->events->fire('slow_query', ...) if we have a global event dispatcher
+            }
+        }
+    }
+
+    /**
+     * Get indexes for a given table.
+     */
+    public function getTableIndexes(string $table): array
+    {
+        if ($this->pdo === null) {
+            $this->connect(self::$config[$this->connectionName]);
+        }
+        $driver = $this->pdo->getAttribute(PDO::ATTR_DRIVER_NAME);
+        $indexes = [];
+
+        if ($driver === 'mysql') {
+            $stmt = $this->pdo->query("SHOW INDEX FROM `{$table}`");
+            foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
+                $indexes[$row['Key_name']]['columns'][] = $row['Column_name'];
+                $indexes[$row['Key_name']]['unique'] = $row['Non_unique'] == 0;
+            }
+        } elseif ($driver === 'sqlite') {
+            $stmt = $this->pdo->query("PRAGMA index_list(`{$table}`)");
+            foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
+                $idxStmt = $this->pdo->query("PRAGMA index_info(`" . $row['name'] . "`)");
+                foreach ($idxStmt->fetchAll(PDO::FETCH_ASSOC) as $info) {
+                    $indexes[$row['name']]['columns'][] = $info['name'];
+                }
+                $indexes[$row['name']]['unique'] = $row['unique'] == 1;
+            }
+        }
+
+        return $indexes;
+    }
+
+    /**
+     * Get columns for a given table.
+     */
+    public function getTableColumns(string $table): array
+    {
+        if ($this->pdo === null) {
+            $this->connect(self::$config[$this->connectionName]);
+        }
+        $driver = $this->pdo->getAttribute(PDO::ATTR_DRIVER_NAME);
+        $columns = [];
+
+        if ($driver === 'mysql') {
+            $stmt = $this->pdo->query("DESCRIBE `{$table}`");
+            foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
+                $columns[] = $row['Field'];
+            }
+        } elseif ($driver === 'sqlite') {
+            $stmt = $this->pdo->query("PRAGMA table_info(`{$table}`)");
+            foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
+                $columns[] = $row['name'];
+            }
+        }
+
+        return $columns;
     }
 }

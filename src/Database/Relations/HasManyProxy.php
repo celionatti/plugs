@@ -23,6 +23,26 @@ class HasManyProxy
         $this->localKey = $localKey;
     }
 
+    public function getForeignKey(): string
+    {
+        return $this->foreignKey;
+    }
+
+    public function getLocalKey(): string
+    {
+        return $this->localKey;
+    }
+
+    public function getBuilder(): QueryBuilder
+    {
+        return $this->builder;
+    }
+
+    public function getRelated(): string
+    {
+        return $this->builder->getModel();
+    }
+
     public function get()
     {
         return $this->builder->get();

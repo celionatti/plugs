@@ -608,15 +608,31 @@ trait HasAttributes
         $attributes = $this->getArrayableAttributes();
 
         // Add appended attributes
-        foreach ($this->appends as $key) {
+        $appends = $this->appends;
+        if (method_exists($this, 'getActiveSerializationProfile')) {
+            $profile = $this->getActiveSerializationProfile();
+            if ($profile && !empty($profile['appends'])) {
+                $appends = array_merge($appends, $profile['appends']);
+            }
+        }
+
+        foreach ($appends as $key) {
             $attributes[$key] = $this->getAttribute($key);
         }
 
         // Add loaded relationships
         /** @phpstan-ignore function.alreadyNarrowedType */
         if (property_exists($this, 'relations')) {
+            $hidden = $this->hidden;
+            if (method_exists($this, 'getActiveSerializationProfile')) {
+                $profile = $this->getActiveSerializationProfile();
+                if ($profile && !empty($profile['hidden'])) {
+                    $hidden = array_merge($hidden, $profile['hidden']);
+                }
+            }
+
             foreach ($this->relations as $key => $value) {
-                if (in_array($key, $this->hidden)) {
+                if (in_array($key, $hidden)) {
                     continue;
                 }
 
@@ -638,12 +654,27 @@ trait HasAttributes
     {
         $attributes = $this->attributes;
 
-        if (count($this->visible) > 0) {
-            $attributes = array_intersect_key($attributes, array_flip($this->visible));
+        $hidden = $this->hidden;
+        $visible = $this->visible;
+
+        if (method_exists($this, 'getActiveSerializationProfile')) {
+            $profile = $this->getActiveSerializationProfile();
+            if ($profile) {
+                if (!empty($profile['visible'])) {
+                    $visible = $profile['visible'];
+                }
+                if (!empty($profile['hidden'])) {
+                    $hidden = array_merge($hidden, $profile['hidden']);
+                }
+            }
         }
 
-        if (count($this->hidden) > 0) {
-            $attributes = array_diff_key($attributes, array_flip($this->hidden));
+        if (count($visible) > 0) {
+            $attributes = array_intersect_key($attributes, array_flip($visible));
+        }
+
+        if (count($hidden) > 0) {
+            $attributes = array_diff_key($attributes, array_flip($hidden));
         }
 
         return $attributes;

@@ -22,6 +22,26 @@ class BelongsToProxy
         $this->ownerKey = $ownerKey;
     }
 
+    public function getForeignKey(): string
+    {
+        return $this->foreignKey;
+    }
+
+    public function getOwnerKey(): string
+    {
+        return $this->ownerKey;
+    }
+
+    public function getBuilder(): QueryBuilder
+    {
+        return $this->builder;
+    }
+
+    public function getRelated(): string
+    {
+        return $this->builder->getModel();
+    }
+
     public function first()
     {
         return $this->builder->first();

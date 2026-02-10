@@ -29,6 +29,10 @@ use Plugs\Database\Traits\HasTenancy;
 use Plugs\Database\Traits\Authorizable;
 use Plugs\Database\Traits\HasImmutability;
 use Plugs\Database\Traits\HasVersioning;
+use Plugs\Database\Traits\HasSerialization;
+use Plugs\Database\Traits\HasObservability;
+use Plugs\Database\Traits\HasDomainEvents;
+use Plugs\Database\Traits\HasDiagnostics;
 use Plugs\Database\Exceptions\ConcurrencyException;
 
 /**
@@ -57,6 +61,10 @@ abstract class PlugModel implements \JsonSerializable
     use Authorizable;
     use HasImmutability;
     use HasVersioning;
+    use HasSerialization;
+    use HasObservability;
+    use HasDomainEvents;
+    use HasDiagnostics;
 
     protected $table;
     protected $primaryKey = 'id';

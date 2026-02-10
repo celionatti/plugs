@@ -83,6 +83,14 @@ trait HasEvents
     }
 
     /**
+     * Register a model event listener.
+     */
+    public static function on(string $event, \Closure $callback): void
+    {
+        static::registerModelEvent($event, $callback);
+    }
+
+    /**
      * Register a model event with the dispatcher.
      *
      * @param  string  $event
@@ -180,6 +188,17 @@ trait HasEvents
     public static function deleted(\Closure $callback): void
     {
         static::registerModelEvent('deleted', $callback);
+    }
+
+    /**
+     * Register a retrieved model event with the dispatcher.
+     *
+     * @param  \Closure  $callback
+     * @return void
+     */
+    public static function retrieved(\Closure $callback): void
+    {
+        static::registerModelEvent('retrieved', $callback);
     }
 
     protected function onRetrieving()

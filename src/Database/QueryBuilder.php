@@ -70,6 +70,11 @@ class QueryBuilder
         return $this;
     }
 
+    public function getModel(): ?string
+    {
+        return $this->model;
+    }
+
     public function where($column, $operator = null, $value = null, $boolean = 'AND'): self
     {
         // Handle closure for nested query
