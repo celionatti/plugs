@@ -78,7 +78,7 @@ class Csrf
         'regenerate_on_verify' => false,
         'strict_mode' => true,
         'use_masking' => true, // New: Enable token masking for BREACH protection
-        'context_bound' => true, // New: Bind token to session/UA
+        'context_bound' => false, // New: Bind token to session/UA
     ];
 
     /**
@@ -261,34 +261,6 @@ class Csrf
             return true;
         }
 
-        // Check per-request tokens if enabled
-        if (self::$config['use_per_request_tokens'] && $session->has(self::REQUEST_TOKENS_KEY)) {
-            $requestTokens = $session->get(self::REQUEST_TOKENS_KEY);
-
-            foreach ($requestTokens as $storedToken => $timestamp) {
-                if (self::constantTimeCompare($storedToken, $token)) {
-                    // Check token age
-                    if (
-                        self::$config['strict_mode'] &&
-                        (time() - $timestamp) > self::$config['token_lifetime']
-                    ) {
-                        unset($requestTokens[$storedToken]);
-                        $session->set(self::REQUEST_TOKENS_KEY, $requestTokens);
-
-                        return false;
-                    }
-
-                    // Consume the token (one-time use)
-                    if ($consumeRequestToken) {
-                        unset($requestTokens[$storedToken]);
-                        $session->set(self::REQUEST_TOKENS_KEY, $requestTokens);
-                    }
-
-                    return true;
-                }
-            }
-        }
-
         self::$lastError = self::STATUS_MISMATCH;
 
         return false;
@@ -421,19 +393,16 @@ class Csrf
         return null;
     }
 
-    /**
-     * Mask a CSRF token to prevent BREACH attacks
-     *
-     * @param string $token The raw token
-     * @return string The masked token
-     */
     public static function getMaskedToken(string $token): string
     {
         // Generate random XOR mask
         $mask = random_bytes(self::TOKEN_LENGTH);
 
-        // XOR the token with the mask
-        $masked = $token ^ $mask;
+        // Convert hex token back to binary for masking
+        $binaryToken = hex2bin($token);
+
+        // XOR the binary token with the mask
+        $masked = $binaryToken ^ $mask;
 
         // Return mask + masked token, hex encoded
         return bin2hex($mask . $masked);
@@ -443,7 +412,7 @@ class Csrf
      * Unmask a CSRF token
      *
      * @param string $maskedToken The masked token
-     * @return string|null The raw token or null if invalid
+     * @return string|null The raw token (hex encoded) or null if invalid
      */
     public static function unmaskToken(string $maskedToken): ?string
     {
@@ -461,7 +430,10 @@ class Csrf
         $mask = substr($decoded, 0, $maskSize);
         $masked = substr($decoded, $maskSize);
 
-        return $masked ^ $mask;
+        $binaryToken = $masked ^ $mask;
+
+        // Return the hex encoded token to match what's stored in session
+        return bin2hex($binaryToken);
     }
 
     /**
@@ -540,11 +512,9 @@ class Csrf
 
     private static function getContextFingerprint(): string
     {
-        $session = self::getSession();
-        $sessionId = $session->getId();
         $userAgent = $_SERVER['HTTP_USER_AGENT'] ?? 'unknown';
 
-        return hash('sha256', $sessionId . '|' . $userAgent);
+        return hash('sha256', $userAgent);
     }
 
     private static function cleanupRequestTokens(): void

@@ -192,7 +192,7 @@ class DefaultConfig
                     'use_per_request_tokens' => true,
                     'strict_mode' => true,
                     'use_masking' => true,
-                    'context_bound' => true,
+                    'context_bound' => false,
                 ],
             ],
             'headers' => [
