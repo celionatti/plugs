@@ -487,20 +487,20 @@ function plugs_render_styles(bool $scoped = false, ?string $nonce = null): strin
     /* Dark Theme (Default) */
     /* Scoping and Variables */
     .plugs-debug-wrapper, .plugs-safe-scope, #plugs-profiler-modal {
-        --bg-body: #18171b;
-        --bg-card: #222126;
-        --border-color: rgba(255, 255, 255, 0.1);
-        --text-primary: #ffffff;
-        --text-secondary: #cbd5e1;
-        --text-muted: #71717a;
-        --accent-primary: #a855f7;
-        --accent-secondary: #6366f1;
-        --danger: #ef4444;
-        --warning: #f59e0b;
-        --success: #10b981;
-        --code-bg: #121214;
-        --glass-bg: rgba(24, 23, 27, 0.8);
-        --glow: 0 0 20px rgba(168, 85, 247, 0.1);
+        --bg-body: #18171B; /* Standard Symfony/Laravel Dump BG */
+        --bg-card: #222222;
+        --border-color: #444444;
+        --text-primary: #FFFFFF;
+        --text-secondary: #999999;
+        --text-muted: #707070;
+        --accent-primary: #FF8400; /* Key (Orange) */
+        --accent-secondary: #1299DA; /* Number/Method (Blue) */
+        --danger: #FF5555;
+        --warning: #FFB86C;
+        --success: #56DB3A; /* String (Green) */
+        --code-bg: #1e1e1e;
+        --glass-bg: rgba(24, 23, 27, 0.95);
+        --glow: 0 0 15px rgba(255, 132, 0, 0.1);
     }
 
     .plugs-safe-scope .plugs-debug-header::before {
@@ -580,7 +580,7 @@ HTML
     * { box-sizing: border-box; margin: 0; padding: 0; }
     
     body {
-        background: var(--bg-body);
+        background-color: var(--bg-body);
         font-family: 'Outfit', sans-serif;
         color: var(--text-primary);
         line-height: 1.6;
@@ -617,6 +617,8 @@ HTML;
         padding: 40px 20px 100px 20px;
         max-width: 1200px;
         margin: 0 auto;
+        background-color: var(--bg-body); /* Ensure background is applied */
+        color: var(--text-primary);
     }
     
     .plugs-debug-header {
@@ -1279,11 +1281,11 @@ function plugs_render_header(string $file, $line, int $memoryUsage, int $peakMem
     $html .= '</div>';
 
     $html .= '<div class="plugs-stats-grid">';
-    $html .= '<div class="plugs-stat-card"><div class="plugs-stat-label">Location</div><div class="plugs-stat-value" style="font-size: 13px;">' . htmlspecialchars(basename($file)) . ':' . $line . '</div></div>';
-    $html .= '<div class="plugs-stat-card"><div class="plugs-stat-label">Memory</div><div class="plugs-stat-value">' . plugs_format_bytes($memoryUsage) . '</div></div>';
-    $html .= '<div class="plugs-stat-card"><div class="plugs-stat-label">Execution</div><div class="plugs-stat-value">' . number_format($executionTime * 1000, 2) . ' ms</div></div>';
+    $html .= '<div class="plugs-stat-card"><div class="plugs-stat-label">Location</div><div class="plugs-stat-value" style="font-size: 13px; color: var(--accent-secondary);">' . htmlspecialchars(basename($file)) . ':' . $line . '</div></div>';
+    $html .= '<div class="plugs-stat-card"><div class="plugs-stat-label">Memory</div><div class="plugs-stat-value" style="color: var(--accent-primary);">' . plugs_format_bytes($memoryUsage) . '</div></div>';
+    $html .= '<div class="plugs-stat-card"><div class="plugs-stat-label">Execution</div><div class="plugs-stat-value" style="color: var(--success);">' . number_format($executionTime * 1000, 2) . ' ms</div></div>';
     if ($queryCount > 0) {
-        $html .= '<div class="plugs-stat-card"><div class="plugs-stat-label">Queries</div><div class="plugs-stat-value">' . $queryCount . ' (' . number_format($queryTime * 1000, 1) . 'ms)</div></div>';
+        $html .= '<div class="plugs-stat-card"><div class="plugs-stat-label">Queries</div><div class="plugs-stat-value" style="color: var(--danger);">' . $queryCount . ' (' . number_format($queryTime * 1000, 1) . 'ms)</div></div>';
     }
     $html .= '<div class="plugs-stat-card"><div class="plugs-stat-label">Time</div><div class="plugs-stat-value">' . date('H:i:s') . '</div></div>';
     $html .= '</div>';
