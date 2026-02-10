@@ -55,9 +55,11 @@ foreach (User::all() as $user) {
 
 ```php
 $users = User::where('active', 1)
-               ->orderBy('name', 'desc')
+               ->latest()
                ->take(10)
                ->get();
+
+$user = User::oldest()->first();
 ```
 
 ## Inserting & Updating Models
@@ -378,6 +380,18 @@ $user->roles()->detach(2);
 
 // Toggle a role: attach if missing, detach if present
 $user->roles()->toggle(5);
+```
+
+### Static vs Fluent Calling
+
+All query methods are available both as static calls on the model class and fluently on a query builder instance. This ensures maximum flexibility in your code:
+
+```php
+// Static call (starts a new query)
+$user = User::findOrFail(1);
+
+// Fluent call (chains on existing query)
+$user = User::where('status', 'active')->findOrFail(1);
 ```
 
 ## Serialization

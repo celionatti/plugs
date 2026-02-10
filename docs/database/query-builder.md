@@ -22,6 +22,22 @@ foreach ($users as $user) {
 $user = DB::table('users')->where('name', 'John')->first();
 
 echo $user->email;
+
+### Retrieving Results Or Throwing Exceptions
+
+If you would like to retrieve a record or throw an exception if none is found, use the `findOrFail` or `firstOrFail` methods:
+
+```php
+$user = DB::table('users')->where('active', true)->firstOrFail();
+
+$user = DB::table('users')->findOrFail(1);
+```
+
+### Retrieving Multiple Records By ID
+
+```php
+$users = DB::table('users')->findMany([1, 2, 3]);
+```
 ```
 
 ## Aggregates
@@ -123,6 +139,10 @@ $users = DB::table('users')
 
 $user = DB::table('users')
                 ->latest()
+                ->first();
+
+$user = DB::table('users')
+                ->oldest()
                 ->first();
 
 $users = DB::table('users')
@@ -238,6 +258,21 @@ $users = DB::table('users')
 ## Query Filtering
 
 For advanced filtering from request parameters, see the [Query Filtering](query-filtering.md) documentation.
+
+## API Response Helpers
+
+The query builder provides several methods to return standardized API responses directly from the query:
+
+```php
+// Standardized paginated response
+return DB::table('posts')->paginateResponse(15);
+
+// Standardized single record response
+return DB::table('posts')->where('slug', $slug)->firstResponse();
+
+// Standardized list response
+return DB::table('posts')->where('status', 'active')->allResponse();
+```
 
 ## Pagination
 

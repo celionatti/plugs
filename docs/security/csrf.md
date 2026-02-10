@@ -91,3 +91,11 @@ If CSRF validation fails, the application will return a `419 CSRF Token Mismatch
 1. **Missing Token**: The `_token` field or `X-XSRF-TOKEN` header is missing.
 2. **Expired Token**: The user has been inactive for too long.
 3. **Context Mismatch**: The session or browser environment changed suspiciously.
+
+### Stabilization Fixes
+
+To improve reliability in environments with volatile session data or varying browser signatures, we've implemented the following stabilization measures:
+
+- **Disabled Context Binding**: By default, context-bound fingerprints (which bind a token to a specific IP and User Agent) are now disabled in the stable release to prevent false positives caused by subtle browser signature changes.
+- **Fingerprint Consistency**: If context binding is manually enabled, the system now utilizes a more stable fingerprinting algorithm that excludes highly volatile session data.
+- **Fallback Keys**: The `@csrf` template helper is fully synchronized with the core security engine, ensuring consistency across both manual and automated form implementations.

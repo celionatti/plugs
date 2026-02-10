@@ -208,7 +208,45 @@ The `Pagination` class implements the `JsonSerializable` interface and exposes t
 ```php
 use App\Models\User;
 
-return User::paginate();
+### API Pagination Responses
+
+When building APIs, you may use the `paginateResponse()` method to return a standardized JSON structure containing the data, pagination metadata, and links:
+
+```php
+use App\Models\User;
+
+return User::paginateResponse(15);
 ```
 
-The JSON from the paginator will include meta information such as `total`, `current_page`, `last_page`, and more. The actual result objects will be available via the `data` key in the JSON array.
+For more advanced search scenarios combining filtering and pagination, use `searchResponse()`:
+
+```php
+return User::searchResponse($_GET);
+```
+
+The response will follow a consistent structure:
+
+```json
+{
+    "success": true,
+    "status": 200,
+    "data": [...],
+    "meta": {
+        "total": 50,
+        "per_page": 15,
+        "current_page": 1,
+        "last_page": 4,
+        "from": 1,
+        "to": 15,
+        "path": "http://example.com/users"
+    },
+    "links": {
+        "first": "http://example.com/users?page=1",
+        "last": "http://example.com/users?page=4",
+        "prev": null,
+        "next": "http://example.com/users?page=2"
+    }
+}
+```
+
+## Collections

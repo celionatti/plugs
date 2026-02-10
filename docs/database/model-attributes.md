@@ -55,3 +55,9 @@ You can switch the active serialization profile at runtime:
 $user->setSerializationProfile('internal');
 return json_encode($user);
 ```
+
+## 4. Internal Framework Properties
+
+The Plugs framework uses typed properties for various internal features (e.g., `allowRawQueries`, `strictCasting`, `recordedEvents`). To prevent these internal properties from being incorrectly identified as database columns, the framework automatically filters out any typed properties declared within the `Plugs\` namespace during model persistence.
+
+This means you can safely use framework-provided traits and extend `PlugModel` without worrying about internal property names colliding with your database schema.
