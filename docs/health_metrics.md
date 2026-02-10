@@ -14,7 +14,29 @@ Plugs provides a standard endpoint for load balancers and monitoring tools.
 Health::addCheck('api_external', fn() => Http::get('...')->ok());
 ```
 
-## 2. Metrics Collector (Prometheus)
+## 2. Model Health Diagnostics
+
+Plugs models support automated self-diagnostics to detect orphaned relations and missing database indexes.
+
+- **Learn more**: [Model Health Guide](/docs/database/diagnostics.md)
+
+```php
+// Run a health check on a model
+$issues = User::first()->checkHealth();
+```
+
+## 3. Database Observability
+
+Monitor query performance and model lifecycle metrics with precision.
+
+- **Learn more**: [Observability Guide](/docs/database/observability.md)
+
+```php
+// Check for slow queries
+$metrics = MetricsManager::getInstance()->getSlowQueries();
+```
+
+## 4. Metrics Collector (Prometheus)
 
 Expose application metrics (RAM, CPU, Request Latency) in a format Prometheus understands.
 

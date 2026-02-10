@@ -615,3 +615,12 @@ $result = User::profile(function() {
 // Returns: execution_time, memory_used, query_count, query_time, queries
 ```
 
+## Advanced Features
+
+Plugs models are equipped with high-end features for enterprise applications:
+
+- **[Attribute-Based Metadata](model-attributes.md)**: Immutability, Versioning, and Serialization Profiles.
+- **[Model Health](diagnostics.md)**: Automated orphaned record and index detection.
+- **[Observability](observability.md)**: Built-in query timing and performance tracking.
+- **[Domain Events](domain-events.md)**: Explicit event recording and replayability.
+

@@ -63,6 +63,7 @@ class Connection
     private $isConnecting = false;
     private $lastHealthCheckAt = 0;
     private $strictMode = false;
+    private static array $schemaCache = [];
 
     /**
      * The number of active transactions.
@@ -1178,6 +1179,10 @@ class Connection
      */
     public function getTableIndexes(string $table): array
     {
+        if (isset(self::$schemaCache[$this->connectionName][$table]['indexes'])) {
+            return self::$schemaCache[$this->connectionName][$table]['indexes'];
+        }
+
         if ($this->pdo === null) {
             $this->connect(self::$config[$this->connectionName]);
         }
@@ -1201,6 +1206,8 @@ class Connection
             }
         }
 
+        self::$schemaCache[$this->connectionName][$table]['indexes'] = $indexes;
+
         return $indexes;
     }
 
@@ -1209,6 +1216,10 @@ class Connection
      */
     public function getTableColumns(string $table): array
     {
+        if (isset(self::$schemaCache[$this->connectionName][$table]['columns'])) {
+            return self::$schemaCache[$this->connectionName][$table]['columns'];
+        }
+
         if ($this->pdo === null) {
             $this->connect(self::$config[$this->connectionName]);
         }
@@ -1226,6 +1237,8 @@ class Connection
                 $columns[] = $row['name'];
             }
         }
+
+        self::$schemaCache[$this->connectionName][$table]['columns'] = $columns;
 
         return $columns;
     }
