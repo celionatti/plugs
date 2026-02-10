@@ -48,15 +48,7 @@ if (!function_exists('dq')) {
         $modelClass = 'Plugs\\Base\\Model\\PlugModel';
 
         if (!class_exists($modelClass)) {
-            if (!headers_sent()) {
-                header('Content-Type: text/html; charset=UTF-8');
-            }
-            echo '<div style="padding: 20px; background: #fee; border: 2px solid #f00; color: #900; font-family: monospace;">';
-            echo '<strong>Error:</strong> Model class not found. Make sure PlugModel is loaded.';
-            echo '</div>';
-            if ($die) {
-                exit(1);
-            }
+            plugs_render_fallback_error('Model class not found. Make sure PlugModel is loaded.', $die);
 
             return;
         }
@@ -83,15 +75,7 @@ if (!function_exists('dq')) {
 
             plugs_dump([$data], $die, 'query');
         } catch (\Exception $e) {
-            if (!headers_sent()) {
-                header('Content-Type: text/html; charset=UTF-8');
-            }
-            echo '<div style="padding: 20px; background: #fee; border: 2px solid #f00; color: #900; font-family: monospace;">';
-            echo '<strong>Error:</strong> ' . htmlspecialchars($e->getMessage());
-            echo '</div>';
-            if ($die) {
-                exit(1);
-            }
+            plugs_render_fallback_error($e->getMessage(), $die);
         }
     }
 }
@@ -503,20 +487,20 @@ function plugs_render_styles(bool $scoped = false, ?string $nonce = null): strin
     /* Dark Theme (Default) */
     /* Scoping and Variables */
     .plugs-debug-wrapper, .plugs-safe-scope, #plugs-profiler-modal {
-        --bg-body: #0a0f1d;
-        --bg-card: rgba(30, 41, 59, 0.7);
-        --border-color: rgba(51, 65, 85, 0.5);
-        --text-primary: #f8fafc;
+        --bg-body: #18171b;
+        --bg-card: #222126;
+        --border-color: rgba(255, 255, 255, 0.1);
+        --text-primary: #ffffff;
         --text-secondary: #cbd5e1;
-        --text-muted: #94a3b8;
+        --text-muted: #71717a;
         --accent-primary: #a855f7;
         --accent-secondary: #6366f1;
         --danger: #ef4444;
         --warning: #f59e0b;
         --success: #10b981;
-        --code-bg: #0d1117;
-        --glass-bg: rgba(15, 23, 42, 0.6);
-        --glow: 0 0 20px rgba(168, 85, 247, 0.15);
+        --code-bg: #121214;
+        --glass-bg: rgba(24, 23, 27, 0.8);
+        --glow: 0 0 20px rgba(168, 85, 247, 0.1);
     }
 
     .plugs-safe-scope .plugs-debug-header::before {
@@ -1985,4 +1969,29 @@ function plugs_detect_n_plus_one(array $queries): array
     }
 
     return ['detected' => false, 'count' => 0];
+}
+
+/**
+ * Render a fallback error using the themed debug wrapper
+ */
+function plugs_render_fallback_error(string $message, bool $die = true): void
+{
+    if (!headers_sent()) {
+        header('Content-Type: text/html; charset=UTF-8');
+    }
+
+    echo plugs_render_styles($die);
+    global $plugs_debug_theme;
+    $theme = $plugs_debug_theme ?? 'dark';
+
+    echo '<div class="plugs-debug-wrapper" data-theme="' . $theme . '">';
+    echo '<div class="plugs-alert plugs-alert-danger" style="margin: 20px;">';
+    echo '<div class="plugs-alert-title">❌ Error</div>';
+    echo '<div>' . htmlspecialchars($message) . '</div>';
+    echo '</div>';
+    echo '</div>';
+
+    if ($die) {
+        exit(1);
+    }
 }
