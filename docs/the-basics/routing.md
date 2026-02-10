@@ -91,17 +91,27 @@ Route groups allow you to share route attributes, such as middleware or namespac
 
 ### Middleware
 
-To assign middleware to all routes within a group, you may use the `middleware` method before defining the group:
+To assign middleware to all routes within a group, you may use the `middleware` method before defining the group. You can pass a string or an array of middleware names/aliases:
 
 ```php
-$router->middleware(['auth'])->group(function ($router) {
-    $router->get('/', function () {
+use Plugs\Facades\Route;
+
+Route::middleware(['auth'])->group(function () {
+    Route::get('/', function () {
         // Uses Auth Middleware
     });
 
-    $router->get('/user/profile', function () {
+    Route::get('/user/profile', function () {
         // Uses Auth Middleware
     });
+});
+```
+
+You may also use the array-based `group` syntax:
+
+```php
+Route::group(['middleware' => ['auth']], function () {
+    Route::get('/dashboard', [DashboardController::class, 'index']);
 });
 ```
 
@@ -110,11 +120,38 @@ $router->middleware(['auth'])->group(function ($router) {
 The `prefix` method may be used to prefix each route in the group with a given URI:
 
 ```php
-$router->prefix('admin')->group(function ($router) {
-    $router->get('/users', function () {
+Route::prefix('admin')->group(function () {
+    Route::get('/users', function () {
         // Matches The "/admin/users" URL
     });
 });
+```
+
+### Chaining Attributes
+
+You can chain multiple attributes together for more expressive route definitions:
+
+```php
+Route::middleware(['web', 'auth'])->prefix('admin')->group(function () {
+    Route::get('/dashboard', [AdminController::class, 'dashboard']);
+    Route::get('/users', [AdminController::class, 'users']);
+});
+```
+
+### Applying Middleware to a Single Route
+
+You can also use `Route::middleware()` to register a single route directly without `group`:
+
+```php
+Route::middleware('web')->get('/about', [PageController::class, 'about']);
+```
+
+Or chain middleware onto an individual route definition:
+
+```php
+Route::post('/logout', [LoginController::class, 'logout'])
+    ->name('logout')
+    ->middleware('web');
 ```
 
 ## Resource Routes
@@ -129,15 +166,15 @@ $router->resource('photos', PhotoController::class);
 
 This single route declaration creates multiple routes to handle a variety of actions on the resource. The generated routes will handle:
 
-| Verb | URI | Action | Route Name |
-| :--- | :--- | :--- | :--- |
-| GET | `/photos` | index | `photos.index` |
-| GET | `/photos/create` | create | `photos.create` |
-| POST | `/photos` | store | `photos.store` |
-| GET | `/photos/{id}` | show | `photos.show` |
-| GET | `/photos/{id}/edit` | edit | `photos.edit` |
-| PUT/PATCH | `/photos/{id}` | update | `photos.update` |
-| DELETE | `/photos/{id}` | destroy | `photos.destroy` |
+| Verb      | URI                 | Action  | Route Name       |
+| :-------- | :------------------ | :------ | :--------------- |
+| GET       | `/photos`           | index   | `photos.index`   |
+| GET       | `/photos/create`    | create  | `photos.create`  |
+| POST      | `/photos`           | store   | `photos.store`   |
+| GET       | `/photos/{id}`      | show    | `photos.show`    |
+| GET       | `/photos/{id}/edit` | edit    | `photos.edit`    |
+| PUT/PATCH | `/photos/{id}`      | update  | `photos.update`  |
+| DELETE    | `/photos/{id}`      | destroy | `photos.destroy` |
 
 ### API Resource Routes
 
@@ -147,13 +184,13 @@ When declaring resource routes that will be consumed by APIs, you will commonly 
 $router->apiResource('photos', PhotoController::class);
 ```
 
-| Verb | URI | Action | Route Name |
-| :--- | :--- | :--- | :--- |
-| GET | `/photos` | index | `photos.index` |
-| POST | `/photos` | store | `photos.store` |
-| GET | `/photos/{id}` | show | `photos.show` |
-| PUT/PATCH | `/photos/{id}` | update | `photos.update` |
-| DELETE | `/photos/{id}` | destroy | `photos.destroy` |
+| Verb      | URI            | Action  | Route Name       |
+| :-------- | :------------- | :------ | :--------------- |
+| GET       | `/photos`      | index   | `photos.index`   |
+| POST      | `/photos`      | store   | `photos.store`   |
+| GET       | `/photos/{id}` | show    | `photos.show`    |
+| PUT/PATCH | `/photos/{id}` | update  | `photos.update`  |
+| DELETE    | `/photos/{id}` | destroy | `photos.destroy` |
 
 ### Specifying Resource Parameters
 
@@ -174,11 +211,11 @@ While `apiResource` is convenient, you can always define API routes manually:
 $router->group(['prefix' => 'api/v1'], function($router) {
     $router->get('/posts', [PostController::class, 'index']);
     $router->post('/posts', [PostController::class, 'store']);
-    
+
     // Updating a resource (PUT replaces, PATCH partially updates)
     $router->put('/posts/{id}', [PostController::class, 'update']);
     $router->patch('/posts/{id}', [PostController::class, 'update']);
-    
+
     // Deleting a resource
     $router->delete('/posts/{id}', [PostController::class, 'destroy']);
 });
@@ -189,10 +226,7 @@ $router->group(['prefix' => 'api/v1'], function($router) {
 HTML forms do not support `PUT`, `PATCH`, or `DELETE` actions. To use these methods, you will need to add a hidden `_method` field to the form. The `@method` Blade directive can create this field for you:
 
 ```html
-<form action="/example" method="POST">
-    @method('PUT')
-    @csrf
-</form>
+<form action="/example" method="POST">@method('PUT') @csrf</form>
 ```
 
 ```php
@@ -260,8 +294,8 @@ The `#[Route]` attribute supports several parameters:
 
 Any routes defined in `routes/api.php` are automatically assigned the following behaviors:
 
-*   **Prefix**: All URIs are prefixed with `/api`. For example, a route defined as `/users` becomes `/api/users`.
-*   **Response Enforcement**: All requests are forced to accept `application/json`, and all responses (including errors) will be returned as JSON.
+- **Prefix**: All URIs are prefixed with `/api`. For example, a route defined as `/users` becomes `/api/users`.
+- **Response Enforcement**: All requests are forced to accept `application/json`, and all responses (including errors) will be returned as JSON.
 
 This makes it perfect for building APIs without worrying about manually configuring headers or error handling for API clients.
 
