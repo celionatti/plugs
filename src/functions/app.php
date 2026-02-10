@@ -219,6 +219,14 @@ if (!function_exists('request')) {
 if (!function_exists('response')) {
     function response($content = '', int $status = 200, array $headers = []): \Psr\Http\Message\ResponseInterface
     {
+        if ($content instanceof \Plugs\View\View) {
+            return \Plugs\Http\ResponseFactory::html($content->render(), $status, $headers);
+        }
+
+        if (is_object($content) && method_exists($content, '__toString')) {
+            return \Plugs\Http\ResponseFactory::html((string) $content, $status, $headers);
+        }
+
         if (is_array($content) || is_object($content)) {
             return \Plugs\Http\ResponseFactory::json($content, $status, $headers);
         }
