@@ -4,6 +4,13 @@ declare(strict_types=1);
 
 namespace Plugs\Database;
 
+use PDO;
+use Closure;
+use Exception;
+use BadMethodCallException;
+use Plugs\Http\StandardResponse;
+use Plugs\Paginator\Pagination;
+
 /*
 |--------------------------------------------------------------------------
 | QueryBuilder Class
@@ -78,7 +85,7 @@ class QueryBuilder
     public function where($column, $operator = null, $value = null, $boolean = 'AND'): self
     {
         // Handle closure for nested query
-        if ($column instanceof \Closure) {
+        if ($column instanceof Closure) {
             $query = new static($this->connection);
             $query->table($this->table);
             $column($query);
@@ -134,17 +141,17 @@ class QueryBuilder
     /**
      * Add a "where has" relationship constraint.
      */
-    public function whereHas(string $relation, ?\Closure $callback = null, string $boolean = 'AND'): self
+    public function whereHas(string $relation, ?Closure $callback = null, string $boolean = 'AND'): self
     {
         if (!$this->model) {
-            throw new \Exception("whereHas requires a model to be set on the builder.");
+            throw new Exception("whereHas requires a model to be set on the builder.");
         }
 
         $modelInstance = new $this->model();
 
         // Use reflection to get relation details via a temporary proxy
         if (!method_exists($modelInstance, $relation)) {
-            throw new \Exception("Relationship [{$relation}] not found on model [" . get_class($modelInstance) . "].");
+            throw new Exception("Relationship [{$relation}] not found on model [" . get_class($modelInstance) . "].");
         }
 
         $proxy = $modelInstance->$relation();
@@ -198,7 +205,7 @@ class QueryBuilder
         }
 
         if (!$relatedBuilder) {
-            throw new \Exception("Could not resolve relationship builder for [{$relation}].");
+            throw new Exception("Could not resolve relationship builder for [{$relation}].");
         }
 
         $relatedTable = $relatedBuilder->getTable();
@@ -238,7 +245,7 @@ class QueryBuilder
         return $this;
     }
 
-    public function orWhereHas(string $relation, ?\Closure $callback = null): self
+    public function orWhereHas(string $relation, ?Closure $callback = null): self
     {
         return $this->whereHas($relation, $callback, 'OR');
     }
@@ -409,6 +416,39 @@ class QueryBuilder
         return $this->where('id', '=', $id)->first($columns);
     }
 
+    public function findOrFail($id, array $columns = ['*'])
+    {
+        $result = $this->find($id, $columns);
+        if (!$result) {
+            if ($this->model) {
+                throw (new \Plugs\Database\Exception\ModelNotFoundException())->setModel($this->model, $id);
+            }
+            throw new Exception("Record not found with ID: " . (is_array($id) ? implode(', ', $id) : (string) $id));
+        }
+
+        return $result;
+    }
+
+    public function findMany(array $ids, array $columns = ['*']): array|Collection
+    {
+        return $this->whereIn('id', $ids)->get($columns);
+    }
+
+    public function firstOrFail(array $columns = ['*'])
+    {
+        $result = $this->first($columns);
+        if (!$result) {
+            throw new Exception("No records found");
+        }
+
+        return $result;
+    }
+
+    public function all(array $columns = ['*']): array|Collection
+    {
+        return $this->get($columns);
+    }
+
     public function exists(): bool
     {
         return $this->first() !== null;
@@ -424,11 +464,11 @@ class QueryBuilder
         $count = count($results);
 
         if ($count === 0) {
-            throw new \Exception("No records found.");
+            throw new Exception("No records found.");
         }
 
         if ($count > 1) {
-            throw new \Exception("Multiple records found.");
+            throw new Exception("Multiple records found.");
         }
 
         return $results[0];
@@ -579,7 +619,7 @@ class QueryBuilder
     /**
      * Paginate the query.
      */
-    public function paginate(int $perPage = 15, ?int $page = null, array $columns = ['*']): \Plugs\Paginator\Pagination
+    public function paginate(int $perPage = 15, ?int $page = null, array $columns = ['*']): Pagination
     {
         $page = $page ?? (int) ($_GET['page'] ?? $_REQUEST['page'] ?? 1);
         $page = max(1, $page);
@@ -591,7 +631,161 @@ class QueryBuilder
 
         $results = $this->get($columns);
 
-        return new \Plugs\Paginator\Pagination($results, $perPage, $page, $total);
+        return new Pagination($results, $perPage, $page, $total);
+    }
+
+    /**
+     * Get paginated results as a standardized API response.
+     */
+    public function paginateResponse(int $perPage = 15, ?int $page = null, array $columns = ['*']): StandardResponse
+    {
+        $paginator = $this->paginate($perPage, $page, $columns);
+        $paginated = $paginator->toArray();
+
+        $meta = [
+            'total' => $paginated['total'],
+            'per_page' => $paginated['per_page'],
+            'current_page' => $paginated['current_page'],
+            'last_page' => $paginated['last_page'],
+            'from' => $paginated['from'],
+            'to' => $paginated['to'],
+            'path' => $paginated['path'],
+        ];
+
+        $links = [
+            'first' => $paginated['first_page_url'],
+            'last' => $paginated['last_page_url'],
+            'prev' => $paginated['prev_page_url'],
+            'next' => $paginated['next_page_url'],
+        ];
+
+        return StandardResponse::success($paginated['data'])
+            ->withMeta($meta)
+            ->withLinks($links);
+    }
+
+    public function allResponse(array $columns = ['*'], int $status = 200, ?string $message = null): StandardResponse
+    {
+        $results = $this->all($columns);
+        $data = $results instanceof Collection ? $results->all() : $results;
+
+        return new StandardResponse($data, true, $status, $message);
+    }
+
+    public function firstResponse(array $columns = ['*'], int $status = 200, ?string $message = null): StandardResponse
+    {
+        $result = $this->first($columns);
+
+        if (!$result) {
+            return StandardResponse::error("No records found", 404);
+        }
+
+        $data = is_object($result) && method_exists($result, 'toArray') ? $result->toArray() : $result;
+
+        return new StandardResponse($data, true, $status, $message);
+    }
+
+    public function findResponse($id, array $columns = ['*'], int $status = 200, ?string $message = null): StandardResponse
+    {
+        $result = $this->find($id, $columns);
+
+        if (!$result) {
+            return StandardResponse::error("Record not found", 404);
+        }
+
+        $data = is_object($result) && method_exists($result, 'toArray') ? $result->toArray() : $result;
+
+        return new StandardResponse($data, true, $status, $message);
+    }
+
+    /**
+     * Apply filters from request parameters or a QueryFilter instance
+     */
+    public function filter(array|\Plugs\Database\Filters\QueryFilter $params): self
+    {
+        if ($params instanceof \Plugs\Database\Filters\QueryFilter) {
+            return $params->apply($this);
+        }
+
+        $instance = $this->model ? new $this->model() : null;
+
+        foreach ($params as $key => $value) {
+            if ($value === null || $value === '' || in_array($key, ['page', 'per_page', 'direction'])) {
+                continue;
+            }
+
+            if ($key === 'search') {
+                if ($instance && method_exists($instance, 'getSearchableColumns')) {
+                    $searchColumns = $instance->getSearchableColumns();
+                    if (!empty($searchColumns)) {
+                        $this->where(function ($query) use ($searchColumns, $value) {
+                            foreach ($searchColumns as $column) {
+                                $query->orWhere($column, 'LIKE', "%{$value}%");
+                            }
+                        });
+                    }
+                }
+                continue;
+            }
+
+            if ($key === 'sort') {
+                $this->orderBy($value, strtoupper($params['direction'] ?? 'ASC'));
+                continue;
+            }
+
+            if (is_array($value)) {
+                $this->whereIn($key, $value);
+            } else {
+                $this->where($key, '=', $value);
+            }
+        }
+
+        return $this;
+    }
+
+    /**
+     * Search and paginate with request parameters
+     */
+    public function search(?array $params = null): Pagination
+    {
+        $params = $params ?? $_GET ?? $_REQUEST ?? [];
+
+        $perPage = (int) ($params['per_page'] ?? 15);
+        $page = (int) ($params['page'] ?? 1);
+
+        $this->filter($params);
+
+        $paginator = $this->paginate($perPage, $page);
+        $paginator->appends(array_filter($params, fn($k) => !in_array($k, ['page', 'per_page']), ARRAY_FILTER_USE_KEY));
+
+        return $paginator;
+    }
+
+    public function searchResponse(?array $params = null): StandardResponse
+    {
+        $paginator = $this->search($params);
+        $paginated = $paginator->toArray();
+
+        $meta = [
+            'total' => $paginated['total'],
+            'per_page' => $paginated['per_page'],
+            'current_page' => $paginated['current_page'],
+            'last_page' => $paginated['last_page'],
+            'from' => $paginated['from'],
+            'to' => $paginated['to'],
+            'path' => $paginated['path'],
+        ];
+
+        $links = [
+            'first' => $paginated['first_page_url'],
+            'last' => $paginated['last_page_url'],
+            'prev' => $paginated['prev_page_url'],
+            'next' => $paginated['next_page_url'],
+        ];
+
+        return StandardResponse::success($paginated['data'])
+            ->withMeta($meta)
+            ->withLinks($links);
     }
 
     public function buildSelectSql(): string
@@ -666,6 +860,6 @@ class QueryBuilder
             }
         }
 
-        throw new \BadMethodCallException("Method [{$method}] does not exist on the query builder.");
+        throw new BadMethodCallException("Method [{$method}] does not exist on the query builder.");
     }
 }

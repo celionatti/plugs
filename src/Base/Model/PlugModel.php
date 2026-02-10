@@ -648,24 +648,11 @@ abstract class PlugModel implements \JsonSerializable
 
     public static function __callStatic($method, $parameters)
     {
-        $instance = new static();
-
         if (method_exists(static::class, $method)) {
             return forward_static_call_array([static::class, $method], $parameters);
         }
 
-        if (method_exists($instance, $method)) {
-            return call_user_func_array([$instance, $method], $parameters);
-        }
-
-        $scopeMethod = 'scope' . ucfirst($method);
-        if (method_exists($instance, $scopeMethod)) {
-            array_unshift($parameters, $instance);
-
-            return call_user_func_array([$instance, $scopeMethod], $parameters);
-        }
-
-        throw new BadMethodCallException("Static method {$method} does not exist on " . get_called_class());
+        return (new static())->$method(...$parameters);
     }
 
     public function toResponse(int $status = 200, ?string $message = null): \Plugs\Http\StandardResponse

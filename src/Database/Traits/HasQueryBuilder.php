@@ -49,14 +49,14 @@ trait HasQueryBuilder
 
     public static function get(array $columns = ['*']): array|Collection
     {
-        $results = static::query()->get($columns);
-
-        return is_array($results) ? new Collection($results) : $results;
+        return static::query()->get($columns);
     }
 
     public static function all(array $columns = ['*']): Collection
     {
-        return static::get($columns);
+        $results = static::query()->all($columns);
+
+        return $results instanceof Collection ? $results : new Collection($results);
     }
 
     /**
@@ -64,7 +64,7 @@ trait HasQueryBuilder
      */
     public static function allResponse(array $columns = ['*'], int $status = 200, ?string $message = null): \Plugs\Http\StandardResponse
     {
-        return static::all($columns)->toResponse($status, $message);
+        return static::query()->allResponse($columns, $status, $message);
     }
 
     /**
@@ -72,7 +72,7 @@ trait HasQueryBuilder
      */
     public static function getResponse(array $columns = ['*'], int $status = 200, ?string $message = null): \Plugs\Http\StandardResponse
     {
-        return static::get($columns)->toResponse($status, $message);
+        return static::query()->allResponse($columns, $status, $message);
     }
 
     /**
@@ -83,8 +83,6 @@ trait HasQueryBuilder
      */
     public static function with($relations): QueryBuilder
     {
-        $relations = is_string($relations) ? func_get_args() : $relations;
-
         return static::query()->with($relations);
     }
 
@@ -98,28 +96,17 @@ trait HasQueryBuilder
      */
     public static function findResponse($id, array $columns = ['*'], int $status = 200, ?string $message = null): \Plugs\Http\StandardResponse
     {
-        $result = static::find($id, $columns);
-
-        if (!$result) {
-            return \Plugs\Http\StandardResponse::error("Record not found", 404);
-        }
-
-        return $result->toResponse($status, $message);
+        return static::query()->findResponse($id, $columns, $status, $message);
     }
 
     public static function findOrFail($id, array $columns = ['*'])
     {
-        $result = static::find($id, $columns);
-        if (!$result) {
-            throw (new \Plugs\Database\Exception\ModelNotFoundException())->setModel(static::class, $id);
-        }
-
-        return $result;
+        return static::query()->findOrFail($id, $columns);
     }
 
     public static function findMany(array $ids, array $columns = ['*']): array|Collection
     {
-        return static::query()->whereIn('id', $ids)->get($columns);
+        return static::query()->findMany($ids, $columns);
     }
 
     public static function first(array $columns = ['*'])
@@ -132,29 +119,19 @@ trait HasQueryBuilder
      */
     public static function firstResponse(array $columns = ['*'], int $status = 200, ?string $message = null): \Plugs\Http\StandardResponse
     {
-        $result = static::first($columns);
-
-        if (!$result) {
-            return \Plugs\Http\StandardResponse::error("No records found", 404);
-        }
-
-        return $result->toResponse($status, $message);
+        return static::query()->firstResponse($columns, $status, $message);
     }
 
     public static function firstOrFail(array $columns = ['*'])
     {
-        $result = static::first($columns);
-        if (!$result) {
-            throw new \Exception("No records found");
-        }
-
-        return $result;
+        return static::query()->firstOrFail($columns);
     }
 
     public static function insert(array|object $data): Collection|self
     {
         /** @phpstan-ignore new.static */
-        $data = (new static())->parseAttributes($data);
+        $instance = new static();
+        $data = $instance->parseAttributes($data);
 
         // Check if data is multidimensional numeric array (bulk insert)
         $isBulk = isset($data[0]) && is_array($data[0]);
@@ -208,11 +185,6 @@ trait HasQueryBuilder
 
     public static function where(string $column, $operator = null, $value = null): QueryBuilder
     {
-        if (func_num_args() === 2) {
-            $value = $operator;
-            $operator = '=';
-        }
-
         return static::query()->where($column, $operator, $value);
     }
 
@@ -223,17 +195,17 @@ trait HasQueryBuilder
 
     public static function orderBy(string $column, string $direction = 'asc'): QueryBuilder
     {
-        return static::query()->orderBy($column, strtoupper($direction));
+        return static::query()->orderBy($column, $direction);
     }
 
     public static function latest(string $column = 'created_at'): QueryBuilder
     {
-        return static::query()->orderBy($column, 'DESC');
+        return static::query()->latest($column);
     }
 
     public static function oldest(string $column = 'created_at'): QueryBuilder
     {
-        return static::query()->orderBy($column, 'ASC');
+        return static::query()->oldest($column);
     }
 
     public static function limit(int $limit): QueryBuilder
@@ -263,9 +235,6 @@ trait HasQueryBuilder
      */
     public static function paginate(int $perPage = 15, ?int $page = null, array $columns = ['*']): Pagination
     {
-        $maxPerPage = defined('static::MAX_PER_PAGE') ? static::MAX_PER_PAGE : 100;
-        $perPage = max(1, min($perPage, $maxPerPage));
-
         return static::query()->paginate($perPage, $page, $columns);
     }
 
@@ -284,30 +253,7 @@ trait HasQueryBuilder
      */
     public static function paginateResponse(int $perPage = 15, ?int $page = null, array $columns = ['*']): \Plugs\Http\StandardResponse
     {
-        $paginator = static::paginate($perPage, $page, $columns);
-        $paginated = $paginator->toArray();
-
-        // Extract meta and links manually since toArray is flat
-        $meta = [
-            'total' => $paginated['total'],
-            'per_page' => $paginated['per_page'],
-            'current_page' => $paginated['current_page'],
-            'last_page' => $paginated['last_page'],
-            'from' => $paginated['from'],
-            'to' => $paginated['to'],
-            'path' => $paginated['path'],
-        ];
-
-        $links = [
-            'first' => $paginated['first_page_url'],
-            'last' => $paginated['last_page_url'],
-            'prev' => $paginated['prev_page_url'],
-            'next' => $paginated['next_page_url'],
-        ];
-
-        return \Plugs\Http\StandardResponse::success($paginated['data'])
-            ->withMeta($meta)
-            ->withLinks($links);
+        return static::query()->paginateResponse($perPage, $page, $columns);
     }
 
     /**
@@ -315,61 +261,7 @@ trait HasQueryBuilder
      */
     public static function simplePaginate(int $perPage = 15, ?int $page = null): array
     {
-        // Enforce a sensible maximum
-        $maxPerPage = defined('static::MAX_PER_PAGE') ? static::MAX_PER_PAGE : 100;
-        $perPage = max(1, min($perPage, $maxPerPage));
-
-        $page = $page ?? static::getCurrentPage();
-        $page = max(1, $page);
-
-        $offset = ($page - 1) * $perPage;
-
-        // Fetch one extra to determine if there's a next page
-        $items = static::query()
-            ->limit($perPage + 1)
-            ->offset($offset)
-            ->get();
-
-        $hasMore = count($items) > $perPage;
-        if ($hasMore) {
-            if ($items instanceof Collection) {
-                $items = new Collection(array_slice($items->all(), 0, $perPage, true));
-            } else {
-                array_pop($items);
-            }
-        }
-
-        $data = $items instanceof Collection ? $items->all() : $items;
-
-        // Generate absolute URLs for links
-        $baseUrl = function_exists('currentUrl') ? currentUrl(includeQuery: false) : '';
-        $queryParams = $_GET;
-        unset($queryParams['page']);
-
-        $buildUrl = function ($p) use ($baseUrl, $queryParams) {
-            if (!$p) {
-                return null;
-            }
-            $params = array_merge($queryParams, ['page' => $p]);
-
-            return $baseUrl . '?' . http_build_query($params);
-        };
-
-        return [
-            'data' => $data,
-            'meta' => [
-                'per_page' => $perPage,
-                'current_page' => $page,
-                'from' => count($data) > 0 ? $offset + 1 : 0,
-                'to' => $offset + count($data),
-                'has_more' => $hasMore,
-                'path' => $baseUrl,
-            ],
-            'links' => [
-                'next' => $hasMore ? $buildUrl($page + 1) : null,
-                'prev' => $page > 1 ? $buildUrl($page - 1) : null,
-            ],
-        ];
+        return static::query()->simplePaginate($perPage, $page);
     }
 
     /**
@@ -385,55 +277,7 @@ trait HasQueryBuilder
      */
     public static function filter(array|\Plugs\Database\Filters\QueryFilter $params): QueryBuilder
     {
-        $query = static::query();
-
-        // Handle QueryFilter instance
-        if ($params instanceof \Plugs\Database\Filters\QueryFilter) {
-            return $params->apply($query);
-        }
-
-        // Legacy array-based filtering
-        /** @phpstan-ignore new.static */
-        $instance = new static();
-
-        foreach ($params as $key => $value) {
-            // Skip empty values and pagination params
-            if ($value === null || $value === '' || $key === 'page' || $key === 'per_page' || $key === 'direction') {
-                continue;
-            }
-
-            // Handle search parameters
-            if ($key === 'search') {
-                /** @phpstan-ignore-next-line */
-                if (method_exists($instance, 'getSearchableColumns')) {
-                    $searchColumns = $instance->getSearchableColumns();
-                    if (!empty($searchColumns)) {
-                        foreach ($searchColumns as $column) {
-                            $query->orWhere($column, 'LIKE', "%{$value}%");
-                        }
-                    }
-                }
-
-                continue;
-            }
-
-            // Handle sort parameters
-            if ($key === 'sort') {
-                $direction = strtoupper($params['direction'] ?? 'ASC');
-                $query->orderBy($value, $direction);
-
-                continue;
-            }
-
-            // Regular where clause
-            if (is_array($value)) {
-                $query->whereIn($key, $value);
-            } else {
-                $query->where($key, '=', $value);
-            }
-        }
-
-        return $query;
+        return static::query()->filter($params);
     }
 
     /**
@@ -443,22 +287,7 @@ trait HasQueryBuilder
      */
     public static function search(?array $params = null): Pagination
     {
-        /** @phpstan-ignore-next-line */
-        $params = $params ?? $_GET ?? $_REQUEST ?? [];
-
-        // Enforce a sensible maximum
-        $maxPerPage = defined('static::MAX_PER_PAGE') ? static::MAX_PER_PAGE : 100;
-        $perPage = (int) ($params['per_page'] ?? 15);
-        $perPage = max(1, min($perPage, $maxPerPage));
-
-        $page = (int) ($params['page'] ?? 1);
-
-        $query = static::filter($params);
-
-        $paginator = $query->paginate($perPage, $page);
-        $paginator->appends(array_filter($params, fn($k) => !in_array($k, ['page', 'per_page']), ARRAY_FILTER_USE_KEY));
-
-        return $paginator;
+        return static::query()->search($params);
     }
 
     /**
@@ -466,37 +295,6 @@ trait HasQueryBuilder
      */
     public static function searchResponse(?array $params = null): \Plugs\Http\StandardResponse
     {
-        $paginator = static::search($params);
-        $paginated = $paginator->toArray();
-
-        // Extract meta and links manually since toArray is flat
-        $meta = [
-            'total' => $paginated['total'],
-            'per_page' => $paginated['per_page'],
-            'current_page' => $paginated['current_page'],
-            'last_page' => $paginated['last_page'],
-            'from' => $paginated['from'],
-            'to' => $paginated['to'],
-            'path' => $paginated['path'],
-            // specific to search, filters might be needed, but Pagination object doesn't carry them explicitly in toArray usually unless added
-            // Pagination has 'filters' only if we added it?
-            // In Model::search and HasQueryBuilder::search, I added $paginator->appends(...)
-            // Pagination appends to query string, but does it put it in toArray?
-            // Pagination::toArray() does NOT include 'filters' key.
-            // If API consumers need 'filters', I might need to check if Pagination allows retrieving them.
-            // Pagination::getCurrentQuery() returns them.
-            // But for now, let's stick to standard meta.
-        ];
-
-        $links = [
-            'first' => $paginated['first_page_url'],
-            'last' => $paginated['last_page_url'],
-            'prev' => $paginated['prev_page_url'],
-            'next' => $paginated['next_page_url'],
-        ];
-
-        return \Plugs\Http\StandardResponse::success($paginated['data'])
-            ->withMeta($meta)
-            ->withLinks($links);
+        return static::query()->searchResponse($params);
     }
 }
