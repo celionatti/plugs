@@ -442,11 +442,19 @@ class DefaultConfig
                 ],
                 'anthropic' => [
                     'api_key' => env('ANTHROPIC_API_KEY'),
-                    'model' => env('ANTHROPIC_MODEL', 'claude-3-5-sonnet-latest'),
+                    'model' => env('ANTHROPIC_MODEL', 'claude-opus-4-6'),
                 ],
                 'gemini' => [
                     'api_key' => env('GEMINI_API_KEY'),
                     'model' => env('GEMINI_MODEL', 'gemini-3-flash-preview'),
+                ],
+                'groq' => [
+                    'api_key' => env('GROQ_API_KEY'),
+                    'model' => env('GROQ_MODEL', 'llama-3.3-70b-versatile'),
+                ],
+                'openrouter' => [
+                    'api_key' => env('OPENROUTER_API_KEY'),
+                    'model' => env('OPENROUTER_MODEL', 'openrouter/auto:free'),
                 ],
             ],
         ];

@@ -9,6 +9,8 @@ use Plugs\AI\Contracts\AIDriverInterface;
 use Plugs\AI\Drivers\OpenAIDriver;
 use Plugs\AI\Drivers\AnthropicDriver;
 use Plugs\AI\Drivers\GeminiDriver;
+use Plugs\AI\Drivers\GroqDriver;
+use Plugs\AI\Drivers\OpenRouterDriver;
 
 class AIManager
 {
@@ -67,6 +69,16 @@ class AIManager
     protected function createGeminiDriver(array $config): GeminiDriver
     {
         return new GeminiDriver($config);
+    }
+
+    protected function createGroqDriver(array $config): GroqDriver
+    {
+        return new GroqDriver($config);
+    }
+
+    protected function createOpenrouterDriver(array $config): OpenRouterDriver
+    {
+        return new OpenRouterDriver($config);
     }
 
     public function getDefaultDriver(): string
