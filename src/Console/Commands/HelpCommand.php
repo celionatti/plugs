@@ -49,17 +49,13 @@ class HelpCommand extends Command
     {
         $this->branding();
 
-        $this->output->section('Usage');
-        $this->line('  php theplugs <command> [options] [arguments]');
+        $usage = "php theplugs <command> [options] [arguments]";
+        $globalOptions = "--help, -h       Display help for a command\n" .
+            "--quiet, -q       Suppress all output\n" .
+            "--version, -V     Display framework version\n" .
+            "--verbose, -v     Increase output verbosity";
 
-        $this->output->section('Global Options');
-        $globalOptions = [
-            '--help, -h' => 'Display help for a command',
-            '--quiet, -q' => 'Suppress all output',
-            '--version, -V' => 'Display framework version',
-            '--verbose, -v' => 'Increase output verbosity',
-        ];
-        $this->output->twoColumnList($globalOptions, 20);
+        $this->sideBySide($usage, $globalOptions, 'Usage', 'Global Options');
 
         $commands = $kernel->commands();
         $grouped = [];
@@ -74,28 +70,27 @@ class HelpCommand extends Command
         ksort($grouped);
 
         foreach ($grouped as $category => $categoryCommands) {
-            $this->newLine();
-            $this->line("  " . \Plugs\Console\Support\Output::BOLD . \Plugs\Console\Support\Output::YELLOW . strtoupper($category) . \Plugs\Console\Support\Output::RESET);
-
             $items = [];
             foreach ($categoryCommands as $name => $commandClass) {
                 try {
                     $command = new $commandClass($name);
                     $description = $command->description();
                 } catch (\Throwable $e) {
-                    $description = '';
+                    $description = 'No description available';
                 }
 
-                if (mb_strlen($description) > 60) {
-                    $description = mb_substr($description, 0, 57) . '...';
+                if (mb_strlen($description) > 70) {
+                    $description = mb_substr($description, 0, 67) . '...';
                 }
                 $items[$name] = $description;
             }
-            $this->output->twoColumnList($items, 28);
+
+            $this->statusCard($category, $items, 'info');
+            $this->newLine();
         }
 
         $this->newLine();
-        $this->line("  " . \Plugs\Console\Support\Output::DIM . "Run 'php theplugs help <command>' for more information." . \Plugs\Console\Support\Output::RESET);
+        $this->note("Run 'php theplugs help <command>' for more information.");
         $this->newLine();
 
         return 0;
@@ -117,28 +112,24 @@ class HelpCommand extends Command
         // Description
         if ($description = $command->description()) {
             $this->line("  " . $description);
+            $this->newLine();
         }
 
         // Usage
-        $this->output->section('USAGE');
-        $this->line("  php theplugs {$commandName} [options] [arguments]");
+        $this->info("Usage: " . \Plugs\Console\Support\Output::BRIGHT_WHITE . "php theplugs {$commandName} [options] [arguments]" . \Plugs\Console\Support\Output::RESET);
 
-        // Arguments
+        // Arguments & Options
         $arguments = $command->getArguments();
+        $options = $command->getOptions();
+
         if (!empty($arguments)) {
-            $this->output->section('ARGUMENTS');
-            foreach ($arguments as $argument => $description) {
-                $this->line("  " . \Plugs\Console\Support\Output::BRIGHT_GREEN . str_pad($argument, 20) . \Plugs\Console\Support\Output::RESET . " " . $description);
-            }
+            $this->statusCard('Arguments', $arguments, 'info');
+            $this->newLine();
         }
 
-        // Options
-        $options = $command->getOptions();
         if (!empty($options)) {
-            $this->output->section('OPTIONS');
-            foreach ($options as $option => $description) {
-                $this->line("  " . \Plugs\Console\Support\Output::BRIGHT_GREEN . str_pad($option, 25) . \Plugs\Console\Support\Output::RESET . " " . $description);
-            }
+            $this->statusCard('Options', $options, 'success');
+            $this->newLine();
         }
 
         // Examples
@@ -148,11 +139,11 @@ class HelpCommand extends Command
         }
 
         if (!empty($examples)) {
-            $this->output->section('EXAMPLES');
+            $this->section('Usage Examples');
             foreach ($examples as $example => $description) {
-                $this->line("  " . \Plugs\Console\Support\Output::DIM . "# " . $description . \Plugs\Console\Support\Output::RESET);
+                $this->highlight("  # " . $description, [$description], \Plugs\Console\Support\Output::DIM);
                 $this->line("  php theplugs {$commandName} {$example}");
-                $this->line();
+                $this->newLine();
             }
         }
 

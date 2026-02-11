@@ -455,6 +455,63 @@ class Output
         }
     }
 
+    public function gradientProgressBar(int $current, int $total, string $message = ''): void
+    {
+        $maxWidth = $this->consoleWidth - 4;
+        $percentage = ($current / $total) * 100;
+
+        $barWidth = $maxWidth - 30;
+        $filled = (int) ($barWidth * ($current / $total));
+
+        $bar = $this->getGradientString(str_repeat('█', $filled)) . self::DIM . str_repeat('░', $barWidth - $filled) . self::RESET;
+
+        $progressText = self::BOLD . self::BRIGHT_WHITE . 'Progress:' . self::RESET .
+            " " . sprintf("%3d%%", $percentage) .
+            " [" . $bar . "]";
+
+        if ($message) {
+            $progressText .= " " . self::DIM . $message . self::RESET;
+        }
+
+        $textLen = mb_strwidth($this->stripAnsiCodes($progressText));
+        $padding = $maxWidth - $textLen;
+
+        echo "\r" . self::BRIGHT_BLUE . "│" . self::RESET .
+            " " . $progressText .
+            str_repeat(" ", max(0, $padding)) . " " .
+            self::BRIGHT_BLUE . "│" . self::RESET;
+
+        if ($current === $total) {
+            echo PHP_EOL;
+        }
+    }
+
+    private function getGradientString(string $text): string
+    {
+        $colors = [
+            self::GRADIENT_PURPLE,
+            self::GRADIENT_PINK,
+            self::GRADIENT_ORANGE,
+            self::BRIGHT_YELLOW,
+            self::BRIGHT_GREEN,
+            self::GRADIENT_TEAL,
+            self::BRIGHT_CYAN,
+            self::BRIGHT_BLUE,
+        ];
+
+        $chars = mb_str_split($text);
+        $len = count($chars);
+        $colorCount = count($colors);
+        $result = '';
+
+        for ($i = 0; $i < $len; $i++) {
+            $colorIndex = (int) (($i / max(1, $len - 1)) * ($colorCount - 1));
+            $result .= $colors[$colorIndex] . $chars[$i];
+        }
+
+        return $result . self::RESET;
+    }
+
     public function taskWithBox(string $message, callable $callback): mixed
     {
         $maxWidth = $this->consoleWidth - 4;
@@ -631,6 +688,92 @@ class Output
             $this->line("  " . self::BRIGHT_CYAN . "│ " . self::RESET . $line);
         }
         $this->newLine();
+    }
+
+    public function sideBySide(string $left, string $right, string $leftTitle = '', string $rightTitle = ''): void
+    {
+        $halfWidth = (int) (($this->consoleWidth - 10) / 2);
+
+        $leftLines = $this->wrapText($left, $halfWidth);
+        $rightLines = $this->wrapText($right, $halfWidth);
+
+        if ($leftTitle || $rightTitle) {
+            $lt = self::BOLD . self::BRIGHT_WHITE . str_pad($leftTitle, $halfWidth) . self::RESET;
+            $rt = self::BOLD . self::BRIGHT_WHITE . str_pad($rightTitle, $halfWidth) . self::RESET;
+            $this->line("  " . self::BRIGHT_CYAN . "│ " . self::RESET . $lt . self::BRIGHT_CYAN . " │ " . self::RESET . $rt);
+            $this->line("  " . self::BRIGHT_CYAN . "├─" . str_repeat("─", $halfWidth) . "┼─" . str_repeat("─", $halfWidth) . "┤" . self::RESET);
+        }
+
+        $maxLines = max(count($leftLines), count($rightLines));
+
+        for ($i = 0; $i < $maxLines; $i++) {
+            $l = str_pad($leftLines[$i] ?? '', $halfWidth);
+            $r = str_pad($rightLines[$i] ?? '', $halfWidth);
+            $this->line("  " . self::BRIGHT_CYAN . "│ " . self::RESET . $l . self::BRIGHT_CYAN . " │ " . self::RESET . $r);
+        }
+        $this->newLine();
+    }
+
+    public function json(mixed $data): void
+    {
+        $json = json_encode($data, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
+
+        // Simple regex colorizer
+        $json = preg_replace_callback(
+            '/(".*?")(\s*:)|(".*?")|(\b\d+\b)|(true|false|null)/',
+            function ($matches) {
+                if (!empty($matches[1]) && !empty($matches[2])) {
+                    // Key
+                    return self::BRIGHT_CYAN . $matches[1] . self::RESET . $matches[2];
+                } elseif (!empty($matches[3])) {
+                    // String value
+                    return self::BRIGHT_GREEN . $matches[3] . self::RESET;
+                } elseif (!empty($matches[4])) {
+                    // Number
+                    return self::BRIGHT_YELLOW . $matches[4] . self::RESET;
+                } elseif (!empty($matches[5])) {
+                    // Bool/Null
+                    return self::BRIGHT_MAGENTA . $matches[5] . self::RESET;
+                }
+                return $matches[0];
+            },
+            $json
+        );
+
+        $this->panel($json, 'JSON Data');
+    }
+
+    public function statusCard(string $title, array $stats, string $type = 'info'): void
+    {
+        $maxWidth = $this->consoleWidth - 4;
+        $colors = [
+            'info' => self::BRIGHT_BLUE,
+            'success' => self::BRIGHT_GREEN,
+            'warning' => self::BRIGHT_YELLOW,
+            'error' => self::BRIGHT_RED,
+        ];
+        $color = $colors[$type] ?? self::BRIGHT_WHITE;
+
+        $this->line(self::DIM . "╭" . str_repeat("─", $maxWidth) . "╮" . self::RESET);
+        $this->line(self::DIM . "│ " . self::RESET . $color . self::BOLD . strtoupper($title) . self::RESET . str_repeat(" ", $maxWidth - mb_strwidth($title) - 1) . self::DIM . "│" . self::RESET);
+        $this->line(self::DIM . "├" . str_repeat("─", $maxWidth) . "┤" . self::RESET);
+
+        foreach ($stats as $key => $value) {
+            $line = "  • " . self::BRIGHT_WHITE . $key . self::RESET . ": " . $value;
+            $len = mb_strwidth($this->stripAnsiCodes($line));
+            $this->line(self::DIM . "│ " . self::RESET . $line . str_repeat(" ", max(0, $maxWidth - $len - 1)) . self::DIM . "│" . self::RESET);
+        }
+
+        $this->line(self::DIM . "╰" . str_repeat("─", $maxWidth) . "╯" . self::RESET);
+    }
+
+    public function highlight(string $text, array $words, string $color = self::BRIGHT_YELLOW): void
+    {
+        $highlighted = $text;
+        foreach ($words as $word) {
+            $highlighted = str_replace($word, $color . $word . self::RESET, $highlighted);
+        }
+        $this->line($highlighted);
     }
 
     public function title(string $text): void
@@ -1165,6 +1308,13 @@ class Output
 
     public function branding(string $version = '1.0.0'): void
     {
+        $this->brandingLogo();
+        $this->line("  " . self::DIM . "FRAMEWORK" . self::RESET);
+        $this->newLine();
+    }
+
+    public function brandingLogo(): void
+    {
         $logo = [
             '  ___ _               ',
             ' / _ \ |_  _ __ _ ___',
@@ -1177,9 +1327,64 @@ class Output
         foreach ($logo as $line) {
             $this->line("  " . self::BRIGHT_CYAN . $line . self::RESET);
         }
+    }
 
-        $this->line("  " . self::DIM . "FRAMEWORK" . self::RESET);
+    public function advancedHeader(string $title, string $subtitle = ''): void
+    {
+        $this->brandingLogo();
+
+        $maxWidth = $this->consoleWidth - 4;
+        $this->line(self::BRIGHT_BLUE . "╭" . str_repeat("─", $maxWidth) . "╮" . self::RESET);
+
+        // Gradient title
+        $paddedTitle = " " . strtoupper($title) . " ";
+        $titleLen = mb_strwidth($paddedTitle);
+        $leftPadding = (int) (($maxWidth - $titleLen) / 2);
+        $rightPadding = $maxWidth - $titleLen - $leftPadding;
+
+        echo "  " . self::BRIGHT_BLUE . "│" . self::RESET . str_repeat(" ", $leftPadding);
+        $this->gradientRaw($paddedTitle);
+        echo str_repeat(" ", $rightPadding) . self::BRIGHT_BLUE . "│" . self::RESET . "\n";
+
+        if ($subtitle) {
+            $subTitleLen = mb_strwidth($subtitle);
+            $leftSubPadding = (int) (($maxWidth - $subTitleLen) / 2);
+            $rightSubPadding = $maxWidth - $subTitleLen - $leftSubPadding;
+            $this->line(
+                self::BRIGHT_BLUE . "│" . self::RESET .
+                str_repeat(" ", $leftSubPadding) .
+                self::DIM . $subtitle . self::RESET .
+                str_repeat(" ", $rightSubPadding) .
+                self::BRIGHT_BLUE . "│" . self::RESET
+            );
+        }
+
+        $this->line(self::BRIGHT_BLUE . "╰" . str_repeat("─", $maxWidth) . "╯" . self::RESET);
         $this->newLine();
+    }
+
+    private function gradientRaw(string $text): void
+    {
+        $colors = [
+            self::GRADIENT_PURPLE,
+            self::GRADIENT_PINK,
+            self::GRADIENT_ORANGE,
+            self::BRIGHT_YELLOW,
+            self::BRIGHT_GREEN,
+            self::GRADIENT_TEAL,
+            self::BRIGHT_CYAN,
+            self::BRIGHT_BLUE,
+        ];
+
+        $chars = mb_str_split($text);
+        $len = count($chars);
+        $colorCount = count($colors);
+
+        for ($i = 0; $i < $len; $i++) {
+            $colorIndex = (int) (($i / max(1, $len - 1)) * ($colorCount - 1));
+            echo $colors[$colorIndex] . $chars[$i];
+        }
+        echo self::RESET;
     }
 
     public function twoColumnList(array $items, int $leftWidth = 30): void

@@ -13,7 +13,7 @@ class OptimizeCommand extends Command
     public function handle(): int
     {
         $this->checkpoint('start');
-        $this->title('Production Optimization');
+        $this->advancedHeader('Production Optimization', 'Caching framework files for peak performance');
 
         $this->info("Preparing framework for peak production performance...");
         $this->newLine();

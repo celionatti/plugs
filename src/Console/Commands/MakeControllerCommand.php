@@ -57,7 +57,7 @@ class MakeControllerCommand extends Command
     public function handle(): int
     {
         $this->checkpoint('start');
-        $this->title('Controller Generator');
+        $this->advancedHeader('Controller Generator', 'Scaffolding high-performance controllers');
 
         // Get controller name
         $name = $this->argument('0');

@@ -205,9 +205,29 @@ abstract class Command implements CommandInterface
         $this->output->panel($content, $title);
     }
 
+    protected function sideBySide(string $left, string $right, string $leftTitle = '', string $rightTitle = ''): void
+    {
+        $this->output->sideBySide($left, $right, $leftTitle, $rightTitle);
+    }
+
+    protected function json(mixed $data): void
+    {
+        $this->output->json($data);
+    }
+
+    protected function statusCard(string $title, array $stats, string $type = 'info'): void
+    {
+        $this->output->statusCard($title, $stats, $type);
+    }
+
     protected function title(string $text): void
     {
         $this->output->title($text);
+    }
+
+    protected function advancedHeader(string $title, string $subtitle = ''): void
+    {
+        $this->output->advancedHeader($title, $subtitle);
     }
 
     protected function banner(string $text): void
@@ -238,6 +258,11 @@ abstract class Command implements CommandInterface
     protected function divider(string $char = '─'): void
     {
         $this->output->divider($char);
+    }
+
+    protected function highlight(string $text, array $words, string $color = "\033[93m"): void
+    {
+        $this->output->highlight($text, $words, $color);
     }
 
     protected function newLine(int $count = 1): void
@@ -319,6 +344,11 @@ abstract class Command implements CommandInterface
     protected function progress(int $current, int $total, string $message = ''): void
     {
         $this->output->progress($current, $total, $message);
+    }
+
+    protected function gradientProgressBar(int $current, int $total, string $message = ''): void
+    {
+        $this->output->gradientProgressBar($current, $total, $message);
     }
 
     protected function step(int $current, int $total, string $message): void

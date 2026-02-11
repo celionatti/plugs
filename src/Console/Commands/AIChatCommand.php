@@ -30,7 +30,7 @@ class AIChatCommand extends Command
 
     public function handle(): int
     {
-        $this->banner('Plugs AI Chat');
+        $this->advancedHeader('AI Chat Assistant', 'Intelligent conversation powered by Plugs');
 
         $driverName = $this->option('driver');
         $model = $this->option('model');

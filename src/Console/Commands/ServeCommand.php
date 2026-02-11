@@ -21,7 +21,7 @@ class ServeCommand extends Command
         $host = $this->option('host') ?? '127.0.0.1';
         $port = $this->option('port') ?? 8000;
 
-        $this->banner('Development Server');
+        $this->advancedHeader('Development Server', 'Running your application locally');
 
         $this->panel(
             "Server URL: http://{$host}:{$port}\n" .
