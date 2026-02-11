@@ -112,6 +112,53 @@ class LocalFilesystemDriver implements FilesystemDriverInterface
         return ltrim(str_replace($this->root, '', $absolutePath), DIRECTORY_SEPARATOR);
     }
 
+    public function copy(string $from, string $to): bool
+    {
+        return copy($this->fullPath($from), $this->fullPath($to));
+    }
+
+    public function move(string $from, string $to): bool
+    {
+        return rename($this->fullPath($from), $this->fullPath($to));
+    }
+
+    public function getVisibility(string $path): string
+    {
+        if (DIRECTORY_SEPARATOR === '\\') {
+            return 'public'; // Windows filesystem emulation is limited
+        }
+
+        $permissions = fileperms($this->fullPath($path));
+
+        return ($permissions & 0x01FF) === 0644 ? 'public' : 'private';
+    }
+
+    public function setVisibility(string $path, string $visibility): bool
+    {
+        $permissions = $visibility === 'public' ? 0644 : 0600;
+
+        return chmod($this->fullPath($path), $permissions);
+    }
+
+    public function mimeType(string $path): string
+    {
+        return mime_content_type($this->fullPath($path));
+    }
+
+    public function append(string $path, string $data): bool
+    {
+        return file_put_contents($this->fullPath($path), $data, FILE_APPEND) !== false;
+    }
+
+    public function prepend(string $path, string $data): bool
+    {
+        if ($this->exists($path)) {
+            return $this->put($path, $data . $this->get($path));
+        }
+
+        return $this->put($path, $data);
+    }
+
     public function download(string $path, ?string $name = null, array $headers = [])
     {
         if (!$this->exists($path)) {

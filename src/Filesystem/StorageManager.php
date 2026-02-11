@@ -53,6 +53,11 @@ class StorageManager
         return new LocalFilesystemDriver($config);
     }
 
+    protected function createS3Driver(array $config): Drivers\S3FilesystemDriver
+    {
+        return new Drivers\S3FilesystemDriver($config);
+    }
+
     public function getDefaultDriver(): string
     {
         return $this->config['default'];
@@ -116,6 +121,26 @@ class StorageManager
     public function download(string $path, ?string $name = null, array $headers = [])
     {
         return $this->disk()->download($path, $name, $headers);
+    }
+
+    public function putFile(string $path, $file, array $options = []): string|false
+    {
+        return $this->putFileAs($path, $file, $file->hashName(), $options);
+    }
+
+    public function putFileAs(string $path, $file, string $name, array $options = []): string|false
+    {
+        $targetPath = trim($path . '/' . $name, '/');
+
+        if ($this->disk()->put($targetPath, $file->getContents())) {
+            if (isset($options['visibility'])) {
+                $this->disk()->setVisibility($targetPath, $options['visibility']);
+            }
+
+            return $targetPath;
+        }
+
+        return false;
     }
 
     protected function callCustomCreator(array $config): FilesystemDriverInterface

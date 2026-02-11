@@ -587,6 +587,10 @@ class UploadedFile
         $targetPath = trim($path . '/' . $name, '/');
 
         if ($storage->put($targetPath, $this->getContents())) {
+            if (isset($options['visibility'])) {
+                $storage->setVisibility($targetPath, $options['visibility']);
+            }
+
             return $targetPath;
         }
 

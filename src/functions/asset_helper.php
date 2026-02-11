@@ -60,6 +60,18 @@ if (!function_exists('asset')) {
      */
     function asset(string $path): string
     {
+        // If it already starts with storage/, just return the URL
+        if (str_starts_with($path, 'storage/')) {
+            return asset_manager()->url($path);
+        }
+
+        // If the file doesn't exist in the public directory, 
+        // fallback to the storage link path
+        $fullPath = public_path(ltrim($path, '/'));
+        if (!file_exists($fullPath)) {
+            return asset_manager()->url('storage/' . ltrim($path, '/'));
+        }
+
         return asset_manager()->url($path);
     }
 }

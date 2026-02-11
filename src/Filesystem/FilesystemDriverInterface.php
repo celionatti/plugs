@@ -102,4 +102,65 @@ interface FilesystemDriverInterface
      * @return string
      */
     public function path(string $absolutePath): string;
+
+    /**
+     * Copy a file to a new location.
+     *
+     * @param string $from
+     * @param string $to
+     * @return bool
+     */
+    public function copy(string $from, string $to): bool;
+
+    /**
+     * Move a file to a new location.
+     *
+     * @param string $from
+     * @param string $to
+     * @return bool
+     */
+    public function move(string $from, string $to): bool;
+
+    /**
+     * Get the visibility for the given path.
+     *
+     * @param string $path
+     * @return string
+     */
+    public function getVisibility(string $path): string;
+
+    /**
+     * Set the visibility for the given path.
+     *
+     * @param string $path
+     * @param string $visibility
+     * @return bool
+     */
+    public function setVisibility(string $path, string $visibility): bool;
+
+    /**
+     * Get the mime-type of a given file.
+     *
+     * @param string $path
+     * @return string
+     */
+    public function mimeType(string $path): string;
+
+    /**
+     * Append to a file.
+     *
+     * @param string $path
+     * @param string $data
+     * @return bool
+     */
+    public function append(string $path, string $data): bool;
+
+    /**
+     * Prepend to a file.
+     *
+     * @param string $path
+     * @param string $data
+     * @return bool
+     */
+    public function prepend(string $path, string $data): bool;
 }

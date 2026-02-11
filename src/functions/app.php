@@ -351,6 +351,16 @@ if (!function_exists('storage')) {
     }
 }
 
+if (!function_exists('storage_url')) {
+    /**
+     * Get the URL for a stored file
+     */
+    function storage_url(string $path, ?string $disk = null): string
+    {
+        return storage($disk)->url($path);
+    }
+}
+
 if (!function_exists('abort')) {
     function abort(int $code, string $message = ''): void
     {
