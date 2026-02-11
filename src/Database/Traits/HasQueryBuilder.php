@@ -218,9 +218,9 @@ trait HasQueryBuilder
         return static::query()->offset($offset);
     }
 
-    public static function count(): int
+    public static function count(string $column = '*'): int
     {
-        return static::query()->count();
+        return static::query()->count($column);
     }
 
     public static function recordExists(): bool
@@ -259,9 +259,9 @@ trait HasQueryBuilder
     /**
      * Simple paginate (lighter, no total count)
      */
-    public static function simplePaginate(int $perPage = 15, ?int $page = null): array
+    public static function simplePaginate(int $perPage = 15, ?int $page = null, array $columns = ['*']): array
     {
-        return static::query()->simplePaginate($perPage, $page);
+        return static::query()->simplePaginate($perPage, $page, $columns);
     }
 
     /**

@@ -837,9 +837,16 @@ class QueryBuilder
         return $this->connection->execute($sql, $this->params);
     }
 
-    public function count(): int
+    public function count(string $column = '*'): int
     {
-        $sql = "SELECT COUNT(*) as count FROM {$this->table}";
+        $sql = "SELECT COUNT({$column}) as count FROM " . QueryUtils::wrapIdentifier($this->table);
+
+        if (!empty($this->joins)) {
+            foreach ($this->joins as $join) {
+                $sql .= " {$join['type']} JOIN {$join['table']} ON {$join['first']} {$join['operator']} {$join['second']}";
+            }
+        }
+
         $sql .= $this->getWhereClause();
 
         $result = $this->connection->fetch($sql, $this->params);
@@ -863,6 +870,37 @@ class QueryBuilder
         $results = $this->get($columns);
 
         return new Pagination($results, $perPage, $page, $total);
+    }
+
+    /**
+     * Paginate the query without a total count (lighter).
+     */
+    public function simplePaginate(int $perPage = 15, ?int $page = null, array $columns = ['*']): array
+    {
+        $page = $page ?? (int) ($_GET['page'] ?? $_REQUEST['page'] ?? 1);
+        $page = max(1, $page);
+
+        $offset = ($page - 1) * $perPage;
+
+        // Fetch perPage + 1 to determine if there is a next page
+        $this->limit($perPage + 1)->offset($offset);
+
+        $results = $this->get($columns);
+        $collection = $results instanceof Collection ? $results->all() : $results;
+
+        $hasNextPage = count($collection) > $perPage;
+
+        if ($hasNextPage) {
+            array_pop($collection);
+        }
+
+        return [
+            'data' => $collection,
+            'current_page' => $page,
+            'per_page' => $perPage,
+            'has_next' => $hasNextPage,
+            'has_prev' => $page > 1,
+        ];
     }
 
     /**
