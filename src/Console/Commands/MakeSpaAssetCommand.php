@@ -92,12 +92,6 @@ class MakeSpaAssetCommand extends Command
     private function getJsContent(): string
     {
         return <<<'JS'
-/**
- * Plugs Framework SPA Bridge
- * 
- * Lightweight SPA functionality for traditional PHP views.
- * Intercepts internal links and loads content via Fetch API.
- */
 class PlugsSPA {
     constructor(options = {}) {
         this.options = {
@@ -106,41 +100,78 @@ class PlugsSPA {
             onNavigate: options.onNavigate || (() => { }),
             onComplete: options.onComplete || (() => { }),
             onError: options.onError || ((err) => console.error('SPA Navigation Error:', err)),
-            prefetch: options.prefetch !== false, // Default to true
-            cacheMaxSize: options.cacheMaxSize || 50, // Maximum cache entries
-            cacheTTL: options.cacheTTL || 300000, // 5 minutes in milliseconds
+            prefetch: options.prefetch !== false,
+            viewportPrefetch: options.viewportPrefetch !== false,
+            cacheMaxSize: options.cacheMaxSize || 50,
+            cacheTTL: options.cacheTTL || 300000,
+            persistCache: options.persistCache !== false
         };
 
         this.cache = new Map();
-        this.cacheTimestamps = new Map(); // Track when entries were cached
-        this.currentView = null; // Track active view controller
+        this.cacheTimestamps = new Map();
+        this.currentView = null;
+        this.prefetchObserver = null;
 
+        this.loadPersistentCache();
         this.init();
     }
 
-    /**
-     * Clean expired cache entries and enforce size limits
-     */
-    cleanCache() {
-        // Enforce size limit (remove oldest entries first)
-        if (this.cache.size <= this.options.cacheMaxSize) return;
-
-        while (this.cache.size > this.options.cacheMaxSize) {
-            const oldestUrl = this.cache.keys().next().value;
-            this.cache.delete(oldestUrl);
-            this.cacheTimestamps.delete(oldestUrl);
+    loadPersistentCache() {
+        if (!this.options.persistCache) return;
+        try {
+            const stored = sessionStorage.getItem('plugs_spa_cache');
+            if (stored) {
+                const { cache, timestamps } = JSON.parse(stored);
+                const now = Date.now();
+                Object.entries(cache).forEach(([url, html]) => {
+                    if (now - timestamps[url] < this.options.cacheTTL) {
+                        this.cache.set(url, html);
+                        this.cacheTimestamps.set(url, timestamps[url]);
+                    }
+                });
+            }
+        } catch (e) {
+            console.warn('SPA: Persistent cache load failed', e);
         }
     }
 
-    /**
-     * Define the view controller for the current page.
-     * Call this in an inline script within your view.
-     * 
-     * Pattern 1 (Object): Plugs.view({ mount() { ... }, unmount() { ... } })
-     * Pattern 2 (Function): Plugs.view(() => { ...; return () => { cleanup... } })
-     * 
-     * @param {object|function} controller 
-     */
+    savePersistentCache() {
+        if (!this.options.persistCache) return;
+        try {
+            const data = {
+                cache: Object.fromEntries(this.cache),
+                timestamps: Object.fromEntries(this.cacheTimestamps)
+            };
+            sessionStorage.setItem('plugs_spa_cache', JSON.stringify(data));
+        } catch (e) {
+            if (e.name === 'QuotaExceededError') {
+                // If storage is full, clear half the cache and try again or just stop persisting
+                const entries = Array.from(this.cache.keys());
+                for (let i = 0; i < entries.length / 2; i++) {
+                    this.cache.delete(entries[i]);
+                    this.cacheTimestamps.delete(entries[i]);
+                }
+                console.warn('SPA: Storage quota exceeded, halved cache.');
+            } else {
+                console.warn('SPA: Persistent cache save failed', e);
+            }
+        }
+    }
+
+    cleanCache() {
+        if (this.cache.size <= this.options.cacheMaxSize) return;
+
+        const entries = Array.from(this.cacheTimestamps.entries())
+            .sort((a, b) => a[1] - b[1]);
+
+        while (this.cache.size > this.options.cacheMaxSize) {
+            const [oldestUrl] = entries.shift();
+            this.cache.delete(oldestUrl);
+            this.cacheTimestamps.delete(oldestUrl);
+        }
+        this.savePersistentCache();
+    }
+
     view(controller) {
         if (typeof controller === 'function') {
             const cleanup = controller();
@@ -158,7 +189,6 @@ class PlugsSPA {
     init() {
         if (window.plugsSPAInitialized) return;
 
-        // Create Progress Bar
         this.progressBar = document.createElement('div');
         this.progressBar.id = 'spa-progress-bar';
         Object.assign(this.progressBar.style, {
@@ -175,55 +205,77 @@ class PlugsSPA {
         });
         document.body.appendChild(this.progressBar);
 
-        // Intercept link clicks
         document.addEventListener('click', (e) => this.handleLinkClick(e));
 
-        // Prefetch on hover
         if (this.options.prefetch) {
             document.addEventListener('mouseover', (e) => this.handleLinkHover(e));
         }
 
-        // Intercept form submissions
+        if (this.options.viewportPrefetch) {
+            this.initViewportPrefetch();
+        }
+
         document.addEventListener('submit', (e) => this.handleFormSubmit(e));
 
-        // Handle browser back/forward buttons
         window.addEventListener('popstate', (e) => {
             if (e.state && e.state.spa) {
                 this.navigate(window.location.href, false);
             }
         });
 
-        // Initialize Reactive Components
         this.initializeComponents();
-
-        // Handle clicks outside for p-outside
         document.addEventListener('click', (e) => this.handleOutsideClick(e));
 
         window.plugsSPAInitialized = true;
-        console.log('Plugs SPA Bridge initialized (v2.3).');
+        console.log('Plugs SPA Bridge Optimized (v3.0).');
+    }
+
+    initViewportPrefetch() {
+        this.prefetchObserver = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    const link = entry.target;
+                    this.prefetch(link.href);
+                    this.prefetchObserver.unobserve(link);
+                }
+            });
+        }, { rootMargin: '50px' });
+
+        this.observeLinks();
+    }
+
+    observeLinks(container = document) {
+        if (!this.prefetchObserver) return;
+        container.querySelectorAll('a[data-spa="true"]').forEach(link => {
+            if (this.isInternalLink(link) && !this.cache.has(link.href)) {
+                this.prefetchObserver.observe(link);
+            }
+        });
     }
 
     initializeComponents(container = document) {
         let components = Array.from(container.querySelectorAll('[data-plug-component]'));
 
-        // If container is a component itself, add it to the list
-        if (container.hasAttribute && container.hasAttribute('data-plug-component')) {
+        // If container is a component itself, it needs to be processed to bind listeners to its new children
+        if (container !== document && container.hasAttribute && container.hasAttribute('data-plug-component')) {
             components.unshift(container);
-            // Force re-initialization for updated components
+            // Force re-initialization of the container's contents
             container._plugInitialized = false;
         }
+        
+        const processed = new Set();
 
         components.forEach(el => {
-            if (el._plugInitialized) return;
+            if (el._plugInitialized || processed.has(el)) return;
+            processed.add(el);
 
-            // p-init
+            // Life-cycle optimization: Batch attribute reads
+            const dataset = el.dataset;
             const initAction = el.getAttribute('p-init');
-            if (initAction) {
-                this.callComponentAction(el, 'init', initAction);
-            }
-
-            // p-poll
             const pollInterval = parseInt(el.getAttribute('p-poll') || '0');
+
+            if (initAction) this.callComponentAction(el, 'init', initAction);
+
             if (pollInterval > 0) {
                 const pollAction = el.getAttribute('p-poll-action') || 'refresh';
                 el._pollTimer = setInterval(async () => {
@@ -231,7 +283,7 @@ class PlugsSPA {
                         clearInterval(el._pollTimer);
                         return;
                     }
-                    if (el._isPolling) return; // Prevent stacking
+                    if (el._isPolling) return;
                     el._isPolling = true;
                     try {
                         await this.callComponentAction(el, 'poll', pollAction);
@@ -241,45 +293,35 @@ class PlugsSPA {
                 }, pollInterval);
             }
 
-            // p-click
+            // Delegation-friendly listeners can be optimized, but here we keep them specific to the component for scoping
             el.querySelectorAll('[p-click]').forEach(actionEl => {
                 actionEl.addEventListener('click', (e) => {
                     const confirmMsg = actionEl.getAttribute('p-confirm');
                     if (confirmMsg && !confirm(confirmMsg)) return;
-
                     e.preventDefault();
                     this.callComponentAction(el, 'click', actionEl.getAttribute('p-click'));
                 });
             });
 
-            // p-change (inputs, selects)
-            el.querySelectorAll('[p-change]').forEach(actionEl => {
-                actionEl.addEventListener('change', (e) => {
-                    this.callComponentAction(el, 'change', actionEl.getAttribute('p-change'), this.getInputValue(actionEl));
+            // Re-use logic for change/blur
+            ['change', 'blur'].forEach(evtType => {
+                el.querySelectorAll(`[p-${evtType}]`).forEach(actionEl => {
+                    actionEl.addEventListener(evtType, () => {
+                        this.callComponentAction(el, evtType, actionEl.getAttribute(`p-${evtType}`), this.getInputValue(actionEl));
+                    });
                 });
             });
 
-            // p-submit (forms)
             el.querySelectorAll('form[p-submit]').forEach(formEl => {
                 formEl.addEventListener('submit', (e) => {
                     const confirmMsg = formEl.getAttribute('p-confirm');
                     if (confirmMsg && !confirm(confirmMsg)) return;
-
                     e.preventDefault();
                     const formData = new FormData(formEl);
-                    const data = Object.fromEntries(formData.entries());
-                    this.callComponentAction(el, 'submit', formEl.getAttribute('p-submit'), data);
+                    this.callComponentAction(el, 'submit', formEl.getAttribute('p-submit'), Object.fromEntries(formData.entries()));
                 });
             });
 
-            // p-blur
-            el.querySelectorAll('[p-blur]').forEach(actionEl => {
-                actionEl.addEventListener('blur', (e) => {
-                    this.callComponentAction(el, 'blur', actionEl.getAttribute('p-blur'), this.getInputValue(actionEl));
-                });
-            });
-
-            // p-keyup (with p-debounce and .enter support)
             el.querySelectorAll('[p-keyup]').forEach(actionEl => {
                 const actionRaw = actionEl.getAttribute('p-keyup');
                 const isEnterOnly = actionRaw.endsWith('.enter');
@@ -289,21 +331,19 @@ class PlugsSPA {
                 let timer;
                 actionEl.addEventListener('keyup', (e) => {
                     if (isEnterOnly && e.key !== 'Enter') return;
-
-                    if (timer) clearTimeout(timer);
+                    clearTimeout(timer);
                     timer = setTimeout(() => {
                         this.callComponentAction(el, 'keyup', action, this.getInputValue(actionEl));
                     }, debounceTime);
                 });
             });
 
-            // p-intersect
             el.querySelectorAll('[p-intersect]').forEach(actionEl => {
                 const action = actionEl.getAttribute('p-intersect');
                 const observer = new IntersectionObserver((entries) => {
                     if (entries[0].isIntersecting) {
                         this.callComponentAction(el, 'intersect', action);
-                        observer.disconnect(); // Typically intersect is a one-time trigger like "visible"
+                        observer.disconnect();
                     }
                 });
                 observer.observe(actionEl);
@@ -311,13 +351,15 @@ class PlugsSPA {
 
             el._plugInitialized = true;
         });
+
+        // After components are initialized, observe links for prefetching
+        this.observeLinks(container);
     }
 
     handleOutsideClick(e) {
         document.querySelectorAll('[p-outside]').forEach(el => {
             if (!el.contains(e.target)) {
-                const action = el.getAttribute('p-outside');
-                this.callComponentAction(el, 'outside', action);
+                this.callComponentAction(el, 'outside', el.getAttribute('p-outside'));
             }
         });
     }
@@ -329,21 +371,18 @@ class PlugsSPA {
     }
 
     async callComponentAction(componentEl, eventType, action, payload = null) {
-        const name = componentEl.dataset.plugComponent;
-        const state = componentEl.dataset.plugState;
+        const { plugComponent: name, plugState: state } = componentEl.dataset;
         const id = componentEl.id;
 
-        // Visual feedback (unless specifically disabled or it's a background event like intersect/keyup)
-        if (eventType !== 'intersect' && eventType !== 'keyup' && eventType !== 'poll') {
+        if (!['intersect', 'keyup', 'poll'].includes(eventType)) {
             componentEl.style.opacity = '0.7';
         }
 
-        // Loading Indicator Support
         const loadingSelector = componentEl.getAttribute('p-loading');
         let loadingEls = [];
         if (loadingSelector) {
             loadingEls = Array.from(componentEl.querySelectorAll(loadingSelector));
-            loadingEls.forEach(el => el.style.display = ''); // Assuming they are hidden by default or we just show them
+            loadingEls.forEach(el => el.style.display = '');
             componentEl.classList.add('p-is-loading');
         }
 
@@ -355,33 +394,18 @@ class PlugsSPA {
                     'X-Requested-With': 'XMLHttpRequest',
                     'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || ''
                 },
-                body: JSON.stringify({
-                    component: name,
-                    action: action,
-                    state: state,
-                    id: id,
-                    payload: payload
-                })
+                body: JSON.stringify({ component: name, action, state, id, payload })
             });
 
             if (!response.ok) throw new Error('Action failed');
 
             this.handleFlashMessage(response);
-
             const result = await response.json();
 
-            // Update HTML
-            if (result.html) {
-                componentEl.innerHTML = result.html;
-            }
+            if (result.html) componentEl.innerHTML = result.html;
+            if (result.state) componentEl.dataset.plugState = result.state;
 
-            if (result.state) {
-                componentEl.dataset.plugState = result.state;
-            }
-
-            // Re-initialize children if they are components
             this.initializeComponents(componentEl);
-
         } catch (err) {
             console.error('Plugs Component Error:', err);
         } finally {
@@ -395,67 +419,39 @@ class PlugsSPA {
 
     handleLinkClick(e) {
         const link = e.target.closest('a');
+        if (!link || !this.isInternalLink(link) || link.dataset.spa !== 'true' || link.target === '_blank') return;
 
-        if (!link || !this.isInternalLink(link)) {
-            return;
-        }
-
-        // Only intercept if data-spa="true" is set
-        if (link.dataset.spa !== 'true') {
-            return;
-        }
-
-        // p-confirm support
         const confirmMsg = link.getAttribute('p-confirm');
         if (confirmMsg && !confirm(confirmMsg)) {
             e.preventDefault();
             return;
         }
 
-        // Skip if link has target="_blank" (as a safety measure)
-        if (link.target === '_blank') {
-            return;
-        }
-
         e.preventDefault();
-        const url = link.href;
         const target = link.getAttribute('data-spa-target') || this.options.contentSelector;
         const method = (link.getAttribute('p-method') || 'GET').toUpperCase();
 
-        if (method !== 'GET') {
-            this.navigate(url, true, target, { method });
-        } else {
-            this.navigate(url, true, target);
-        }
+        this.navigate(link.href, true, target, method !== 'GET' ? { method } : {});
     }
 
     handleFormSubmit(e) {
         const form = e.target;
-        // Only intercept if data-spa="true" is set
         if (form.dataset.spa !== 'true') return;
 
-        // Ensure form action is internal
         const action = form.getAttribute('action') || window.location.href;
         const actionUrl = new URL(action, window.location.origin);
         if (actionUrl.host !== window.location.host) return;
 
         e.preventDefault();
-
         const method = (form.getAttribute('method') || 'GET').toUpperCase();
-        const formData = new FormData(form);
         const target = form.getAttribute('data-spa-target') || this.options.contentSelector;
 
         this.navigate(action, true, target, {
             method,
-            body: method === 'GET' ? null : formData
+            body: method === 'GET' ? null : new FormData(form)
         });
     }
 
-    /**
-     * Manual load method to pull content into a specific target
-     * @param {string} url 
-     * @param {string} targetSelector 
-     */
     async load(url, targetSelector) {
         return this.navigate(url, false, targetSelector);
     }
@@ -469,46 +465,28 @@ class PlugsSPA {
     }
 
     hideProgress() {
-        this.progressBar.style.width = '100%';
-        setTimeout(() => {
-            this.progressBar.style.opacity = '0';
-            setTimeout(() => {
-                this.progressBar.style.width = '0';
-            }, 300);
-        }, 200);
+        this.progressBar.style.opacity = '0';
+        setTimeout(() => { this.progressBar.style.width = '0'; }, 300);
         clearTimeout(this.progressTimer);
     }
 
     handleLinkHover(e) {
         const link = e.target.closest('a');
-        if (!link || !this.isInternalLink(link) || link.dataset.spa !== 'true') return;
+        if (!link || !this.isInternalLink(link) || link.dataset.spa !== 'true' || this.cache.has(link.href)) return;
 
-        const url = link.href;
-        if (this.cache.has(url)) return;
-
-        // Debounce prefetch
         clearTimeout(link._prefetchTimer);
-        link._prefetchTimer = setTimeout(() => {
-            if (this.cache.has(url)) return;
-            this.prefetch(url);
-        }, 150);
+        link._prefetchTimer = setTimeout(() => this.prefetch(link.href), 150);
     }
 
     async prefetch(url) {
-        // Check if already in cache and not expired
         if (this.cache.has(url)) {
             const cachedAt = this.cacheTimestamps.get(url);
-            if (Date.now() - cachedAt < this.options.cacheTTL) {
-                return;
-            }
+            if (Date.now() - cachedAt < this.options.cacheTTL) return;
         }
 
         try {
             const response = await fetch(url, {
-                headers: {
-                    'X-Plugs-SPA': 'true',
-                    'X-Requested-With': 'XMLHttpRequest'
-                }
+                headers: { 'X-Plugs-SPA': 'true', 'X-Requested-With': 'XMLHttpRequest' }
             });
             if (response.ok) {
                 const html = await response.text();
@@ -516,9 +494,7 @@ class PlugsSPA {
                 this.cacheTimestamps.set(url, Date.now());
                 this.cleanCache();
             }
-        } catch (e) {
-            // Silently fail prefetch
-        }
+        } catch (e) { }
     }
 
     isInternalLink(link) {
@@ -530,11 +506,7 @@ class PlugsSPA {
         if (flash) {
             try {
                 const message = JSON.parse(flash);
-                // Dispatch event for other listeners
                 window.dispatchEvent(new CustomEvent('plugs:flash', { detail: message }));
-
-                // Default Toast (Simple alert if no UI library attached, can be overridden)
-                console.log('Flash:', message);
             } catch (e) { }
         }
     }
@@ -544,10 +516,7 @@ class PlugsSPA {
         const contentArea = document.querySelector(targetSelector);
 
         if (!contentArea) {
-            console.warn(`SPA: Target area "${targetSelector}" not found. Falling back to full reload.`);
-            if (pushState && targetSelector === this.options.contentSelector) {
-                window.location.href = url;
-            }
+            if (pushState && targetSelector === this.options.contentSelector) window.location.href = url;
             return false;
         }
 
@@ -555,14 +524,9 @@ class PlugsSPA {
         document.body.classList.add(this.options.loaderClass);
         this.showProgress();
 
-        // Visual feedback (unless View Transitions active)
         const useViewTransition = document.startViewTransition && targetSelector === this.options.contentSelector;
-
-        // Skeleton Support
         const skeletonType = contentArea.getAttribute('data-spa-skeleton');
-        if (skeletonType && !useViewTransition) {
-            contentArea.innerHTML = this.getSkeletonPlaceholder(skeletonType);
-        }
+        if (skeletonType && !useViewTransition) contentArea.innerHTML = this.getSkeletonPlaceholder(skeletonType);
 
         try {
             const headers = {
@@ -578,20 +542,13 @@ class PlugsSPA {
             const isMainContent = targetSelector === this.options.contentSelector;
             let html;
 
-            if (isMainContent && this.cache.has(url)) {
-                // Check TTL even for manual navigation
+            if (isMainContent && (fetchOptions.method || 'GET').toUpperCase() === 'GET' && this.cache.has(url)) {
                 const cachedAt = this.cacheTimestamps.get(url);
-                if (Date.now() - cachedAt < this.options.cacheTTL) {
-                    html = this.cache.get(url);
-                }
+                if (Date.now() - cachedAt < this.options.cacheTTL) html = this.cache.get(url);
             }
 
             if (!html) {
-                const response = await fetch(url, {
-                    ...fetchOptions,
-                    headers
-                });
-
+                const response = await fetch(url, { ...fetchOptions, headers });
                 if (!response.ok) throw new Error(`HTTP Error: ${response.status}`);
 
                 this.handleFlashMessage(response);
@@ -599,15 +556,11 @@ class PlugsSPA {
                 const contentType = response.headers.get('content-type');
                 if (contentType && contentType.includes('application/json')) {
                     const json = await response.json();
-                    if (json.redirect) {
-                        return this.navigate(json.redirect, true);
-                    }
+                    if (json.redirect) return this.navigate(json.redirect, true);
                     return true;
                 }
 
                 html = await response.text();
-
-                // Update cache
                 if (isMainContent && (fetchOptions.method || 'GET').toUpperCase() === 'GET') {
                     this.cache.set(url, html);
                     this.cacheTimestamps.set(url, Date.now());
@@ -615,49 +568,42 @@ class PlugsSPA {
                 }
             }
 
-            // Extract Title
             const titleMatch = html.match(/<title>(.*?)<\/title>/i);
-            if (titleMatch && titleMatch[1] && isMainContent) {
-                document.title = titleMatch[1];
-            }
+            if (titleMatch && titleMatch[1] && isMainContent) document.title = titleMatch[1];
 
-            // Layout Detection
             const layoutMatch = html.match(/<meta name="plugs-layout" content="(.*?)">/i);
             const currentLayoutMeta = document.querySelector('meta[name="plugs-layout"]');
             const currentLayout = currentLayoutMeta ? currentLayoutMeta.content : null;
 
             if (layoutMatch && layoutMatch[1] && currentLayout && layoutMatch[1] !== currentLayout) {
-                console.log(`SPA: Layout mismatch detected (${currentLayout} -> ${layoutMatch[1]}). Performing full reload.`);
                 window.location.href = url;
                 return true;
             }
 
             const performUpdate = () => {
-                // Unmount current view
-                if (this.currentView && this.currentView.unmount) {
-                    try { this.currentView.unmount(); } catch (e) { console.error('Unmount Error:', e); }
+                if (this.currentView?.unmount) {
+                    try { this.currentView.unmount(); } catch (e) { }
                 }
                 this.currentView = null;
 
-                // Swap Content
-                contentArea.innerHTML = html;
-
-                // Execute Scripts
-                contentArea.querySelectorAll('script').forEach(oldScript => {
-                    const newScript = document.createElement('script');
-                    Array.from(oldScript.attributes).forEach(attr => newScript.setAttribute(attr.name, attr.value));
-                    newScript.appendChild(document.createTextNode(oldScript.innerHTML));
-                    oldScript.parentNode.replaceChild(newScript, oldScript);
+                // Content update via requestAnimationFrame for perceived smoothness
+                requestAnimationFrame(() => {
+                    contentArea.innerHTML = html;
+                    contentArea.querySelectorAll('script').forEach(oldScript => {
+                        const newScript = document.createElement('script');
+                        Array.from(oldScript.attributes).forEach(attr => newScript.setAttribute(attr.name, attr.value));
+                        newScript.appendChild(document.createTextNode(oldScript.innerHTML));
+                        oldScript.parentNode.replaceChild(newScript, oldScript);
+                    });
+                    this.initializeComponents(contentArea);
+                    if (pushState && isMainContent) {
+                        window.history.pushState({ spa: true }, '', url);
+                        window.scrollTo(0, 0);
+                    }
+                    this.options.onComplete(url);
+                    this.hideProgress();
+                    document.body.classList.remove(this.options.loaderClass);
                 });
-
-                // Initialize Reactivity
-                this.initializeComponents(contentArea);
-
-                // Update URL and Scroll
-                if (pushState && isMainContent) {
-                    window.history.pushState({ spa: true }, '', url);
-                    window.scrollTo(0, 0);
-                }
             };
 
             if (useViewTransition) {
@@ -666,71 +612,39 @@ class PlugsSPA {
                 performUpdate();
             }
 
-            this.options.onComplete(url);
             return true;
         } catch (err) {
             this.options.onError(err);
-            return false;
-        } finally {
             this.hideProgress();
             document.body.classList.remove(this.options.loaderClass);
+            return false;
         }
     }
 
-    /**
-     * Generate skeleton HTML for client-side placeholders
-     * @param {string} type 
-     */
     getSkeletonPlaceholder(type) {
-        const shimmer = '<div class="plugs-skeleton" style="width: 100%; height: 20px; border-radius: 4px; margin-bottom: 10px;"></div>';
+        const shimmer = '<div class="plugs-skeleton" style="width: 100%; height: 20px; border-radius: 4px; margin-bottom: 10px; background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%); background-size: 200% 100%; animation: shimmer 1.5s infinite;"></div>';
+        
+        // Add shimmer animation style if not exists
+        if (!document.getElementById('plugs-skeleton-style')) {
+            const style = document.createElement('style');
+            style.id = 'plugs-skeleton-style';
+            style.innerHTML = `@keyframes shimmer { 0% { background-position: -200% 0; } 100% { background-position: 200% 0; } }`;
+            document.head.appendChild(style);
+        }
 
         switch (type) {
             case 'card':
-                return `
-                    <div class="plugs-skeleton-card" style="border: 1px solid #e2e8f0; padding: 1rem; border-radius: 8px; margin-bottom: 1rem;">
-                        <div class="plugs-skeleton" style="width: 100%; height: 150px; border-radius: 4px; margin-bottom: 1rem;"></div>
-                        <div class="plugs-skeleton" style="width: 60%; height: 16px; border-radius: 4px; margin-bottom: 0.5rem;"></div>
-                        <div class="plugs-skeleton" style="width: 90%; height: 12px; border-radius: 4px; margin-bottom: 0.5rem;"></div>
-                        <div class="plugs-skeleton" style="width: 40%; height: 12px; border-radius: 4px;"></div>
-                    </div>
-                `;
+                return `<div class="p-4 border rounded-lg">${shimmer.repeat(4)}</div>`;
             case 'list':
-                return `
-                    <div class="plugs-skeleton-list">
-                        ${[1, 2, 3].map(() => `
-                            <div style="display: flex; align-items: center; margin-bottom: 1rem;">
-                                <div class="plugs-skeleton" style="width: 40px; height: 40px; border-radius: 50%; margin-right: 1rem;"></div>
-                                <div style="flex: 1;">
-                                    <div class="plugs-skeleton" style="width: 50%; height: 16px; border-radius: 4px; margin-bottom: 0.5rem;"></div>
-                                    <div class="plugs-skeleton" style="width: 80%; height: 12px; border-radius: 4px;"></div>
-                                </div>
-                            </div>
-                        `).join('')}
-                    </div>
-                `;
-            case 'table':
-                return `
-                    <div class="plugs-skeleton-table-wrapper" style="overflow-x: auto;">
-                        <table class="table">
-                            <thead><tr>${[1, 2, 3, 4].map(() => `<th><div class="plugs-skeleton" style="width: 80%; height: 20px; border-radius: 4px;"></div></th>`).join('')}</tr></thead>
-                            <tbody>
-                                ${[1, 2, 3, 4, 5].map(() => `
-                                    <tr>${[1, 2, 3, 4].map(() => `<td><div class="plugs-skeleton" style="width: 100%; height: 15px; border-radius: 4px;"></div></td>`).join('')}</tr>
-                                `).join('')}
-                            </tbody>
-                        </table>
-                    </div>
-                `;
+                return `<div class="space-y-4">${shimmer.repeat(5)}</div>`;
             default:
                 return shimmer.repeat(3);
         }
     }
 }
 
-// Auto-initialize if script is loaded
 if (!window.plugsSPA) {
     window.plugsSPA = new PlugsSPA();
-    // Expose correctly
     window.Plugs = window.plugsSPA;
 }
 JS;
