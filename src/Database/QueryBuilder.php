@@ -8,6 +8,7 @@ use PDO;
 use Closure;
 use Exception;
 use BadMethodCallException;
+use Plugs\Database\Support\QueryUtils;
 use Plugs\Http\StandardResponse;
 use Plugs\Paginator\Pagination;
 
@@ -65,7 +66,7 @@ class QueryBuilder
 
     public function select(array $columns = ['*']): self
     {
-        $this->select = $columns;
+        $this->select = array_map([QueryUtils::class, 'sanitizeColumn'], $columns);
 
         return $this;
     }
@@ -314,25 +315,207 @@ class QueryBuilder
 
     public function whereIn(string $column, array $values): self
     {
+        QueryUtils::sanitizeColumn($column);
+
         $placeholders = [];
         foreach ($values as $i => $value) {
-            $placeholder = ":wherein_{$column}_{$i}";
+            $placeholder = ":wherein_" . str_replace('.', '_', $column) . "_{$i}";
             $placeholders[] = $placeholder;
             $this->params[$placeholder] = $value;
         }
 
         $this->where[] = [
             'type' => 'In',
-            'query' => "{$column} IN (" . implode(', ', $placeholders) . ")",
+            'query' => QueryUtils::wrapIdentifier($column) . " IN (" . implode(', ', $placeholders) . ")",
             'boolean' => 'AND',
         ];
 
         return $this;
     }
 
+    public function whereNotIn(string $column, array $values): self
+    {
+        QueryUtils::sanitizeColumn($column);
+
+        $placeholders = [];
+        foreach ($values as $i => $value) {
+            $placeholder = ":wherenotin_" . str_replace('.', '_', $column) . "_{$i}";
+            $placeholders[] = $placeholder;
+            $this->params[$placeholder] = $value;
+        }
+
+        $this->where[] = [
+            'type' => 'NotIn',
+            'query' => QueryUtils::wrapIdentifier($column) . " NOT IN (" . implode(', ', $placeholders) . ")",
+            'boolean' => 'AND',
+        ];
+
+        return $this;
+    }
+
+    public function whereBetween(string $column, array $values): self
+    {
+        QueryUtils::sanitizeColumn($column);
+
+        $placeholder1 = ":wherebetween_" . str_replace('.', '_', $column) . "_1";
+        $placeholder2 = ":wherebetween_" . str_replace('.', '_', $column) . "_2";
+
+        $this->where[] = [
+            'type' => 'Between',
+            'query' => QueryUtils::wrapIdentifier($column) . " BETWEEN {$placeholder1} AND {$placeholder2}",
+            'boolean' => 'AND',
+        ];
+
+        $this->params[$placeholder1] = $values[0];
+        $this->params[$placeholder2] = $values[1];
+
+        return $this;
+    }
+
+    public function whereNotBetween(string $column, array $values): self
+    {
+        QueryUtils::sanitizeColumn($column);
+
+        $placeholder1 = ":wherenotbetween_" . str_replace('.', '_', $column) . "_1";
+        $placeholder2 = ":wherenotbetween_" . str_replace('.', '_', $column) . "_2";
+
+        $this->where[] = [
+            'type' => 'NotBetween',
+            'query' => QueryUtils::wrapIdentifier($column) . " NOT BETWEEN {$placeholder1} AND {$placeholder2}",
+            'boolean' => 'AND',
+        ];
+
+        $this->params[$placeholder1] = $values[0];
+        $this->params[$placeholder2] = $values[1];
+
+        return $this;
+    }
+
+    public function whereDate(string $column, $operator, $value = null): self
+    {
+        if (func_num_args() === 2) {
+            $value = $operator;
+            $operator = '=';
+        }
+
+        QueryUtils::sanitizeColumn($column);
+        $placeholder = ":wheredate_" . str_replace('.', '_', $column) . "_" . count($this->params);
+
+        $this->where[] = [
+            'type' => 'Date',
+            'query' => "DATE(" . QueryUtils::wrapIdentifier($column) . ") {$operator} {$placeholder}",
+            'boolean' => 'AND',
+        ];
+
+        $this->params[$placeholder] = $value;
+
+        return $this;
+    }
+
+    public function whereMonth(string $column, $operator, $value = null): self
+    {
+        if (func_num_args() === 2) {
+            $value = $operator;
+            $operator = '=';
+        }
+
+        QueryUtils::sanitizeColumn($column);
+        $placeholder = ":wheremonth_" . str_replace('.', '_', $column) . "_" . count($this->params);
+
+        $this->where[] = [
+            'type' => 'Month',
+            'query' => "MONTH(" . QueryUtils::wrapIdentifier($column) . ") {$operator} {$placeholder}",
+            'boolean' => 'AND',
+        ];
+
+        $this->params[$placeholder] = $value;
+
+        return $this;
+    }
+
+    public function whereDay(string $column, $operator, $value = null): self
+    {
+        if (func_num_args() === 2) {
+            $value = $operator;
+            $operator = '=';
+        }
+
+        QueryUtils::sanitizeColumn($column);
+        $placeholder = ":whereday_" . str_replace('.', '_', $column) . "_" . count($this->params);
+
+        $this->where[] = [
+            'type' => 'Day',
+            'query' => "DAY(" . QueryUtils::wrapIdentifier($column) . ") {$operator} {$placeholder}",
+            'boolean' => 'AND',
+        ];
+
+        $this->params[$placeholder] = $value;
+
+        return $this;
+    }
+
+    public function whereYear(string $column, $operator, $value = null): self
+    {
+        if (func_num_args() === 2) {
+            $value = $operator;
+            $operator = '=';
+        }
+
+        QueryUtils::sanitizeColumn($column);
+        $placeholder = ":whereyear_" . str_replace('.', '_', $column) . "_" . count($this->params);
+
+        $this->where[] = [
+            'type' => 'Year',
+            'query' => "YEAR(" . QueryUtils::wrapIdentifier($column) . ") {$operator} {$placeholder}",
+            'boolean' => 'AND',
+        ];
+
+        $this->params[$placeholder] = $value;
+
+        return $this;
+    }
+
+    public function whereTime(string $column, $operator, $value = null): self
+    {
+        if (func_num_args() === 2) {
+            $value = $operator;
+            $operator = '=';
+        }
+
+        QueryUtils::sanitizeColumn($column);
+        $placeholder = ":wheretime_" . str_replace('.', '_', $column) . "_" . count($this->params);
+
+        $this->where[] = [
+            'type' => 'Time',
+            'query' => "TIME(" . QueryUtils::wrapIdentifier($column) . ") {$operator} {$placeholder}",
+            'boolean' => 'AND',
+        ];
+
+        $this->params[$placeholder] = $value;
+
+        return $this;
+    }
+
+    public function whereJsonContains(string $column, $value): self
+    {
+        QueryUtils::sanitizeColumn($column);
+        $placeholder = ":wherejson_" . str_replace('.', '_', $column) . "_" . count($this->params);
+
+        $this->where[] = [
+            'type' => 'JsonContains',
+            'query' => "JSON_CONTAINS(" . QueryUtils::wrapIdentifier($column) . ", {$placeholder})",
+            'boolean' => 'AND',
+        ];
+
+        $this->params[$placeholder] = json_encode($value);
+
+        return $this;
+    }
+
     public function orderBy(string $column, string $direction = 'ASC'): self
     {
-        $this->orderBy[] = "{$column} {$direction}";
+        QueryUtils::sanitizeColumn($column);
+        $this->orderBy[] = QueryUtils::wrapIdentifier($column) . " " . (strtoupper($direction) === 'DESC' ? 'DESC' : 'ASC');
 
         return $this;
     }
@@ -414,6 +597,11 @@ class QueryBuilder
     public function find($id, array $columns = ['*']): mixed
     {
         return $this->where('id', '=', $id)->first($columns);
+    }
+
+    public function firstWhere(string $column, $operator = null, $value = null): mixed
+    {
+        return $this->where($column, $operator, $value)->first();
     }
 
     public function findOrFail($id, array $columns = ['*'])
@@ -576,9 +764,52 @@ class QueryBuilder
             $placeholders[] = '(' . implode(', ', $rowPlaceholders) . ')';
         }
 
-        $sql = "INSERT INTO {$this->table} (" . implode(', ', $columns) . ") VALUES " . implode(', ', $placeholders);
+        $sql = "INSERT INTO " . QueryUtils::wrapIdentifier($this->table) . " (" . implode(', ', array_map([QueryUtils::class, 'wrapIdentifier'], $columns)) . ") VALUES " . implode(', ', $placeholders);
 
         return $this->connection->execute($sql, $params) > 0;
+    }
+
+    /**
+     * Insert new records or update the existing ones.
+     */
+    public function upsert(array $values, array $uniqueBy, array $update = null): int
+    {
+        if (empty($values)) {
+            return 0;
+        }
+
+        if (!isset($values[0]) || !is_array($values[0])) {
+            $values = [$values];
+        }
+
+        $columns = array_keys($values[0]);
+
+        if (is_null($update)) {
+            $update = $columns;
+        }
+
+        $params = [];
+        $placeholders = [];
+
+        foreach ($values as $rowIndex => $row) {
+            $rowPlaceholders = [];
+            foreach ($columns as $column) {
+                $paramName = ":upsert_{$rowIndex}_{$column}";
+                $rowPlaceholders[] = $paramName;
+                $params[$paramName] = $row[$column] ?? null;
+            }
+            $placeholders[] = '(' . implode(', ', $rowPlaceholders) . ')';
+        }
+
+        $updateSql = [];
+        foreach ($update as $column) {
+            $updateSql[] = QueryUtils::wrapIdentifier($column) . " = VALUES(" . QueryUtils::wrapIdentifier($column) . ")";
+        }
+
+        $sql = "INSERT INTO " . QueryUtils::wrapIdentifier($this->table) . " (" . implode(', ', array_map([QueryUtils::class, 'wrapIdentifier'], $columns)) . ") VALUES " . implode(', ', $placeholders);
+        $sql .= " ON DUPLICATE KEY UPDATE " . implode(', ', $updateSql);
+
+        return $this->connection->execute($sql, $params);
     }
 
     public function update(array $data): int
@@ -600,7 +831,7 @@ class QueryBuilder
 
     public function delete(): int
     {
-        $sql = "DELETE FROM {$this->table}";
+        $sql = "DELETE FROM " . QueryUtils::wrapIdentifier($this->table);
         $sql .= $this->getWhereClause();
 
         return $this->connection->execute($sql, $this->params);
@@ -790,7 +1021,8 @@ class QueryBuilder
 
     public function buildSelectSql(): string
     {
-        $sql = "SELECT " . implode(', ', $this->select) . " FROM {$this->table}";
+        $columns = array_map([QueryUtils::class, 'wrapIdentifier'], $this->select);
+        $sql = "SELECT " . implode(', ', $columns) . " FROM " . QueryUtils::wrapIdentifier($this->table);
 
         if (!empty($this->joins)) {
             foreach ($this->joins as $join) {

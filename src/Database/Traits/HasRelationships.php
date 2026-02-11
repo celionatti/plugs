@@ -390,18 +390,19 @@ trait HasRelationships
     {
         // Check if the relation contains nested relations (e.g. 'posts.comments')
         $nested = [];
-        if (str_contains($relation, '.')) {
-            [$relation, $nested] = explode('.', $relation, 2);
-            $nested = [$nested];
-        }
-
         if (!method_exists($this, $relation)) {
             throw new Exception("Relationship method {$relation} not found on " . static::class);
         }
 
-        // Determine the relationship type and configuration
-        $config = $this->getRelationConfigForEagerLoading($relation);
-        $type = $config['type'];
+        // Determine the relationship type and configuration by calling the method
+        $proxy = $this->$relation();
+
+        if (!$proxy) {
+            throw new Exception("Relationship method {$relation} on " . static::class . " returned null.");
+        }
+
+        $type = $this->determineRelationTypeFromProxy($proxy);
+        $config = $this->getRelationConfigFromProxy($proxy, $relation, $type);
 
         if (!isset(static::$relationLoaders[$type])) {
             throw new Exception("Eager loading not supported for relationship type: {$type}");
@@ -411,29 +412,62 @@ trait HasRelationships
         $this->$loader($models, $relation, $config, $nested);
     }
 
-    protected function getRelationConfigForEagerLoading(string $relation): array
+    protected function determineRelationTypeFromProxy($proxy): string
     {
-        $reflection = new ReflectionMethod($this, $relation);
-        $code = $this->getMethodCode($reflection);
+        $class = get_class($proxy);
 
-        $type = null;
-        foreach (array_keys(static::$relationLoaders) as $relType) {
-            if (str_contains($code, $relType)) {
-                $type = $relType;
+        if (str_contains($class, 'HasOneProxy'))
+            return 'hasOne';
+        if (str_contains($class, 'HasManyProxy'))
+            return 'hasMany';
+        if (str_contains($class, 'BelongsToProxy'))
+            return 'belongsTo';
+        if (str_contains($class, 'BelongsToManyProxy'))
+            return 'belongsToMany';
+        if (str_contains($class, 'HasManyThroughProxy'))
+            return 'hasManyThrough';
 
-                break;
-            }
-        }
+        throw new Exception("Could not determine relationship type for proxy: {$class}");
+    }
 
-        if (!$type) {
-            throw new Exception("Could not determine relationship type for: {$relation}");
-        }
-
-        $config = $this->getRelationConfig($this, $relation, $type);
+    protected function getRelationConfigFromProxy($proxy, string $relation, string $type): array
+    {
+        $config = [];
         $config['type'] = $type;
+        $config['related'] = $proxy->getRelated();
+
+        if (method_exists($proxy, 'getForeignKey')) {
+            $config['foreignKey'] = $proxy->getForeignKey();
+        }
+
+        if (method_exists($proxy, 'getLocalKey')) {
+            $config['localKey'] = $proxy->getLocalKey();
+        }
+
+        if (method_exists($proxy, 'getOwnerKey')) {
+            $config['ownerKey'] = $proxy->getOwnerKey();
+        }
+
+        if (method_exists($proxy, 'getConfig')) {
+            $config = array_merge($config, $proxy->getConfig());
+        }
+
+        // Fallbacks
+        switch ($type) {
+            case 'hasOne':
+            case 'hasMany':
+                $config['foreignKey'] = $config['foreignKey'] ?? strtolower(class_basename(static::class)) . '_id';
+                $config['localKey'] = $config['localKey'] ?? $this->primaryKey;
+                break;
+            case 'belongsTo':
+                $config['foreignKey'] = $config['foreignKey'] ?? strtolower($relation) . '_id';
+                $config['ownerKey'] = $config['ownerKey'] ?? 'id';
+                break;
+        }
 
         return $config;
     }
+
 
     protected function eagerLoadHasOne(Collection $models, string $relation, array $config, array $nested): void
     {
@@ -608,7 +642,7 @@ trait HasRelationships
     {
         $reflection = new \ReflectionClass($this);
 
-        foreach ($reflection->getMethods(ReflectionMethod::IS_PUBLIC | \ReflectionMethod::IS_PROTECTED) as $method) {
+        foreach ($reflection->getMethods(ReflectionMethod::IS_PUBLIC | ReflectionMethod::IS_PROTECTED) as $method) {
             $attributes = $method->getAttributes(\Plugs\Database\Attributes\Relation::class);
             if (empty($attributes)) {
                 continue;
