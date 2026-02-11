@@ -37,12 +37,7 @@ class ProfilerMiddleware implements MiddlewareInterface
         $profiler = Profiler::getInstance();
         $profiler->start();
 
-        // Track middleware segment
-        $profiler->startSegment('middleware', 'Middleware');
-
         $response = $handler->handle($request);
-
-        $profiler->stopSegment('middleware');
 
         // Match route from router if attributes are missing (fallback)
         $routeName = $request->getAttribute('_route_name') ?? $request->getAttribute('_route')?->getName();

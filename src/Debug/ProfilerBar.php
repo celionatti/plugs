@@ -291,6 +291,15 @@ class ProfilerBar
     {
         ob_start();
 
+        // Calculate granular timings
+        $middlewareTime = 0;
+        foreach ($profile['timeline'] as $key => $segment) {
+            if (str_starts_with($key, 'mw_')) {
+                $middlewareTime += ($segment['duration'] ?? 0);
+            }
+        }
+        $controllerTime = $profile['timeline']['controller']['duration'] ?? 0;
+
         // Mock data structure for render_profile
         $data = [
             'execution_time_ms' => $profile['duration'] ?? 0,
@@ -299,7 +308,8 @@ class ProfilerBar
             'query_time_ms' => ($profile['database']['query_time_ms'] ?? ($profile['database']['total_time'] ?? 0) * 1000),
             'queries' => $profile['database']['queries'] ?? [],
             'stats' => $profile['database'],
-            'middleware_time_ms' => $profile['timeline']['middleware']['duration'] ?? 0,
+            'middleware_time_ms' => $middlewareTime,
+            'controller_time_ms' => $controllerTime,
             'routing_time_ms' => $profile['timeline']['routing']['duration'] ?? 0,
             'timeline' => $profile['timeline'] ?? [],
             'result' => null,

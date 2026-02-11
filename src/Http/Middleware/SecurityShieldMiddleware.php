@@ -458,6 +458,13 @@ class SecurityShieldMiddleware implements MiddlewareInterface
             return 0;
         }
 
+        $cacheKey = "shield:attempts:{$type}:" . md5($identifier);
+
+        // Try cache first
+        if (\Plugs\Facades\Cache::has($cacheKey)) {
+            return (int) \Plugs\Facades\Cache::get($cacheKey);
+        }
+
         try {
             $window = $this->config['rate_limits']['login_window'];
             $stmt = $this->db->query(
@@ -466,7 +473,12 @@ class SecurityShieldMiddleware implements MiddlewareInterface
                 [$identifier, $type, $window]
             );
 
-            return (int) $stmt->fetchColumn();
+            $count = (int) $stmt->fetchColumn();
+
+            // Cache for short duration (e.g. 10s) to reduce Db hits during bursts
+            \Plugs\Facades\Cache::set($cacheKey, $count, 10);
+
+            return $count;
         } catch (\Exception $e) {
             return 0;
         }
@@ -478,6 +490,12 @@ class SecurityShieldMiddleware implements MiddlewareInterface
             return 0;
         }
 
+        $cacheKey = "shield:daily:{$type}:" . md5($identifier);
+
+        if (\Plugs\Facades\Cache::has($cacheKey)) {
+            return (int) \Plugs\Facades\Cache::get($cacheKey);
+        }
+
         try {
             $stmt = $this->db->query(
                 "SELECT COUNT(*) FROM security_attempts 
@@ -485,7 +503,10 @@ class SecurityShieldMiddleware implements MiddlewareInterface
                 [$identifier, $type]
             );
 
-            return (int) $stmt->fetchColumn();
+            $count = (int) $stmt->fetchColumn();
+            \Plugs\Facades\Cache::set($cacheKey, $count, 60); // Cache for 1 minute
+
+            return $count;
         } catch (\Exception $e) {
             return 0;
         }
@@ -493,6 +514,12 @@ class SecurityShieldMiddleware implements MiddlewareInterface
 
     private function getEndpointRate(string $ip, string $endpoint): int
     {
+        $cacheKey = "shield:endpoint:" . md5($ip . $endpoint);
+
+        if (\Plugs\Facades\Cache::has($cacheKey)) {
+            return (int) \Plugs\Facades\Cache::get($cacheKey);
+        }
+
         try {
             $stmt = $this->db->query(
                 "SELECT COUNT(*) FROM security_attempts 
@@ -500,7 +527,10 @@ class SecurityShieldMiddleware implements MiddlewareInterface
                 [$ip, $endpoint]
             );
 
-            return (int) $stmt->fetchColumn();
+            $count = (int) $stmt->fetchColumn();
+            \Plugs\Facades\Cache::set($cacheKey, $count, 15); // Cache for 15s
+
+            return $count;
         } catch (\Exception $e) {
             return 0;
         }
@@ -509,24 +539,46 @@ class SecurityShieldMiddleware implements MiddlewareInterface
     private function recordAttempt(string $ip, string $email, string $endpoint): void
     {
         try {
+            // Write to DB asynchronously if possible, otherwise fast insert
             $this->db->query(
                 "INSERT INTO security_attempts (identifier, type, endpoint, created_at) VALUES (?, ?, ?, NOW())",
                 [$ip, 'ip', $endpoint]
             );
+
+            // Invalidate/Increment caches
+            $this->incrementCache("shield:attempts:ip:" . md5($ip));
+            $this->incrementCache("shield:daily:ip:" . md5($ip));
+            $this->incrementCache("shield:endpoint:" . md5($ip . $endpoint));
 
             if (!empty($email)) {
                 $this->db->query(
                     "INSERT INTO security_attempts (identifier, type, endpoint, created_at) VALUES (?, ?, ?, NOW())",
                     [$email, 'email', $endpoint]
                 );
+
+                $this->incrementCache("shield:attempts:email:" . md5($email));
+                $this->incrementCache("shield:daily:email:" . md5($email));
             }
         } catch (\Exception $e) {
             // Silent fail
         }
     }
 
+    private function incrementCache(string $key): void
+    {
+        if (\Plugs\Facades\Cache::has($key)) {
+            $val = (int) \Plugs\Facades\Cache::get($key);
+            \Plugs\Facades\Cache::set($key, $val + 1);
+        }
+    }
+
     private function logSecurityEvent(array $requestData, array $decision): void
     {
+        // Only log failures or 1% of successes to reduce write load
+        if ($decision['allowed'] && mt_rand(1, 100) !== 1) {
+            return;
+        }
+
         try {
             $this->db->query(
                 "INSERT INTO security_logs (ip, email, endpoint, risk_score, decision, details, created_at) 
@@ -684,9 +736,13 @@ class SecurityShieldMiddleware implements MiddlewareInterface
 
     private function loadWhitelistBlacklist(): void
     {
-        $now = time();
-        // Cache for 60 seconds internally to avoid constant DB hits across requests in same process
-        if (self::$cachedWhitelistedIps !== null && ($now - self::$lastListLoadTime) < 60) {
+        // Try to load from Cache first
+        $cachedLists = \Plugs\Facades\Cache::get('shield_ip_lists');
+
+        if ($cachedLists && is_array($cachedLists)) {
+            self::$cachedWhitelistedIps = $cachedLists['whitelist'] ?? [];
+            self::$cachedBlacklistedIps = $cachedLists['blacklist'] ?? [];
+            $this->listsLoaded = true;
             return;
         }
 
@@ -698,7 +754,14 @@ class SecurityShieldMiddleware implements MiddlewareInterface
                 "SELECT ip FROM blacklisted_ips WHERE active = 1 AND (expires_at IS NULL OR expires_at > NOW())"
             );
             self::$cachedBlacklistedIps = array_column($blacklist, 'ip');
-            self::$lastListLoadTime = $now;
+
+            // Cache the result for 60 seconds
+            \Plugs\Facades\Cache::set('shield_ip_lists', [
+                'whitelist' => self::$cachedWhitelistedIps,
+                'blacklist' => self::$cachedBlacklistedIps
+            ], 60);
+
+            $this->listsLoaded = true;
         } catch (\Exception $e) {
             // Tables might not exist yet or connection failed
             if (self::$cachedWhitelistedIps === null) {
@@ -730,6 +793,9 @@ class SecurityShieldMiddleware implements MiddlewareInterface
             );
             if (self::$cachedBlacklistedIps !== null) {
                 self::$cachedBlacklistedIps[] = $ip;
+
+                // Invalidate cache so next request picks up the new block
+                \Plugs\Facades\Cache::delete('shield_ip_lists');
             }
         } catch (\Exception $e) {
             // Silent fail

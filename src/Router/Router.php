@@ -737,24 +737,31 @@ class Router
      */
     private function executeHandler($handler, ServerRequestInterface $request): ResponseInterface
     {
-        $response = null;
+        $profiler = \Plugs\Debug\Profiler::getInstance();
+        $profiler->startSegment('controller', 'Controller Execution');
 
-        // Handle array format [Controller::class, 'method'] or [Controller::class]
-        if (is_array($handler) && (count($handler) === 2 || count($handler) === 1)) {
-            $response = $this->executeControllerAction($handler, $request);
-        }
-        // Handle string format "Controller@method" or "Controller" (invokable)
-        elseif (is_string($handler)) {
-            $response = $this->executeControllerAction($handler, $request);
-        }
-        // Handle callables
-        elseif (is_callable($handler)) {
-            $response = $this->invokeCallable($handler, $request);
-        } else {
-            throw new RuntimeException('Invalid route handler type: ' . gettype($handler));
-        }
+        try {
+            $response = null;
 
-        return $this->normalizeResponse($response);
+            // Handle array format [Controller::class, 'method'] or [Controller::class]
+            if (is_array($handler) && (count($handler) === 2 || count($handler) === 1)) {
+                $response = $this->executeControllerAction($handler, $request);
+            }
+            // Handle string format "Controller@method" or "Controller" (invokable)
+            elseif (is_string($handler)) {
+                $response = $this->executeControllerAction($handler, $request);
+            }
+            // Handle callables
+            elseif (is_callable($handler)) {
+                $response = $this->invokeCallable($handler, $request);
+            } else {
+                throw new RuntimeException('Invalid route handler type: ' . gettype($handler));
+            }
+
+            return $this->normalizeResponse($response);
+        } finally {
+            $profiler->stopSegment('controller');
+        }
     }
 
     /**

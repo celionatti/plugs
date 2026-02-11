@@ -85,6 +85,14 @@ class MiddlewareRunner implements RequestHandlerInterface
             throw new \RuntimeException(sprintf('Middleware must implement %s', MiddlewareInterface::class));
         }
 
-        return $middleware->process($request, $this);
+        $profiler = \Plugs\Debug\Profiler::getInstance();
+        $mwName = get_class($middleware);
+        $profiler->startSegment('mw_' . $mwName, 'MW: ' . basename(str_replace('\\', '/', $mwName)));
+
+        try {
+            return $middleware->process($request, $this);
+        } finally {
+            $profiler->stopSegment('mw_' . $mwName);
+        }
     }
 }

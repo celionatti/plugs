@@ -47,8 +47,9 @@ class TieredCache implements CacheDriverInterface
 
         // Check each tier
         foreach ($this->tiers as $index => $tier) {
-            if ($tier->has($key)) {
-                $value = $tier->get($key);
+            // Optimization: Get directly instead of has() + get()
+            $value = $tier->get($key, '__PLUGS_CACHE_MISS__');
+            if ($value !== '__PLUGS_CACHE_MISS__') {
                 $hitTierIndex = $index;
                 break;
             }

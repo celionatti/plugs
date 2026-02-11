@@ -1743,19 +1743,25 @@ function plugs_render_profile(array $data): string
     $queryCount = $data['query_count'] ?? 0;
     $queryTime = $data['query_time_ms'] ?? 0;
     $middlewareTime = $data['middleware_time_ms'] ?? 0;
+    $controllerTime = $data['controller_time_ms'] ?? 0;
     $memoryPeak = $data['stats']['memory_peak'] ?? ($data['memory']['peak'] ?? 0);
 
     $healthItems = [];
-    if ($execTime > 500)
-        $healthItems[] = ['🔥 High latency', 'Response time is over 500ms. Check middleware and deep controller logic.', 'danger'];
+    if ($execTime > 1500)
+        $healthItems[] = ['🔥 Critical Latency', 'Response time is over 1.5s. Serious optimization required.', 'danger'];
+    elseif ($execTime > 800)
+        $healthItems[] = ['🐌 High Latency', 'Response time is over 800ms. Check the timeline for bottlenecks.', 'warning'];
+
     if ($queryCount > 15)
         $healthItems[] = ['🔮 N+1 Suspect', 'More than 15 queries detected. Check for loops fetching data.', 'warning'];
-    if ($queryTime > ($execTime * 0.4))
-        $healthItems[] = ['💾 DB Heavy', 'Database takes >40% of request time. Optimize slow queries or add indexes.', 'warning'];
+    if ($queryTime > ($execTime * 0.5))
+        $healthItems[] = ['💾 DB Heavy', 'Database takes >50% of request time. Optimize slow queries or add indexes.', 'warning'];
     if ($middlewareTime > 150)
-        $healthItems[] = ['🛡️ Slow Middleware', 'Middleware stack takes >150ms. Audit custom middleware logic.', 'warning'];
-    if ($memoryPeak > 10 * 1024 * 1024)
-        $healthItems[] = ['🐘 Memory Heavy', 'Memory usage is over 10MB. Check for large objects or data loading.', 'warning'];
+        $healthItems[] = ['🛡️ Slow Middleware', 'Middleware stack overhead is >150ms (excluding controller). Audit custom middleware.', 'warning'];
+    if ($controllerTime > 300)
+        $healthItems[] = ['🧠 Slow Application Logic', 'Controller execution taken >300ms. Check business logic and external APIs.', 'warning'];
+    if ($memoryPeak > 16 * 1024 * 1024)
+        $healthItems[] = ['🐘 Memory Heavy', 'Memory usage is over 16MB. Check for large objects or data loading.', 'warning'];
 
     if (!empty($healthItems)) {
         $html .= '<div style="margin-bottom: 32px; display: flex; flex-direction: column; gap: 12px;">';

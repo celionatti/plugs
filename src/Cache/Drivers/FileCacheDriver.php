@@ -35,7 +35,15 @@ class FileCacheDriver implements CacheDriverInterface
             return $default;
         }
 
-        $data = unserialize($content);
+        try {
+            $data = unserialize($content);
+            if (!is_array($data) || !isset($data['expires'])) {
+                return $default;
+            }
+        } catch (\Throwable $e) {
+            // Handle corrupted cache data
+            return $default;
+        }
 
         if ($data['expires'] !== 0 && $data['expires'] < time()) {
             $this->delete($key);
@@ -56,7 +64,39 @@ class FileCacheDriver implements CacheDriverInterface
             'created' => time(),
         ];
 
-        return file_put_contents($file, serialize($data), LOCK_EX) !== false;
+        $success = file_put_contents($file, serialize($data), LOCK_EX) !== false;
+
+        // Probabilistic Garbage Collection (1% chance)
+        if ($success && mt_rand(1, 100) === 42) {
+            $this->gc();
+        }
+
+        return $success;
+    }
+
+    /**
+     * Purge expired cache files from the storage.
+     */
+    protected function gc(): void
+    {
+        $files = glob($this->cachePath . DIRECTORY_SEPARATOR . '*.cache');
+        if (!$files)
+            return;
+
+        $now = time();
+        foreach ($files as $file) {
+            try {
+                $content = @file_get_contents($file);
+                if ($content) {
+                    $data = @unserialize($content);
+                    if ($data && isset($data['expires']) && $data['expires'] !== 0 && $data['expires'] < $now) {
+                        @unlink($file);
+                    }
+                }
+            } catch (\Throwable $e) {
+                // Ignore errors during GC
+            }
+        }
     }
 
     public function delete(string $key): bool
