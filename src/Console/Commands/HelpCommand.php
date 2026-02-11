@@ -47,7 +47,7 @@ class HelpCommand extends Command
 
     private function displayCommandList(ConsoleKernel $kernel): int
     {
-        $this->output->branding('1.0.0');
+        $this->branding();
 
         $this->output->section('Usage');
         $this->line('  php theplugs <command> [options] [arguments]');

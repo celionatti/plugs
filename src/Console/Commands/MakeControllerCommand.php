@@ -57,7 +57,6 @@ class MakeControllerCommand extends Command
     public function handle(): int
     {
         $this->checkpoint('start');
-
         $this->title('Controller Generator');
 
         // Get controller name
@@ -97,23 +96,36 @@ class MakeControllerCommand extends Command
             return 0;
         }
 
-        $this->newLine();
-        $this->section('Generating Files');
+        // Initialize progress
+        $totalSteps = 1; // Controller always generated
+        if ($options['requests'])
+            $totalSteps += 2;
+        if ($options['test'])
+            $totalSteps += 1;
+        $currentStep = 0;
 
         // Generate controller
+        $currentStep++;
+        $this->progress($currentStep, $totalSteps, "Generating Controller...");
         $controllerPath = $this->generateController($className, $options);
-
         $this->checkpoint('controller_generated');
 
         $filesCreated = [$controllerPath];
 
         // Generate related files
         if ($options['requests']) {
+            $currentStep++;
+            $this->progress($currentStep, $totalSteps, "Generating Form Request 1/2...");
+            // Internal logic refactored to allow progress updates if needed, or just step through
             $requestPaths = $this->generateRequests($className, $options);
+            $currentStep++;
+            $this->progress($currentStep, $totalSteps, "Generating Form Request 2/2...");
             $filesCreated = array_merge($filesCreated, $requestPaths);
         }
 
         if ($options['test']) {
+            $currentStep++;
+            $this->progress($currentStep, $totalSteps, "Generating Test Case...");
             $testPath = $this->generateTest($className, $options);
             $filesCreated[] = $testPath;
         }
@@ -220,10 +232,6 @@ class MakeControllerCommand extends Command
 
     private function generateController(string $name, array $options): string
     {
-        $this->task('Generating controller class', function () {
-            usleep(300000);
-        });
-
         $path = $this->getControllerPath($name, $options);
 
         if (Filesystem::exists($path) && !$options['force']) {
@@ -248,10 +256,6 @@ class MakeControllerCommand extends Command
 
     private function generateRequests(string $controllerName, array $options): array
     {
-        $this->task('Generating Form Request classes', function () {
-            usleep(200000);
-        });
-
         $baseName = str_replace('Controller', '', $controllerName);
         $paths = [];
 
@@ -277,10 +281,6 @@ class MakeControllerCommand extends Command
     private function generateTest(string $controllerName, array $options): string
     {
         $testType = $options['pest'] ? 'Pest' : 'PHPUnit';
-
-        $this->task("Generating {$testType} test", function () {
-            usleep(200000);
-        });
 
         $testName = str_replace('Controller', '', $controllerName) . 'ControllerTest';
         $path = $this->getTestPath($testName, $options);
@@ -560,11 +560,12 @@ class MakeControllerCommand extends Command
         $this->box(
             "Controller '{$name}' generated successfully!\n\n" .
             "Type: " . ucfirst($options['type']) . "\n" .
-            "Files created: " . count($filesCreated) . "\n" .
-            "Execution time: {$this->formatTime($this->elapsed())}",
+            "Files created: " . count($filesCreated),
             "✅ Success",
             "success"
         );
+
+        $this->metrics($this->elapsed(), memory_get_peak_usage());
 
         $this->newLine();
         $this->section('Generated Files');

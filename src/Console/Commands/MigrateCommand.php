@@ -21,7 +21,6 @@ class MigrateCommand extends Command
     public function handle(): int
     {
         $this->checkpoint('start');
-        $this->title('Database Migrator');
 
         $this->info('Initializing migration runner...');
 
@@ -45,7 +44,10 @@ class MigrateCommand extends Command
             $this->checkpoint('migrating');
 
             $steps = $this->option('step');
-            $result = $runner->run($steps ? (int) $steps : null);
+
+            $result = $this->loading('Running migrations', function () use ($runner, $steps) {
+                return $runner->run($steps ? (int) $steps : null);
+            });
 
             $this->checkpoint('finished');
 
@@ -66,11 +68,12 @@ class MigrateCommand extends Command
             $this->box(
                 "Database migrations completed successfully!\n\n" .
                 "Batch: {$result['batch']}\n" .
-                "Migrated: " . count($result['migrations']) . "\n" .
-                "Time: {$this->formatTime($this->elapsed())}",
+                "Migrated: " . count($result['migrations']),
                 "✅ Success",
                 "success"
             );
+
+            $this->metrics($this->elapsed(), memory_get_peak_usage());
 
             return 0;
         } catch (\Exception $e) {

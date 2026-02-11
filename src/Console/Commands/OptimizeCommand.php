@@ -20,12 +20,12 @@ class OptimizeCommand extends Command
 
         $this->section('Task Execution');
 
-        $this->task('Caching configuration files', function () {
+        $this->loading('Caching configuration files', function () {
             $this->call('config:cache');
             usleep(100000);
         });
 
-        $this->task('Caching application routes', function () {
+        $this->loading('Caching application routes', function () {
             $this->call('route:cache');
             usleep(100000);
         });
@@ -35,11 +35,12 @@ class OptimizeCommand extends Command
         $this->newLine(2);
         $this->box(
             "Framework successfully optimized for production!\n\n" .
-            "Actions: Config & Route Caching\n" .
-            "Time: {$this->formatTime($this->elapsed())}",
+            "Actions: Config & Route Caching",
             "✅ Optimization Complete",
             "success"
         );
+
+        $this->metrics($this->elapsed(), memory_get_peak_usage());
 
         if ($this->isVerbose()) {
             $this->displayTimings();

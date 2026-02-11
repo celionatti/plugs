@@ -50,12 +50,12 @@ class AIChatCommand extends Command
                 $this->info("User: " . $prompt);
                 $this->newLine();
 
-                $response = $this->task('Thinking...', function () use ($driver, $prompt) {
+                $response = $this->loading('Thinking...', function () use ($driver, $prompt) {
                     return $driver->prompt($prompt);
                 });
 
                 $this->newLine();
-                $this->success("AI: " . $response);
+                $this->panel($response, 'AI Response');
                 $this->newLine();
 
                 if (!$interactive && !$this->confirm('Continue in interactive mode?', false)) {
@@ -97,16 +97,15 @@ class AIChatCommand extends Command
 
             $messages[] = ['role' => 'user', 'content' => $input];
 
-            $response = $this->task('AI is thinking...', function () use ($driver, $messages) {
+            $response = $this->loading('AI is thinking...', function () use ($driver, $messages) {
                 return $driver->chat($messages);
             });
 
             $messages[] = ['role' => 'assistant', 'content' => $response];
 
             $this->newLine();
-            $this->success("AI: " . $response);
+            $this->panel($response, 'AI Response');
             $this->newLine();
-            $this->divider();
         }
     }
 }

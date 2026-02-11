@@ -215,6 +215,16 @@ abstract class Command implements CommandInterface
         $this->output->banner($text);
     }
 
+    protected function branding(string $version = '1.0.0'): void
+    {
+        $this->output->branding($version);
+    }
+
+    protected function commandHeader(string $command): void
+    {
+        $this->output->commandHeader($command);
+    }
+
     protected function gradient(string $text): void
     {
         $this->output->gradient($text);
@@ -304,6 +314,11 @@ abstract class Command implements CommandInterface
     protected function withProgressBar(int $max, callable $step, string $label = 'Progress'): void
     {
         $this->output->progressBar($max, $step, $label);
+    }
+
+    protected function progress(int $current, int $total, string $message = ''): void
+    {
+        $this->output->progress($current, $total, $message);
     }
 
     protected function step(int $current, int $total, string $message): void
@@ -486,6 +501,11 @@ abstract class Command implements CommandInterface
     protected function elapsed(): float
     {
         return microtime(true) - $this->startTime;
+    }
+
+    protected function metrics(float $time, int $memory): void
+    {
+        $this->output->metrics($time, $memory);
     }
 
     // ==================== UTILITIES ====================
