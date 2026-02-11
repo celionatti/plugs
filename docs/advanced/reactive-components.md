@@ -11,6 +11,7 @@ Reactive Components (also known as **Bolt**) allow you to build interactive UI c
 Reactive Components bridge the gap between your server-side PHP logic and the client-side DOM. When an action is triggered on the frontend (like clicking a button), the component's state is sent to the server, processed by your PHP class, and the updated HTML is sent back to be swapped seamlessly into the page.
 
 ### Key Features
+
 - **Server-Side State**: Your component state lives in PHP public properties.
 - **Auto-Hydration**: State is automatically preserved between requests.
 - **Zero-JS Interactivity**: Use directives like `p-click` to trigger PHP methods.
@@ -72,9 +73,9 @@ Create the corresponding view in `resources/views/components/counter.plug.php`. 
 
 ```html
 <div class="counter-card">
-    <button p-click="decrement">-</button>
-    <span class="count">{{ $count }}</span>
-    <button p-click="increment">+</button>
+  <button p-click="decrement">-</button>
+  <span class="count">{{ $count }}</span>
+  <button p-click="increment">+</button>
 </div>
 ```
 
@@ -82,10 +83,18 @@ Create the corresponding view in `resources/views/components/counter.plug.php`. 
 
 ## Usage in Views
 
-To include a reactive component in any of your views, use the `@component` directive:
+To include a reactive component in any of your views, use the component tag syntax:
 
 ```html
-@component('Counter', ['count' => 10])
+<Counter count="10" />
+```
+
+Or for components with content:
+
+```html
+<Counter>
+  <p>This is slot content</p>
+</Counter>
 ```
 
 The component will automatically initialize and handle its own reactivity.
@@ -94,11 +103,11 @@ The component will automatically initialize and handle its own reactivity.
 
 ## Directives
 
-| Directive | Description | Example |
-| :--- | :--- | :--- |
-| `p-click` | Triggers a PHP method on click. | `<button p-click="save">Save</button>` |
-| `p-change` | Triggers a PHP method on input change. | `<select p-change="filter">...</select>` |
-| `p-submit` | Intercepts form submission and calls method. | `<form p-submit="search">...</form>` |
+| Directive  | Description                                  | Example                                  |
+| :--------- | :------------------------------------------- | :--------------------------------------- |
+| `p-click`  | Triggers a PHP method on click.              | `<button p-click="save">Save</button>`   |
+| `p-change` | Triggers a PHP method on input change.       | `<select p-change="filter">...</select>` |
+| `p-submit` | Intercepts form submission and calls method. | `<form p-submit="search">...</form>`     |
 
 ---
 
