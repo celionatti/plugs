@@ -31,7 +31,12 @@ class RoutingMiddleware implements MiddlewareInterface
         ServerRequestInterface $request,
         RequestHandlerInterface $handler
     ): ResponseInterface {
+        $profiler = \Plugs\Debug\Profiler::getInstance();
+        $profiler->startSegment('routing', 'Routing');
+
         $response = $this->router->dispatch($request);
+
+        $profiler->stopSegment('routing');
 
         if ($response !== null) {
             return $response;

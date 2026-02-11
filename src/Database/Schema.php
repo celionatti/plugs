@@ -18,6 +18,7 @@ class Schema
 {
     private static $connection;
     private static $defaultConnection = 'default';
+    private static array $schemaCache = [];
 
     /**
      * Set the database connection to use
@@ -118,18 +119,9 @@ class Schema
      */
     public static function hasColumn(string $table, string $column): bool
     {
-        $connection = self::getConnection();
-        $sql = "SHOW COLUMNS FROM `{$table}`";
-        $columns = $connection->fetchAll($sql);
+        $columns = self::getTableColumns($table);
 
-        foreach ($columns as $col) {
-            $field = $col['Field'] ?? $col['field'] ?? null;
-            if ($field === $column) {
-                return true;
-            }
-        }
-
-        return false;
+        return in_array($column, $columns);
     }
 
     /**
@@ -137,10 +129,30 @@ class Schema
      */
     public static function getColumns(string $table): array
     {
+        return self::getTableColumns($table, true);
+    }
+
+    /**
+     * Get table columns with caching
+     */
+    protected static function getTableColumns(string $table, bool $full = false): array
+    {
+        if (isset(self::$schemaCache[$table])) {
+            return $full ? self::$schemaCache[$table]['full'] : self::$schemaCache[$table]['names'];
+        }
+
         $connection = self::getConnection();
         $sql = "SHOW COLUMNS FROM `{$table}`";
+        $results = $connection->fetchAll($sql);
 
-        return $connection->fetchAll($sql);
+        $names = array_column($results, 'Field');
+
+        self::$schemaCache[$table] = [
+            'full' => $results,
+            'names' => $names,
+        ];
+
+        return $full ? $results : $names;
     }
 
     /**

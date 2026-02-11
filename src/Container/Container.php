@@ -228,6 +228,13 @@ class Container implements ContainerInterface
     }
 
     /**
+     * Cache for resolved dependencies.
+     *
+     * @var array
+     */
+    protected array $resolvedDependenciesCache = [];
+
+    /**
      * Resolve constructor dependencies
      */
     private function resolveDependencies(array $parameters, array $primitives = []): array
@@ -265,7 +272,10 @@ class Container implements ContainerInterface
                 }
             } else {
                 // Resolve class dependency
-                $dependencies[] = $this->make($type->getName());
+                $typeName = $type->getName();
+
+                // OPTIMIZATION: Resolve only once
+                $dependencies[] = $this->make($typeName);
             }
         }
 

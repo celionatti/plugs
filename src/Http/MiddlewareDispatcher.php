@@ -42,39 +42,49 @@ class MiddlewareDispatcher implements RequestHandlerInterface
 
     public function handle(ServerRequestInterface $request): ResponseInterface
     {
-        $stack = $this->middlewareStack;
-        $fallback = $this->fallbackHandler;
+        return (new MiddlewareRunner($this->middlewareStack, $this->fallbackHandler))->handle($request);
+    }
+}
 
-        // Create a handler that will process the remaining middleware
-        $runner = new class ($stack, $fallback) implements RequestHandlerInterface {
-            private $stack;
-            private $index = 0;
-            private $fallbackHandler;
+/**
+ * Lightweight PSR-15 runner for the middleware stack.
+ * 
+ * @internal
+ */
+class MiddlewareRunner implements RequestHandlerInterface
+{
+    private array $stack;
+    private int $index = 0;
+    private $fallback;
 
-            public function __construct(array $stack, ?callable $fallbackHandler)
-            {
-                $this->stack = $stack;
-                $this->fallbackHandler = $fallbackHandler;
+    public function __construct(array $stack, $fallback)
+    {
+        $this->stack = $stack;
+        $this->fallback = $fallback;
+    }
+
+    public function handle(ServerRequestInterface $request): ResponseInterface
+    {
+        if (!isset($this->stack[$this->index])) {
+            if ($this->fallback === null) {
+                throw new \RuntimeException('No middleware returned response and no fallback handler set');
             }
 
-            public function handle(ServerRequestInterface $request): ResponseInterface
-            {
-                // If no more middleware, use fallback handler
-                if (!isset($this->stack[$this->index])) {
-                    if ($this->fallbackHandler === null) {
-                        throw new \RuntimeException('No middleware returned response and no fallback handler set');
-                    }
+            return ($this->fallback)($request);
+        }
 
-                    return ($this->fallbackHandler)($request);
-                }
+        $middleware = $this->stack[$this->index];
+        $this->index++;
 
-                $middleware = $this->stack[$this->index];
-                $this->index++;
+        // Lazy resolution
+        if (is_string($middleware)) {
+            $middleware = app($middleware);
+        }
 
-                return $middleware->process($request, $this);
-            }
-        };
+        if (!$middleware instanceof MiddlewareInterface) {
+            throw new \RuntimeException(sprintf('Middleware must implement %s', MiddlewareInterface::class));
+        }
 
-        return $runner->handle($request);
+        return $middleware->process($request, $this);
     }
 }

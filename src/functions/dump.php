@@ -1711,56 +1711,63 @@ function plugs_render_profile(array $data): string
     $html .= '<div class="section-title" style="margin-bottom: 24px; font-size: 18px; color: var(--text-primary);">⚡ Performance Profile</div>';
 
     // Stats cards
-    $html .= '<div class="plugs-stats-grid" style="margin-bottom: 32px;">';
+    $html .= '<div class="plugs-stats-grid" style="margin-bottom: 32px; display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px;">';
 
-    $html .= '<div class="plugs-stat-card" style="background: linear-gradient(145deg, rgba(16, 185, 129, 0.1), transparent);">';
-    $html .= '<div class="plugs-stat-label">⏱️ Execution Time</div>';
-    $html .= '<div class="plugs-stat-value">' . number_format(($data['execution_time_ms'] ?? ($data['execution_time'] ?? 0) * 1000), 2) . ' ms</div>';
+    $html .= '<div class="plugs-stat-card" style="background: rgba(16, 185, 129, 0.05); border-left: 4px solid #10b981;">';
+    $html .= '<div class="plugs-stat-label">⏱️ Total Execution</div>';
+    $html .= '<div class="plugs-stat-value" style="color: #10b981;">' . number_format(($data['execution_time_ms'] ?? ($data['execution_time'] ?? 0) * 1000), 2) . ' ms</div>';
     $html .= '</div>';
 
-    $html .= '<div class="plugs-stat-card" style="background: linear-gradient(145deg, rgba(99, 102, 241, 0.1), transparent);">';
-    $html .= '<div class="plugs-stat-label">🧠 Memory Used</div>';
-    $html .= '<div class="plugs-stat-value">' . ($data['memory_formatted'] ?? plugs_format_bytes($data['memory_used'] ?? 0)) . '</div>';
+    $html .= '<div class="plugs-stat-card" style="background: rgba(99, 102, 241, 0.05); border-left: 4px solid #6366f1;">';
+    $html .= '<div class="plugs-stat-label">🧠 Peak Memory</div>';
+    $html .= '<div class="plugs-stat-value" style="color: #6366f1;">' . ($data['memory_formatted'] ?? plugs_format_bytes($data['memory_used'] ?? 0)) . '</div>';
     $html .= '</div>';
 
-    $html .= '<div class="plugs-stat-card" style="background: linear-gradient(145deg, rgba(168, 85, 247, 0.1), transparent);">';
-    $html .= '<div class="plugs-stat-label">🔍 Query Count</div>';
-    $html .= '<div class="plugs-stat-value">' . ($data['query_count'] ?? 0) . '</div>';
+    if (isset($data['middleware_time_ms'])) {
+        $html .= '<div class="plugs-stat-card" style="background: rgba(245, 158, 11, 0.05); border-left: 4px solid #f59e0b;">';
+        $html .= '<div class="plugs-stat-label">🛡️ Middleware</div>';
+        $html .= '<div class="plugs-stat-value" style="color: #f59e0b;">' . number_format($data['middleware_time_ms'], 2) . ' ms</div>';
+        $html .= '</div>';
+    }
+
+    $html .= '<div class="plugs-stat-card" style="background: rgba(168, 85, 247, 0.05); border-left: 4px solid #a855f7;">';
+    $html .= '<div class="plugs-stat-label">🔍 Database Queries</div>';
+    $html .= '<div class="plugs-stat-value" style="color: #a855f7;">' . ($data['query_count'] ?? 0) . '</div>';
+    $html .= '<div style="font-size: 11px; color: var(--text-muted);">' . number_format(($data['query_time_ms'] ?? ($data['query_time'] ?? 0) * 1000), 2) . ' ms</div>';
     $html .= '</div>';
 
-    $html .= '<div class="plugs-stat-card">';
-    $html .= '<div class="plugs-stat-label">⚙️ Query Time</div>';
-    $html .= '<div class="plugs-stat-value">' . number_format(($data['query_time_ms'] ?? ($data['query_time'] ?? 0) * 1000), 2) . ' ms</div>';
     $html .= '</div>';
 
-    $html .= '</div>';
-
-    // Performance assessment
+    // Performance health assessment
     $execTime = $data['execution_time_ms'] ?? ($data['execution_time'] ?? 0) * 1000;
     $queryCount = $data['query_count'] ?? 0;
+    $queryTime = $data['query_time_ms'] ?? 0;
+    $middlewareTime = $data['middleware_time_ms'] ?? 0;
 
-    if ($execTime > 1000 || $queryCount > 20) {
-        $html .= '<div class="plugs-alert plugs-alert-danger" style="margin-bottom: 24px;">';
-        $html .= '<div class="plugs-alert-title">🔥 Performance Warning</div>';
-        if ($execTime > 1000) {
-            $html .= 'Execution time exceeds 1 second. Consider optimizing your code.<br>';
-        }
-        if ($queryCount > 20) {
-            $html .= 'High query count (' . $queryCount . '). Use eager loading with with() to reduce queries.';
-        }
-        $html .= '</div>';
-    } elseif ($execTime > 500 || $queryCount > 10) {
-        $html .= '<div class="plugs-alert plugs-alert-warning" style="margin-bottom: 24px;">';
-        $html .= '<div class="plugs-alert-title">⚡ Optimization Recommended</div>';
-        $html .= 'Consider reviewing performance. ';
-        if ($queryCount > 10) {
-            $html .= 'Multiple queries detected.';
+    $healthItems = [];
+    if ($execTime > 800)
+        $healthItems[] = ['🔥 High latency', 'Response time is over 800ms. Check middleware and deep controller logic.', 'danger'];
+    if ($queryCount > 15)
+        $healthItems[] = ['🔮 N+1 Suspect', 'More than 15 queries detected. Check for loops fetching data.', 'warning'];
+    if ($queryTime > ($execTime * 0.5))
+        $healthItems[] = ['💾 DB Heavy', 'Database takes >50% of request time. Optimize slow queries or add indexes.', 'warning'];
+    if ($middlewareTime > 200)
+        $healthItems[] = ['🛡️ Slow Middleware', 'Middleware stack takes >200ms. Audit custom middleware logic.', 'warning'];
+
+    if (!empty($healthItems)) {
+        $html .= '<div style="margin-bottom: 32px; display: flex; flex-direction: column; gap: 12px;">';
+        foreach ($healthItems as $item) {
+            $class = 'plugs-alert-' . $item[2];
+            $html .= '<div class="plugs-alert ' . $class . '" style="margin:0; padding: 12px 16px;">';
+            $html .= '<div style="display:flex; justify-content:space-between; align-items:center;">';
+            $html .= '<strong>' . $item[0] . '</strong>';
+            $html .= '<span style="font-size: 11px; opacity:0.8;">' . $item[1] . '</span>';
+            $html .= '</div></div>';
         }
         $html .= '</div>';
     } else {
-        $html .= '<div class="plugs-alert plugs-alert-success" style="margin-bottom: 24px;">';
-        $html .= '<div class="plugs-alert-title">✅ Performance Good</div>';
-        $html .= 'Execution time and query count are within acceptable limits.';
+        $html .= '<div class="plugs-alert plugs-alert-success" style="margin-bottom: 32px; padding: 12px 16px;">';
+        $html .= '<strong>✨ Performance is optimal</strong> - No significant bottlenecks detected in this request.';
         $html .= '</div>';
     }
 

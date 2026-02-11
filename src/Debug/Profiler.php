@@ -32,7 +32,7 @@ class Profiler
 
     private function __construct()
     {
-        $this->startTime = microtime(true);
+        $this->startTime = function_exists('hrtime') ? (float) hrtime(true) / 1e9 : microtime(true);
         $this->startMemory = memory_get_usage(true);
     }
 
@@ -82,7 +82,7 @@ class Profiler
     public function start(): void
     {
         $this->enabled = true;
-        $this->startTime = microtime(true);
+        $this->startTime = function_exists('hrtime') ? (float) hrtime(true) / 1e9 : microtime(true);
         $this->startMemory = memory_get_usage(true);
         $this->timeline = [];
         $this->views = [];
@@ -107,7 +107,7 @@ class Profiler
 
         $this->stopSegment('total');
 
-        $endTime = microtime(true);
+        $endTime = function_exists('hrtime') ? (float) hrtime(true) / 1e9 : microtime(true);
         $duration = ($endTime - $this->startTime) * 1000; // ms
 
         $memoryPeak = memory_get_peak_usage(true);
@@ -197,11 +197,12 @@ class Profiler
 
         $this->timeline[$name] = [
             'label' => $label ?: $name,
-            'start' => microtime(true),
+            'start' => function_exists('hrtime') ? (float) hrtime(true) / 1e9 : microtime(true),
             'end' => null,
             'duration' => null,
             'memory_start' => memory_get_usage(true),
             'memory_end' => null,
+            'start_offset' => $this->getElapsedTime(),
         ];
     }
 
@@ -214,11 +215,11 @@ class Profiler
             return;
         }
 
-        $endTime = microtime(true);
+        $endTime = function_exists('hrtime') ? (float) hrtime(true) / 1e9 : microtime(true);
         $this->timeline[$name]['end'] = $endTime;
         $this->timeline[$name]['duration'] = round(
             ($endTime - $this->timeline[$name]['start']) * 1000,
-            2
+            4
         );
         $this->timeline[$name]['memory_end'] = memory_get_usage(true);
     }
@@ -312,7 +313,7 @@ class Profiler
         $files = glob($storageDir . '*.json');
 
         // Sort by modification time (newest first)
-        usort($files, fn ($a, $b) => filemtime($b) <=> filemtime($a));
+        usort($files, fn($a, $b) => filemtime($b) <=> filemtime($a));
 
         $profiles = [];
         foreach (array_slice($files, 0, $limit) as $file) {

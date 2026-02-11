@@ -103,9 +103,9 @@ class Plugs
     protected function registerDeferredServices(): void
     {
         foreach ($this->deferredBootstrappers as $name => $method) {
-            // Only register if the method hasn't already been called
-            // and doesn't need to run immediately
-            $this->{$method}();
+            $this->container->singleton($name, function () use ($method) {
+                return $this->{$method}();
+            });
         }
     }
 
@@ -164,31 +164,23 @@ class Plugs
         });
     }
 
-    private function bootstrapAuth(): void
+    private function bootstrapAuth(): object
     {
-        $container = $this->container;
-
-        $container->singleton('auth', function () {
-            return new \Plugs\Security\Auth\AuthManager();
-        });
+        return new \Plugs\Security\Auth\AuthManager();
     }
 
-    private function bootstrapQueue(): void
+    private function bootstrapQueue(): object
     {
-        $this->container->singleton('queue', function () {
-            $queue = new \Plugs\Queue\QueueManager();
-            $queue->setDefaultDriver(config('queue.default', 'sync'));
+        $queue = new \Plugs\Queue\QueueManager();
+        $queue->setDefaultDriver(config('queue.default', 'sync'));
 
-            return $queue;
-        });
+        return $queue;
     }
 
-    private function bootstrapStorage(): void
+    private function bootstrapStorage(): object
     {
-        $this->container->singleton('storage', function () {
-            $config = config('filesystems');
-            return new \Plugs\Filesystem\StorageManager($config);
-        });
+        $config = config('filesystems');
+        return new \Plugs\Filesystem\StorageManager($config);
     }
 
     private function bootstrapView(): void
@@ -209,7 +201,7 @@ class Plugs
         $container->alias(\Plugs\View\ViewEngine::class, 'view');
     }
 
-    private function bootstrapDatabase(): void
+    private function bootstrapDatabase(): object
     {
         $container = $this->container;
 
@@ -218,27 +210,20 @@ class Plugs
             return \Plugs\Database\Connection::getInstance();
         }, true); // Shared instance
 
-        // Bind DatabaseManager as 'db' for the DB facade
-        $container->singleton('db', function ($container) {
-            return new \Plugs\Database\DatabaseManager($container->make(\Plugs\Database\Connection::class));
-        });
+        return new \Plugs\Database\DatabaseManager($container->make(\Plugs\Database\Connection::class));
     }
 
-    private function bootstrapSocialite(): void
+    private function bootstrapSocialite(): object
     {
-        $this->container->singleton('socialite', function ($container) {
-            return new \Plugs\Security\OAuth\SocialiteManager($container);
-        });
+        return new \Plugs\Security\OAuth\SocialiteManager($this->container);
     }
 
-    private function bootstrapPdf(): void
+    private function bootstrapPdf(): object
     {
-        $this->container->singleton('pdf', function ($container) {
-            $pdf = new \Plugs\Pdf\PdfServiceProvider($container);
-            $pdf->register();
+        $pdf = new \Plugs\Pdf\PdfServiceProvider($this->container);
+        $pdf->register();
 
-            return $pdf;
-        });
+        return $pdf;
     }
 
     private function bootstrapEvents(): void
@@ -250,46 +235,34 @@ class Plugs
         $this->container->alias('events', \Plugs\Event\DispatcherInterface::class);
     }
 
-    private function bootstrapTranslator(): void
+    private function bootstrapTranslator(): object
     {
-        $this->container->singleton('translator', function ($container) {
-            $config = config('app');
-            $locale = $config['locale'] ?? 'en';
-            $fallback = $config['fallback_locale'] ?? 'en';
+        $config = config('app');
+        $locale = $config['locale'] ?? 'en';
+        $fallback = $config['fallback_locale'] ?? 'en';
 
-            $translator = new \Plugs\Support\Translator($locale, $fallback);
-            $translator->addPath(base_path('resources/lang'));
-
-            return $translator;
-        });
-
-        $this->container->alias('translator', \Plugs\Support\Translator::class);
+        $translator = new \Plugs\Support\Translator($locale, $fallback);
+        $translator->addPath(base_path('resources/lang'));
 
         // Load translation functions
         require_once __DIR__ . '/functions/translation.php';
+
+        return $translator;
     }
 
-    private function bootstrapNotifications(): void
+    private function bootstrapNotifications(): object
     {
-        $this->container->singleton('notifications', function ($container) {
-            return new \Plugs\Notification\Manager($container);
-        });
-
-        $this->container->alias('notifications', \Plugs\Notification\Manager::class);
+        return new \Plugs\Notification\Manager($this->container);
     }
 
-    private function bootstrapAi(): void
+    private function bootstrapAi(): object
     {
-        $this->container->singleton('ai', function () {
-            return new \Plugs\AI\AIManager(config('ai'));
-        });
+        return new \Plugs\AI\AIManager(config('ai'));
     }
 
-    private function bootstrapSeo(): void
+    private function bootstrapSeo(): object
     {
-        $this->container->singleton('seo', function () {
-            return new \Plugs\Support\SEO(config('seo'));
-        });
+        return new \Plugs\Support\SEO(config('seo'));
     }
 
     public function pipe(MiddlewareInterface $middleware): self
@@ -401,7 +374,7 @@ class Plugs
 
     private function emitResponse(ResponseInterface $response): void
     {
-        if (headers_sent()) {
+        if (headers_sent() && PHP_SAPI !== 'cli') {
             echo $response->getBody();
 
             return;
@@ -427,7 +400,64 @@ class Plugs
         }
 
         // Send body
-        echo $response->getBody();
+        if ($this->shouldCompress($response)) {
+            $content = (string) $response->getBody();
+            header('Content-Encoding: gzip');
+            header('Vary: Accept-Encoding');
+            echo gzencode($content, 6);
+        } else {
+            echo $response->getBody();
+        }
+    }
+
+    /**
+     * Check if the response should be compressed.
+     */
+    private function shouldCompress(ResponseInterface $response): bool
+    {
+        if (connection_aborted()) {
+            return false;
+        }
+
+        if (headers_sent() && PHP_SAPI !== 'cli') {
+            return false;
+        }
+
+        // Don't compress if already compressed or encoding set
+        if ($response->hasHeader('Content-Encoding')) {
+            return false;
+        }
+
+        $contentType = $response->getHeaderLine('Content-Type');
+        if (empty($contentType)) {
+            $contentType = 'text/html'; // Default
+        }
+
+        $compressibleTypes = [
+            'text/html',
+            'text/css',
+            'application/javascript',
+            'application/json',
+            'text/xml',
+            'application/xml',
+            'text/plain'
+        ];
+
+        $isCompressible = false;
+        foreach ($compressibleTypes as $type) {
+            if (stripos($contentType, $type) !== false) {
+                $isCompressible = true;
+                break;
+            }
+        }
+
+        if (!$isCompressible) {
+            return false;
+        }
+
+        $encoding = $_SERVER['HTTP_ACCEPT_ENCODING'] ?? '';
+
+        return stripos($encoding, 'gzip') !== false;
     }
 
     /**

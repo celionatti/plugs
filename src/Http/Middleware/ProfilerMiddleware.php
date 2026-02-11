@@ -44,6 +44,19 @@ class ProfilerMiddleware implements MiddlewareInterface
 
         $profiler->stopSegment('middleware');
 
+        // Match route from router if attributes are missing (fallback)
+        $routeName = $request->getAttribute('_route_name') ?? $request->getAttribute('_route')?->getName();
+        $controller = $request->getAttribute('_controller');
+
+        if ($routeName === null || $controller === null) {
+            $router = \Plugs\Container\Container::getInstance()->get(\Plugs\Router\Router::class);
+            $currentRoute = $router->getCurrentRoute();
+            if ($currentRoute) {
+                $routeName = $routeName ?? $currentRoute->getName();
+                $controller = $controller ?? $currentRoute->getHandler();
+            }
+        }
+
         // Collect profile data
         $profile = $profiler->stop([
             'method' => $request->getMethod(),
@@ -53,7 +66,14 @@ class ProfilerMiddleware implements MiddlewareInterface
             'body' => $request->getParsedBody(),
             'ip' => $this->getClientIp($request),
             'status_code' => $response->getStatusCode(),
-            'route' => $request->getAttribute('_route')?->getName() ?? null,
+            'route' => $routeName ?? 'unnamed',
+            'controller' => is_string($controller) ? $controller : (
+                is_array($controller) ? (
+                    (is_object($controller[0] ?? null) ? get_class($controller[0]) : ($controller[0] ?? 'unknown')) .
+                    '@' .
+                    ($controller[1] ?? 'index')
+                ) : (is_object($controller) ? get_class($controller) : 'Closure')
+            ),
         ]);
 
         // Inject profiler bar into HTML responses if enabled

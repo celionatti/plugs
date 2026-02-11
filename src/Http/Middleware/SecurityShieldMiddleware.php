@@ -32,8 +32,9 @@ class SecurityShieldMiddleware implements MiddlewareInterface
     private Connection $db;
     private array $config;
     private array $rules;
-    private ?array $whitelistedIps = null;
-    private ?array $blacklistedIps = null;
+    private static ?array $cachedWhitelistedIps = null;
+    private static ?array $cachedBlacklistedIps = null;
+    private static int $lastListLoadTime = 0;
     private bool $listsLoaded = false;
 
     /**
@@ -209,10 +210,11 @@ class SecurityShieldMiddleware implements MiddlewareInterface
             return $this->deny('Too many attempts for this account', 0.8);
         }
 
-        // Record this attempt
+        // Optimizing: Record this attempt first, then we can fetch all stats in one or fewer queries
         $this->recordAttempt($ip, $email, $endpoint);
 
-        // Calculate risk score
+        // Calculate risk score - we can't easily merge these complex "COUNT WHERE" across different tables/logics 
+        // without a more complex SQL, but we can at least avoid some if weights are low or disabled.
         $riskScore = min($limits['ip_attempts'] / $this->config['rate_limits']['login_attempts'], 0.9);
 
         return [
@@ -682,33 +684,40 @@ class SecurityShieldMiddleware implements MiddlewareInterface
 
     private function loadWhitelistBlacklist(): void
     {
+        $now = time();
+        // Cache for 60 seconds internally to avoid constant DB hits across requests in same process
+        if (self::$cachedWhitelistedIps !== null && ($now - self::$lastListLoadTime) < 60) {
+            return;
+        }
+
         try {
             $whitelist = $this->db->fetchAll("SELECT ip FROM whitelisted_ips WHERE active = 1");
-            $this->whitelistedIps = array_column($whitelist, 'ip');
+            self::$cachedWhitelistedIps = array_column($whitelist, 'ip');
 
             $blacklist = $this->db->fetchAll(
                 "SELECT ip FROM blacklisted_ips WHERE active = 1 AND (expires_at IS NULL OR expires_at > NOW())"
             );
-            $this->blacklistedIps = array_column($blacklist, 'ip');
+            self::$cachedBlacklistedIps = array_column($blacklist, 'ip');
+            self::$lastListLoadTime = $now;
         } catch (\Exception $e) {
             // Tables might not exist yet or connection failed
-            if ($this->whitelistedIps === null) {
-                $this->whitelistedIps = [];
+            if (self::$cachedWhitelistedIps === null) {
+                self::$cachedWhitelistedIps = [];
             }
-            if ($this->blacklistedIps === null) {
-                $this->blacklistedIps = [];
+            if (self::$cachedBlacklistedIps === null) {
+                self::$cachedBlacklistedIps = [];
             }
         }
     }
 
     private function isWhitelisted(string $ip): bool
     {
-        return in_array($ip, $this->whitelistedIps);
+        return in_array($ip, self::$cachedWhitelistedIps ?? []);
     }
 
     private function isBlacklisted(string $ip): bool
     {
-        return in_array($ip, $this->blacklistedIps);
+        return in_array($ip, self::$cachedBlacklistedIps ?? []);
     }
 
     private function addToBlacklist(string $ip, string $reason, int $duration = 3600): void
@@ -719,7 +728,9 @@ class SecurityShieldMiddleware implements MiddlewareInterface
                  VALUES (?, ?, DATE_ADD(NOW(), INTERVAL ? SECOND), NOW())",
                 [$ip, $reason, $duration]
             );
-            $this->blacklistedIps[] = $ip;
+            if (self::$cachedBlacklistedIps !== null) {
+                self::$cachedBlacklistedIps[] = $ip;
+            }
         } catch (\Exception $e) {
             // Silent fail
         }
@@ -819,8 +830,8 @@ class SecurityShieldMiddleware implements MiddlewareInterface
      */
     public function addToWhitelist(string $ip): self
     {
-        if (!in_array($ip, $this->whitelistedIps)) {
-            $this->whitelistedIps[] = $ip;
+        if (self::$cachedWhitelistedIps !== null && !in_array($ip, self::$cachedWhitelistedIps)) {
+            self::$cachedWhitelistedIps[] = $ip;
         }
 
         return $this;

@@ -73,6 +73,7 @@ class Router
     private ?PageRouter $pageRouter = null;
     private bool $pagesRoutingEnabled = false;
     private string $cachePath = '';
+    private array $staticRoutes = [];
 
     /**
      * Get the route cache path.
@@ -412,8 +413,12 @@ class Router
             $route->where($this->groupWhere);
         }
 
-        // Add to indexed array
-        $this->routes[$method][] = $route;
+        // Optimization: Separate static and dynamic routes
+        if (!str_contains($path, '{')) {
+            $this->staticRoutes[$method][$path] = $route;
+        } else {
+            $this->routes[$method][] = $route;
+        }
 
         return $route;
     }
@@ -533,6 +538,17 @@ class Router
         }
 
         // Find matching route - Only iterate routes for the specific method
+
+        // 1. Check static routes first (O(1) lookup)
+        if (isset($this->staticRoutes[$method][$path])) {
+            $route = $this->staticRoutes[$method][$path];
+            if ($this->cacheEnabled) {
+                $this->cacheRoute($method . ':' . $path, $route);
+            }
+            return $this->dispatchRoute($route, $request, $path);
+        }
+
+        // 2. Fallback to dynamic routes if no static match
         $routes = $this->routes[$method] ?? [];
 
         foreach ($routes as $route) {
