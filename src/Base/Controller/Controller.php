@@ -15,6 +15,7 @@ namespace Plugs\Base\Controller;
 */
 
 
+use Plugs\Http\Message\ServerRequest;
 use Plugs\Http\ResponseFactory;
 use Plugs\Security\Validator;
 use Plugs\View\ErrorMessage;
@@ -27,7 +28,7 @@ abstract class Controller
 {
     protected ViewEngine $view;
     protected $db;
-    protected ?ServerRequestInterface $currentRequest = null;
+    protected ?ServerRequest $currentRequest = null;
 
     public function __construct()
     {
@@ -260,7 +261,7 @@ abstract class Controller
      * Validate request data
      * Supports both array rules and FormRequest objects.
      */
-    protected function validate(ServerRequestInterface|string $request, array $rules = []): array
+    protected function validate(ServerRequest|ServerRequestInterface|string $request, array $rules = []): array
     {
         // Handle FormRequest class string
         if (is_string($request) && is_subclass_of($request, \Plugs\Http\Requests\FormRequest::class)) {
@@ -345,13 +346,13 @@ abstract class Controller
     /**
      * Get the current request instance
      */
-    protected function request(): ServerRequestInterface
+    protected function request(): ServerRequest
     {
         if ($this->currentRequest) {
             return $this->currentRequest;
         }
 
-        return request() ?? \Plugs\Http\Message\ServerRequest::fromGlobals();
+        return request() ?? ServerRequest::fromGlobals();
     }
 
     /**
