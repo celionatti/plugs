@@ -10,18 +10,28 @@ use RuntimeException;
 class GeminiDriver extends AIBaseDriver
 {
     protected Client $client;
+    protected string $apiVersion;
 
     public function __construct(array $config)
     {
         parent::__construct($config);
 
+        $this->apiVersion = $config['version'] ?? (str_contains($this->model, 'preview') ? 'v1beta' : 'v1');
+
         $this->client = new Client([
-            'base_uri' => 'https://generativelanguage.googleapis.com/v1beta/models/',
-            'query' => ['key' => $this->getConfig('api_key')],
             'headers' => [
                 'Content-Type' => 'application/json',
+                'x-goog-api-key' => $this->getConfig('api_key'),
             ],
         ]);
+    }
+
+    /**
+     * Get the base URL for the Gemini API.
+     */
+    protected function getUrl(string $action): string
+    {
+        return "https://generativelanguage.googleapis.com/{$this->apiVersion}/models/{$this->model}:{$action}";
     }
 
     /**
@@ -30,7 +40,7 @@ class GeminiDriver extends AIBaseDriver
     public function prompt(string $prompt, array $options = []): string
     {
         try {
-            $response = $this->client->post("{$this->model}:generateContent", [
+            $response = $this->client->post($this->getUrl('generateContent'), [
                 'json' => [
                     'contents' => [
                         ['parts' => [['text' => $prompt]]]
@@ -59,7 +69,7 @@ class GeminiDriver extends AIBaseDriver
         }, $messages);
 
         try {
-            $response = $this->client->post("{$this->model}:generateContent", [
+            $response = $this->client->post($this->getUrl('generateContent'), [
                 'json' => [
                     'contents' => $contents
                 ],

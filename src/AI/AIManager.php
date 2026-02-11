@@ -25,7 +25,7 @@ class AIManager
      */
     public function driver(?string $name = null): AIDriverInterface
     {
-        $name = $name ?: $this->getDefaultDriver();
+        $name = $name ?: $this->guessDriver();
 
         if (!isset($this->drivers[$name])) {
             $this->drivers[$name] = $this->createDriver($name);
@@ -69,12 +69,32 @@ class AIManager
         return new GeminiDriver($config);
     }
 
-    /**
-     * Get the default driver name.
-     */
     public function getDefaultDriver(): string
     {
         return $this->config['default'] ?? 'openai';
+    }
+
+    /**
+     * Guess the best driver based on configured keys.
+     */
+    protected function guessDriver(): string
+    {
+        $default = $this->getDefaultDriver();
+        $providers = $this->config['providers'] ?? [];
+
+        // If the default driver has a key, use it
+        if (!empty($providers[$default]['api_key'])) {
+            return $default;
+        }
+
+        // Otherwise, find the first driver that has a key
+        foreach ($providers as $name => $config) {
+            if (!empty($config['api_key'])) {
+                return $name;
+            }
+        }
+
+        return $default;
     }
 
     /**

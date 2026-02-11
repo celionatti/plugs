@@ -46,6 +46,7 @@ use Plugs\Console\Commands\SeedCommand;
 use Plugs\Console\Commands\ServeCommand;
 use Plugs\Console\Commands\StorageLinkCommand;
 use Plugs\Console\Commands\TypeGenCommand;
+use Plugs\Console\Commands\AIChatCommand;
 
 
 /*
@@ -113,6 +114,7 @@ class ConsoleKernel
         'schedule:run' => \Plugs\Console\Commands\ScheduleRunCommand::class,
         'schedule:list' => \Plugs\Console\Commands\ScheduleListCommand::class,
         'type:gen' => TypeGenCommand::class,
+        'ai:chat' => AIChatCommand::class,
     ];
 
 
@@ -177,7 +179,7 @@ class ConsoleKernel
             'make:notification',
         ],
         'Routes' => ['route:list', 'route:cache', 'route:clear', 'route:test'],
-        'Utility' => ['serve', 'cache:clear', 'config:cache', 'optimize', 'queue:work', 'health', 'storage:link', 'type:gen'],
+        'Utility' => ['serve', 'cache:clear', 'config:cache', 'optimize', 'queue:work', 'health', 'storage:link', 'type:gen', 'ai:chat'],
 
         'Scheduling' => ['schedule:run', 'schedule:list'],
         'Database' => ['migrate', 'migrate:rollback', 'migrate:status', 'migrate:fresh', 'migrate:validate', 'migrate:reset', 'make:migration', 'db:seed'],
