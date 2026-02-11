@@ -40,31 +40,34 @@ use Plugs\Database\Exceptions\ConcurrencyException;
  *
  * @method mixed getAttribute(string $key)
  * @method void setAttribute(string $key, mixed $value)
- * @phpstan-consistent-constructor
  */
 abstract class PlugModel implements \JsonSerializable
 {
-    use Debuggable;
-    use Searchable;
-    use HasConnection;
-    use HasQueryBuilder;
-    use HasAttributes;
-    use HasRelationships;
-    use HasEvents;
-    use HasValidation;
-    use HasTimestamps;
-    use SoftDeletes;
-    use HasFactory;
-    use HasDomainRules;
-    use HasScopes;
-    use HasTenancy;
-    use Authorizable;
-    use HasImmutability;
-    use HasVersioning;
-    use HasSerialization;
-    use HasObservability;
-    use HasDomainEvents;
-    use HasDiagnostics;
+    use \Plugs\Base\Model\Debuggable,
+        Searchable,
+        HasConnection,
+        HasQueryBuilder,
+        HasAttributes,
+        HasRelationships,
+        HasValidation,
+        HasTimestamps,
+        SoftDeletes,
+        HasFactory,
+        HasDomainRules,
+        HasTenancy,
+        Authorizable,
+        HasImmutability,
+        HasVersioning,
+        HasSerialization,
+        HasObservability,
+        HasDomainEvents,
+        HasDiagnostics;
+
+    use HasEvents, HasScopes {
+        HasScopes::addGlobalScope insteadof HasEvents;
+        HasEvents::addGlobalScope as addGlobalEventScope;
+        HasScopes::addGlobalScope as addGlobalQueryScope;
+    }
 
     protected $table;
     protected $primaryKey = 'id';
@@ -285,7 +288,23 @@ abstract class PlugModel implements \JsonSerializable
 
     public static function flushCache(): void
     {
-        static::$queryCache = [];
+        \Plugs\Facades\Cache::driver()->clear();
+    }
+
+    /**
+     * Apply all registered global scopes to the query builder.
+     */
+    public function applyGlobalScopes(\Plugs\Database\QueryBuilder $builder): \Plugs\Database\QueryBuilder
+    {
+        foreach ($this->getGlobalScopes() as $scope) {
+            if ($scope instanceof \Closure) {
+                $scope($builder, $this);
+            } elseif ($scope instanceof \Plugs\Database\Contracts\GlobalScope) {
+                $scope->apply($builder, $this);
+            }
+        }
+
+        return $builder;
     }
 
     protected function getCacheKey(string $sql, array $bindings): string
@@ -295,31 +314,17 @@ abstract class PlugModel implements \JsonSerializable
 
     protected function getFromCache(string $key)
     {
-        if (!static::$cacheEnabled || !isset(static::$queryCache[$key])) {
+        if (!static::$cacheEnabled) {
             return null;
         }
 
-        $cached = static::$queryCache[$key];
-        if (time() > $cached['expires']) {
-            unset(static::$queryCache[$key]);
-
-            return null;
-        }
-
-        return $cached['data'];
+        return \Plugs\Facades\Cache::get($key);
     }
 
     protected function putInCache(string $key, $data): void
     {
         if (static::$cacheEnabled) {
-            if (count(static::$queryCache) >= static::$maxCacheSize) {
-                array_shift(static::$queryCache); // Remove oldest
-            }
-
-            static::$queryCache[$key] = [
-                'data' => $data,
-                'expires' => time() + static::$cacheTTL,
-            ];
+            \Plugs\Facades\Cache::set($key, $data, static::$cacheTTL);
         }
     }
 

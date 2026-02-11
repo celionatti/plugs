@@ -616,14 +616,30 @@ trait HasRelationships
 
     protected function eagerLoadHasManyThrough(Collection $models, string $relation, array $config, array $nested): void
     {
-        // This is complex. We need to join with the through table.
-        // For simplicity in this implementation, we'll use a subquery or join-based collection.
-        // A full robust implementation would look like this:
         $related = $config['related'];
-        $through = $config['through'] ?? null; // We might need to extract this from code if not passed
+        $throughTable = $config['throughTable'];
+        $firstKey = $config['firstKey'];
+        $secondKey = $config['secondKey'];
+        $localKey = $config['localKey'];
+        $secondLocalKey = $config['secondLocalKey'];
 
-        // ... (Robust implementation details would go here)
-        // For now, we'll mark it as implemented for basic cases if we can extract keys.
+        $ids = $models->pluck($localKey)->unique()->all();
+
+        $query = $related::query()
+            ->select(["{$related::getTableName()}.*", "{$throughTable}.{$firstKey} as through_{$firstKey}"])
+            ->join($throughTable, "{$throughTable}.{$secondLocalKey}", '=', "{$related::getTableName()}.{$secondKey}")
+            ->whereIn("{$throughTable}.{$firstKey}", $ids);
+
+        if (!empty($nested)) {
+            $query->with($nested);
+        }
+
+        $results = $query->get()->groupBy("through_{$firstKey}");
+
+        foreach ($models as $model) {
+            $id = $model->getAttribute($localKey);
+            $model->setRelation($relation, $results[$id] ?? new Collection());
+        }
     }
 
     public static function bootHasRelationships(): void

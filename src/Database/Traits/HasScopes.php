@@ -12,6 +12,38 @@ use ReflectionMethod;
 trait HasScopes
 {
     /**
+     * The global query scopes registered for the model.
+     *
+     * @var array
+     */
+    protected static array $globalQueryScopes = [];
+
+    /**
+     * Register a new global scope on the model.
+     *
+     * @param  \Plugs\Database\Contracts\GlobalScope|\Closure|string  $scope
+     * @param  \Plugs\Database\Contracts\GlobalScope|\Closure|null  $implementation
+     * @return void
+     */
+    public static function addGlobalScope($scope, $implementation = null): void
+    {
+        if (is_string($scope) && ($implementation instanceof \Plugs\Database\Contracts\GlobalScope || $implementation instanceof \Closure)) {
+            static::$globalQueryScopes[static::class][$scope] = $implementation;
+        } elseif ($scope instanceof \Plugs\Database\Contracts\GlobalScope || $scope instanceof \Closure) {
+            static::$globalQueryScopes[static::class][get_class($scope)] = $scope;
+        }
+    }
+
+    /**
+     * Get the global scopes for the model.
+     *
+     * @return array
+     */
+    public function getGlobalScopes(): array
+    {
+        return static::$globalQueryScopes[static::class] ?? [];
+    }
+    /**
      * Get all available query scopes on the model.
      *
      * @return array<string, array{method: string, description: ?string}>

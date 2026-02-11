@@ -1086,6 +1086,22 @@ class QueryBuilder
     }
 
     /**
+     * Get the SQL representation of the query.
+     */
+    public function toSql(): string
+    {
+        return $this->buildSelectSql();
+    }
+
+    /**
+     * Get the current query bindings.
+     */
+    public function getBindings(): array
+    {
+        return $this->params;
+    }
+
+    /**
      * Get a scope proxy for the builder.
      *
      * @return ScopeProxy

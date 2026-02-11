@@ -26,6 +26,8 @@ trait HasAttributes
     protected $attributeCache = [];
     protected $visible = [];
     protected $castNulls = true;
+    protected $sensitive = [];
+    protected static bool $strictMassAssignment = false;
 
     /**
      * Indicates if the model should enforce strict casting.
@@ -78,10 +80,20 @@ trait HasAttributes
         foreach ($attributes as $key => $value) {
             if ($this->isFillable($key)) {
                 $this->setAttribute($key, $value);
+            } elseif (static::$strictMassAssignment) {
+                throw new \Exception("Add [{$key}] to fillable to allow mass assignment on [" . static::class . "].");
             }
         }
 
         return $this;
+    }
+
+    /**
+     * Prevent silently ignoring attributes during mass assignment.
+     */
+    public static function preventSilentlyIgnoringAttributes(bool $prevent = true): void
+    {
+        static::$strictMassAssignment = $prevent;
     }
 
     protected function isFillable(string $key): bool
@@ -213,6 +225,20 @@ trait HasAttributes
     }
 
     /**
+     * Mask sensitive attributes.
+     */
+    public function maskSensitiveAttributes(array $attributes): array
+    {
+        foreach ($this->sensitive as $key) {
+            if (array_key_exists($key, $attributes)) {
+                $attributes[$key] = '********';
+            }
+        }
+
+        return $attributes;
+    }
+
+    /**
      * Cast a value for storage in the database.
      */
     protected function castForStorage(string $key, $value)
@@ -250,6 +276,10 @@ trait HasAttributes
                 return $value;
 
             default:
+                if (is_string($castType) && enum_exists($castType) && !is_object($value)) {
+                    return $value instanceof \UnitEnum ? $value->value ?? $value->name : $value;
+                }
+
                 return $value;
         }
     }
@@ -365,6 +395,11 @@ trait HasAttributes
                 return $datetime ? $datetime->format($this->dateFormat) : null;
 
             default:
+                // Handle Enums
+                if (is_string($castType) && enum_exists($castType)) {
+                    return $this->castToEnum($castType, $value);
+                }
+
                 // Support for custom cast format like 'datetime:Y-m-d'
                 if (strpos($castType, 'datetime:') === 0) {
                     $format = substr($castType, 9);
@@ -382,6 +417,30 @@ trait HasAttributes
 
                 return $value;
         }
+    }
+
+    /**
+     * Cast to a native PHP Enum.
+     */
+    protected function castToEnum(string $enumClass, $value)
+    {
+        if ($value instanceof $enumClass) {
+            return $value;
+        }
+
+        if (is_subclass_of($enumClass, \BackedEnum::class)) {
+            return $enumClass::tryFrom($value);
+        }
+
+        if (is_subclass_of($enumClass, \UnitEnum::class)) {
+            foreach ($enumClass::cases() as $case) {
+                if ($case->name === $value) {
+                    return $case;
+                }
+            }
+        }
+
+        return null;
     }
 
     protected function getNullCastValue($castType)
@@ -658,7 +717,7 @@ trait HasAttributes
             }
         }
 
-        return $attributes;
+        return $this->maskSensitiveAttributes($attributes);
     }
 
     protected function getArrayableAttributes(): array
