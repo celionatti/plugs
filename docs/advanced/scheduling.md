@@ -13,7 +13,11 @@ You may define all of your scheduled tasks in the `schedule` method of your appl
 ```php
 protected function schedule(Schedule $schedule)
 {
+    // Run a command with parameters
     $schedule->command('emails:send --force')->daily();
+
+    // Run another project command
+    $schedule->command('cache:clear')->weekly();
 }
 ```
 
@@ -23,34 +27,74 @@ protected function schedule(Schedule $schedule)
 protected function schedule(Schedule $schedule)
 {
     $schedule->call(function () {
-        DB::table('recent_users')->delete();
-    })->daily();
+        // Your logic here
+    })->daily()->description('Clean up temporary files');
 }
 ```
 
 ## Schedule Frequency Options
 
-There are a variety of frequencies you may assign to a task:
+There are a variety of frequencies you may assign to a task. These can be combined or used individually for complex schedules.
 
-| Method | Description |
-| --- | --- |
-| `->everyMinute();` | Run the task every minute |
-| `->everyFiveMinutes();` | Run the task every five minutes |
-| `->everyTenMinutes();` | Run the task every ten minutes |
-| `->everyFifteenMinutes();` | Run the task every fifteen minutes |
-| `->everyThirtyMinutes();` | Run the task every thirty minutes |
-| `->hourly();` | Run the task every hour |
-| `->hourlyAt(17);` | Run the task every hour at 17 minutes past the hour |
-| `->daily();` | Run the task every day at midnight |
-| `->dailyAt('13:00');` | Run the task every day at 13:00 |
-| `->twiceDaily(1, 13);` | Run the task daily at 1:00 & 13:00 |
-| `->weekly();` | Run the task every Sunday at 00:00 |
-| `->weeklyOn(1, '8:00');` | Run the task every Monday at 8:00 |
-| `->monthly();` | Run the task every month on the 1st at 00:00 |
-| `->monthlyOn(4, '15:00');` | Run the task every month on the 4th at 15:00 |
-| `->lastDayOfMonth('15:00');` | Run the task on the last day of the month at 15:00 |
-| `->yearly();` | Run the task every year on Jan 1st at 00:00 |
-| `->cron('* * * * *');` | Run the task on a custom cron schedule |
+| Method                     | Description                                         |
+| -------------------------- | --------------------------------------------------- |
+| `->everyMinute();`         | Run the task every minute                           |
+| `->everyFiveMinutes();`    | Run the task every five minutes                     |
+| `->everyTenMinutes();`     | Run the task every ten minutes                      |
+| `->everyFifteenMinutes();` | Run the task every fifteen minutes                  |
+| `->everyThirtyMinutes();`  | Run the task every thirty minutes                   |
+| `->hourly();`              | Run the task every hour                             |
+| `->hourlyAt(17);`          | Run the task every hour at 17 minutes past the hour |
+| `->daily();`               | Run the task every day at midnight                  |
+| `->dailyAt('13:00');`      | Run the task every day at 13:00                     |
+| `->twiceDaily(1, 13);`     | Run the task daily at 1:00 & 13:00                  |
+| `->weekly();`              | Run the task every Sunday at 00:00                  |
+| `->weeklyOn(1, '8:00');`   | Run the task every Monday at 8:00                   |
+| `->monthly();`             | Run the task every month on the 1st at 00:00        |
+| `->monthlyOn(4, '15:00');` | Run the task every month on the 4th at 15:00        |
+| `->yearly();`              | Run the task every year on Jan 1st at 00:00         |
+| `->weekdays();`            | Limit the task to weekdays (Monday-Friday)          |
+| `->weekends();`            | Limit the task to weekends (Saturday-Sunday)        |
+| `->mondays();`             | Limit the task to Mondays                           |
+| `->tuesdays();`            | Limit the task to Tuesdays                          |
+| `->wednesdays();`          | Limit the task to Wednesdays                        |
+| `->thursdays();`           | Limit the task to Thursdays                         |
+| `->fridays();`             | Limit the task to Fridays                           |
+| `->saturdays();`           | Limit the task to Saturdays                         |
+| `->sundays();`             | Limit the task to Sundays                           |
+| `->cron('* * * * *');`     | Run the task on a custom cron schedule              |
+
+## Advanced Options
+
+### Preventing Overlaps
+
+By default, scheduled tasks will run even if the previous instance of the task is still running. To prevent this, you may use the `withoutOverlapping` method:
+
+```php
+$schedule->command('emails:send')->withoutOverlapping();
+```
+
+### Background Execution
+
+Normally, the scheduler runs tasks sequentially. If you have a long-running task, you can run it in the background so it doesn't block other tasks:
+
+```php
+$schedule->command('analytics:report')->runInBackground();
+```
+
+### Truth Constraints
+
+You may use the `when` and `skip` methods to limit the execution of a task based on the result of a given boolean test:
+
+```php
+$schedule->command('emails:send')->daily()->when(function () {
+    return true; // Only run if this returns true
+});
+
+$schedule->command('emails:send')->daily()->skip(function () {
+    return false; // Skip if this returns true
+});
+```
 
 ## Running The Scheduler
 
@@ -61,3 +105,11 @@ When using the scheduler, you only need to add the following cron item to your s
 ```
 
 This cron will call the Plugs command scheduler every minute. When the `schedule:run` command is executed, Plugs will evaluate your scheduled tasks and run the tasks that are due.
+
+## Listing Scheduled Tasks
+
+You can view a list of all your scheduled tasks and when they are next due by running:
+
+```bash
+php theplugs schedule:list
+```
