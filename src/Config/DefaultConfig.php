@@ -22,6 +22,7 @@ class DefaultConfig
             'queue' => self::queue(),
             'security' => self::security(),
             'services' => self::services(),
+            'ai' => self::ai(),
             default => [],
         };
     }
@@ -377,7 +378,20 @@ class DefaultConfig
     private static function middleware(): array
     {
         return [
-            'aliases' => [],
+            'aliases' => [
+                'csrf' => \Plugs\Http\Middleware\CsrfMiddleware::class,
+                'guest' => \App\Http\Middleware\GuestMiddleware::class,
+                'auth' => \Plugs\Http\Middleware\AuthenticateMiddleware::class,
+            ],
+
+            'groups' => [
+                'web' => [
+                    \Plugs\Http\Middleware\ShareErrorsFromSession::class,
+                ],
+                'api' => [
+                    \Plugs\Http\Middleware\ForceJsonMiddleware::class,
+                ],
+            ],
         ];
     }
 
@@ -410,6 +424,39 @@ class DefaultConfig
                 'client_id' => env('GOOGLE_CLIENT_ID', ''),
                 'client_secret' => env('GOOGLE_CLIENT_SECRET', ''),
                 'redirect' => env('GOOGLE_REDIRECT_URI', 'http://plugs.local/auth/google/callback'),
+            ],
+        ];
+    }
+
+    private static function ai(): array
+    {
+        return [
+            /**
+             * Default AI Provider
+             * 
+             * Supported: "openai", "anthropic", "gemini"
+             */
+            'default' => env('AI_DRIVER', 'openai'),
+
+            /**
+             * AI Provider Configurations
+             */
+            'providers' => [
+                'openai' => [
+                    'api_key' => env('OPENAI_API_KEY'),
+                    'organization' => env('OPENAI_ORGANIZATION'),
+                    'model' => env('OPENAI_MODEL', 'gpt-4o'),
+                ],
+
+                'anthropic' => [
+                    'api_key' => env('ANTHROPIC_API_KEY'),
+                    'model' => env('ANTHROPIC_MODEL', 'claude-3-5-sonnet-latest'),
+                ],
+
+                'gemini' => [
+                    'api_key' => env('GEMINI_API_KEY'),
+                    'model' => env('GEMINI_MODEL', 'gemini-1.5-flash'),
+                ],
             ],
         ];
     }

@@ -54,6 +54,7 @@ class Plugs
         'translator' => 'bootstrapTranslator',
         'notifications' => 'bootstrapNotifications',
         'providers' => 'bootstrapProviders',
+        'ai' => 'bootstrapAi',
     ];
 
     /**
@@ -274,6 +275,13 @@ class Plugs
         });
 
         $this->container->alias('notifications', \Plugs\Notification\Manager::class);
+    }
+
+    private function bootstrapAi(): void
+    {
+        $this->container->singleton('ai', function () {
+            return new \Plugs\AI\AIManager(config('ai'));
+        });
     }
 
     public function pipe(MiddlewareInterface $middleware): self
