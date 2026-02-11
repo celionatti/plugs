@@ -42,8 +42,21 @@ class StorageLinkCommand extends Command
         }
 
         $this->task('Creating symbolic link', function () use ($target, $link) {
-            if (!symlink($target, $link)) {
-                throw new \RuntimeException("Failed to create symbolic link.");
+            try {
+                if (!@symlink($target, $link)) {
+                    throw new \RuntimeException("Failed to create symbolic link.");
+                }
+            } catch (\Throwable $e) {
+                if (str_contains(PHP_OS, 'WIN')) {
+                    $this->newLine();
+                    $this->error("Windows Permission Error: Symlink creation failed.");
+                    $this->newLine();
+                    $this->info("To fix this, try one of the following:");
+                    $this->info("1. Run your terminal (CMD or PowerShell) as Administrator.");
+                    $this->info("2. Enable Windows Developer Mode in your system settings.");
+                    $this->newLine();
+                }
+                throw new \RuntimeException($e->getMessage() ?: "Failed to create symbolic link.");
             }
             usleep(200000);
         });
