@@ -108,10 +108,13 @@ class ViewEngine
      */
     private array $componentDefinitionCache = [];
 
-    public function __construct(string $viewPath, string $cachePath, bool $cacheEnabled = false)
+    private \Plugs\Container\Container $container;
+
+    public function __construct(string $viewPath, string $cachePath, \Plugs\Container\Container $container, bool $cacheEnabled = false)
     {
         $this->viewPath = rtrim($viewPath, '/\\');
         $this->cachePath = rtrim($cachePath, '/\\');
+        $this->container = $container;
         $this->cacheEnabled = $cacheEnabled;
         $this->componentPath = $this->viewPath . DIRECTORY_SEPARATOR . 'components';
 
@@ -436,13 +439,37 @@ class ViewEngine
 
             $componentData = array_merge($data, ['slot' => $slot]);
 
-            // Check if there's a reactive class for this component
+            // Check if there's a PHP class for this component
             $className = "App\\Components\\" . $this->anyToPascalCase(str_replace('.', '\\', $componentName));
 
             if (class_exists($className)) {
-                $component = new $className($componentName, $componentData);
+                // Determine creation parameters based on type
+                if (is_subclass_of($className, \Plugs\View\ReactiveComponent::class)) {
+                    $component = $this->container->make($className, [
+                        'name' => $componentName,
+                        'data' => $componentData
+                    ]);
+                } else {
+                    // Standard component: inject attributes as constructor arguments
+                    $component = $this->container->make($className, $componentData);
+                }
+
+                // 1. ReactiveComponent (Needs wrapper + state)
                 if ($component instanceof ReactiveComponent) {
-                    $html = $this->render($componentName, array_merge($componentData, $component->getState()), true);
+                    $view = $component->render();
+                    $state = $component->getState();
+                    $dataToMerge = array_merge($componentData, $state);
+
+                    $html = '';
+                    if ($view instanceof View) {
+                        $html = $view->withData($dataToMerge)->render();
+                    } elseif (is_string($view)) {
+                        if (strpos($view, '<') === false) {
+                            $html = $this->render($view, $dataToMerge, false);
+                        } else {
+                            $html = $view;
+                        }
+                    }
 
                     // Build attribute string
                     $attributes = $component->getAttributes();
@@ -461,8 +488,31 @@ class ViewEngine
                         $html
                     );
                 }
+
+                // 2. Standard Component (render method)
+                if (method_exists($component, 'render')) {
+                    $view = $component->render();
+
+                    // Retrieve public properties to pass to view
+                    $publicProps = get_object_vars($component);
+                    $dataToMerge = array_merge($componentData, $publicProps);
+
+                    if ($view instanceof View) {
+                        return $view->withData($dataToMerge)->render();
+                    }
+
+                    if (is_string($view)) {
+                        // If it looks like a view name (contains dot or is filepath-like) and not HTML
+                        if (strpos($view, '<') === false) {
+                            return $this->render($view, $dataToMerge, false);
+                        }
+                        // Otherwise, return raw string (HTML)
+                        return $view;
+                    }
+                }
             }
 
+            // 3. View-only component (no class)
             return $this->render($componentName, $componentData, true);
         } catch (Throwable $e) {
             // FIX: Better error context for component failures

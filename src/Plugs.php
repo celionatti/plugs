@@ -193,12 +193,13 @@ class Plugs
     {
         $container = $this->container;
 
-        $container->singleton(\Plugs\View\ViewEngine::class, function () {
+        $container->singleton(\Plugs\View\ViewEngine::class, function () use ($container) {
             $config = config('app.paths');
 
             return new \Plugs\View\ViewEngine(
                 $config['views'],
                 $config['cache'],
+                $container,
                 self::isProduction()
             );
         });
