@@ -55,6 +55,7 @@ class Plugs
         'notifications' => 'bootstrapNotifications',
         'providers' => 'bootstrapProviders',
         'ai' => 'bootstrapAi',
+        'seo' => 'bootstrapSeo',
     ];
 
     /**
@@ -281,6 +282,13 @@ class Plugs
     {
         $this->container->singleton('ai', function () {
             return new \Plugs\AI\AIManager(config('ai'));
+        });
+    }
+
+    private function bootstrapSeo(): void
+    {
+        $this->container->singleton('seo', function () {
+            return new \Plugs\Support\SEO(config('seo'));
         });
     }
 

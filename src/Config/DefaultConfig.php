@@ -23,6 +23,7 @@ class DefaultConfig
             'security' => self::security(),
             'services' => self::services(),
             'ai' => self::ai(),
+            'seo' => self::seo(),
             default => [],
         };
     }
@@ -382,6 +383,7 @@ class DefaultConfig
                 'csrf' => \Plugs\Http\Middleware\CsrfMiddleware::class,
                 'guest' => \App\Http\Middleware\GuestMiddleware::class,
                 'auth' => \Plugs\Http\Middleware\AuthenticateMiddleware::class,
+                'ai.optimize' => \Plugs\Http\Middleware\AIOptimizeMiddleware::class,
             ],
 
             'groups' => [
@@ -431,33 +433,34 @@ class DefaultConfig
     private static function ai(): array
     {
         return [
-            /**
-             * Default AI Provider
-             * 
-             * Supported: "openai", "anthropic", "gemini"
-             */
             'default' => env('AI_DRIVER', 'openai'),
-
-            /**
-             * AI Provider Configurations
-             */
             'providers' => [
                 'openai' => [
                     'api_key' => env('OPENAI_API_KEY'),
                     'organization' => env('OPENAI_ORGANIZATION'),
                     'model' => env('OPENAI_MODEL', 'gpt-4o'),
                 ],
-
                 'anthropic' => [
                     'api_key' => env('ANTHROPIC_API_KEY'),
                     'model' => env('ANTHROPIC_MODEL', 'claude-3-5-sonnet-latest'),
                 ],
-
                 'gemini' => [
                     'api_key' => env('GEMINI_API_KEY'),
                     'model' => env('GEMINI_MODEL', 'gemini-1.5-flash'),
                 ],
             ],
+        ];
+    }
+
+    private static function seo(): array
+    {
+        return [
+            'default_title' => env('APP_NAME', 'Plugs Framework'),
+            'title_appendix' => ' | ' . env('APP_NAME', 'Plugs'),
+            'default_description' => 'A high-performance, modular PHP framework for modern web applications.',
+            'default_image' => asset('assets/img/og-image.png'),
+            'keywords' => 'php, framework, plugs, fast, modular, web development',
+            'robots' => 'index, follow',
         ];
     }
 }
