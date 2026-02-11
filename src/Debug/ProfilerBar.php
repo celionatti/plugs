@@ -336,6 +336,7 @@ class ProfilerBar
         echo '<button class="plugs-tab-btn" data-tab="tab-request">🌐 Request</button>';
         echo '<button class="plugs-tab-btn" data-tab="tab-app">🧠 Application</button>';
         echo '<button class="plugs-tab-btn" data-tab="tab-files">📂 Files (' . ($profile['files']['count'] ?? 0) . ')</button>';
+        echo '<button class="plugs-tab-btn" data-tab="tab-history">📜 History</button>';
         echo '<button class="plugs-tab-btn" data-tab="tab-config">⚙️ Config</button>';
         echo '</div>';
         echo '</div>'; // End Header
@@ -429,6 +430,11 @@ class ProfilerBar
         echo self::renderFilesTab($profile, $nonce);
         echo '</div>';
 
+        // Tab: History
+        echo '<div id="tab-history" class="plugs-tab-content" style="padding: 32px;">';
+        echo self::renderHistoryTab($nonce);
+        echo '</div>';
+
         // Tab: Config
         echo '<div id="tab-config" class="plugs-tab-content" style="padding: 32px;">';
         echo self::renderConfigTab($profile);
@@ -467,6 +473,37 @@ class ProfilerBar
                 if (modal) modal.classList.remove('active');
             });
         }
+
+        // History Management
+        const clearHistoryBtn = document.getElementById('plugs-clear-history');
+        if (clearHistoryBtn) {
+            clearHistoryBtn.addEventListener('click', async function() {
+                if (!confirm('Are you sure you want to clear all profiling history?')) return;
+                try {
+                    const response = await fetch('/plugs/profiler/clear', { method: 'POST' });
+                    const result = await response.json();
+                    if (result.success) {
+                        alert(result.message);
+                        location.reload();
+                    }
+                } catch (e) { console.error('Failed to clear history', e); }
+            });
+        }
+
+        document.querySelectorAll('.plugs-delete-profile').forEach(btn => {
+            btn.addEventListener('click', async function() {
+                const id = this.getAttribute('data-id');
+                if (!id || !confirm('Delete this profile?')) return;
+                try {
+                    const response = await fetch('/plugs/profiler/' + id, { method: 'DELETE' });
+                    const result = await response.json();
+                    if (result.success) {
+                        const row = document.getElementById('profile-row-' + id);
+                        if (row) row.remove();
+                    }
+                } catch (e) { console.error('Failed to delete profile', e); }
+            });
+        });
 
         // Tabs
         function plugsSwitchTab(btn) {
@@ -575,16 +612,12 @@ JS;
         $totalSize = 0;
 
         foreach ($files as $file) {
-            $size = file_exists($file) ? filesize($file) : 0;
-            $totalSize += $size;
             $displayFile = $basePath ? str_replace($basePath, '', $file) : $file;
             $isVendor = str_contains($displayFile, 'vendor');
             $isFramework = str_contains($displayFile, 'plugs/src') || str_contains($displayFile, 'Plugs\\');
 
             $fileInfo = [
-                'path' => $displayFile,
-                'size' => $size,
-                'formatted_size' => $size > 0 ? self::formatFilesize($size) : 'N/A'
+                'path' => $displayFile
             ];
 
             if ($isFramework)
@@ -604,9 +637,6 @@ JS;
         $html .= '<div style="background:rgba(255,255,255,0.03); padding:15px; border-radius:10px; border:1px solid rgba(255,255,255,0.05);">';
         $html .= '<div style="color:#94a3b8; font-size:11px; text-transform:uppercase; letter-spacing:1px;">Total Files</div>';
         $html .= '<div style="color:#f8fafc; font-size:20px; font-weight:600; margin-top:4px;">' . count($files) . '</div></div>';
-        $html .= '<div style="background:rgba(255,255,255,0.03); padding:15px; border-radius:10px; border:1px solid rgba(255,255,255,0.05);">';
-        $html .= '<div style="color:#94a3b8; font-size:11px; text-transform:uppercase; letter-spacing:1px;">Combined Size</div>';
-        $html .= '<div style="color:#f8fafc; font-size:20px; font-weight:600; margin-top:4px;">' . self::formatFilesize($totalSize) . '</div></div>';
         $html .= '</div>';
 
         $html .= '<input type="text" placeholder="Filter included files..." id="plugs-file-filter" style="width:100%; padding:12px 16px; margin-bottom:24px; background:rgba(0,0,0,0.22); border:1px solid rgba(255,255,255,0.08); color:white; border-radius:8px; font-family:monospace; font-size:14px; outline:none; transition:border-color 0.2s;" onfocus="this.style.borderColor=\'#3b82f6\'" onblur="this.style.borderColor=\'rgba(255,255,255,0.08)\'">';
@@ -616,12 +646,10 @@ JS;
             if (empty($groupFiles))
                 continue;
 
-            $groupSize = array_sum(array_column($groupFiles, 'size'));
-
             $html .= '<div class="plugs-file-group">';
             $html .= '<h4 style="color:#f8fafc; font-size:15px; margin-bottom:12px; display:flex; align-items:center; gap:10px;">';
             $html .= '<span>' . $groupName . '</span>';
-            $html .= '<span style="font-size:11px; color:#64748b; background:rgba(255,255,255,0.05); padding:2px 8px; border-radius:100px;">' . count($groupFiles) . ' files • ' . self::formatFilesize($groupSize) . '</span>';
+            $html .= '<span style="font-size:11px; color:#64748b; background:rgba(255,255,255,0.05); padding:2px 8px; border-radius:100px;">' . count($groupFiles) . ' files</span>';
             $html .= '</h4>';
 
             $html .= '<div class="plugs-files-list-container" style="max-height:400px; overflow-y:auto; background:rgba(0,0,0,0.15); border-radius:10px; border:1px solid rgba(255,255,255,0.03); scrollbar-width:thin;">';
@@ -629,10 +657,8 @@ JS;
                 $html .= sprintf(
                     '<div class="plugs-file-item" style="padding:10px 16px; border-bottom:1px solid rgba(255,255,255,0.02); display:flex; justify-content:space-between; align-items:center; font-family:monospace; font-size:12px; transition:background 0.2s;" onmouseover="this.style.background=\'rgba(255,255,255,0.02)\'" onmouseout="this.style.background=\'transparent\'">
                         <span class="file-path" style="color:#cbd5e1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; margin-right:20px;">%s</span>
-                        <span style="color:#64748b; flex-shrink:0;">%s</span>
                     </div>',
-                    htmlspecialchars($f['path']),
-                    $f['formatted_size']
+                    htmlspecialchars($f['path'])
                 );
             }
             $html .= '</div></div>';
@@ -654,6 +680,65 @@ JS;
             });
         </script></div>';
 
+        return $html;
+    }
+
+    private static function renderHistoryTab(?string $nonce = null): string
+    {
+        $profiles = Profiler::getProfiles(50);
+        $nonceAttr = $nonce ? ' nonce="' . $nonce . '"' : '';
+
+        $html = '<div class="plugs-history-management">';
+        $html .= '<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:24px;">';
+        $html .= '<h3 style="color:#f8fafc; font-size:18px;">Recent Requests</h3>';
+        $html .= '<button id="plugs-clear-history" class="plugs-action-btn" style="background:#ef4444; border-color:#ef4444; color:white;">Clear All History</button>';
+        $html .= '</div>';
+
+        if (empty($profiles)) {
+            $html .= '<div style="text-align:center; padding:60px; color:#64748b;">';
+            $html .= '<div style="font-size:40px; margin-bottom:16px;">📜</div>';
+            $html .= '<p>No profiling history found.</p>';
+            $html .= '</div>';
+        } else {
+            $html .= '<div style="overflow-x:auto;"><table class="plugs-info-table" style="width:100%; border-collapse:collapse; font-size:13px;">';
+            $html .= '<thead style="background:rgba(255,255,255,0.03); text-align:left;"><tr>';
+            $html .= '<th style="padding:12px 16px; color:#94a3b8; font-weight:500;">Method</th>';
+            $html .= '<th style="padding:12px 16px; color:#94a3b8; font-weight:500;">URI</th>';
+            $html .= '<th style="padding:12px 16px; color:#94a3b8; font-weight:500;">Time</th>';
+            $html .= '<th style="padding:12px 16px; color:#94a3b8; font-weight:500;">Status</th>';
+            $html .= '<th style="padding:12px 16px; color:#94a3b8; font-weight:500; text-align:right;">Actions</th>';
+            $html .= '</tr></thead><tbody>';
+
+            foreach ($profiles as $p) {
+                $statusColor = match (true) {
+                    $p['request']['status_code'] >= 500 => '#ef4444',
+                    $p['request']['status_code'] >= 400 => '#f59e0b',
+                    default => '#10b981'
+                };
+
+                $html .= sprintf(
+                    '<tr id="profile-row-%s" style="border-bottom:1px solid rgba(255,255,255,0.03); transition:background 0.2s;" onmouseover="this.style.background=\'rgba(255,255,255,0.02)\'" onmouseout="this.style.background=\'transparent\'">
+                        <td style="padding:12px 16px;"><span class="plugs-badge" style="background:rgba(255,255,255,0.05); color:#cbd5e1;">%s</span></td>
+                        <td style="padding:12px 16px; color:#f8fafc; font-family:monospace; max-width:300px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">%s</td>
+                        <td style="padding:12px 16px; color:#94a3b8;">%s ms</td>
+                        <td style="padding:12px 16px;"><span style="color:%s;">● %d</span></td>
+                        <td style="padding:12px 16px; text-align:right;">
+                            <button class="plugs-delete-profile" data-id="%s" style="background:transparent; border:none; color:#64748b; cursor:pointer; font-size:16px;" title="Delete">✕</button>
+                        </td>
+                    </tr>',
+                    htmlspecialchars($p['id']),
+                    htmlspecialchars($p['request']['method'] ?? 'GET'),
+                    htmlspecialchars($p['request']['uri'] ?? '/'),
+                    number_format($p['duration'] ?? 0, 2),
+                    $statusColor,
+                    $p['request']['status_code'] ?? 200,
+                    htmlspecialchars($p['id'])
+                );
+            }
+            $html .= '</tbody></table></div>';
+        }
+
+        $html .= '</div>';
         return $html;
     }
 

@@ -146,8 +146,8 @@ class Profiler
             'logs' => $this->logs,
             'models' => $this->models,
             'files' => [
-                'count' => count(get_included_files()),
-                'list' => get_included_files(),
+                'count' => count($includedFiles = get_included_files()),
+                'list' => $includedFiles,
             ],
             'git' => self::getGitInfo(),
             'php' => [
@@ -417,7 +417,21 @@ class Profiler
             mkdir($storageDir, 0755, true);
         }
 
-        // Clean up old files (keep last MAX_PROFILES)
+        // Probabilistic cleanup (e.g., 1% chance) to avoid expensive disk scans on every request
+        if (mt_rand(1, 100) === 42) {
+            $this->cleanup($storageDir);
+        }
+
+        $filename = $storageDir . $profile['id'] . '.json';
+        // Remove PRETTY_PRINT for better performance
+        file_put_contents($filename, json_encode($profile));
+    }
+
+    /**
+     * Efficiently cleanup old profiles
+     */
+    private function cleanup(string $storageDir): void
+    {
         $files = glob($storageDir . '*.json');
         if (count($files) > self::MAX_PROFILES) {
             // Sort by modification time
@@ -427,9 +441,6 @@ class Profiler
                 @unlink($file);
             }
         }
-
-        $filename = $storageDir . $profile['id'] . '.json';
-        file_put_contents($filename, json_encode($profile, JSON_PRETTY_PRINT));
     }
 
     /**
