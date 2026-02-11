@@ -595,6 +595,17 @@ class ServerRequest implements ServerRequestInterface
 
 
     /**
+     * Get uploaded file by key (Alias for getUploadedFile)
+     *
+     * @param string $key
+     * @return mixed|null
+     */
+    public function file(string $key)
+    {
+        return $this->getUploadedFile($key);
+    }
+
+    /**
      * Get uploaded file by key
      *
      * @param string $key
