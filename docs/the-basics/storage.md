@@ -146,6 +146,58 @@ $time = Storage::lastModified('file.txt');
 
 ---
 
+---
+
+## S3 Storage
+
+The Plugs framework also supports Amazon S3 (and S3-compatible services like DigitalOcean Spaces or Minio).
+
+### 1. Requirements
+
+To use the S3 driver, you must install the AWS SDK for PHP via Composer:
+
+```bash
+composer require aws/aws-sdk-php
+```
+
+### 2. Configuration
+
+Add an `s3` disk to your `disks` configuration in `DefaultConfig.php`:
+
+```php
+'s3' => [
+    'driver' => 's3',
+    'key'    => env('AWS_ACCESS_KEY_ID'),
+    'secret' => env('AWS_SECRET_ACCESS_KEY'),
+    'region' => env('AWS_DEFAULT_REGION'),
+    'bucket' => env('AWS_BUCKET'),
+    'url'    => env('AWS_URL'),
+    'endpoint' => env('AWS_ENDPOINT'), // Useful for S3-compatible services
+    'root'   => 'my-app-prefix',
+],
+```
+
+### 3. Usage
+
+The API is exactly the same as the local disk. You just specify the `s3` disk:
+
+```php
+use Plugs\Facades\Storage;
+
+// Upload to S3
+$path = $request->file('avatar')->store('avatars', 's3');
+
+// Get S3 URL
+$url = Storage::disk('s3')->url($path);
+
+// Check if file exists on S3
+if (Storage::disk('s3')->exists('avatars/user.jpg')) {
+    // ...
+}
+```
+
+---
+
 ## Directory Operations
 
 ```php
