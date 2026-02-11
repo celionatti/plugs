@@ -98,6 +98,26 @@ class Sanitizer
     }
 
     /**
+     * Sanitize a file path by removing dangerous characters and traversal attempts.
+     */
+    public static function path(string $path): string
+    {
+        // Remove null bytes and control characters
+        $path = preg_replace('/[\x00-\x1F\x7F]/', '', $path);
+
+        // Normalize separators
+        $path = str_replace(['/', '\\'], DIRECTORY_SEPARATOR, $path);
+
+        // Remove multiple consecutive separators
+        $path = preg_replace('/' . preg_quote(DIRECTORY_SEPARATOR, '/') . '{2,}/', DIRECTORY_SEPARATOR, $path);
+
+        // Simple protection against ../ (more robust check is in the driver)
+        $path = str_replace('..' . DIRECTORY_SEPARATOR, '', $path);
+
+        return trim($path, DIRECTORY_SEPARATOR);
+    }
+
+    /**
      * Strip dangerous attributes like onclick, script:, etc.
      */
     protected static function cleanAttributes(string $html): string

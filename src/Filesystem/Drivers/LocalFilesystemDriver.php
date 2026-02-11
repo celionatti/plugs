@@ -104,7 +104,58 @@ class LocalFilesystemDriver implements FilesystemDriverInterface
 
     public function fullPath(string $path): string
     {
+        $path = $this->ensureValidPath($path);
+
         return $this->root . DIRECTORY_SEPARATOR . ltrim($path, DIRECTORY_SEPARATOR);
+    }
+
+    /**
+     * Ensure the path is valid and within the root directory.
+     *
+     * @param string $path
+     * @return string
+     * @throws \RuntimeException
+     */
+    protected function ensureValidPath(string $path): string
+    {
+        // Remove null bytes
+        $path = str_replace(chr(0), '', $path);
+
+        // Normalize separators
+        $path = str_replace(['/', '\\'], DIRECTORY_SEPARATOR, $path);
+
+        // Check for path traversal attempts
+        if (str_contains($path, '..' . DIRECTORY_SEPARATOR) || str_ends_with($path, '..')) {
+            throw new \RuntimeException("Path traversal attempt detected: {$path}");
+        }
+
+        // Prevent absolute paths that might point outside the root
+        if ($this->isAbsolutePath($path)) {
+            // If it's an absolute path, it MUST start with the root
+            if (!str_starts_with($path, $this->root)) {
+                throw new \RuntimeException("Absolute path outside of root detected: {$path}");
+            }
+            // Strip the root to get the relative path for internal use
+            return ltrim(str_replace($this->root, '', $path), DIRECTORY_SEPARATOR);
+        }
+
+        return $path;
+    }
+
+    /**
+     * Check if a path is absolute.
+     *
+     * @param string $path
+     * @return bool
+     */
+    protected function isAbsolutePath(string $path): bool
+    {
+        if (DIRECTORY_SEPARATOR === '/') {
+            return str_starts_with($path, '/');
+        }
+
+        // Windows absolute path (e.g., C:\ or \\)
+        return preg_match('/^[a-zA-Z]:\\\\/', $path) || str_starts_with($path, '\\\\');
     }
 
     public function path(string $absolutePath): string
