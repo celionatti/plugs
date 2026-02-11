@@ -15,13 +15,17 @@ Storage disks are configured in your application config (defaulting to `Plugs\Co
 
 To make files in the `public` disk accessible via the browser, you must create a symbolic link from your public web directory to the storage directory.
 
+### Local Development
+
 Run this command in your terminal:
 
 ```bash
 php theplugs storage:link
 ```
 
-This creates a link at `public/storage` pointing to `storage/app/public`.
+### Production Deployment
+
+For production environments (Shared Hosting, VPS), see the [Storage Link Deployment Guide](../deployment/storage-link.md).
 
 ---
 
