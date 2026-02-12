@@ -36,6 +36,9 @@ class Connection
     private static $detectedRuntime = null;
     private static $poolLocks = [];
 
+    // Load Balancer instances per connection name
+    private static $loadBalancers = [];
+
     // Prepared Statement Pool
     private static $statementPool = [];
     private static $statementPoolSize = 100; // Max cached statements per connection
@@ -67,6 +70,7 @@ class Connection
     private static $auditLogPath = 'storage/logs/security_audit.log';
     private $isConnecting = false;
     private $lastHealthCheckAt = 0;
+    private $lastReadHealthCheckAt = 0;
     private $strictMode = false;
     private static array $schemaCache = [];
 
@@ -106,7 +110,7 @@ class Connection
                 if ($writeConfig === $readConfig) {
                     $this->readPdo = &$this->pdo;
                 } else {
-                    $this->readPdo = $this->createPdo($readConfig);
+                    $this->readPdo = $this->connectReadReplica($readConfig);
                 }
             } else {
                 $this->pdo = $this->createPdo($config);
@@ -118,6 +122,57 @@ class Connection
             $this->connectionAttempts = 0;
         } finally {
             $this->isConnecting = false;
+        }
+    }
+
+    /**
+     * Connect to a read replica with automatic failover across multiple hosts.
+     *
+     * If 'host' is an array, uses the LoadBalancer to try each replica
+     * until one succeeds. Falls back to the write PDO if all replicas fail.
+     */
+    private function connectReadReplica(array $readConfig): PDO
+    {
+        $host = $readConfig['host'] ?? null;
+
+        // Single host or no host — standard connection
+        if (!is_array($host) || count($host) <= 1) {
+            try {
+                return $this->createPdo($readConfig);
+            } catch (\Throwable $e) {
+                // Fall back to write connection
+                $this->auditLog(
+                    "Read replica connection failed, falling back to write: " . $e->getMessage(),
+                    'WARNING'
+                );
+
+                return $this->pdo;
+            }
+        }
+
+        // Multiple read hosts — use LoadBalancer with failover
+        $lb = $this->getOrCreateLoadBalancer($this->connectionName . '_read', $host, $readConfig);
+
+        try {
+            $result = $lb->selectWithFailover(function (array $hostEntry) use ($readConfig) {
+                $attemptConfig = $readConfig;
+                $attemptConfig['host'] = $hostEntry['host'];
+                if ($hostEntry['port'] !== null) {
+                    $attemptConfig['port'] = $hostEntry['port'];
+                }
+
+                return $this->createPdo($attemptConfig);
+            });
+
+            return $result['result'];
+        } catch (\RuntimeException $e) {
+            // All replicas failed — fall back to write connection
+            $this->auditLog(
+                "All read replicas failed, falling back to write: " . $e->getMessage(),
+                'WARNING'
+            );
+
+            return $this->pdo;
         }
     }
 
@@ -184,7 +239,7 @@ class Connection
         $host = $config['host'];
 
         if (is_array($host)) {
-            $host = $host[array_rand($host)];
+            $host = $this->selectHost($config);
         }
 
         $port = $config['port'] ?? ($driver === 'mysql' ? 3306 : 5432);
@@ -203,6 +258,56 @@ class Connection
         }
 
         throw new \InvalidArgumentException("Unsupported database driver: {$driver}");
+    }
+
+    /**
+     * Select a host from an array of hosts using the LoadBalancer.
+     *
+     * Falls back to array_rand if only one host is provided.
+     */
+    private function selectHost(array $config): string
+    {
+        $hosts = $config['host'];
+
+        if (count($hosts) === 1) {
+            return is_array($hosts[0]) ? $hosts[0]['host'] : $hosts[0];
+        }
+
+        $lb = $this->getOrCreateLoadBalancer($this->connectionName, $hosts, $config);
+        $entry = $lb->select();
+
+        return $entry['host'];
+    }
+
+    /**
+     * Get or create a LoadBalancer instance for the given name.
+     *
+     * Reads strategy and options from the connection's 'load_balancing' config key.
+     */
+    private function getOrCreateLoadBalancer(string $name, array $hosts, array $config): LoadBalancer
+    {
+        if (!isset(self::$loadBalancers[$name])) {
+            $lbConfig = $config['load_balancing'] ?? [];
+            $strategy = $lbConfig['strategy'] ?? 'random';
+            $options = [
+                'health_check_cooldown' => $lbConfig['health_check_cooldown'] ?? 30,
+                'max_failures' => $lbConfig['max_failures'] ?? 3,
+            ];
+
+            self::$loadBalancers[$name] = new LoadBalancer($hosts, $strategy, $options);
+        }
+
+        return self::$loadBalancers[$name];
+    }
+
+    /**
+     * Get the LoadBalancer instance for a connection (if any).
+     *
+     * @return LoadBalancer|null
+     */
+    public static function getLoadBalancer(string $name = 'default'): ?LoadBalancer
+    {
+        return self::$loadBalancers[$name] ?? null;
     }
 
     private function buildOptions(array $config): array
@@ -971,6 +1076,19 @@ class Connection
         unset(self::$statementPool[$this->connectionName]);
     }
 
+    /**
+     * Reconnect only the read PDO to a (potentially different) replica.
+     */
+    public function reconnectReadPdo(): void
+    {
+        $config = self::$config[$this->connectionName];
+
+        if (isset($config['read'])) {
+            $readConfig = array_merge($config, $config['read']);
+            $this->readPdo = $this->connectReadReplica($readConfig);
+        }
+    }
+
     public function disconnect(): void
     {
         $this->pdo = null;
@@ -1271,6 +1389,7 @@ class Connection
         self::$instances = [];
         self::$connectionPools = [];
         self::$statementPool = [];
+        self::$loadBalancers = [];
     }
 
     /**
@@ -1324,7 +1443,10 @@ class Connection
     }
 
     /**
-     * Determine which PDO instance to use for a query
+     * Determine which PDO instance to use for a query.
+     *
+     * Includes independent health checking for the read PDO so that
+     * a dead replica is automatically replaced or falls back to write.
      */
     private function getPdoForQuery(string $sql): PDO
     {
@@ -1336,11 +1458,50 @@ class Connection
             return $this->pdo;
         }
 
+        // Independent read PDO health check
+        $this->ensureReadConnectionHealth();
+
         return $this->readPdo;
     }
 
     /**
-     * Determine if the given SQL statement is a write operation
+     * Ensure the read PDO is healthy. If not, reconnect to a (potentially different) replica.
+     *
+     * Rate-limited to once per 60 seconds to avoid overhead.
+     */
+    private function ensureReadConnectionHealth(): void
+    {
+        // Skip if readPdo IS the write pdo (same connection)
+        if ($this->readPdo === $this->pdo) {
+            return;
+        }
+
+        if ($this->readPdo === null) {
+            $this->reconnectReadPdo();
+
+            return;
+        }
+
+        // Rate-limit health checks
+        if ((time() - $this->lastReadHealthCheckAt) < 60) {
+            return;
+        }
+
+        try {
+            @$this->readPdo->query('SELECT 1');
+            $this->lastReadHealthCheckAt = time();
+        } catch (PDOException $e) {
+            $this->auditLog(
+                "Read replica health check failed, reconnecting: " . $e->getMessage(),
+                'WARNING'
+            );
+            $this->reconnectReadPdo();
+            $this->lastReadHealthCheckAt = time();
+        }
+    }
+
+    /**
+     * Determine if the given SQL statement is a write operation.
      */
     private function shouldUseWritePdo(string $sql): bool
     {
@@ -1353,8 +1514,10 @@ class Connection
             return true;
         }
 
-        // Handle stickiness: if we just wrote, read from the same connection for a short window
-        if ($this->sticky && (microtime(true) - $this->lastWriteTimestamp) < 0.5) {
+        // Handle stickiness: if we just wrote, read from the write connection for a configurable window
+        $stickyWindow = self::$config[$this->connectionName]['sticky_window'] ?? 0.5;
+
+        if ($this->sticky && (microtime(true) - $this->lastWriteTimestamp) < $stickyWindow) {
             return true;
         }
 

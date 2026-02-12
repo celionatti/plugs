@@ -145,6 +145,7 @@ class DefaultConfig
                         'host' => [env('DB_HOST', '127.0.0.1')],
                     ],
                     'sticky' => true,
+                    'sticky_window' => 0.5,
                     'port' => env('DB_PORT', '3306'),
                     'database' => env('DB_DATABASE', 'plugs'),
                     'username' => env('DB_USERNAME', 'root'),
@@ -161,6 +162,20 @@ class DefaultConfig
                     'timeout' => 5,
                     'persistent' => false,
                     'max_idle_time' => 3600,
+
+                    'pool' => [
+                        'enabled' => env('DB_POOL_ENABLED', false),
+                        'min_connections' => 2,
+                        'max_connections' => 10,
+                        'idle_timeout' => 300,
+                        'connection_timeout' => 30,
+                    ],
+
+                    'load_balancing' => [
+                        'strategy' => 'random',
+                        'health_check_cooldown' => 30,
+                        'max_failures' => 3,
+                    ],
                 ],
                 'pgsql' => [
                     'driver' => 'pgsql',
