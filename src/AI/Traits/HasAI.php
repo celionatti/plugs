@@ -24,7 +24,7 @@ trait HasAI
      */
     public function generate(string $attribute, string $prompt, array $options = []): self
     {
-        $ai = Container::getInstance()->make(AIManager::class);
+        $ai = Container::getInstance()->make('ai');
 
         // Provide model context to the AI
         $context = $this->getAiContext();
@@ -45,7 +45,7 @@ trait HasAI
      */
     public function summarize(int $length = 50): string
     {
-        $ai = Container::getInstance()->make(AIManager::class);
+        $ai = Container::getInstance()->make('ai');
         $data = json_encode($this->toArray(), JSON_PRETTY_PRINT);
 
         $prompt = "Summarize the following model data in about {$length} words:\n\n{$data}";
@@ -61,7 +61,7 @@ trait HasAI
      */
     public function predict(array $fields): array
     {
-        $ai = Container::getInstance()->make(AIManager::class);
+        $ai = Container::getInstance()->make('ai');
         $data = json_encode($this->toArray(), JSON_PRETTY_PRINT);
         $targetFields = implode(', ', $fields);
 

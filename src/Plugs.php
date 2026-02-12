@@ -257,6 +257,7 @@ class Plugs
 
     private function bootstrapAi(): object
     {
+        $this->container->alias('ai', \Plugs\AI\AIManager::class);
         return new \Plugs\AI\AIManager(config('ai'));
     }
 

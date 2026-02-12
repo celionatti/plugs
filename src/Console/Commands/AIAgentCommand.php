@@ -22,7 +22,7 @@ class AIAgentCommand extends Command
         $goal = $this->argument('goal');
 
         /** @var AIManager $ai */
-        $ai = Container::getInstance()->make(AIManager::class);
+        $ai = Container::getInstance()->make('ai');
         $agent = new Agent($ai->driver());
 
         if ($goal) {

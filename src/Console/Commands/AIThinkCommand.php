@@ -21,7 +21,7 @@ class AIThinkCommand extends Command
         $problem = $this->argument('problem');
 
         /** @var AIManager $ai */
-        $ai = Container::getInstance()->make(AIManager::class);
+        $ai = Container::getInstance()->make('ai');
 
         $prompt = <<<PROMPT
 You are a lead architect for the Plugs PHP Framework.
