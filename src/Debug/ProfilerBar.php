@@ -394,10 +394,64 @@ class ProfilerBar
         echo plugs_render_queries($data);
         echo '</div>';
 
-        // Tab: Route, Request, App, Files, History, Config (Summarized for brevity in code item)
+        // Tab: Route, Request, App, Files, History, Config
         echo '<div id="tab-route" class="plugs-tab-content" style="padding: 32px;">' . self::renderRouteTab($profile) . '</div>';
         echo '<div id="tab-request" class="plugs-tab-content" style="padding: 32px;"><div class="plugs-code-block">' . plugs_format_value($profile['request'] ?? [], 0) . '</div></div>';
-        echo '<div id="tab-app" class="plugs-tab-content" style="padding: 32px;">Application Details...</div>';
+
+        // Tab: App (Models & Views)
+        echo '<div id="tab-app" class="plugs-tab-content" style="padding: 32px;">';
+        echo '<div class="plugs-tab-grid" style="display:grid; grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); gap:24px;">';
+
+        // Models
+        echo '<div class="plugs-info-group" style="background:rgba(255,255,255,0.02); padding:20px; border-radius:12px; border:1px solid rgba(255,255,255,0.05);">';
+        echo '<h3 style="color:#a78bfa; margin-bottom:16px; font-size:16px; display:flex; justify-content:space-between; align-items:center;">';
+        echo '<span>🏗️ Model Lifecycle</span>';
+        echo '<span class="plugs-badge" style="background:rgba(167,139,250,0.1); color:#a78bfa;">' . count($profile['models'] ?? []) . '</span>';
+        echo '</h3>';
+
+        if (!empty($profile['models'])) {
+            echo '<table class="plugs-info-table" style="width:100%; border-collapse:collapse; font-size:13px;">';
+            foreach ($profile['models'] as $m) {
+                $eventColor = match (strtolower($m['event'] ?? '')) {
+                    'created', 'saved' => '#10b981',
+                    'updated' => '#f59e0b',
+                    'deleted' => '#ef4444',
+                    default => '#a78bfa'
+                };
+                echo '<tr style="border-bottom:1px solid rgba(255,255,255,0.03);">';
+                echo '<td style="padding:10px 0; color:#cbd5e1; font-weight:500;">' . basename(str_replace('\\', '/', $m['model'])) . '</td>';
+                echo '<td style="padding:10px 0;"><span class="plugs-badge" style="background:' . $eventColor . '15; color:' . $eventColor . '; border:1px solid ' . $eventColor . '30;">' . strtoupper($m['event'] ?? 'UNKNOWN') . '</span></td>';
+                echo '<td style="padding:10px 0; text-align:right; font-family:monospace; color:#94a3b8;">+' . number_format($m['time_offset'] ?? 0, 2) . ' ms</td>';
+                echo '</tr>';
+            }
+            echo '</table>';
+        } else {
+            echo '<p style="color:#64748b; font-style:italic;">No model activity in this request.</p>';
+        }
+        echo '</div>';
+
+        // Views
+        echo '<div class="plugs-info-group" style="background:rgba(255,255,255,0.02); padding:20px; border-radius:12px; border:1px solid rgba(255,255,255,0.05);">';
+        echo '<h3 style="color:#10b981; margin-bottom:16px; font-size:16px; display:flex; justify-content:space-between; align-items:center;">';
+        echo '<span>🖼️ Rendered Views</span>';
+        echo '<span class="plugs-badge" style="background:rgba(16,185,129,0.1); color:#10b981;">' . count($profile['views'] ?? []) . '</span>';
+        echo '</h3>';
+
+        if (!empty($profile['views'])) {
+            echo '<table class="plugs-info-table" style="width:100%; border-collapse:collapse; font-size:13px;">';
+            foreach ($profile['views'] as $v) {
+                echo '<tr style="border-bottom:1px solid rgba(255,255,255,0.03);">';
+                echo '<td style="padding:10px 0; color:#cbd5e1;">' . htmlspecialchars($v['name'] ?? 'Unknown') . '</td>';
+                echo '<td style="padding:10px 0; text-align:right; font-family:monospace; color:#10b981;">' . number_format($v['duration'] ?? 0, 2) . ' ms</td>';
+                echo '</tr>';
+            }
+            echo '</table>';
+        } else {
+            echo '<p style="color:#64748b; font-style:italic;">No templates were rendered.</p>';
+        }
+        echo '</div>';
+
+        echo '</div></div>';
         echo '<div id="tab-files" class="plugs-tab-content" style="padding: 32px;">' . self::renderFilesTab($profile, $nonce) . '</div>';
         echo '<div id="tab-history" class="plugs-tab-content" style="padding: 32px;">' . self::renderHistoryTab($nonce) . '</div>';
         echo '<div id="tab-config" class="plugs-tab-content" style="padding: 32px;">' . self::renderConfigTab($profile) . '</div>';
