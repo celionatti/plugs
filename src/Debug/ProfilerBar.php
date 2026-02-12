@@ -396,7 +396,7 @@ class ProfilerBar
 
         // Tab: Route, Request, App, Files, History, Config
         echo '<div id="tab-route" class="plugs-tab-content" style="padding: 32px;">' . self::renderRouteTab($profile) . '</div>';
-        echo '<div id="tab-request" class="plugs-tab-content" style="padding: 32px;"><div class="plugs-code-block">' . plugs_format_value($profile['request'] ?? [], 0) . '</div></div>';
+        echo '<div id="tab-request" class="plugs-tab-content" style="padding: 32px;">' . self::renderRequestTab($profile) . '</div>';
 
         // Tab: App (Models & Views)
         echo '<div id="tab-app" class="plugs-tab-content" style="padding: 32px;">';
@@ -689,19 +689,73 @@ JS;
 
     private static function renderConfigTab(array $profile): string
     {
-        $data = [
-            'PHP' => PHP_VERSION,
-            'SAPI' => PHP_SAPI,
-            'OS' => PHP_OS,
-            'Env' => config('app.env', 'production'),
-            'Debug' => config('app.debug') ? 'Enabled' : 'Disabled',
-            'Timezone' => config('app.timezone') ?? date_default_timezone_get(),
+        $groups = [
+            '🚀 Environment' => [
+                'Environment' => config('app.env', 'production'),
+                'Debug Mode' => config('app.debug') ? 'Enabled' : 'Disabled',
+                'Timezone' => config('app.timezone') ?? date_default_timezone_get(),
+                'Framework' => 'Plugs (v1.2.0)', // Mock version or pull if available
+                'Locale' => config('app.locale', 'en_US'),
+                'URL' => config('app.url', 'localhost'),
+            ],
+            '🐘 PHP Settings' => [
+                'Version' => PHP_VERSION,
+                'Memory Limit' => ini_get('memory_limit'),
+                'Max Execution Time' => ini_get('max_execution_time') . 's',
+                'Upload Max Filesize' => ini_get('upload_max_filesize'),
+                'Post Max Size' => ini_get('post_max_size'),
+                'OPcache' => extension_loaded('Zend OPcache') ? 'Enabled' : 'Disabled',
+                'Xdebug' => extension_loaded('xdebug') ? 'Enabled' : 'Disabled',
+            ],
+            '🖥️ Server Info' => [
+                'OS' => PHP_OS,
+                'SAPI' => PHP_SAPI,
+                'Interface' => $_SERVER['SERVER_SOFTWARE'] ?? 'N/A',
+                'Protocol' => $_SERVER['SERVER_PROTOCOL'] ?? 'N/A',
+                'IP Address' => $_SERVER['SERVER_ADDR'] ?? '127.0.0.1',
+            ]
         ];
-        $html = '<table class="plugs-info-table" style="width:100%; border-collapse:collapse; margin:20px;">';
-        foreach ($data as $k => $v) {
-            $html .= sprintf('<tr style="border-bottom:1px solid rgba(255,255,255,0.05);"><td style="padding:12px; color:#94a3b8; width:150px;">%s</td><td style="padding:12px; color:#f8fafc; font-family:monospace;">%s</td></tr>', $k, htmlspecialchars((string) $v));
+
+        $html = '<div class="plugs-config-dashboard" style="padding: 32px; display: grid; grid-template-columns: repeat(auto-fit, minmax(350px, 1fr)); gap: 24px;">';
+
+        foreach ($groups as $title => $items) {
+            $html .= '<div class="config-group" style="background: rgba(255, 255, 255, 0.02); border: 1px solid rgba(255, 255, 255, 0.05); border-radius: 12px; padding: 20px; box-shadow: 0 4px 20px rgba(0,0,0,0.1);">';
+            $html .= '<h3 style="color: #a78bfa; font-size: 16px; margin-bottom: 20px; border-bottom: 1px solid rgba(167, 139, 250, 0.2); padding-bottom: 12px;">' . $title . '</h3>';
+            $html .= '<table style="width: 100%; border-collapse: collapse; font-size: 13px;">';
+
+            foreach ($items as $label => $value) {
+                $valClass = '';
+                if ($value === 'Enabled' || $value === 'production')
+                    $valClass = 'color: #10b981;';
+                if ($value === 'Disabled' || $value === 'local')
+                    $valClass = 'color: #f59e0b;';
+
+                $html .= '<tr style="border-bottom: 1px solid rgba(255, 255, 255, 0.03);">';
+                $html .= '<td style="padding: 10px 0; color: #94a3b8; width: 140px;">' . $label . '</td>';
+                $html .= '<td style="padding: 10px 0; color: #f8fafc; font-family: monospace; text-align: right; ' . $valClass . '">' . htmlspecialchars((string) $value) . '</td>';
+                $html .= '</tr>';
+            }
+
+            $html .= '</table></div>';
         }
-        return $html . '</table>';
+
+        $html .= '</div>';
+
+        // Git Section if available
+        if (!empty($profile['git']['branch'])) {
+            $html .= '<div style="margin: 0 32px 32px; padding: 20px; background: rgba(139, 92, 246, 0.05); border: 1px dashed rgba(139, 92, 246, 0.3); border-radius: 12px; display: flex; align-items: center; justify-content: space-between;">';
+            $html .= '<div style="display: flex; align-items: center; gap: 12px;">';
+            $html .= '<div style="font-size: 24px;">🌿</div>';
+            $html .= '<div>';
+            $html .= '<div style="color: #a78bfa; font-weight: 600; font-size: 14px;">Git Repository Info</div>';
+            $html .= '<div style="color: #94a3b8; font-size: 12px;">Working on branch <strong>' . htmlspecialchars($profile['git']['branch']) . '</strong></div>';
+            $html .= '</div>';
+            $html .= '</div>';
+            $html .= '<div style="font-family: monospace; font-size: 12px; color: #cbd5e1; background: rgba(0,0,0,0.2); padding: 6px 12px; border-radius: 6px;">' . ($profile['git']['hash'] ?? 'N/A') . '</div>';
+            $html .= '</div>';
+        }
+
+        return $html;
     }
 
     private static function renderRouteTab(array $profile): string
@@ -719,6 +773,72 @@ JS;
             $html .= sprintf('<tr style="border-bottom:1px solid rgba(255,255,255,0.05);"><td style="padding:12px; color:#94a3b8; width:150px;">%s</td><td style="padding:12px; color:#f8fafc; font-family:monospace;">%s</td></tr>', $k, htmlspecialchars((string) $v));
         }
         return $html . '</table></div>';
+    }
+
+    private static function renderRequestTab(array $profile): string
+    {
+        $request = $profile['request'] ?? [];
+        $html = '<div class="plugs-request-dashboard" style="display: flex; flex-direction: column; gap: 32px;">';
+
+        // 1. Overview Card
+        $html .= '<div style="background: rgba(59, 130, 246, 0.05); border: 1px solid rgba(59, 130, 246, 0.2); border-radius: 12px; padding: 24px;">';
+        $html .= '<h3 style="color: #60a5fa; margin-bottom: 20px; display: flex; align-items: center; gap: 10px;">🌐 Request Overview</h3>';
+        $html .= '<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px;">';
+        $overview = [
+            'Method' => '<span class="plugs-badge" style="background: rgba(139, 92, 246, 0.1); color: #a78bfa;">' . ($request['method'] ?? 'GET') . '</span>',
+            'URI' => '<span style="color: #cbd5e1; font-family: monospace;">' . htmlspecialchars($request['uri'] ?? '/') . '</span>',
+            'Protocol' => '<span style="color: #94a3b8;">' . ($_SERVER['SERVER_PROTOCOL'] ?? 'HTTP/1.1') . '</span>',
+            'IP Address' => '<span style="color: #94a3b8;">' . ($request['ip'] ?? $_SERVER['REMOTE_ADDR'] ?? '127.0.0.1') . '</span>',
+        ];
+        foreach ($overview as $label => $val) {
+            $html .= '<div><div style="color: #64748b; font-size: 11px; text-transform: uppercase; margin-bottom: 4px;">' . $label . '</div><div style="font-size: 14px;">' . $val . '</div></div>';
+        }
+        $html .= '</div></div>';
+
+        // 2. Main Content Grid
+        $html .= '<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(450px, 1fr)); gap: 24px;">';
+
+        // Headers
+        $html .= self::renderRequestCard('Headers', $request['headers'] ?? [], '📥');
+
+        // Parameters (Combined Query & Input)
+        $params = array_merge($request['query'] ?? [], $request['input'] ?? $request['post'] ?? []);
+        $html .= self::renderRequestCard('Parameters', $params, '🔍');
+
+        // Cookies
+        $html .= self::renderRequestCard('Cookies', $request['cookies'] ?? [], '🍪');
+
+        // Session
+        $html .= self::renderRequestCard('Session', $request['session'] ?? [], '💾');
+
+        $html .= '</div></div>';
+        return $html;
+    }
+
+    private static function renderRequestCard(string $title, array $data, string $icon): string
+    {
+        $html = '<div class="request-card" style="background: rgba(255, 255, 255, 0.02); border: 1px solid rgba(255, 255, 255, 0.05); border-radius: 12px; padding: 20px;">';
+        $html .= '<h4 style="color: #cbd5e1; margin-bottom: 16px; font-size: 15px; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 10px; display: flex; align-items: center; gap: 8px;">';
+        $html .= '<span>' . $icon . ' ' . $title . '</span>';
+        $html .= '<span style="font-size: 11px; color: #64748b; background: rgba(255,255,255,0.05); padding: 2px 8px; border-radius: 100px; margin-left: auto;">' . count($data) . ' items</span>';
+        $html .= '</h4>';
+
+        if (empty($data)) {
+            $html .= '<div style="color: #64748b; font-style: italic; font-size: 13px; text-align: center; padding: 20px;">No ' . strtolower($title) . ' found.</div>';
+        } else {
+            $html .= '<div style="display: flex; flex-direction: column; gap: 8px;">';
+            foreach ($data as $key => $value) {
+                $html .= '<div style="display: flex; gap: 12px; font-size: 12px; align-items: flex-start; padding: 6px 0; border-bottom: 1px solid rgba(255,255,255,0.02);">';
+                $html .= '<div style="color: #94a3b8; font-family: monospace; min-width: 120px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="' . htmlspecialchars((string) $key) . '">' . htmlspecialchars((string) $key) . '</div>';
+
+                $finalValue = is_array($value) ? '<span style="color: #8b5cf6;">Array(' . count($value) . ')</span>' : htmlspecialchars((string) $value);
+                $html .= '<div style="color: #f8fafc; font-family: monospace; word-break: break-all; flex: 1;">' . $finalValue . '</div>';
+                $html .= '</div>';
+            }
+            $html .= '</div>';
+        }
+        $html .= '</div>';
+        return $html;
     }
 
     public static function injectIntoHtml(string $html, array $profile, ?string $nonce = null): string
