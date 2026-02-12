@@ -956,7 +956,7 @@ class ViewEngine
         $kebab = $this->pascalToKebabCase($componentName);
         $snake = str_replace('-', '_', $kebab);
 
-        $filenames = array_unique([$kebab, $snake]);
+        $filenames = array_unique([$componentName, $kebab, $snake]);
 
         foreach ($filenames as $filename) {
             foreach (self::VIEW_EXTENSIONS as $extension) {
