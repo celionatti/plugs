@@ -55,9 +55,28 @@ class AIOptimizeMiddleware implements MiddlewareInterface
 
     protected function optimizeForAI(ResponseInterface $response): ResponseInterface
     {
-        // For now, let's just add a header to signify optimization.
-        // In a more advanced implementation, we could strip HTML tags
-        // or return a JSON representation of the content if the view supports it.
+        $body = (string) $response->getBody();
+        $contentType = $response->getHeaderLine('Content-Type');
+
+        // Only optimize HTML content
+        if (stripos($contentType, 'text/html') !== false) {
+            // Remove scripts, styles, and comments to save tokens
+            $optimizedBody = preg_replace('/<script\b[^>]*>([\s\S]*?)<\/script>/i', '', $body);
+            $optimizedBody = preg_replace('/<style\b[^>]*>([\s\S]*?)<\/style>/i', '', $optimizedBody);
+            $optimizedBody = preg_replace('/<!--([\s\S]*?)-->/', '', $optimizedBody);
+
+            // If text-only is preferred (common for LLMs)
+            if (isset($_SERVER['HTTP_ACCEPT']) && stripos($_SERVER['HTTP_ACCEPT'], 'text/plain') !== false) {
+                $optimizedBody = strip_tags($optimizedBody);
+                $optimizedBody = preg_replace('/\s+/', ' ', $optimizedBody);
+                $response = $response->withHeader('Content-Type', 'text/plain; charset=utf-8');
+            }
+
+            $newBody = new \Plugs\Http\Message\Stream(fopen('php://temp', 'r+'));
+            $newBody->write(trim($optimizedBody));
+            $response = $response->withBody($newBody);
+        }
+
         return $response->withHeader('X-AI-Optimized', 'true')
             ->withHeader('X-Robots-Tag', 'index, follow');
     }

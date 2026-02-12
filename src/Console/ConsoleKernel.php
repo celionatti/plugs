@@ -47,6 +47,7 @@ use Plugs\Console\Commands\ServeCommand;
 use Plugs\Console\Commands\StorageLinkCommand;
 use Plugs\Console\Commands\TypeGenCommand;
 use Plugs\Console\Commands\AIChatCommand;
+use Plugs\Console\Commands\MakeAiMigrationCommand;
 
 
 /*
@@ -86,6 +87,7 @@ class ConsoleKernel
         'make:event' => MakeEventCommand::class,
         'make:listener' => MakeListenerCommand::class,
         'make:notification' => MakeNotificationCommand::class,
+        'make:ai-migration' => MakeAiMigrationCommand::class,
 
         'db:seed' => SeedCommand::class,
 
@@ -177,6 +179,7 @@ class ConsoleKernel
             'make:event',
             'make:listener',
             'make:notification',
+            'make:ai-migration',
         ],
         'Routes' => ['route:list', 'route:cache', 'route:clear', 'route:test'],
         'Utility' => ['serve', 'cache:clear', 'config:cache', 'optimize', 'queue:work', 'health', 'storage:link', 'type:gen', 'ai:chat'],

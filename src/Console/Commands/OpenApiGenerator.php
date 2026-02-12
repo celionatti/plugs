@@ -20,54 +20,85 @@ class OpenApiGenerator extends Command
         $this->info("Scanning routes for OpenAPI generation...");
 
         $router = Container::getInstance()->make(Router::class);
-        // Accessing private routes property via reflection for inspection
         $reflection = new ReflectionClass($router);
-        $property = $reflection->getProperty('routes');
-        $property->setAccessible(true);
-        $routes = $property->getValue($router);
+
+        $routesProperty = $reflection->getProperty('routes');
+        $routesProperty->setAccessible(true);
+        $routes = $routesProperty->getValue($router);
+
+        $staticRoutesProperty = $reflection->getProperty('staticRoutes');
+        $staticRoutesProperty->setAccessible(true);
+        $staticRoutes = $staticRoutesProperty->getValue($router);
+
+        $allRoutes = [];
+        foreach ($routes as $method => $methodRoutes) {
+            foreach ($methodRoutes as $route) {
+                $allRoutes[] = $route;
+            }
+        }
+        foreach ($staticRoutes as $method => $methodRoutes) {
+            foreach ($methodRoutes as $route) {
+                $allRoutes[] = $route;
+            }
+        }
 
         $paths = [];
 
-        foreach ($routes as $method => $methodRoutes) {
-            foreach ($methodRoutes as $route) {
-                $uri = '/' . ltrim($route->maxUri, '/');
-                $uri = preg_replace('/\{(\w+)\}/', '{$1}', $uri); // Normalize params
+        foreach ($allRoutes as $route) {
+            $method = strtolower($route->getMethod());
+            $uri = '/' . ltrim($route->getPath(), '/');
+            $uri = preg_replace('/\{(\w+)\}/', '{$1}', $uri);
 
-                if (!isset($paths[$uri])) {
-                    $paths[$uri] = [];
-                }
-
-                $operation = [
-                    'summary' => 'Generated Route',
-                    'responses' => [
-                        '200' => [
-                            'description' => 'Success'
-                        ]
-                    ]
-                ];
-
-                // If we had route metadata, we'd add it here.
-                // For now, we infer from basic structure.
-
-                $paths[$uri][strtolower($method)] = $operation;
+            if (!isset($paths[$uri])) {
+                $paths[$uri] = [];
             }
+
+            $summary = 'Generated Route';
+            $description = '';
+            $handler = $route->getHandler();
+
+            // Extract metadata from Controller
+            if (is_string($handler) && strpos($handler, '@') !== false) {
+                [$controller, $action] = explode('@', $handler);
+                if (class_exists($controller)) {
+                    $ref = new ReflectionMethod($controller, $action);
+                    $doc = $ref->getDocComment();
+                    if ($doc) {
+                        $doc = preg_replace('/^\s*(\/\*\*|\*\/|\*)/m', '', $doc);
+                        $lines = array_filter(array_map('trim', explode("\n", $doc)));
+                        $summary = array_shift($lines) ?: 'Generated Route';
+                        $description = implode("\n", $lines);
+                    }
+                }
+            }
+
+            $operation = [
+                'summary' => $summary,
+                'description' => $description,
+                'responses' => [
+                    '200' => [
+                        'description' => 'Success'
+                    ]
+                ]
+            ];
+
+            $paths[$uri][$method] = $operation;
         }
 
         $spec = [
             'openapi' => '3.0.0',
             'info' => [
                 'title' => 'Plugs API',
+                'description' => 'Automatically generated API documentation for Plugs Framework.',
                 'version' => '1.0.0'
             ],
             'paths' => $paths
         ];
 
         $json = json_encode($spec, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
+        file_put_contents('openapi.json', $json);
 
-        $outputPath = 'openapi.json';
-        file_put_contents($outputPath, $json);
-
-        $this->success("OpenAPI spec generated at: {$outputPath}");
+        $this->success("OpenAPI spec generated at: openapi.json");
 
         return 0;
     }

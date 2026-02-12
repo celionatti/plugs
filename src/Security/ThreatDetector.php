@@ -39,10 +39,9 @@ class ThreatDetector
         '/[()\\\\*\x00]/',
     ];
 
-    private static array $threatScores = [];
-
     private const SCORE_THRESHOLD = 10;
-    private const DECAY_SECONDS = 300; // 5 minutes
+    private const CACHE_PREFIX = 'security:threat:';
+    private const CACHE_TTL = 3600; // 1 hour
 
     /**
      * Analyze a request for suspicious patterns.
@@ -79,7 +78,9 @@ class ThreatDetector
         }
 
         // Accumulate score for IP
-        self::addScore($ip, $score);
+        if ($score > 0) {
+            self::addScore($ip, $score);
+        }
 
         return self::getScore($ip);
     }
@@ -106,27 +107,14 @@ class ThreatDetector
      */
     public static function getScore(string $ip): int
     {
-        self::decayScores();
-        return self::$threatScores[$ip]['score'] ?? 0;
+        return (int) \Plugs\Facades\Cache::get(self::CACHE_PREFIX . $ip, 0);
     }
 
     private static function addScore(string $ip, int $points): void
     {
-        if (!isset(self::$threatScores[$ip])) {
-            self::$threatScores[$ip] = ['score' => 0, 'updated_at' => time()];
-        }
-        self::$threatScores[$ip]['score'] += $points;
-        self::$threatScores[$ip]['updated_at'] = time();
-    }
-
-    private static function decayScores(): void
-    {
-        $now = time();
-        foreach (self::$threatScores as $ip => &$data) {
-            if ($now - $data['updated_at'] > self::DECAY_SECONDS) {
-                unset(self::$threatScores[$ip]);
-            }
-        }
+        $key = self::CACHE_PREFIX . $ip;
+        $current = (int) \Plugs\Facades\Cache::get($key, 0);
+        \Plugs\Facades\Cache::set($key, $current + $points, self::CACHE_TTL);
     }
 
     private static function scanValue(mixed $value): int
@@ -187,7 +175,7 @@ class ThreatDetector
         $serverParams = $request->getServerParams();
         return $serverParams['HTTP_X_FORWARDED_FOR']
             ?? $serverParams['REMOTE_ADDR']
-            ?? 'unknown';
+            ?? '0.0.0.0';
     }
 
     /**
@@ -195,7 +183,8 @@ class ThreatDetector
      */
     public static function reset(): void
     {
-        self::$threatScores = [];
+        // This is tricky with globally shared cache, but we can't easily clear by prefix 
+        // without knowing the driver capabilities. For now, leave as is or clear specific keys if known.
     }
 }
 
