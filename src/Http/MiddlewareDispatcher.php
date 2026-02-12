@@ -21,7 +21,9 @@ use Psr\Http\Server\RequestHandlerInterface;
 
 class MiddlewareDispatcher implements RequestHandlerInterface
 {
-    private $middlewareStack = [];
+    private array $middlewareStack = [];
+    private array $resolvedStack = [];
+    private bool $resolved = false;
     private $fallbackHandler;
 
     public function __construct(array $middleware = [], ?callable $fallbackHandler = null)
@@ -30,9 +32,10 @@ class MiddlewareDispatcher implements RequestHandlerInterface
         $this->fallbackHandler = $fallbackHandler;
     }
 
-    public function add(MiddlewareInterface $middleware): void
+    public function add($middleware): void
     {
         $this->middlewareStack[] = $middleware;
+        $this->resolved = false; // Invalidate cache
     }
 
     public function setFallbackHandler(callable $handler): void
@@ -42,7 +45,42 @@ class MiddlewareDispatcher implements RequestHandlerInterface
 
     public function handle(ServerRequestInterface $request): ResponseInterface
     {
-        return (new MiddlewareRunner($this->middlewareStack, $this->fallbackHandler))->handle($request);
+        if (!$this->resolved) {
+            $this->resolveStack();
+        }
+
+        return (new MiddlewareRunner($this->resolvedStack, $this->fallbackHandler))->handle($request);
+    }
+
+    private function resolveStack(): void
+    {
+        $this->resolvedStack = [];
+
+        foreach ($this->middlewareStack as $i => $middleware) {
+            // lazy resolution of string classes
+            if (is_string($middleware)) {
+                $middleware = app($middleware);
+            }
+
+            if (!$middleware instanceof MiddlewareInterface) {
+                // If it's a closure or callable, wrap it? For now assume strict typing or fail.
+                // But let's throw friendly error
+                $type = is_object($middleware) ? get_class($middleware) : gettype($middleware);
+                throw new \RuntimeException(sprintf('Middleware at index %d (%s) must implement %s', $i, $type, MiddlewareInterface::class));
+            }
+
+            // Pre-calculate display name for profiler
+            $mwName = get_class($middleware);
+            $displayName = basename(str_replace('\\', '/', $mwName));
+
+            $this->resolvedStack[] = [
+                'instance' => $middleware,
+                'name' => 'mw_' . $mwName,
+                'label' => 'MW: ' . $displayName
+            ];
+        }
+
+        $this->resolved = true;
     }
 }
 
@@ -56,11 +94,14 @@ class MiddlewareRunner implements RequestHandlerInterface
     private array $stack;
     private int $index = 0;
     private $fallback;
+    private ?\Plugs\Debug\Profiler $profiler;
 
     public function __construct(array $stack, $fallback)
     {
         $this->stack = $stack;
         $this->fallback = $fallback;
+
+        $this->profiler = \Plugs\Debug\Profiler::getInstance();
     }
 
     public function handle(ServerRequestInterface $request): ResponseInterface
@@ -73,26 +114,23 @@ class MiddlewareRunner implements RequestHandlerInterface
             return ($this->fallback)($request);
         }
 
-        $middleware = $this->stack[$this->index];
+        // Get pre-resolved middleware data
+        $entry = $this->stack[$this->index];
+        $middleware = $entry['instance'];
         $this->index++;
 
-        // Lazy resolution
-        if (is_string($middleware)) {
-            $middleware = app($middleware);
+        // Fast path if profiler is disabled
+        if (!$this->profiler->isEnabled()) {
+            return $middleware->process($request, $this);
         }
 
-        if (!$middleware instanceof MiddlewareInterface) {
-            throw new \RuntimeException(sprintf('Middleware must implement %s', MiddlewareInterface::class));
-        }
-
-        $profiler = \Plugs\Debug\Profiler::getInstance();
-        $mwName = get_class($middleware);
-        $profiler->startSegment('mw_' . $mwName, 'MW: ' . basename(str_replace('\\', '/', $mwName)));
+        // Profiler path
+        $this->profiler->startSegment($entry['name'], $entry['label']);
 
         try {
             return $middleware->process($request, $this);
         } finally {
-            $profiler->stopSegment('mw_' . $mwName);
+            $this->profiler->stopSegment($entry['name']);
         }
     }
 }

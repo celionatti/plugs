@@ -27,6 +27,10 @@ if (config('security.profiler.enabled', false)) {
         $router->post('/clear', [\Plugs\Debug\ProfilerController::class, 'clear'])->name('profiler.clear');
         $router->get('/{id}', [\Plugs\Debug\ProfilerController::class, 'show'])->name('profiler.show');
         $router->delete('/{id}', [\Plugs\Debug\ProfilerController::class, 'destroy'])->name('profiler.destroy');
+
+        // AI Profiler Enhancements
+        $router->post('/analyze-request', [\Plugs\Debug\AIProfilerController::class, 'analyzeRequest'])->name('profiler.ai.request');
+        $router->post('/analyze-sql', [\Plugs\Debug\AIProfilerController::class, 'analyzeSql'])->name('profiler.ai.sql');
     });
 }
 

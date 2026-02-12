@@ -1451,6 +1451,12 @@ function plugs_render_queries(array $data): string
         $html .= '<div class="var-header">';
         $html .= '<div class="var-title"><span>#' . ($index + 1) . '</span> <code style="color: var(--accent-secondary);">' . substr(htmlspecialchars($query['query']), 0, 60) . (strlen($query['query']) > 60 ? '...' : '') . '</code></div>';
         $html .= '<div class="var-badges">';
+
+        // AI Integration: Explain Query
+        if (config('security.ai_profiler.enabled', true)) {
+            $html .= '<a href="#" class="plugs-ai-explain-sql" data-sql="' . htmlspecialchars($query['query']) . '" style="color: #a78bfa; font-size: 11px; margin-right: 12px; text-decoration: none; border-bottom: 1px dashed #a78bfa;">✨ Explain</a>';
+        }
+
         if ($isSlow) {
             $html .= '<span class="plugs-badge" style="background: rgba(239, 68, 68, 0.1); color: var(--danger);">SLOW</span>';
         }

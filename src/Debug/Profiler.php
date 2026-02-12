@@ -30,10 +30,13 @@ class Profiler
     private const STORAGE_DIR = 'storage/framework/profiler/';
     private const MAX_PROFILES = 50;
 
+    private bool $useHrTime;
+
     private function __construct()
     {
-        $this->startTime = function_exists('hrtime') ? (float) hrtime(true) / 1e9 : microtime(true);
-        $this->startMemory = memory_get_usage(true);
+        $this->useHrTime = function_exists('hrtime');
+        $this->startTime = $this->useHrTime ? (float) hrtime(true) / 1e9 : microtime(true);
+        $this->startMemory = memory_get_usage(false); // Use emalloc for speed
     }
 
     /**
@@ -82,8 +85,8 @@ class Profiler
     public function start(): void
     {
         $this->enabled = true;
-        $this->startTime = function_exists('hrtime') ? (float) hrtime(true) / 1e9 : microtime(true);
-        $this->startMemory = memory_get_usage(true);
+        $this->startTime = $this->useHrTime ? (float) hrtime(true) / 1e9 : microtime(true);
+        $this->startMemory = memory_get_usage(false);
         $this->timeline = [];
         $this->views = [];
         $this->logs = [];
@@ -107,11 +110,11 @@ class Profiler
 
         $this->stopSegment('total');
 
-        $endTime = function_exists('hrtime') ? (float) hrtime(true) / 1e9 : microtime(true);
+        $endTime = $this->useHrTime ? (float) hrtime(true) / 1e9 : microtime(true);
         $duration = ($endTime - $this->startTime) * 1000; // ms
 
-        $memoryPeak = memory_get_peak_usage(true);
-        $memoryUsed = memory_get_usage(true) - $this->startMemory;
+        $memoryPeak = memory_get_peak_usage(false);
+        $memoryUsed = memory_get_usage(false) - $this->startMemory;
 
         $dbReport = class_exists(Connection::class)
             ? Connection::getQueryAnalysisReport()
@@ -128,6 +131,7 @@ class Profiler
                 'used' => $memoryUsed,
                 'used_formatted' => $this->formatBytes($memoryUsed),
             ],
+            // ... (keep rest of stop method) ...
             'request' => $this->filterRequestData(array_merge([
                 'method' => $_SERVER['REQUEST_METHOD'] ?? 'CLI',
                 'uri' => $_SERVER['REQUEST_URI'] ?? '',
@@ -197,10 +201,10 @@ class Profiler
 
         $this->timeline[$name] = [
             'label' => $label ?: $name,
-            'start' => function_exists('hrtime') ? (float) hrtime(true) / 1e9 : microtime(true),
+            'start' => $this->useHrTime ? (float) hrtime(true) / 1e9 : microtime(true),
             'end' => null,
             'duration' => null,
-            'memory_start' => memory_get_usage(true),
+            'memory_start' => memory_get_usage(false),
             'memory_end' => null,
             'start_offset' => $this->getElapsedTime(),
         ];
@@ -215,13 +219,12 @@ class Profiler
             return;
         }
 
-        $endTime = function_exists('hrtime') ? (float) hrtime(true) / 1e9 : microtime(true);
+        $endTime = $this->useHrTime ? (float) hrtime(true) / 1e9 : microtime(true);
+        $start = $this->timeline[$name]['start'];
+
         $this->timeline[$name]['end'] = $endTime;
-        $this->timeline[$name]['duration'] = round(
-            ($endTime - $this->timeline[$name]['start']) * 1000,
-            4
-        );
-        $this->timeline[$name]['memory_end'] = memory_get_usage(true);
+        $this->timeline[$name]['duration'] = ($endTime - $start) * 1000;
+        $this->timeline[$name]['memory_end'] = memory_get_usage(false);
     }
 
     /**

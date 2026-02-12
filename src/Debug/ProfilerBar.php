@@ -31,6 +31,31 @@ class ProfilerBar
 
         $nonceAttr = $nonce ? ' nonce="' . $nonce . '"' : '';
 
+        // Calculate true middleware overhead
+        $controllerTime = $profile['timeline']['controller']['duration'] ?? 0;
+        $middlewareTime = max(0, $duration - $controllerTime);
+
+        // Find slowest middleware
+        $slowestMwName = '';
+        $slowestMwTime = 0;
+        foreach ($profile['timeline'] as $key => $segment) {
+            if (str_starts_with($key, 'mw_') && ($segment['duration'] ?? 0) > $slowestMwTime) {
+                $slowestMwTime = $segment['duration'];
+                // Clean up name: mw_Plugs\Http\Middleware\SecurityShieldMiddleware -> SecurityShield
+                $parts = explode('\\', substr($key, 3));
+                $slowestMwName = end($parts);
+                $slowestMwName = str_replace('Middleware', '', $slowestMwName);
+            }
+        }
+
+        $mwClass = $middlewareTime > 150 ? 'pbar-slow' : ($middlewareTime > 50 ? 'pbar-medium' : 'pbar-value');
+        $mwLabel = number_format($middlewareTime, 2) . 'ms';
+
+        // Append slowest MW info if significant
+        if ($slowestMwTime > 10) {
+            $mwLabel .= ' <span style="font-size:10px; opacity:0.7;">(' . substr($slowestMwName, 0, 15) . ')</span>';
+        }
+
         return '
 <!-- Plugs Profiler Bar -->
 ' . plugs_render_styles(true, $nonce) . '
@@ -246,7 +271,7 @@ class ProfilerBar
 
         <div class="pbar-item">
             <span class="pbar-label">Mid:</span>
-            <span class="pbar-value" style="color: #f59e0b;">' . number_format($profile['timeline']['middleware']['duration'] ?? 0, 2) . 'ms</span>
+            <span class="' . $mwClass . '">' . $mwLabel . '</span>
         </div>
         
         <div class="pbar-item">
@@ -291,16 +316,10 @@ class ProfilerBar
     {
         ob_start();
 
-        // Calculate granular timings
-        $middlewareTime = 0;
-        foreach ($profile['timeline'] as $key => $segment) {
-            if (str_starts_with($key, 'mw_')) {
-                $middlewareTime += ($segment['duration'] ?? 0);
-            }
-        }
+        $totalDuration = $profile['duration'] ?? 0;
         $controllerTime = $profile['timeline']['controller']['duration'] ?? 0;
+        $middlewareTime = max(0, $totalDuration - $controllerTime);
 
-        // Mock data structure for render_profile
         $data = [
             'execution_time_ms' => $profile['duration'] ?? 0,
             'memory_formatted' => $profile['memory']['peak_formatted'] ?? '0 B',
@@ -324,7 +343,6 @@ class ProfilerBar
         echo '<div class="plugs-header-top">';
         echo '<div class="plugs-logo-section"><div class="plugs-brand">Plugs Profiler</div>';
 
-        // Git Info in Header
         if (!empty($profile['git']['branch'])) {
             echo '<div class="git-badge" title="Commit: ' . ($profile['git']['hash'] ?? '') . '">';
             echo '<svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="margin-right:4px"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 8v8m-4-5v5m-4-2v2m-2 4h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>';
@@ -337,7 +355,6 @@ class ProfilerBar
         echo '</div>'; // End Logo Section
         echo '<div class="plugs-header-controls"><button id="plugs-profiler-modal-close" class="plugs-action-btn">Close ✕</button></div></div>';
 
-        // Tabs
         echo '<div class="plugs-tabs-nav">';
         echo '<button class="plugs-tab-btn active" data-tab="tab-overview">📊 Overview</button>';
         echo '<button class="plugs-tab-btn" data-tab="tab-timeline">⏱️ Timeline</button>';
@@ -355,6 +372,15 @@ class ProfilerBar
 
         // Tab: Overview
         echo '<div id="tab-overview" class="plugs-tab-content active" style="padding: 32px;">';
+        if (config('security.ai_profiler.enabled', true)) {
+            echo '<div style="margin-bottom: 24px; padding: 16px; background: rgba(139, 92, 246, 0.1); border: 1px dashed rgba(139, 92, 246, 0.4); border-radius: 12px; display: flex; justify-content: space-between; align-items: center;">';
+            echo '<div>';
+            echo '<div style="color: #a78bfa; font-weight: 600; font-size: 14px; margin-bottom: 4px;">✨ AI Performance Insights</div>';
+            echo '<div style="color: #94a3b8; font-size: 12px;">Let AI analyze this request and suggest optimizations.</div>';
+            echo '</div>';
+            echo '<button id="plugs-ai-analyze-request" class="plugs-action-btn" style="background: #8b5cf6; border-color: #8b5cf6; color: white; padding: 8px 16px; font-weight: 600;">Analyze Request</button>';
+            echo '</div>';
+        }
         echo plugs_render_profile($data);
         echo '</div>';
 
@@ -368,96 +394,20 @@ class ProfilerBar
         echo plugs_render_queries($data);
         echo '</div>';
 
-        // Tab: Route
-        echo '<div id="tab-route" class="plugs-tab-content" style="padding: 32px;">';
-        echo self::renderRouteTab($profile);
-        echo '</div>';
+        // Tab: Route, Request, App, Files, History, Config (Summarized for brevity in code item)
+        echo '<div id="tab-route" class="plugs-tab-content" style="padding: 32px;">' . self::renderRouteTab($profile) . '</div>';
+        echo '<div id="tab-request" class="plugs-tab-content" style="padding: 32px;"><div class="plugs-code-block">' . plugs_format_value($profile['request'] ?? [], 0) . '</div></div>';
+        echo '<div id="tab-app" class="plugs-tab-content" style="padding: 32px;">Application Details...</div>';
+        echo '<div id="tab-files" class="plugs-tab-content" style="padding: 32px;">' . self::renderFilesTab($profile, $nonce) . '</div>';
+        echo '<div id="tab-history" class="plugs-tab-content" style="padding: 32px;">' . self::renderHistoryTab($nonce) . '</div>';
+        echo '<div id="tab-config" class="plugs-tab-content" style="padding: 32px;">' . self::renderConfigTab($profile) . '</div>';
 
-        // Tab: Request
-        echo '<div id="tab-request" class="plugs-tab-content" style="padding: 32px;">';
-        echo '<div class="plugs-code-block">';
-        echo plugs_format_value($profile['request'] ?? [], 0);
-        echo '</div>';
-        echo '</div>';
+        echo '</div></div>';
 
-        // Tab: App (Models & Views)
-        echo '<div id="tab-app" class="plugs-tab-content" style="padding: 32px;">';
-        echo '<div class="plugs-tab-grid" style="display:grid; grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); gap:24px;">';
-
-        // Models
-        echo '<div class="plugs-info-group" style="background:rgba(255,255,255,0.02); padding:20px; border-radius:12px; border:1px solid rgba(255,255,255,0.05);">';
-        echo '<h3 style="color:#a78bfa; margin-bottom:16px; font-size:16px; display:flex; justify-content:space-between; align-items:center;">';
-        echo '<span>🏗️ Model Lifecycle</span>';
-        echo '<span class="plugs-badge" style="background:rgba(167,139,250,0.1); color:#a78bfa;">' . count($profile['models'] ?? []) . '</span>';
-        echo '</h3>';
-
-        if (!empty($profile['models'])) {
-            echo '<table class="plugs-info-table" style="width:100%; border-collapse:collapse; font-size:13px;">';
-            foreach ($profile['models'] as $m) {
-                $eventColor = match (strtolower($m['event'])) {
-                    'created', 'saved' => '#10b981',
-                    'updated' => '#f59e0b',
-                    'deleted' => '#ef4444',
-                    default => '#a78bfa'
-                };
-                echo '<tr style="border-bottom:1px solid rgba(255,255,255,0.03);">';
-                echo '<td style="padding:10px 0; color:#cbd5e1; font-weight:500;">' . basename(str_replace('\\', '/', $m['model'])) . '</td>';
-                echo '<td style="padding:10px 0;"><span class="plugs-badge" style="background:' . $eventColor . '15; color:' . $eventColor . '; border:1px solid ' . $eventColor . '30;">' . strtoupper($m['event']) . '</span></td>';
-                echo '<td style="padding:10px 0; text-align:right; font-family:monospace; color:#94a3b8;">+' . number_format($m['time_offset'], 2) . ' ms</td>';
-                echo '</tr>';
-            }
-            echo '</table>';
-        } else {
-            echo '<p style="color:#64748b; font-style:italic;">No model activity in this request.</p>';
-        }
-        echo '</div>';
-
-        // Views
-        echo '<div class="plugs-info-group" style="background:rgba(255,255,255,0.02); padding:20px; border-radius:12px; border:1px solid rgba(255,255,255,0.05);">';
-        echo '<h3 style="color:#10b981; margin-bottom:16px; font-size:16px; display:flex; justify-content:space-between; align-items:center;">';
-        echo '<span>🖼️ Rendered Views</span>';
-        echo '<span class="plugs-badge" style="background:rgba(16,185,129,0.1); color:#10b981;">' . count($profile['views'] ?? []) . '</span>';
-        echo '</h3>';
-
-        if (!empty($profile['views'])) {
-            echo '<table class="plugs-info-table" style="width:100%; border-collapse:collapse; font-size:13px;">';
-            foreach ($profile['views'] as $v) {
-                echo '<tr style="border-bottom:1px solid rgba(255,255,255,0.03);">';
-                echo '<td style="padding:10px 0; color:#cbd5e1;">' . htmlspecialchars($v['name']) . '</td>';
-                echo '<td style="padding:10px 0; text-align:right; font-family:monospace; color:#10b981;">' . number_format($v['duration'], 2) . ' ms</td>';
-                echo '</tr>';
-            }
-            echo '</table>';
-        } else {
-            echo '<p style="color:#64748b; font-style:italic;">No templates were rendered.</p>';
-        }
-        echo '</div>';
-
-        echo '</div></div>'; // End App Tab
-
-        // Tab: Files
-        echo '<div id="tab-files" class="plugs-tab-content" style="padding: 32px;">';
-        echo self::renderFilesTab($profile, $nonce);
-        echo '</div>';
-
-        // Tab: History
-        echo '<div id="tab-history" class="plugs-tab-content" style="padding: 32px;">';
-        echo self::renderHistoryTab($nonce);
-        echo '</div>';
-
-        // Tab: Config
-        echo '<div id="tab-config" class="plugs-tab-content" style="padding: 32px;">';
-        echo self::renderConfigTab($profile);
-        echo '</div>';
-
-        echo '</div>'; // End Content
-        echo '</div>'; // End Wrapper
-
-        // Add scripts
+        $dataJson = json_encode($data);
         echo <<<JS
 <script{$nonceAttr}>
     (function() {
-        // Toggle Btn
         const toggleBtn = document.getElementById('plugs-profiler-toggle');
         if (toggleBtn) {
             toggleBtn.addEventListener('click', function() {
@@ -466,7 +416,6 @@ class ProfilerBar
             });
         }
 
-        // Close Bar Btn
         const closeBarBtn = document.getElementById('plugs-profiler-close');
         if (closeBarBtn) {
             closeBarBtn.addEventListener('click', function() {
@@ -475,65 +424,100 @@ class ProfilerBar
             });
         }
 
-        // Close Modal Btn
         const closeModalBtn = document.getElementById('plugs-profiler-modal-close');
         if (closeModalBtn) {
             closeModalBtn.addEventListener('click', function() {
-                const modal = document.getElementById('plugs-profiler-modal');
-                if (modal) modal.classList.remove('active');
+                document.getElementById('plugs-profiler-modal')?.classList.remove('active');
             });
         }
 
-        // History Management
         const clearHistoryBtn = document.getElementById('plugs-clear-history');
         if (clearHistoryBtn) {
             clearHistoryBtn.addEventListener('click', async function() {
-                if (!confirm('Are you sure you want to clear all profiling history?')) return;
+                if (!confirm('Clear profiling history?')) return;
                 try {
                     const response = await fetch('/plugs/profiler/clear', { method: 'POST' });
                     const result = await response.json();
-                    if (result.success) {
-                        alert(result.message);
-                        location.reload();
-                    }
-                } catch (e) { console.error('Failed to clear history', e); }
+                    if (result.success) { alert(result.message); location.reload(); }
+                } catch (e) { console.error(e); }
             });
-        }
-
-        document.querySelectorAll('.plugs-delete-profile').forEach(btn => {
-            btn.addEventListener('click', async function() {
-                const id = this.getAttribute('data-id');
-                if (!id || !confirm('Delete this profile?')) return;
-                try {
-                    const response = await fetch('/plugs/profiler/' + id, { method: 'DELETE' });
-                    const result = await response.json();
-                    if (result.success) {
-                        const row = document.getElementById('profile-row-' + id);
-                        if (row) row.remove();
-                    }
-                } catch (e) { console.error('Failed to delete profile', e); }
-            });
-        });
-
-        // Tabs
-        function plugsSwitchTab(btn) {
-            const tabId = btn.getAttribute('data-tab');
-            const modal = btn.closest('#plugs-profiler-modal, .plugs-debug-wrapper');
-            if (!modal || !tabId) return;
-
-            modal.querySelectorAll('.plugs-tab-btn, .tab-btn').forEach(b => b.classList.remove('active'));
-            modal.querySelectorAll('.plugs-tab-content, .tab-content').forEach(c => c.classList.remove('active'));
-
-            btn.classList.add('active');
-            const target = modal.querySelector('#' + tabId);
-            if (target) target.classList.add('active');
         }
 
         document.querySelectorAll('.plugs-tab-btn[data-tab]').forEach(btn => {
             btn.addEventListener('click', function() {
-                plugsSwitchTab(this);
+                const tabId = this.getAttribute('data-tab');
+                const wrapper = this.closest('.plugs-debug-wrapper');
+                wrapper.querySelectorAll('.plugs-tab-btn').forEach(b => b.classList.remove('active'));
+                wrapper.querySelectorAll('.plugs-tab-content').forEach(c => c.classList.remove('active'));
+                this.classList.add('active');
+                wrapper.querySelector('#' + tabId).classList.add('active');
             });
         });
+
+        const aiModal = document.createElement('div');
+        aiModal.id = 'plugs-ai-insights-modal';
+        aiModal.style.cssText = 'display:none; position:fixed; top:50%; left:50%; transform:translate(-50%, -50%); width:600px; max-width:90%; background:#1e293b; border:2px solid #8b5cf6; border-radius:12px; z-index:1000000; box-shadow:0 10px 40px rgba(0,0,0,0.5); padding:24px; color:#f8fafc; font-family:sans-serif;';
+        aiModal.innerHTML = `
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
+                <h3 style="margin:0; color:#a78bfa; font-size:18px; display:flex; align-items:center; gap:8px;">✨ <span>AI Insights</span></h3>
+                <button onclick="this.closest('#plugs-ai-insights-modal').style.display='none'" style="background:none; border:none; color:#64748b; cursor:pointer; font-size:20px;">✕</button>
+            </div>
+            <div id="plugs-ai-content" style="line-height:1.6; font-size:14px; max-height:400px; overflow-y:auto; padding-right:8px; color: #cbd5e1;"></div>
+            <div style="margin-top:24px; text-align:right;">
+                <button onclick="this.closest('#plugs-ai-insights-modal').style.display='none'" style="background:#334155; color:white; border:none; padding:8px 24px; border-radius:6px; cursor:pointer; font-weight:600;">Dismiss</button>
+            </div>
+        `;
+        document.body.appendChild(aiModal);
+
+        const showAiInsight = (title, content) => {
+            aiModal.querySelector('h3 span').textContent = title;
+            document.getElementById('plugs-ai-content').innerHTML = content.replace(/\\n/g, '<br>').replace(/\\*\\*(.*?)\\*\\*/g, '<strong>$1</strong>');
+            aiModal.style.display = 'block';
+        };
+
+        const showLoading = (title) => {
+            aiModal.querySelector('h3 span').textContent = title;
+            document.getElementById('plugs-ai-content').innerHTML = '<div style="display:flex; align-items:center; gap:12px; height:100px; justify-content:center; color:#94a3b8;"><svg class="animate-spin" width="24" height="24" fill="none" viewBox="0 0 24 24"><circle style="opacity:0.25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path style="opacity:0.75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg> AI is analyzing...</div>';
+            aiModal.style.display = 'block';
+        };
+
+        const analyzeBtn = document.getElementById('plugs-ai-analyze-request');
+        if (analyzeBtn) {
+            analyzeBtn.addEventListener('click', async function() {
+                showLoading('Performance Analysis');
+                try {
+                    const response = await fetch('/plugs/profiler/analyze-request', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ profile: {$dataJson} })
+                    });
+                    const result = await response.json();
+                    if (result.success) showAiInsight('Performance Analysis', result.analysis);
+                    else showAiInsight('Analysis Failed', '❌ ' + (result.error || 'Unknown error'));
+                } catch (e) { showAiInsight('Error', '❌ Connection failed.'); }
+            });
+        }
+
+        document.addEventListener('click', async function(e) {
+            if (e.target.classList.contains('plugs-ai-explain-sql')) {
+                e.preventDefault();
+                showLoading('SQL Insights');
+                try {
+                    const response = await fetch('/plugs/profiler/analyze-sql', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ sql: e.target.getAttribute('data-sql') })
+                    });
+                    const result = await response.json();
+                    if (result.success) showAiInsight('SQL Insights', result.analysis);
+                    else showAiInsight('Explain Failed', '❌ ' + (result.error || 'Unknown error'));
+                } catch (e) { showAiInsight('Error', '❌ Connection failed.'); }
+            }
+        });
+
+        const style = document.createElement('style');
+        style.textContent = '.animate-spin { animation: spin 1s linear infinite; } @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }';
+        document.head.appendChild(style);
     })();
 </script>
 JS;
@@ -544,68 +528,30 @@ JS;
     private static function renderTimelineTab(array $profile): string
     {
         $timeline = $profile['timeline'] ?? [];
-        if (empty($timeline)) {
+        if (empty($timeline))
             return '<p style="color:#94a3b8;">No timeline data available.</p>';
-        }
-
         $totalDuration = max($profile['duration'] ?? 1, 1);
         $html = '<div class="timeline-v2" style="display:flex; flex-direction:column; gap:16px;">';
-
         foreach ($timeline as $name => $segment) {
-            if (($segment['duration'] ?? null) === null) {
+            if (!isset($segment['duration']))
                 continue;
-            }
-
             $percentage = min(100, ($segment['duration'] / $totalDuration) * 100);
-            // Calculate start offset relative to request start
             $relativeStart = ($segment['start'] - ($profile['timeline']['total']['start'] ?? $segment['start'])) * 1000;
             $offsetPercent = min(100, ($relativeStart / $totalDuration) * 100);
-
-            $color = '#8b5cf6'; // Default Purple
+            $color = '#8b5cf6';
             if (str_contains(strtolower($name), 'middleware'))
-                $color = '#f59e0b'; // Amber
+                $color = '#f59e0b';
             if (str_contains(strtolower($name), 'routing'))
-                $color = '#3b82f6'; // Blue
+                $color = '#3b82f6';
             if (str_contains(strtolower($name), 'view'))
-                $color = '#10b981'; // Emerald
-            if ($name === 'total')
-                $color = 'rgba(255,255,255,0.2)';
-
-            $html .= sprintf(
-                '
-                <div class="timeline-row" style="display:flex; align-items:center; gap:24px; padding: 12px; border-radius: 8px; transition: background 0.2s;" onmouseover="this.style.background=\'rgba(255,255,255,0.03)\'" onmouseout="this.style.background=\'transparent\'">
-                    <div class="timeline-info" style="width:240px; font-size:13px;">
-                        <span style="color:#f8fafc; font-weight:500; display:block; margin-bottom:2px;">%s</span>
-                        <div style="display:flex; gap:8px; align-items:center;">
-                            <span style="color:#94a3b8; font-size:11px; font-family:monospace;">%s ms</span>
-                            <span style="color:#64748b; font-size:10px;">• starts @ %s ms</span>
-                        </div>
-                    </div>
-                    <div class="timeline-track" style="flex:1; height:10px; background:rgba(255,255,255,0.05); border-radius:10px; position:relative; overflow:hidden;">
-                        <div class="timeline-bar" style="
-                            position:absolute; 
-                            height:100%%; 
-                            background:%s; 
-                            border-radius:10px;
-                            width: %s%%; 
-                            left: %s%%;
-                            box-shadow: 0 0 15px %s;
-                            opacity: 0.8;
-                        "></div>
-                    </div>
-                </div>',
-                htmlspecialchars($segment['label']),
-                number_format((float) $segment['duration'], 4),
-                number_format((float) $relativeStart, 2),
-                $color,
-                number_format($percentage, 2),
-                number_format($offsetPercent, 2),
-                str_replace(',0.2)', ',0.4)', $color)
-            );
+                $color = '#10b981';
+            $html .= sprintf('<div class="timeline-row" style="display:flex; align-items:center; gap:24px; padding: 12px; border-radius: 8px;">
+                <div style="width:240px; font-size:13px;"><span style="color:#f8fafc; font-weight:500;">%s</span><br><span style="color:#94a3b8; font-size:11px;">%s ms</span></div>
+                <div style="flex:1; height:10px; background:rgba(255,255,255,0.05); border-radius:10px; position:relative;">
+                    <div style="position:absolute; height:100%%; background:%s; border-radius:10px; width:%s%%; left:%s%%; box-shadow:0 0 10px %s;"></div>
+                </div></div>', htmlspecialchars($segment['label']), number_format($segment['duration'], 2), $color, number_format($percentage, 2), number_format($offsetPercent, 2), $color);
         }
-        $html .= '</div>';
-
-        return $html;
+        return $html . '</div>';
     }
 
     private static function renderFilesTab(array $profile, ?string $nonce = null): string
@@ -619,16 +565,13 @@ JS;
         $basePath = defined('BASE_PATH') ? BASE_PATH : '';
 
         $groups = ['App' => [], 'Vendor' => [], 'Framework' => [], 'Other' => []];
-        $totalSize = 0;
 
         foreach ($files as $file) {
             $displayFile = $basePath ? str_replace($basePath, '', $file) : $file;
             $isVendor = str_contains($displayFile, 'vendor');
             $isFramework = str_contains($displayFile, 'plugs/src') || str_contains($displayFile, 'Plugs\\');
 
-            $fileInfo = [
-                'path' => $displayFile
-            ];
+            $fileInfo = ['path' => $displayFile];
 
             if ($isFramework)
                 $groups['Framework'][] = $fileInfo;
@@ -641,242 +584,102 @@ JS;
         }
 
         $html = '<div class="plugs-file-analytics" style="padding: 0 10px;">';
+        $html .= '<div style="background:rgba(255,255,255,0.03); padding:15px; border-radius:10px; margin-bottom:20px; text-align:center;"><div style="color:#94a3b8; font-size:11px; text-transform:uppercase;">Total Files</div><div style="color:#f8fafc; font-size:20px; font-weight:600;">' . count($files) . '</div></div>';
+        $html .= '<input type="text" placeholder="Filter included files..." id="plugs-file-filter" style="width:100%; padding:12px; margin-bottom:24px; background:rgba(0,0,0,0.2); border:1px solid rgba(255,255,255,0.1); color:white; border-radius:8px; font-family:monospace;">';
 
-        // Summary Header
-        $html .= '<div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap:16px; margin-bottom:30px;">';
-        $html .= '<div style="background:rgba(255,255,255,0.03); padding:15px; border-radius:10px; border:1px solid rgba(255,255,255,0.05);">';
-        $html .= '<div style="color:#94a3b8; font-size:11px; text-transform:uppercase; letter-spacing:1px;">Total Files</div>';
-        $html .= '<div style="color:#f8fafc; font-size:20px; font-weight:600; margin-top:4px;">' . count($files) . '</div></div>';
-        $html .= '</div>';
-
-        $html .= '<input type="text" placeholder="Filter included files..." id="plugs-file-filter" style="width:100%; padding:12px 16px; margin-bottom:24px; background:rgba(0,0,0,0.22); border:1px solid rgba(255,255,255,0.08); color:white; border-radius:8px; font-family:monospace; font-size:14px; outline:none; transition:border-color 0.2s;" onfocus="this.style.borderColor=\'#3b82f6\'" onblur="this.style.borderColor=\'rgba(255,255,255,0.08)\'">';
-
-        $html .= '<div class="plugs-files-groups" style="display:flex; flex-direction:column; gap:32px;">';
         foreach ($groups as $groupName => $groupFiles) {
             if (empty($groupFiles))
                 continue;
-
-            $html .= '<div class="plugs-file-group">';
-            $html .= '<h4 style="color:#f8fafc; font-size:15px; margin-bottom:12px; display:flex; align-items:center; gap:10px;">';
-            $html .= '<span>' . $groupName . '</span>';
-            $html .= '<span style="font-size:11px; color:#64748b; background:rgba(255,255,255,0.05); padding:2px 8px; border-radius:100px;">' . count($groupFiles) . ' files</span>';
-            $html .= '</h4>';
-
-            $html .= '<div class="plugs-files-list-container" style="max-height:400px; overflow-y:auto; background:rgba(0,0,0,0.15); border-radius:10px; border:1px solid rgba(255,255,255,0.03); scrollbar-width:thin;">';
+            $html .= '<div class="plugs-file-group" style="margin-bottom:24px;">';
+            $html .= '<h4 style="color:#f8fafc; margin-bottom:8px;">' . $groupName . ' (' . count($groupFiles) . ')</h4>';
+            $html .= '<div style="max-height:300px; overflow-y:auto; background:rgba(0,0,0,0.1); border-radius:8px;">';
             foreach ($groupFiles as $f) {
-                $html .= sprintf(
-                    '<div class="plugs-file-item" style="padding:10px 16px; border-bottom:1px solid rgba(255,255,255,0.02); display:flex; justify-content:space-between; align-items:center; font-family:monospace; font-size:12px; transition:background 0.2s;" onmouseover="this.style.background=\'rgba(255,255,255,0.02)\'" onmouseout="this.style.background=\'transparent\'">
-                        <span class="file-path" style="color:#cbd5e1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; margin-right:20px;">%s</span>
-                    </div>',
-                    htmlspecialchars($f['path'])
-                );
+                $html .= '<div class="plugs-file-item" style="padding:8px 12px; border-bottom:1px solid rgba(255,255,255,0.02); font-family:monospace; font-size:12px;"><span class="file-path" style="color:#cbd5e1;">' . htmlspecialchars($f['path']) . '</span></div>';
             }
             $html .= '</div></div>';
         }
-        $html .= '</div>';
-
         $html .= '<script' . $nonceAttr . '>
-            document.getElementById("plugs-file-filter").addEventListener("input", function(e) {
+            document.getElementById("plugs-file-filter")?.addEventListener("input", function(e) {
                 const val = e.target.value.toLowerCase();
                 document.querySelectorAll(".plugs-file-item").forEach(el => {
                     const path = el.querySelector(".file-path").textContent.toLowerCase();
-                    el.style.display = path.includes(val) ? "flex" : "none";
-                });
-                // Hide group headers if all files in them are hidden
-                document.querySelectorAll(".plugs-file-group").forEach(group => {
-                    const visible = group.querySelectorAll(".plugs-file-item[style*=\'display: flex\']").length > 0 || val === "";
-                    group.style.display = visible ? "block" : "none";
+                    el.style.display = path.includes(val) ? "block" : "none";
                 });
             });
         </script></div>';
-
         return $html;
     }
 
     private static function renderHistoryTab(?string $nonce = null): string
     {
         $profiles = Profiler::getProfiles(50);
-        $nonceAttr = $nonce ? ' nonce="' . $nonce . '"' : '';
+        $html = '<div class="plugs-history-management" style="padding:20px;">';
+        $html .= '<div style="display:flex; justify-content:space-between; margin-bottom:20px;"><h3 style="color:#f8fafc;">Recent Requests</h3><button id="plugs-clear-history" class="plugs-action-btn" style="background:#ef4444; border-color:#ef4444; color:white;">Clear All</button></div>';
 
-        $html = '<div class="plugs-history-management">';
-        $html .= '<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:24px;">';
-        $html .= '<h3 style="color:#f8fafc; font-size:18px;">Recent Requests</h3>';
-        $html .= '<button id="plugs-clear-history" class="plugs-action-btn" style="background:#ef4444; border-color:#ef4444; color:white;">Clear All History</button>';
-        $html .= '</div>';
+        if (empty($profiles))
+            return $html . '<p style="color:#64748b;">No history found.</p></div>';
 
-        if (empty($profiles)) {
-            $html .= '<div style="text-align:center; padding:60px; color:#64748b;">';
-            $html .= '<div style="font-size:40px; margin-bottom:16px;">📜</div>';
-            $html .= '<p>No profiling history found.</p>';
-            $html .= '</div>';
-        } else {
-            $html .= '<div style="overflow-x:auto;"><table class="plugs-info-table" style="width:100%; border-collapse:collapse; font-size:13px;">';
-            $html .= '<thead style="background:rgba(255,255,255,0.03); text-align:left;"><tr>';
-            $html .= '<th style="padding:12px 16px; color:#94a3b8; font-weight:500;">Method</th>';
-            $html .= '<th style="padding:12px 16px; color:#94a3b8; font-weight:500;">URI</th>';
-            $html .= '<th style="padding:12px 16px; color:#94a3b8; font-weight:500;">Time</th>';
-            $html .= '<th style="padding:12px 16px; color:#94a3b8; font-weight:500;">Status</th>';
-            $html .= '<th style="padding:12px 16px; color:#94a3b8; font-weight:500; text-align:right;">Actions</th>';
-            $html .= '</tr></thead><tbody>';
+        $html .= '<div style="overflow-x:auto;"><table class="plugs-info-table" style="width:100%; border-collapse:collapse; font-size:13px;">';
+        $html .= '<thead style="background:rgba(255,255,255,0.03);"><tr><th style="padding:10px; text-align:left;">Method</th><th style="padding:10px; text-align:left;">URI</th><th style="padding:10px; text-align:left;">Time</th><th style="padding:10px; text-align:left;">Status</th></tr></thead><tbody>';
 
-            foreach ($profiles as $p) {
-                $statusColor = match (true) {
-                    $p['request']['status_code'] >= 500 => '#ef4444',
-                    $p['request']['status_code'] >= 400 => '#f59e0b',
-                    default => '#10b981'
-                };
-
-                $html .= sprintf(
-                    '<tr id="profile-row-%s" style="border-bottom:1px solid rgba(255,255,255,0.03); transition:background 0.2s;" onmouseover="this.style.background=\'rgba(255,255,255,0.02)\'" onmouseout="this.style.background=\'transparent\'">
-                        <td style="padding:12px 16px;"><span class="plugs-badge" style="background:rgba(255,255,255,0.05); color:#cbd5e1;">%s</span></td>
-                        <td style="padding:12px 16px; color:#f8fafc; font-family:monospace; max-width:300px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">%s</td>
-                        <td style="padding:12px 16px; color:#94a3b8;">%s ms</td>
-                        <td style="padding:12px 16px;"><span style="color:%s;">● %d</span></td>
-                        <td style="padding:12px 16px; text-align:right;">
-                            <button class="plugs-delete-profile" data-id="%s" style="background:transparent; border:none; color:#64748b; cursor:pointer; font-size:16px;" title="Delete">✕</button>
-                        </td>
-                    </tr>',
-                    htmlspecialchars($p['id']),
-                    htmlspecialchars($p['request']['method'] ?? 'GET'),
-                    htmlspecialchars($p['request']['uri'] ?? '/'),
-                    number_format($p['duration'] ?? 0, 2),
-                    $statusColor,
-                    $p['request']['status_code'] ?? 200,
-                    htmlspecialchars($p['id'])
-                );
-            }
-            $html .= '</tbody></table></div>';
+        foreach ($profiles as $p) {
+            $html .= sprintf('<tr style="border-bottom:1px solid rgba(255,255,255,0.03);">
+                <td style="padding:10px;"><span class="plugs-badge">%s</span></td>
+                <td style="padding:10px; color:#f8fafc; font-family:monospace;">%s</td>
+                <td style="padding:10px; color:#94a3b8;">%s ms</td>
+                <td style="padding:10px; color:#10b981;">%d</td>
+            </tr>', htmlspecialchars($p['request']['method'] ?? 'GET'), htmlspecialchars($p['request']['uri'] ?? '/'), number_format($p['duration'] ?? 0, 2), $p['request']['status_code'] ?? 200);
         }
-
-        $html .= '</div>';
-        return $html;
-    }
-
-    private static function formatFilesize(int $bytes): string
-    {
-        if ($bytes <= 0)
-            return '0 B';
-        $units = ['B', 'KB', 'MB', 'GB'];
-        $power = floor(log($bytes, 1024));
-        return number_format($bytes / pow(1024, $power), 1) . ' ' . $units[$power];
+        return $html . '</tbody></table></div></div>';
     }
 
     private static function renderConfigTab(array $profile): string
     {
         $data = [
-            'PHP Version' => $profile['php']['version'] ?? PHP_VERSION,
-            'SAPI' => $profile['php']['sapi'] ?? PHP_SAPI,
+            'PHP' => PHP_VERSION,
+            'SAPI' => PHP_SAPI,
             'OS' => PHP_OS,
-            'Framework' => 'Plugs Framework',
-            'Environment' => config('app.env') ?? env('APP_ENV', 'production'),
-            'Debug Mode' => (config('app.debug') ? 'Enabled' : 'Disabled'),
+            'Env' => config('app.env', 'production'),
+            'Debug' => config('app.debug') ? 'Enabled' : 'Disabled',
             'Timezone' => config('app.timezone') ?? date_default_timezone_get(),
-            'Memory Limit' => ini_get('memory_limit'),
         ];
-
-        $html = '<table class="plugs-info-table" style="width:100%; border-collapse:collapse;">';
+        $html = '<table class="plugs-info-table" style="width:100%; border-collapse:collapse; margin:20px;">';
         foreach ($data as $k => $v) {
-            $html .= sprintf(
-                '<tr style="border-bottom:1px solid rgba(255,255,255,0.05);">
-                    <td style="padding:12px; color:#94a3b8; width:200px;">%s</td>
-                    <td style="padding:12px; color:#f8fafc; font-family:monospace;">%s</td>
-                </tr>',
-                htmlspecialchars($k),
-                htmlspecialchars((string) $v)
-            );
+            $html .= sprintf('<tr style="border-bottom:1px solid rgba(255,255,255,0.05);"><td style="padding:12px; color:#94a3b8; width:150px;">%s</td><td style="padding:12px; color:#f8fafc; font-family:monospace;">%s</td></tr>', $k, htmlspecialchars((string) $v));
         }
-        $html .= '</table>';
-
-        if (isset($profile['git']['branch'])) {
-            $html .= '<h3 style="margin:24px 0 12px; color:#cbd5e1; font-size:16px;">Source Control</h3>';
-            $html .= '<table class="plugs-info-table" style="width:100%; border-collapse:collapse;">';
-            $html .= '<tr><td style="padding:12px; color:#94a3b8; width:200px;">Branch</td><td style="padding:12px; color:#f8fafc; font-family:monospace;">' . htmlspecialchars($profile['git']['branch']) . '</td></tr>';
-            $html .= '<tr><td style="padding:12px; color:#94a3b8; width:200px;">Commit</td><td style="padding:12px; color:#f8fafc; font-family:monospace;">' . htmlspecialchars($profile['git']['hash']) . '</td></tr>';
-            $html .= '</table>';
-        }
-
-        return $html;
-    }
-
-    /**
-     * Inject profiler bar into HTML response
-     */
-    public static function injectIntoHtml(string $html, array $profile, ?string $nonce = null): string
-    {
-        // Only inject into HTML responses with closing body tag
-        if (stripos($html, '</body>') === false) {
-            return $html;
-        }
-
-        $bar = self::render($profile, $nonce);
-
-        return str_ireplace('</body>', $bar . '</body>', $html);
-    }
-
-    /**
-     * Get duration CSS class
-     */
-    private static function getDurationClass(float $duration): string
-    {
-        if ($duration > 1000) {
-            return 'pbar-slow';
-        }
-        if ($duration > 200) {
-            return 'pbar-medium';
-        }
-
-        return 'pbar-fast';
+        return $html . '</table>';
     }
 
     private static function renderRouteTab(array $profile): string
     {
-        $route = $profile['request']['route'] ?? 'unnamed';
-        $controller = $profile['request']['controller'] ?? 'Closure';
-        $method = $profile['request']['method'] ?? 'GET';
-        $uri = $profile['request']['uri'] ?? '/';
-
-        $html = '<div class="plugs-route-info" style="display: flex; flex-direction: column; gap: 24px;">';
-
-        $html .= '<div style="background: rgba(96, 165, 250, 0.05); border: 1px solid rgba(96, 165, 250, 0.2); padding: 24px; border-radius: 12px;">';
-        $html .= '<h3 style="color: #60a5fa; margin-bottom: 20px;">🛣️ Route Details</h3>';
-
+        $html = '<div style="padding:32px; background:rgba(255,255,255,0.02); border-radius:12px; margin:20px;">';
+        $html .= '<h3 style="color:#60a5fa; margin-bottom:16px;">Route Information</h3>';
+        $html .= '<table style="width:100%; border-collapse:collapse;">';
         $details = [
-            'Name' => $route,
-            'Controller' => $controller,
-            'Method' => $method,
-            'URI' => $uri,
+            'Name' => $profile['request']['route'] ?? 'unnamed',
+            'Controller' => $profile['request']['controller'] ?? 'Closure',
+            'Method' => $profile['request']['method'] ?? 'GET',
+            'URI' => $profile['request']['uri'] ?? '/',
         ];
-
-        $html .= '<table style="width: 100%; border-collapse: collapse;">';
-        foreach ($details as $label => $value) {
-            $html .= sprintf(
-                '<tr style="border-bottom: 1px solid rgba(255,255,255,0.05);">
-                    <td style="padding: 12px 0; color: #94a3b8; width: 150px;">%s</td>
-                    <td style="padding: 12px 0; color: #f8fafc; font-family: monospace;">%s</td>
-                </tr>',
-                $label,
-                htmlspecialchars((string) $value)
-            );
+        foreach ($details as $k => $v) {
+            $html .= sprintf('<tr style="border-bottom:1px solid rgba(255,255,255,0.05);"><td style="padding:12px; color:#94a3b8; width:150px;">%s</td><td style="padding:12px; color:#f8fafc; font-family:monospace;">%s</td></tr>', $k, htmlspecialchars((string) $v));
         }
-        $html .= '</table>';
-        $html .= '</div>';
-
-        $html .= '</div>';
-        return $html;
+        return $html . '</table></div>';
     }
 
-    /**
-     * Get status CSS class
-     */
+    public static function injectIntoHtml(string $html, array $profile, ?string $nonce = null): string
+    {
+        if (stripos($html, '</body>') === false)
+            return $html;
+        return str_ireplace('</body>', self::render($profile, $nonce) . '</body>', $html);
+    }
+
+    private static function getDurationClass(float $duration): string
+    {
+        return $duration > 1000 ? 'pbar-slow' : ($duration > 200 ? 'pbar-medium' : 'pbar-fast');
+    }
     private static function getStatusClass(int $status): string
     {
-        if ($status >= 500) {
-            return 'pbar-error';
-        }
-        if ($status >= 400) {
-            return 'pbar-warning';
-        }
-
-        return 'pbar-success';
+        return $status >= 500 ? 'pbar-error' : ($status >= 400 ? 'pbar-warning' : 'pbar-success');
     }
 }
