@@ -29,7 +29,12 @@ class Connection
         'connection_timeout' => 30,  // Timeout for acquiring connection (seconds)
         'idle_timeout' => 300,       // How long a connection can be idle (seconds)
         'validate_on_checkout' => true, // Validate connection before returning
+        'persistent' => null,        // null = auto (true when pooled), true/false = force
     ];
+
+    // Runtime environment detection cache
+    private static $detectedRuntime = null;
+    private static $poolLocks = [];
 
     // Prepared Statement Pool
     private static $statementPool = [];
@@ -202,9 +207,23 @@ class Connection
 
     private function buildOptions(array $config): array
     {
+        // Determine persistence: pool config overrides, then per-connection config, then auto-detect
+        $persistent = $config['persistent'] ?? false;
+
+        if ($this->isInPool) {
+            // Pool-level config takes highest priority when pooled
+            if (self::$poolConfig['persistent'] !== null) {
+                $persistent = self::$poolConfig['persistent'];
+            } elseif (!isset($config['persistent'])) {
+                // Auto-enable persistent connections for pooled connections
+                // This is the only way PHP-FPM can reuse connections across requests
+                $persistent = true;
+            }
+        }
+
         $defaults = [
             PDO::ATTR_TIMEOUT => $config['timeout'] ?? 5,
-            PDO::ATTR_PERSISTENT => $config['persistent'] ?? false,
+            PDO::ATTR_PERSISTENT => $persistent,
             PDO::ATTR_EMULATE_PREPARES => false, // CRITICAL for security
         ];
 
@@ -222,11 +241,109 @@ class Connection
     }
 
     /**
-     * Get a connection from the pool (with connection pooling)
+     * Configure pool with environment-specific presets.
+     *
+     * @param string $env One of 'production', 'development', 'testing'
      */
-    public static function getPooledConnection(string $name = 'default'): self
+    public static function configurePoolForEnvironment(string $env = 'production'): void
     {
-        // Initialize pool if it doesn't exist
+        $configs = [
+            'production' => [
+                'min_connections' => 5,
+                'max_connections' => 20,
+                'connection_timeout' => 10,
+                'idle_timeout' => 300,
+                'validate_on_checkout' => true,
+                'persistent' => true,
+            ],
+            'development' => [
+                'min_connections' => 1,
+                'max_connections' => 5,
+                'connection_timeout' => 30,
+                'idle_timeout' => 600,
+                'validate_on_checkout' => false,
+                'persistent' => false,
+            ],
+            'testing' => [
+                'min_connections' => 1,
+                'max_connections' => 3,
+                'connection_timeout' => 5,
+                'idle_timeout' => 60,
+                'validate_on_checkout' => false,
+                'persistent' => false,
+            ],
+        ];
+
+        self::configurePool($configs[$env] ?? $configs['production']);
+    }
+
+    /**
+     * Detect the current PHP runtime environment.
+     *
+     * @return string One of 'swoole', 'frankenphp', 'roadrunner', 'standard'
+     */
+    public static function detectRuntime(): string
+    {
+        if (self::$detectedRuntime !== null) {
+            return self::$detectedRuntime;
+        }
+
+        if (extension_loaded('swoole') || extension_loaded('openswoole')) {
+            self::$detectedRuntime = 'swoole';
+        } elseif (isset($_SERVER['FRANKENPHP_WORKER'])) {
+            self::$detectedRuntime = 'frankenphp';
+        } elseif (isset($_SERVER['RR_MODE'])) {
+            self::$detectedRuntime = 'roadrunner';
+        } else {
+            self::$detectedRuntime = 'standard';
+        }
+
+        return self::$detectedRuntime;
+    }
+
+    /**
+     * Acquire a pool-level lock (thread-safe for async runtimes).
+     */
+    private static function acquirePoolLock(string $name): void
+    {
+        $runtime = self::detectRuntime();
+
+        if ($runtime === 'swoole') {
+            if (!isset(self::$poolLocks[$name])) {
+                // Swoole\Lock is available in Swoole environments
+                if (class_exists('\Swoole\Lock')) {
+                    self::$poolLocks[$name] = new \Swoole\Lock(SWOOLE_MUTEX);
+                } else {
+                    return; // Graceful fallback
+                }
+            }
+            self::$poolLocks[$name]->lock();
+        }
+        // For standard PHP-FPM / CLI: no lock needed (single-threaded per request)
+        // For RoadRunner/FrankenPHP: PHP workers are isolated processes, no lock needed
+    }
+
+    /**
+     * Release a pool-level lock.
+     */
+    private static function releasePoolLock(string $name): void
+    {
+        if (isset(self::$poolLocks[$name]) && self::detectRuntime() === 'swoole') {
+            self::$poolLocks[$name]->unlock();
+        }
+    }
+
+    /**
+     * Pre-warm the pool by eagerly creating up to min_connections.
+     *
+     * @param string $name Connection name
+     * @return int Number of connections created
+     */
+    public static function warmPool(string $name = 'default'): int
+    {
+        $config = self::$config[$name] ?? self::loadConfigFromFile($name);
+        self::$config[$name] = $config;
+
         if (!isset(self::$connectionPools[$name])) {
             self::$connectionPools[$name] = [
                 'available' => [],
@@ -236,57 +353,148 @@ class Connection
         }
 
         $pool = &self::$connectionPools[$name];
+        $warmed = 0;
 
-        // Try to get an available connection
-        while (!empty($pool['available'])) {
-            $conn = array_shift($pool['available']);
-
-            // Validate connection if required
-            if (self::$poolConfig['validate_on_checkout']) {
-                if ($conn->ping() && !$conn->isStale()) {
-                    $pool['in_use'][$conn->poolId] = $conn;
-
-                    return $conn;
-                } else {
-                    // Connection is bad, destroy it
-                    $conn->disconnect();
-                    $pool['total']--;
-                }
-            } else {
-                $pool['in_use'][$conn->poolId] = $conn;
-
-                return $conn;
+        while ($pool['total'] < self::$poolConfig['min_connections']) {
+            try {
+                $conn = new self($config, $name);
+                $conn->isInPool = true;
+                $conn->connect($config); // Eagerly connect
+                $pool['available'][] = $conn;
+                $pool['total']++;
+                $warmed++;
+            } catch (\Throwable $e) {
+                // Log but don't fail — partial warm-up is better than none
+                error_log("[DB Pool] Failed to warm connection #{$warmed} for [{$name}]: " . $e->getMessage());
+                break;
             }
         }
 
-        // No available connections, check if we can create a new one
-        if ($pool['total'] < self::$poolConfig['max_connections']) {
-            $config = self::$config[$name] ?? self::loadConfigFromFile($name);
-            $conn = new self($config, $name);
-            $conn->isInPool = true;
-            $pool['in_use'][$conn->poolId] = $conn;
-            $pool['total']++;
-
-            return $conn;
-        }
-
-        // Pool is full, wait for a connection to become available
-        $startTime = time();
-        $timeout = self::$poolConfig['connection_timeout'];
-
-        while ((time() - $startTime) < $timeout) {
-            usleep(50000); // Wait 50ms
-
-            if (!empty($pool['available'])) {
-                return self::getPooledConnection($name);
-            }
-        }
-
-        throw new \RuntimeException("Connection pool exhausted. Timeout waiting for available connection.");
+        return $warmed;
     }
 
     /**
-     * Return connection to pool
+     * Initialize the pool structure for a given connection name.
+     */
+    private static function initializePool(string $name): void
+    {
+        if (!isset(self::$connectionPools[$name])) {
+            self::$connectionPools[$name] = [
+                'available' => [],
+                'in_use' => [],
+                'total' => 0,
+            ];
+        }
+    }
+
+    /**
+     * Get a connection from the pool (with connection pooling).
+     *
+     * Thread-safe for async runtimes (Swoole/OpenSwoole).
+     * Uses exponential backoff with jitter instead of busy-waiting.
+     */
+    public static function getPooledConnection(string $name = 'default'): self
+    {
+        self::acquirePoolLock($name);
+
+        try {
+            self::initializePool($name);
+            $pool = &self::$connectionPools[$name];
+
+            // Try to get an available connection
+            while (!empty($pool['available'])) {
+                $conn = array_shift($pool['available']);
+
+                // Validate connection if required
+                if (self::$poolConfig['validate_on_checkout']) {
+                    if ($conn->ping() && !$conn->isStale()) {
+                        $pool['in_use'][$conn->poolId] = $conn;
+
+                        return $conn;
+                    } else {
+                        // Connection is bad, destroy it
+                        $conn->disconnect();
+                        $pool['total']--;
+                    }
+                } else {
+                    // Quick stale check even without full validation
+                    if ($conn->isStale()) {
+                        $conn->disconnect();
+                        $pool['total']--;
+
+                        continue;
+                    }
+
+                    $pool['in_use'][$conn->poolId] = $conn;
+
+                    return $conn;
+                }
+            }
+
+            // No available connections, check if we can create a new one
+            if ($pool['total'] < self::$poolConfig['max_connections']) {
+                $config = self::$config[$name] ?? self::loadConfigFromFile($name);
+                $conn = new self($config, $name);
+                $conn->isInPool = true;
+                $pool['in_use'][$conn->poolId] = $conn;
+                $pool['total']++;
+
+                return $conn;
+            }
+        } finally {
+            self::releasePoolLock($name);
+        }
+
+        // Pool is full — exponential backoff with jitter
+        $startTime = microtime(true);
+        $timeout = self::$poolConfig['connection_timeout'];
+        $waitMs = 10;   // Start at 10ms
+        $maxWaitMs = 500; // Cap between retries
+
+        while ((microtime(true) - $startTime) < $timeout) {
+            $jitter = random_int(0, max(1, (int) ($waitMs * 0.3)));
+            usleep(($waitMs + $jitter) * 1000);
+            $waitMs = min($waitMs * 2, $maxWaitMs);
+
+            self::acquirePoolLock($name);
+
+            try {
+                // Check if a connection became available
+                if (!empty($pool['available'])) {
+                    $conn = array_shift($pool['available']);
+                    $pool['in_use'][$conn->poolId] = $conn;
+
+                    return $conn;
+                }
+
+                // Try pruning stale idle connections to free a slot
+                self::pruneIdleConnections($name);
+
+                if ($pool['total'] < self::$poolConfig['max_connections']) {
+                    $config = self::$config[$name] ?? self::loadConfigFromFile($name);
+                    $conn = new self($config, $name);
+                    $conn->isInPool = true;
+                    $pool['in_use'][$conn->poolId] = $conn;
+                    $pool['total']++;
+
+                    return $conn;
+                }
+            } finally {
+                self::releasePoolLock($name);
+            }
+        }
+
+        throw new \RuntimeException(
+            "Connection pool [{$name}] exhausted (max: " . self::$poolConfig['max_connections'] .
+            ", in-use: " . count($pool['in_use']) .
+            "). Timeout after {$timeout}s waiting for available connection."
+        );
+    }
+
+    /**
+     * Return connection to pool.
+     *
+     * Thread-safe: acquires pool lock before modifying pool arrays.
      */
     public function release(): void
     {
@@ -294,34 +502,66 @@ class Connection
             return; // Not a pooled connection
         }
 
-        $pool = &self::$connectionPools[$this->connectionName];
-
-        // Remove from in_use
-        if (isset($pool['in_use'][$this->poolId])) {
-            unset($pool['in_use'][$this->poolId]);
-        }
-
-        // Reset connection state
+        // Reset connection state before returning to pool
         $this->resetConnection();
 
-        // Add back to available pool
-        $pool['available'][] = $this;
-        $this->lastActivityTime = time();
+        self::acquirePoolLock($this->connectionName);
+
+        try {
+            $pool = &self::$connectionPools[$this->connectionName];
+
+            // Remove from in_use
+            if (isset($pool['in_use'][$this->poolId])) {
+                unset($pool['in_use'][$this->poolId]);
+            }
+
+            // Only return healthy connections to the pool
+            if ($this->isHealthy) {
+                $pool['available'][] = $this;
+                $this->lastActivityTime = time();
+            } else {
+                // Unhealthy connection — discard and decrement total
+                $this->disconnect();
+                $pool['total']--;
+            }
+        } finally {
+            self::releasePoolLock($this->connectionName);
+        }
     }
 
     /**
-     * Reset connection state (rollback transactions, etc.)
+     * Reset connection state thoroughly before returning to pool.
+     *
+     * Rolls back open transactions, resets the transaction counter,
+     * clears sticky write flags, and resets MySQL session state.
      */
     private function resetConnection(): void
     {
         try {
             // Rollback any open transactions
-            if ($this->pdo->inTransaction()) {
+            if ($this->pdo !== null && $this->pdo->inTransaction()) {
                 $this->pdo->rollBack();
             }
 
-            // Clear any temporary tables or session variables if needed
-            // This depends on your application needs
+            // Reset internal state
+            $this->transactions = 0;
+            $this->lastWriteTimestamp = 0;
+            $this->sticky = self::$config[$this->connectionName]['sticky'] ?? false;
+
+            // Reset database session state
+            if ($this->pdo !== null) {
+                $driver = $this->pdo->getAttribute(PDO::ATTR_DRIVER_NAME);
+
+                if ($driver === 'mysql') {
+                    // Reset user variables and session state
+                    // Note: RESET QUERY CACHE is removed in MySQL 8.0+, so we suppress errors
+                    try {
+                        $this->pdo->exec('SET @_plugs_reset = NULL');
+                    } catch (PDOException $e) {
+                        // Non-critical, ignore
+                    }
+                }
+            }
         } catch (PDOException $e) {
             // If reset fails, mark connection as unhealthy
             $this->isHealthy = false;
@@ -892,6 +1132,10 @@ class Connection
 
     public function inTransaction(): bool
     {
+        if ($this->pdo === null) {
+            return $this->transactions > 0;
+        }
+
         return $this->transactions > 0 || $this->pdo->inTransaction();
     }
 
@@ -987,7 +1231,25 @@ class Connection
             'available_connections' => count($pool['available']),
             'in_use_connections' => count($pool['in_use']),
             'pool_config' => self::$poolConfig,
+            'runtime' => self::detectRuntime(),
+            'persistent_enabled' => self::$poolConfig['persistent'],
         ];
+    }
+
+    /**
+     * Get the current pool configuration.
+     */
+    public static function getPoolConfig(): array
+    {
+        return self::$poolConfig;
+    }
+
+    /**
+     * Reset the runtime detection cache (useful for testing).
+     */
+    public static function resetRuntimeDetection(): void
+    {
+        self::$detectedRuntime = null;
     }
 
     public static function closeAll(): void
