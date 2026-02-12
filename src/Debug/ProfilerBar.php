@@ -152,15 +152,23 @@ class ProfilerBar
             left: 0;
             right: 0;
             bottom: 36px;
-            background: rgba(10, 15, 29, 0.95);
-            backdrop-filter: blur(10px);
+            background: rgba(10, 15, 29, 0.98);
+            backdrop-filter: blur(20px);
             z-index: 999998;
-            overflow-y: auto;
-            padding: 20px;
+            overflow-y: scroll; /* Force scrollbar to prevent layout shift */
         }
         #plugs-profiler-modal.active { display: block; }
-        #plugs-profiler-modal .plugs-debug-wrapper { padding: 0; min-height: auto; max-width: 1400px; margin: 0 auto; }
-        #plugs-profiler-modal .plugs-debug-header { margin-top: 0; }
+        #plugs-profiler-modal .plugs-debug-wrapper { padding: 0; min-height: 100%; max-width: 1400px; margin: 0 auto; display: flex; flex-direction: column; }
+        
+        #plugs-profiler-modal .plugs-debug-header { 
+            margin-top: 0; 
+            position: sticky; 
+            top: 0; 
+            z-index: 100; 
+            background: #0f172a; 
+            border-bottom: 1px solid rgba(139, 92, 246, 0.2);
+            box-shadow: 0 4px 20px rgba(0,0,0,0.4);
+        }
         #plugs-profiler-bar { z-index: 999999 !important; }
         
         /* Responsive Styles */
@@ -612,13 +620,13 @@ JS;
     {
         $files = $profile['files']['list'] ?? [];
         if (empty($files)) {
-            return '<div style="text-align:center; padding:40px; color:#94a3b8;">No file list captured. Ensure <code>opcache</code> is not preventing file tracing.</div>';
+            return '<div style="text-align:center; padding:60px; color:#94a3b8;"><div style="font-size:40px; margin-bottom:16px;">📂</div>No file list captured. Ensure <code>opcache</code> is not preventing file tracing.</div>';
         }
 
         $nonceAttr = $nonce ? ' nonce="' . $nonce . '"' : '';
         $basePath = defined('BASE_PATH') ? BASE_PATH : '';
 
-        $groups = ['App' => [], 'Vendor' => [], 'Framework' => [], 'Other' => []];
+        $groups = ['🚀 App' => [], '📦 Vendor' => [], '⚡ Framework' => [], '📁 Other' => []];
 
         foreach ($files as $file) {
             $displayFile = $basePath ? str_replace($basePath, '', $file) : $file;
@@ -628,36 +636,57 @@ JS;
             $fileInfo = ['path' => $displayFile];
 
             if ($isFramework)
-                $groups['Framework'][] = $fileInfo;
+                $groups['⚡ Framework'][] = $fileInfo;
             elseif ($isVendor)
-                $groups['Vendor'][] = $fileInfo;
+                $groups['📦 Vendor'][] = $fileInfo;
             elseif (str_contains($displayFile, 'app/'))
-                $groups['App'][] = $fileInfo;
+                $groups['🚀 App'][] = $fileInfo;
             else
-                $groups['Other'][] = $fileInfo;
+                $groups['📁 Other'][] = $fileInfo;
         }
 
-        $html = '<div class="plugs-file-analytics" style="padding: 0 10px;">';
-        $html .= '<div style="background:rgba(255,255,255,0.03); padding:15px; border-radius:10px; margin-bottom:20px; text-align:center;"><div style="color:#94a3b8; font-size:11px; text-transform:uppercase;">Total Files</div><div style="color:#f8fafc; font-size:20px; font-weight:600;">' . count($files) . '</div></div>';
-        $html .= '<input type="text" placeholder="Filter included files..." id="plugs-file-filter" style="width:100%; padding:12px; margin-bottom:24px; background:rgba(0,0,0,0.2); border:1px solid rgba(255,255,255,0.1); color:white; border-radius:8px; font-family:monospace;">';
+        $html = '<div class="plugs-file-dashboard" style="padding: 32px; display: flex; flex-direction: column; gap: 24px;">';
+
+        // Search & Stats Header
+        $html .= '<div style="display: flex; gap: 20px; align-items: center; background: rgba(255,255,255,0.02); padding: 20px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.05);">';
+        $html .= '<div style="flex: 1;"><input type="text" placeholder="Filter ' . count($files) . ' included files..." id="plugs-file-filter" style="width: 100%; padding: 12px 16px; background: rgba(0,0,0,0.3); border: 1px solid rgba(139, 92, 246, 0.3); color: white; border-radius: 8px; font-family: \'JetBrains Mono\', monospace; font-size: 13px; outline: none;"></div>';
+        $html .= '<div style="text-align: center; padding: 0 20px; border-left: 1px solid rgba(255,255,255,0.1);"><div style="color: #94a3b8; font-size: 10px; text-transform: uppercase;">Total Files</div><div style="color: #a78bfa; font-size: 18px; font-weight: 600;">' . count($files) . '</div></div>';
+        $html .= '</div>';
+
+        $html .= '<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(600px, 1fr)); gap: 24px;">';
 
         foreach ($groups as $groupName => $groupFiles) {
             if (empty($groupFiles))
                 continue;
-            $html .= '<div class="plugs-file-group" style="margin-bottom:24px;">';
-            $html .= '<h4 style="color:#f8fafc; margin-bottom:8px;">' . $groupName . ' (' . count($groupFiles) . ')</h4>';
-            $html .= '<div style="max-height:300px; overflow-y:auto; background:rgba(0,0,0,0.1); border-radius:8px;">';
+            $html .= '<div class="plugs-file-group" style="background: rgba(255, 255, 255, 0.02); border: 1px solid rgba(255, 255, 255, 0.05); border-radius: 12px; padding: 20px;">';
+            $html .= '<h4 style="color: #cbd5e1; margin-bottom: 16px; display: flex; justify-content: space-between; align-items: center; font-size: 15px;">';
+            $html .= '<span>' . $groupName . '</span>';
+            $html .= '<span style="font-size: 11px; background: rgba(255,255,255,0.05); padding: 2px 8px; border-radius: 100px;">' . count($groupFiles) . '</span>';
+            $html .= '</h4>';
+
+            $html .= '<div class="file-list-container">';
             foreach ($groupFiles as $f) {
-                $html .= '<div class="plugs-file-item" style="padding:8px 12px; border-bottom:1px solid rgba(255,255,255,0.02); font-family:monospace; font-size:12px;"><span class="file-path" style="color:#cbd5e1;">' . htmlspecialchars($f['path']) . '</span></div>';
+                $html .= '<div class="plugs-file-item" style="padding: 6px 0; border-bottom: 1px solid rgba(255,255,255,0.02); font-family: \'JetBrains Mono\', monospace; font-size: 11px; color: #94a3b8; word-break: break-all;">';
+                $html .= '<span class="file-path">' . htmlspecialchars($f['path']) . '</span>';
+                $html .= '</div>';
             }
             $html .= '</div></div>';
         }
+
+        $html .= '</div>'; // End grid
+
         $html .= '<script' . $nonceAttr . '>
             document.getElementById("plugs-file-filter")?.addEventListener("input", function(e) {
                 const val = e.target.value.toLowerCase();
                 document.querySelectorAll(".plugs-file-item").forEach(el => {
                     const path = el.querySelector(".file-path").textContent.toLowerCase();
                     el.style.display = path.includes(val) ? "block" : "none";
+                });
+                
+                // Hide empty groups
+                document.querySelectorAll(".plugs-file-group").forEach(group => {
+                    const visibleItems = group.querySelectorAll(".plugs-file-item[style*=\'display: block\'], .plugs-file-item:not([style*=\'display: none\'])").length;
+                    group.style.display = visibleItems > 0 ? "block" : "none";
                 });
             });
         </script></div>';
