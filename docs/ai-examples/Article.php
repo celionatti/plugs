@@ -34,9 +34,8 @@ class Article extends PlugModel
      */
     public static function suggestTopics(string $niche = 'Technology'): array
     {
-        $ai = \Plugs\Facades\AI::getInstance();
         $prompt = "Suggest 5 trending blog post topics for '{$niche}'. Return ONLY a JSON array of strings.";
-        $response = $ai->prompt($prompt);
+        $response = \Plugs\Facades\AI::prompt($prompt);
 
         if (preg_match('/\[[\s\S]*\]/', $response, $matches)) {
             return json_decode($matches[0], true) ?: [];
