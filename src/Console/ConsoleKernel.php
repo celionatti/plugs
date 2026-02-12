@@ -48,6 +48,9 @@ use Plugs\Console\Commands\StorageLinkCommand;
 use Plugs\Console\Commands\TypeGenCommand;
 use Plugs\Console\Commands\AIChatCommand;
 use Plugs\Console\Commands\MakeAiMigrationCommand;
+use Plugs\Console\Commands\MakeAiTestCommand;
+use Plugs\Console\Commands\AiFixCommand;
+use Plugs\Console\Commands\AiAuditCommand;
 
 
 /*
@@ -117,6 +120,9 @@ class ConsoleKernel
         'schedule:list' => \Plugs\Console\Commands\ScheduleListCommand::class,
         'type:gen' => TypeGenCommand::class,
         'ai:chat' => AIChatCommand::class,
+        'ai:fix' => AiFixCommand::class,
+        'ai:audit' => AiAuditCommand::class,
+        'make:ai-test' => MakeAiTestCommand::class,
     ];
 
 
@@ -182,7 +188,7 @@ class ConsoleKernel
             'make:ai-migration',
         ],
         'Routes' => ['route:list', 'route:cache', 'route:clear', 'route:test'],
-        'Utility' => ['serve', 'cache:clear', 'config:cache', 'optimize', 'queue:work', 'health', 'storage:link', 'type:gen', 'ai:chat'],
+        'Utility' => ['serve', 'cache:clear', 'config:cache', 'optimize', 'queue:work', 'health', 'storage:link', 'type:gen', 'ai:chat', 'ai:fix', 'ai:audit', 'make:ai-test'],
 
         'Scheduling' => ['schedule:run', 'schedule:list'],
         'Database' => ['migrate', 'migrate:rollback', 'migrate:status', 'migrate:fresh', 'migrate:validate', 'migrate:reset', 'make:migration', 'db:seed'],

@@ -35,17 +35,39 @@ $app->pipe(new \Plugs\Middlewares\SecurityShieldMiddleware());
 ## Key Protections
 
 ### Rate Limiting
+
 Automatically limits the number of requests a single IP can make within a designated timeframe.
 
 ### Bot Detection
+
 Identifies and blocks common scraper bots and malicious crawlers based on user-agent analysis and behavioral patterns.
 
 ### Behavioral Analysis
+
 Tracks:
+
 - Request frequency
 - Concurrent sessions
 - Access to sensitive endpoints (e.g., login, register)
 - Use of disposable email domains
+
+### Persistent Threat Detection
+
+The `ThreatDetector` component maintains a risk score for suspicious IPs. Unlike traditional systems that lose this state between requests, Plugs persists threat scores using the `Cache` driver.
+
+- **Storage**: Risk scores are cached with a prefix `security:threat:`.
+- **Auto-Decay**: Scores automatically decay over time if no new suspicious activity is detected, preventing permanent blocks for temporary behavior.
+- **Manual Control**:
+
+  ```php
+  use Plugs\Security\ThreatDetector;
+
+  // Manually increase threat score
+  ThreatDetector::logSuspiciousActivity($ip, score: 20);
+
+  // Check if IP is currently suspicious
+  $isSuspicious = ThreatDetector::isSuspicious($ip);
+  ```
 
 ## Security Headers
 

@@ -83,3 +83,50 @@ $response = AI::prompt('Write a story.', [
     'max_tokens' => 500,
 ]);
 ```
+
+## model AI Integration (HasAI Trait)
+
+You can empower your Eloquent models with AI capabilities by using the `Plugs\AI\Traits\HasAI` trait.
+
+### Setup
+
+```php
+namespace App\Models;
+
+use Plugs\Database\Model;
+use Plugs\AI\Traits\HasAI;
+
+class Post extends Model
+{
+    use HasAI;
+}
+```
+
+### Usage
+
+#### 1. Content Generation
+
+Automatically generate values for model attributes.
+
+```php
+$post = new Post();
+$post->generate('body', 'Write a compelling intro about PHP 8.3 features.');
+$post->save();
+```
+
+#### 2. Model Summarization
+
+Get a concise summary of the model instance data.
+
+```php
+$summary = $post->summarize(wordCount: 50);
+```
+
+#### 3. Smart Predictions
+
+Suggest values for missing fields based on current data.
+
+```php
+$suggestions = $post->predict(['category_id', 'tags']);
+// Returns: ['category_id' => 5, 'tags' => 'php, framework, ai']
+```
