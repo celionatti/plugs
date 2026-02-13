@@ -346,6 +346,46 @@ if (!function_exists('generateExcerpt')) {
     }
 }
 
+if (!function_exists('blank')) {
+    /**
+     * Determine if the given value is "blank".
+     *
+     * Unlike empty(), this returns FALSE for boolean false, integer 0,
+     * and string "0". It returns TRUE for null, empty arrays,
+     * whitespace-only strings, and empty Countable objects.
+     */
+    function blank(mixed $value): bool
+    {
+        if (is_null($value)) {
+            return true;
+        }
+
+        if (is_string($value)) {
+            return trim($value) === '';
+        }
+
+        if (is_numeric($value) || is_bool($value)) {
+            return false;
+        }
+
+        if ($value instanceof \Countable) {
+            return count($value) === 0;
+        }
+
+        return empty($value);
+    }
+}
+
+if (!function_exists('filled')) {
+    /**
+     * Determine if a value is "filled".
+     */
+    function filled(mixed $value): bool
+    {
+        return !blank($value);
+    }
+}
+
 if (!function_exists('abort')) {
     /**
      * Throw an HTTP exception with a given code.
