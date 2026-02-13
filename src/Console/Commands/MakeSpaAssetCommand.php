@@ -145,7 +145,6 @@ class PlugsSPA {
             sessionStorage.setItem('plugs_spa_cache', JSON.stringify(data));
         } catch (e) {
             if (e.name === 'QuotaExceededError') {
-                // If storage is full, clear half the cache and try again or just stop persisting
                 const entries = Array.from(this.cache.keys());
                 for (let i = 0; i < entries.length / 2; i++) {
                     this.cache.delete(entries[i]);
@@ -227,7 +226,7 @@ class PlugsSPA {
         document.addEventListener('click', (e) => this.handleOutsideClick(e));
 
         window.plugsSPAInitialized = true;
-        console.log('Plugs SPA Bridge Optimized (v3.0).');
+        console.log('Plugs SPA Bridge (v3.2).');
     }
 
     initViewportPrefetch() {
@@ -256,28 +255,28 @@ class PlugsSPA {
     initializeComponents(container = document) {
         let components = Array.from(container.querySelectorAll('[data-plug-component]'));
 
-        // If container is a component itself, it needs to be processed to bind listeners to its new children
         if (container !== document && container.hasAttribute && container.hasAttribute('data-plug-component')) {
             components.unshift(container);
-            // Force re-initialization of the container's contents
             container._plugInitialized = false;
         }
-        
+
         const processed = new Set();
 
         components.forEach(el => {
             if (el._plugInitialized || processed.has(el)) return;
             processed.add(el);
 
-            // Life-cycle optimization: Batch attribute reads
-            const dataset = el.dataset;
-            const initAction = el.getAttribute('p-init');
-            const pollInterval = parseInt(el.getAttribute('p-poll') || '0');
+            const initAction = el.getAttribute('p-init') || el.querySelector('[p-init]')?.getAttribute('p-init');
+            const pollEl = el.hasAttribute('p-poll') ? el : el.querySelector('[p-poll]');
+            const pollInterval = parseInt(pollEl?.getAttribute('p-poll') || '0');
 
-            if (initAction) this.callComponentAction(el, 'init', initAction);
+            if (initAction && !el._initCalled) {
+                el._initCalled = true;
+                this.callComponentAction(el, 'init', initAction);
+            }
 
-            if (pollInterval > 0) {
-                const pollAction = el.getAttribute('p-poll-action') || 'refresh';
+            if (pollInterval > 0 && pollEl && !el._pollTimer) {
+                const pollAction = pollEl.getAttribute('p-poll-action') || 'refresh';
                 el._pollTimer = setInterval(async () => {
                     if (!document.body.contains(el)) {
                         clearInterval(el._pollTimer);
@@ -293,8 +292,14 @@ class PlugsSPA {
                 }, pollInterval);
             }
 
-            // Delegation-friendly listeners can be optimized, but here we keep them specific to the component for scoping
-            el.querySelectorAll('[p-click]').forEach(actionEl => {
+            const filterToBound = (selector) => {
+                return Array.from(el.querySelectorAll(selector)).filter(child => child.closest('[data-plug-component]') === el);
+            };
+
+            // p-click
+            filterToBound('[p-click]').forEach(actionEl => {
+                if (actionEl._plugBoundClick) return;
+                actionEl._plugBoundClick = true;
                 actionEl.addEventListener('click', (e) => {
                     const confirmMsg = actionEl.getAttribute('p-confirm');
                     if (confirmMsg && !confirm(confirmMsg)) return;
@@ -303,16 +308,21 @@ class PlugsSPA {
                 });
             });
 
-            // Re-use logic for change/blur
+            // p-change, p-blur
             ['change', 'blur'].forEach(evtType => {
-                el.querySelectorAll(`[p-${evtType}]`).forEach(actionEl => {
+                filterToBound(`[p-${evtType}]`).forEach(actionEl => {
+                    if (actionEl[`_plugBound${evtType}`]) return;
+                    actionEl[`_plugBound${evtType}`] = true;
                     actionEl.addEventListener(evtType, () => {
                         this.callComponentAction(el, evtType, actionEl.getAttribute(`p-${evtType}`), this.getInputValue(actionEl));
                     });
                 });
             });
 
-            el.querySelectorAll('form[p-submit]').forEach(formEl => {
+            // p-submit
+            filterToBound('form[p-submit]').forEach(formEl => {
+                if (formEl._plugBoundSubmit) return;
+                formEl._plugBoundSubmit = true;
                 formEl.addEventListener('submit', (e) => {
                     const confirmMsg = formEl.getAttribute('p-confirm');
                     if (confirmMsg && !confirm(confirmMsg)) return;
@@ -322,23 +332,69 @@ class PlugsSPA {
                 });
             });
 
-            el.querySelectorAll('[p-keyup]').forEach(actionEl => {
+            // p-keyup
+            filterToBound('[p-keyup]').forEach(actionEl => {
+                if (actionEl._plugBoundKeyup) return;
+                actionEl._plugBoundKeyup = true;
                 const actionRaw = actionEl.getAttribute('p-keyup');
                 const isEnterOnly = actionRaw.endsWith('.enter');
                 const action = isEnterOnly ? actionRaw.replace('.enter', '') : actionRaw;
-                const debounceTime = parseInt(actionEl.getAttribute('p-debounce') || '0');
+                const debounceTime = parseInt(actionEl.getAttribute('p-debounce') || '300');
 
                 let timer;
-                actionEl.addEventListener('keyup', (e) => {
+                const handler = (e) => {
                     if (isEnterOnly && e.key !== 'Enter') return;
                     clearTimeout(timer);
                     timer = setTimeout(() => {
                         this.callComponentAction(el, 'keyup', action, this.getInputValue(actionEl));
                     }, debounceTime);
+                };
+
+                actionEl.addEventListener('keyup', handler);
+                actionEl.addEventListener('input', (e) => {
+                    if (!isEnterOnly) handler(e);
                 });
             });
 
-            el.querySelectorAll('[p-intersect]').forEach(actionEl => {
+            // p-keydown
+            filterToBound('[p-keydown]').forEach(actionEl => {
+                if (actionEl._plugBoundKeydown) return;
+                actionEl._plugBoundKeydown = true;
+                const actionRaw = actionEl.getAttribute('p-keydown');
+                const isEnterOnly = actionRaw.endsWith('.enter');
+                const action = isEnterOnly ? actionRaw.replace('.enter', '') : actionRaw;
+                const debounceTime = parseInt(actionEl.getAttribute('p-debounce') || '0');
+
+                let timer;
+                actionEl.addEventListener('keydown', (e) => {
+                    if (isEnterOnly && e.key !== 'Enter') return;
+                    clearTimeout(timer);
+                    timer = setTimeout(() => {
+                        this.callComponentAction(el, 'keydown', action, this.getInputValue(actionEl));
+                    }, debounceTime);
+                });
+            });
+
+            // p-input (real-time input tracking)
+            filterToBound('[p-input]').forEach(actionEl => {
+                if (actionEl._plugBoundInput) return;
+                actionEl._plugBoundInput = true;
+                const action = actionEl.getAttribute('p-input');
+                const debounceTime = parseInt(actionEl.getAttribute('p-debounce') || '300');
+
+                let timer;
+                actionEl.addEventListener('input', () => {
+                    clearTimeout(timer);
+                    timer = setTimeout(() => {
+                        this.callComponentAction(el, 'input', action, this.getInputValue(actionEl));
+                    }, debounceTime);
+                });
+            });
+
+            // p-intersect
+            filterToBound('[p-intersect]').forEach(actionEl => {
+                if (actionEl._plugBoundIntersect) return;
+                actionEl._plugBoundIntersect = true;
                 const action = actionEl.getAttribute('p-intersect');
                 const observer = new IntersectionObserver((entries) => {
                     if (entries[0].isIntersecting) {
@@ -352,36 +408,197 @@ class PlugsSPA {
             el._plugInitialized = true;
         });
 
-        // After components are initialized, observe links for prefetching
         this.observeLinks(container);
     }
 
     handleOutsideClick(e) {
-        document.querySelectorAll('[p-outside]').forEach(el => {
-            if (!el.contains(e.target)) {
-                this.callComponentAction(el, 'outside', el.getAttribute('p-outside'));
+        if (e.defaultPrevented) return;
+        document.querySelectorAll('[p-outside]').forEach(actionEl => {
+            if (!actionEl.contains(e.target)) {
+                const componentEl = actionEl.closest('[data-plug-component]');
+                if (!componentEl) return;
+                if (componentEl._isProcessingQueue || componentEl._isPolling) return;
+                this.callComponentAction(componentEl, 'outside', actionEl.getAttribute('p-outside'));
             }
         });
+    }
+
+    // ─── DOM Morphing Engine ────────────────────────────────────
+
+  morphInner(el, newHTML) {
+    const temp = document.createElement("div");
+    temp.innerHTML = newHTML.trim();
+    const newEl = temp.firstElementChild;
+
+    // If it's a single-root update matching the existing element (ideal for components), morph the element itself.
+    // This ensures root attributes like data-plug-state are correctly synced.
+    if (newEl && temp.childElementCount === 1 && (newEl.tagName === el.tagName || el.hasAttribute('data-plug-component'))) {
+      this._morphElement(el, newEl);
+    } else {
+      // Fallback for multi-root fragments or non-matching tags: morph the children.
+      this._morphChildNodes(el, temp);
+    }
+  }
+
+  _morphChildNodes(target, source) {
+    const oldNodes = Array.from(target.childNodes);
+    const newNodes = Array.from(source.childNodes);
+    const oldById = new Map();
+
+    oldNodes.forEach((node) => {
+      if (node.nodeType === 1 && node.id) oldById.set(node.id, node);
+    });
+
+    let oldIdx = 0;
+    const processedOldNodes = new Set();
+
+    for (let newIdx = 0; newIdx < newNodes.length; newIdx++) {
+      const newChild = newNodes[newIdx];
+      let oldChild = oldNodes[oldIdx];
+
+      while (oldChild && processedOldNodes.has(oldChild)) {
+        oldIdx++;
+        oldChild = oldNodes[oldIdx];
+      }
+
+      if (newChild.nodeType === 1 && newChild.id && oldById.has(newChild.id)) {
+        const matched = oldById.get(newChild.id);
+        processedOldNodes.add(matched);
+        if (matched !== oldChild) {
+          target.insertBefore(matched, oldChild || null);
+        } else {
+          oldIdx++;
+        }
+        this._morphElement(matched, newChild);
+        continue;
+      }
+
+      if (oldChild) {
+        if (
+          oldChild.nodeType === newChild.nodeType &&
+          (oldChild.nodeType !== 1 || oldChild.tagName === newChild.tagName)
+        ) {
+          processedOldNodes.add(oldChild);
+          if (oldChild.nodeType === 1) {
+            this._morphElement(oldChild, newChild);
+          } else if (oldChild.nodeValue !== newChild.nodeValue) {
+            oldChild.nodeValue = newChild.nodeValue;
+          }
+          oldIdx++;
+        } else {
+          target.insertBefore(newChild.cloneNode(true), oldChild);
+        }
+      } else {
+        target.appendChild(newChild.cloneNode(true));
+      }
+    }
+
+    oldNodes.forEach((node) => {
+      if (!processedOldNodes.has(node)) {
+        target.removeChild(node);
+      }
+    });
+  }
+
+  _morphElement(oldEl, newEl) {
+    const oldAttrs = oldEl.attributes;
+    const newAttrs = newEl.attributes;
+
+    for (let i = 0; i < newAttrs.length; i++) {
+      const attr = newAttrs[i];
+      if (oldEl.getAttribute(attr.name) !== attr.value) {
+        oldEl.setAttribute(attr.name, attr.value);
+      }
+    }
+
+    for (let i = oldAttrs.length - 1; i >= 0; i--) {
+      const name = oldAttrs[i].name;
+      if (!newEl.hasAttribute(name)) {
+        oldEl.removeAttribute(name);
+      }
+    }
+
+    const isFocused = document.activeElement === oldEl;
+
+    if (oldEl.tagName === "INPUT" || oldEl.tagName === "TEXTAREA") {
+      if (!isFocused || oldEl.type === "checkbox" || oldEl.type === "radio") {
+        if (oldEl.value !== newEl.value) oldEl.value = newEl.value;
+      }
+      if (oldEl.checked !== newEl.checked) oldEl.checked = newEl.checked;
+    } else if (oldEl.tagName === "SELECT") {
+      if (oldEl.value !== newEl.value) oldEl.value = newEl.value;
+    } else if (oldEl.tagName === "OPTION") {
+      if (oldEl.selected !== newEl.selected) oldEl.selected = newEl.selected;
+    }
+
+    if (!this._isVoidElement(oldEl)) {
+      this._morphChildNodes(oldEl, newEl);
+    }
+  }
+
+    _isVoidElement(el) {
+        return ['AREA','BASE','BR','COL','EMBED','HR','IMG','INPUT','LINK','META','SOURCE','TRACK','WBR'].includes(el.tagName);
+    }
+
+    // ─── End DOM Morphing Engine ────────────────────────────────
+
+    normalizeHTML(html) {
+        const div = document.createElement('div');
+        div.innerHTML = html.trim();
+        return div.innerHTML.replace(/\s+/g, ' ');
     }
 
     getInputValue(el) {
         if (el.type === 'checkbox') return el.checked;
         if (el.type === 'radio') return el.checked ? el.value : null;
+        if (el.tagName === 'SELECT' && el.multiple) {
+            return Array.from(el.selectedOptions).map(opt => opt.value);
+        }
         return el.value;
     }
 
-    async callComponentAction(componentEl, eventType, action, payload = null) {
+    async callComponentAction(element, eventType, action, payload = null) {
+        const componentEl = element.closest('[data-plug-component]');
+        if (!componentEl) return;
+
+        if (!componentEl._requestQueue) componentEl._requestQueue = [];
+
+        if (eventType === 'poll') {
+            if (componentEl._requestQueue.some(r => r.eventType === 'poll')) return;
+        } else if (eventType === 'keyup' || eventType === 'keydown' || eventType === 'input') {
+            const existing = componentEl._requestQueue.find(r => r.eventType === 'keyup' || r.eventType === 'keydown' || r.eventType === 'input');
+            if (existing) {
+                existing.payload = payload;
+                return;
+            }
+        }
+
+        componentEl._requestQueue.push({ eventType, action, payload });
+
+        if (componentEl._isProcessingQueue) return;
+        this.processRequestQueue(componentEl);
+    }
+
+    async processRequestQueue(componentEl) {
+        if (!componentEl._requestQueue?.length) {
+            componentEl._isProcessingQueue = false;
+            return;
+        }
+
+        componentEl._isProcessingQueue = true;
+        const { eventType, action, payload } = componentEl._requestQueue.shift();
+
         const { plugComponent: name, plugState: state } = componentEl.dataset;
         const id = componentEl.id;
 
-        if (!['intersect', 'keyup', 'poll'].includes(eventType)) {
-            componentEl.style.opacity = '0.7';
-        }
-
         const loadingSelector = componentEl.getAttribute('p-loading');
         let loadingEls = [];
-        if (loadingSelector) {
-            loadingEls = Array.from(componentEl.querySelectorAll(loadingSelector));
+        const showLoading = ['click', 'submit'].includes(eventType);
+        if (loadingSelector && showLoading) {
+            const filterToBound = (selector) => {
+                return Array.from(componentEl.querySelectorAll(selector)).filter(child => child.closest('[data-plug-component]') === componentEl);
+            };
+            loadingEls = filterToBound(loadingSelector);
             loadingEls.forEach(el => el.style.display = '');
             componentEl.classList.add('p-is-loading');
         }
@@ -402,18 +619,25 @@ class PlugsSPA {
             this.handleFlashMessage(response);
             const result = await response.json();
 
-            if (result.html) componentEl.innerHTML = result.html;
+            if (result.html !== undefined) {
+                const normalizedNew = this.normalizeHTML(result.html);
+                const normalizedOld = this.normalizeHTML(componentEl.innerHTML);
+
+                if (normalizedNew !== normalizedOld) {
+                    this.morphInner(componentEl, result.html);
+                }
+            }
             if (result.state) componentEl.dataset.plugState = result.state;
 
             this.initializeComponents(componentEl);
         } catch (err) {
             console.error('Plugs Component Error:', err);
         } finally {
-            componentEl.style.opacity = '1';
-            if (loadingSelector) {
+            if (showLoading && loadingSelector) {
                 loadingEls.forEach(el => el.style.display = 'none');
                 componentEl.classList.remove('p-is-loading');
             }
+            this.processRequestQueue(componentEl);
         }
     }
 
@@ -465,9 +689,12 @@ class PlugsSPA {
     }
 
     hideProgress() {
-        this.progressBar.style.opacity = '0';
-        setTimeout(() => { this.progressBar.style.width = '0'; }, 300);
         clearTimeout(this.progressTimer);
+        this.progressBar.style.width = '100%';
+        setTimeout(() => {
+            this.progressBar.style.opacity = '0';
+            setTimeout(() => { this.progressBar.style.width = '0'; }, 300);
+        }, 200);
     }
 
     handleLinkHover(e) {
@@ -511,12 +738,18 @@ class PlugsSPA {
         }
     }
 
-    async navigate(url, pushState = true, targetSelector = null, fetchOptions = {}) {
+    async navigate(
+        url,
+        pushState = true,
+        targetSelector = null,
+        fetchOptions = {},
+    ) {
         targetSelector = targetSelector || this.options.contentSelector;
         const contentArea = document.querySelector(targetSelector);
 
         if (!contentArea) {
-            if (pushState && targetSelector === this.options.contentSelector) window.location.href = url;
+            if (pushState && targetSelector === this.options.contentSelector)
+                window.location.href = url;
             return false;
         }
 
@@ -524,27 +757,35 @@ class PlugsSPA {
         document.body.classList.add(this.options.loaderClass);
         this.showProgress();
 
-        const useViewTransition = document.startViewTransition && targetSelector === this.options.contentSelector;
-        const skeletonType = contentArea.getAttribute('data-spa-skeleton');
-        if (skeletonType && !useViewTransition) contentArea.innerHTML = this.getSkeletonPlaceholder(skeletonType);
+        const useViewTransition =
+            document.startViewTransition &&
+            targetSelector === this.options.contentSelector;
+        const skeletonType = contentArea.getAttribute("data-spa-skeleton");
+        if (skeletonType && !useViewTransition)
+            contentArea.innerHTML = this.getSkeletonPlaceholder(skeletonType);
 
         try {
             const headers = {
-                'X-Plugs-SPA': 'true',
-                'X-Requested-With': 'XMLHttpRequest',
-                ...(fetchOptions.headers || {})
+                "X-Plugs-SPA": "true",
+                "X-Requested-With": "XMLHttpRequest",
+                ...(fetchOptions.headers || {}),
             };
 
             if (targetSelector !== this.options.contentSelector) {
-                headers['X-Plugs-Section'] = targetSelector.replace(/^[#.]/, '');
+                headers["X-Plugs-Section"] = targetSelector.replace(/^[#.]/, "");
             }
 
             const isMainContent = targetSelector === this.options.contentSelector;
             let html;
 
-            if (isMainContent && (fetchOptions.method || 'GET').toUpperCase() === 'GET' && this.cache.has(url)) {
+            if (
+                isMainContent &&
+                (fetchOptions.method || "GET").toUpperCase() === "GET" &&
+                this.cache.has(url)
+            ) {
                 const cachedAt = this.cacheTimestamps.get(url);
-                if (Date.now() - cachedAt < this.options.cacheTTL) html = this.cache.get(url);
+                if (Date.now() - cachedAt < this.options.cacheTTL)
+                    html = this.cache.get(url);
             }
 
             if (!html) {
@@ -553,57 +794,116 @@ class PlugsSPA {
 
                 this.handleFlashMessage(response);
 
-                const contentType = response.headers.get('content-type');
-                if (contentType && contentType.includes('application/json')) {
+                const contentType = response.headers.get("content-type");
+                if (contentType && contentType.includes("application/json")) {
                     const json = await response.json();
                     if (json.redirect) return this.navigate(json.redirect, true);
                     return true;
                 }
-
                 html = await response.text();
-                if (isMainContent && (fetchOptions.method || 'GET').toUpperCase() === 'GET') {
+                if (
+                    isMainContent &&
+                    (fetchOptions.method || "GET").toUpperCase() === "GET"
+                ) {
                     this.cache.set(url, html);
                     this.cacheTimestamps.set(url, Date.now());
                     this.cleanCache();
                 }
             }
 
-            const titleMatch = html.match(/<title>(.*?)<\/title>/i);
-            if (titleMatch && titleMatch[1] && isMainContent) document.title = titleMatch[1];
+            // ─── Parse SPA response using DOMParser ───
+            const parser = new DOMParser();
+            const doc = parser.parseFromString(html, "text/html");
 
-            const layoutMatch = html.match(/<meta name="plugs-layout" content="(.*?)">/i);
-            const currentLayoutMeta = document.querySelector('meta[name="plugs-layout"]');
-            const currentLayout = currentLayoutMeta ? currentLayoutMeta.content : null;
+            if (isMainContent) {
+                const newTitle = doc.querySelector("title");
+                if (newTitle) document.title = newTitle.innerText;
+            }
 
-            if (layoutMatch && layoutMatch[1] && currentLayout && layoutMatch[1] !== currentLayout) {
+            const layoutMatch = doc.querySelector('meta[name="plugs-layout"]');
+            const currentLayoutMeta = document.querySelector(
+                'meta[name="plugs-layout"]',
+            );
+            const currentLayout = currentLayoutMeta
+                ? currentLayoutMeta.content
+                : null;
+
+            if (
+                layoutMatch &&
+                layoutMatch.content &&
+                currentLayout &&
+                layoutMatch.content !== currentLayout
+            ) {
                 window.location.href = url;
                 return true;
             }
 
+            // Extract styles and scripts before they move to #app-content
+            const styleFragments = Array.from(
+                doc.querySelectorAll('style, link[rel="stylesheet"]'),
+            );
+            const scriptFragments = Array.from(doc.querySelectorAll("script"));
+
+            // Remove infrastructure from the parsed document so only content remains
+            doc
+                .querySelectorAll('title, meta[name="plugs-layout"]')
+                .forEach((el) => el.remove());
+            styleFragments.forEach((el) => el.remove());
+            scriptFragments.forEach((el) => el.remove());
+
+            const cleanHTML = doc.body.innerHTML;
+
             const performUpdate = () => {
                 if (this.currentView?.unmount) {
-                    try { this.currentView.unmount(); } catch (e) { }
+                    try {
+                        this.currentView.unmount();
+                    } catch (e) { }
                 }
                 this.currentView = null;
 
-                // Content update via requestAnimationFrame for perceived smoothness
-                requestAnimationFrame(() => {
-                    contentArea.innerHTML = html;
-                    contentArea.querySelectorAll('script').forEach(oldScript => {
-                        const newScript = document.createElement('script');
-                        Array.from(oldScript.attributes).forEach(attr => newScript.setAttribute(attr.name, attr.value));
-                        newScript.appendChild(document.createTextNode(oldScript.innerHTML));
-                        oldScript.parentNode.replaceChild(newScript, oldScript);
-                    });
-                    this.initializeComponents(contentArea);
-                    if (pushState && isMainContent) {
-                        window.history.pushState({ spa: true }, '', url);
-                        window.scrollTo(0, 0);
-                    }
-                    this.options.onComplete(url);
-                    this.hideProgress();
-                    document.body.classList.remove(this.options.loaderClass);
+                // Clean up previously injected SPA styles/scripts
+                document
+                    .querySelectorAll("[data-spa-injected]")
+                    .forEach((el) => el.remove());
+
+                // Set only the actual page content
+                contentArea.innerHTML = cleanHTML;
+
+                // Inject extracted styles into <head>
+                styleFragments.forEach((el) => {
+                    el.setAttribute("data-spa-injected", "true");
+                    document.head.appendChild(el);
                 });
+
+                // Inject extracted scripts into <body>
+                scriptFragments.forEach((oldScript) => {
+                    const newScript = document.createElement("script");
+                    Array.from(oldScript.attributes).forEach((attr) =>
+                        newScript.setAttribute(attr.name, attr.value),
+                    );
+                    newScript.setAttribute("data-spa-injected", "true");
+                    if (oldScript.innerHTML) {
+                        newScript.appendChild(document.createTextNode(oldScript.innerHTML));
+                    }
+                    document.body.appendChild(newScript);
+                });
+
+                // Re-initialize components on the new content
+                this.initializeComponents(contentArea);
+
+                if (pushState && isMainContent) {
+                    window.history.pushState({ spa: true }, "", url);
+                    window.scrollTo(0, 0);
+                }
+
+                this.options.onComplete(url);
+
+                if (window.AOS) {
+                    window.AOS.refresh();
+                }
+
+                this.hideProgress();
+                document.body.classList.remove(this.options.loaderClass);
             };
 
             if (useViewTransition) {
@@ -623,8 +923,7 @@ class PlugsSPA {
 
     getSkeletonPlaceholder(type) {
         const shimmer = '<div class="plugs-skeleton" style="width: 100%; height: 20px; border-radius: 4px; margin-bottom: 10px; background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%); background-size: 200% 100%; animation: shimmer 1.5s infinite;"></div>';
-        
-        // Add shimmer animation style if not exists
+
         if (!document.getElementById('plugs-skeleton-style')) {
             const style = document.createElement('style');
             style.id = 'plugs-skeleton-style';
