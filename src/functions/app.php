@@ -532,7 +532,7 @@ function loadFunctions(string|array|null $source): void
 {
     // If no source provided, use default directory behavior
     if ($source === null) {
-        $source = __DIR__ . '/functions/';
+        $source = __DIR__ . '/';
     }
 
     // Handle directory source
