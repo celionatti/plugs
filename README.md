@@ -1,6 +1,6 @@
 <p align="center">
   <a href="https://github.com/celionatti/plugs">
-    <img src="https://raw.githubusercontent.com/celionatti/plugs/main/art/logo.png" alt="Plugs Framework Logo" width="300">
+    <img src="/docs/banner.png" alt="Plugs Framework Logo" width="300">
   </a>
 </p>
 
