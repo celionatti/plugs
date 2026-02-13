@@ -92,12 +92,13 @@ class RichTextField extends Field
 
         $css = [
             'https://cdn.quilljs.com/1.3.6/quill.snow.css',
-            asset('plugs/plugs-editor.css')
+            asset('assets/css/plugs-editor.css?v=' . time())
         ];
 
         $js = [
             'https://cdn.quilljs.com/1.3.6/quill.min.js',
-            asset('plugs/plugs-editor.js')
+            'https://cdn.jsdelivr.net/npm/quill-image-resize-module@3.0.0/image-resize.min.js',
+            asset('assets/js/plugs-editor.js?v=' . time())
         ];
 
         $html = '';

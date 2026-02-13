@@ -55,11 +55,24 @@ Include the Quill library and the PLUGS editor assets in your layout:
 <!-- Quill (CDN) -->
 <link rel="stylesheet" href="https://cdn.quilljs.com/1.3.6/quill.snow.css" />
 <script src="https://cdn.quilljs.com/1.3.6/quill.min.js"></script>
+<!-- Image Resize Module -->
+<script src="https://cdn.jsdelivr.net/gh/scrapooo/quill-resize-module@1.0.2/dist/quill-resize-module.js"></script>
 
 <!-- PLUGS Editor (Local) -->
 <link rel="stylesheet" href="/plugs/plugs-editor.css" />
 <script src="/plugs/plugs-editor.js"></script>
 ```
+
+### Image Resizing & Alignment
+
+The editor includes the `quill-resize-module`, allowing you to:
+
+- **Click** on an image to select it.
+- **Drag corners** to resize the image.
+- **Align** the image (Left, Center, Right) using the overlay toolbar.
+- **Display Size**: Pixel dimensions are shown while resizing.
+
+This is enabled by default in `plugs-editor.js`.
 
 ### 2. HTML Structure
 

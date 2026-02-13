@@ -63,7 +63,7 @@ class MediaController
 
         } catch (\Exception $e) {
             return ResponseFactory::json([
-                'error' => $e->getMessage()
+                'error' => 'Server Error: ' . $e->getMessage()
             ], 500);
         }
     }
