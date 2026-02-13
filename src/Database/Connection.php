@@ -20,12 +20,12 @@ use Plugs\Exceptions\DatabaseException as PlugsDatabaseException;
 
 class Connection
 {
-    private static $instances = [];
-    private static $config = [];
+    private static array $instances = [];
+    private static array $config = [];
 
     // Connection Pool Management
-    private static $connectionPools = [];
-    private static $poolConfig = [
+    private static array $connectionPools = [];
+    private static array $poolConfig = [
         'min_connections' => 2,      // Minimum connections to keep alive
         'max_connections' => 10,     // Maximum connections allowed
         'connection_timeout' => 30,  // Timeout for acquiring connection (seconds)
@@ -35,45 +35,45 @@ class Connection
     ];
 
     // Runtime environment detection cache
-    private static $detectedRuntime = null;
-    private static $poolLocks = [];
+    private static ?string $detectedRuntime = null;
+    private static array $poolLocks = [];
 
     // Load Balancer instances per connection name
-    private static $loadBalancers = [];
+    private static array $loadBalancers = [];
 
     // Prepared Statement Pool
-    private static $statementPool = [];
-    private static $statementPoolSize = 100; // Max cached statements per connection
+    private static array $statementPool = [];
+    private static int $statementPoolSize = 100; // Max cached statements per connection
 
     // Query Analysis
-    private static $queryStats = [];
-    private static $enableQueryAnalysis = false;
-    private static $queryAnalysisThresholds = [
+    private static array $queryStats = [];
+    private static bool $enableQueryAnalysis = false;
+    private static array $queryAnalysisThresholds = [
         'slow_query_time' => 1.0,    // Seconds
         'n_plus_one_threshold' => 10, // Similar queries in a row
     ];
 
-    private $pdo;
-    private $readPdo;
-    private $connectionName;
-    private $lastActivityTime;
-    private $isHealthy = true;
-    private $isInPool = false;
-    private $poolId;
+    private ?PDO $pdo = null;
+    private ?PDO $readPdo = null;
+    private string $connectionName;
+    private int $lastActivityTime = 0;
+    private bool $isHealthy = true;
+    private bool $isInPool = false;
+    private ?string $poolId = null;
     /** @phpstan-ignore property.onlyWritten */
-    private $connectionAttempts = 0;
-    private $maxRetries = 3;
-    private static $queryLog = [];
-    private static $loggingQueries = false;
+    private int $connectionAttempts = 0;
+    private int $maxRetries = 3;
+    private static array $queryLog = [];
+    private static bool $loggingQueries = false;
 
     // Security & Advanced Features
-    private $sticky = false;
-    private $lastWriteTimestamp = 0;
-    private static $auditLogPath = 'storage/logs/security_audit.log';
-    private $isConnecting = false;
-    private $lastHealthCheckAt = 0;
-    private $lastReadHealthCheckAt = 0;
-    private $strictMode = false;
+    private bool $sticky = false;
+    private float $lastWriteTimestamp = 0;
+    private static string $auditLogPath = 'storage/logs/security_audit.log';
+    private bool $isConnecting = false;
+    private int $lastHealthCheckAt = 0;
+    private int $lastReadHealthCheckAt = 0;
+    private bool $strictMode = false;
     private static array $schemaCache = [];
 
     /**
@@ -908,7 +908,6 @@ class Connection
         $sql = preg_replace('/\s+/', ' ', $sql);
 
         // Replace parameter placeholders with generic marker
-        $sql = preg_replace('/\?/', '?', $sql);
         $sql = preg_replace('/:[a-zA-Z0-9_]+/', ':param', $sql);
 
         return trim($sql);
@@ -1531,7 +1530,7 @@ class Connection
      */
     private function guardQuery(string $sql): void
     {
-        if (preg_match('/^\s*(update|delete)\b/i', $sql) && !stripos($sql, 'where')) {
+        if (preg_match('/^\s*(update|delete)\b/i', $sql) && !preg_match('/\bWHERE\b/i', $sql)) {
             $message = "DANGEROUS QUERY DETECTED (No WHERE clause): " . trim($sql);
             $this->auditLog($message, 'ALERT');
 
