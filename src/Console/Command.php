@@ -237,7 +237,7 @@ abstract class Command implements CommandInterface
 
     protected function branding(string $version = '1.0.0'): void
     {
-        $this->output->branding($version);
+        $this->banner('PLUGS FRAMEWORK ' . $version);
     }
 
     protected function commandHeader(string $command): void

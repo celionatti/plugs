@@ -22,6 +22,36 @@ use Psr\Http\Server\MiddlewareInterface;
 
 class Plugs
 {
+    /**
+     * The framework version.
+     *
+     * @var string
+     */
+    public const VERSION = '1.0.0-dev';
+
+    /**
+     * Get the version number of the application.
+     */
+    public static function version(): string
+    {
+        // 1. Check for VERSION file (CI/CD override)
+        if (defined('BASE_PATH') && file_exists(BASE_PATH . '/VERSION')) {
+            return trim(file_get_contents(BASE_PATH . '/VERSION'));
+        }
+
+        // 2. Check Composer InstalledVersions
+        if (class_exists(\Composer\InstalledVersions::class)) {
+            try {
+                return \Composer\InstalledVersions::getVersion('plugs/plugs') ?? self::VERSION;
+            } catch (\OutOfBoundsException $e) {
+                // Package not found (e.g. running from source)
+            }
+        }
+
+        // 3. Fallback to constant
+        return self::VERSION;
+    }
+
     private $dispatcher;
     private $fallbackHandler;
     private $container;

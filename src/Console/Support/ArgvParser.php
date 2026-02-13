@@ -20,12 +20,23 @@ class ArgvParser
 
     public function commandName(): ?string
     {
-        return $this->argv[1] ?? null;
+        $name = $this->argv[1] ?? null;
+
+        if ($name && str_starts_with($name, '-')) {
+            return null;
+        }
+
+        return $name;
     }
 
     public function input(): Input
     {
-        $tokens = array_slice($this->argv, 2);
+        $start = 2;
+        if (isset($this->argv[1]) && str_starts_with($this->argv[1], '-')) {
+            $start = 1;
+        }
+
+        $tokens = array_slice($this->argv, $start);
         $args = [];
         $opts = [];
 
@@ -41,7 +52,7 @@ class ArgvParser
 
         $indexed = [];
         foreach ($args as $i => $value) {
-            $indexed[(string)$i] = $value;
+            $indexed[(string) $i] = $value;
         }
 
         return new Input($indexed, $opts);
@@ -71,7 +82,7 @@ class ArgvParser
         return match ($value) {
             'true' => true,
             'false' => false,
-            default => is_numeric($value) ? (int)$value : $value,
+            default => is_numeric($value) ? (int) $value : $value,
         };
     }
 }

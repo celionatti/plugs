@@ -1309,7 +1309,7 @@ class Output
     public function branding(string $version = '1.0.0'): void
     {
         $this->brandingLogo();
-        $this->line("  " . self::DIM . "FRAMEWORK" . self::RESET);
+        $this->line("  " . self::DIM . "FRAMEWORK  v" . $version . self::RESET);
         $this->newLine();
     }
 

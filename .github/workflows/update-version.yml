@@ -1,0 +1,27 @@
+name: Update Version
+
+on:
+  release:
+    types: [published]
+
+permissions:
+  contents: write
+
+jobs:
+  update-version:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.release.target_commitish }}
+
+      - name: Update VERSION file
+        run: |
+          echo "${{ github.event.release.tag_name }}" | sed 's/^v//' > VERSION
+
+      - name: Commit and Push
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: "chore: update version to ${{ github.event.release.tag_name }}"
+          file_pattern: VERSION
