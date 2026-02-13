@@ -1,31 +1,26 @@
 /**
  * Plugs Rich Text Editor Wrapper
- * Robust Quill integration with automatic image uploading and resizing.
+ * Robust Quill integration with automatic image uploading, resizing, 
+ * character counting, and full-screen mode.
  */
 
 (function() {
     // 1. Module Registration
-    // We do this globally and immediately to avoid race conditions.
     function registerModules() {
         if (typeof Quill === 'undefined') return;
 
+        // Image Resize
         const ImageResizeMod = window.ImageResize || window.QuillResize;
         if (ImageResizeMod) {
-            // Handle ES Module default exports from some CDNs
             const constructor = ImageResizeMod.default || ImageResizeMod;
             if (typeof constructor === 'function') {
                 try {
                     Quill.register('modules/imageResize', constructor, true);
-                } catch (e) {
-                    console.warn("Quill module registration warning:", e);
-                }
-            } else {
-                console.error("ImageResize module found but it is not a constructor:", constructor);
+                } catch (e) {}
             }
         }
     }
 
-    // Attempt registration if Quill is already loaded
     registerModules();
 
     class PlugsEditor {
@@ -33,11 +28,9 @@
             this.container = document.getElementById(containerId);
             this.hiddenInput = document.getElementById(hiddenInputId);
             
-            if (!this.container || !this.hiddenInput) {
-                console.error("PlugsEditor: Missing required elements", { containerId, hiddenInputId });
-                return;
-            }
+            if (!this.container || !this.hiddenInput) return;
 
+            this.wrapper = this.container.closest('.plugs-editor-wrapper');
             this.uploadUrl = options.uploadUrl || "/plugs/media/upload";
             this.maxWidth = this.container.dataset.maxWidth || null;
             this.maxHeight = this.container.dataset.maxHeight || null;
@@ -46,7 +39,6 @@
         }
 
         init(options) {
-            // Re-check registration just in case
             registerModules();
 
             const defaultModules = {
@@ -56,16 +48,17 @@
                         ["bold", "italic", "underline", "strike"],
                         ["blockquote", "code-block"],
                         [{ list: "ordered" }, { list: "bullet" }],
-                        ["link", "image"],
-                        ["clean"],
+                        [{ align: [] }, { color: [] }, { background: [] }],
+                        ["link", "image", "video"],
+                        ["clean", "fullscreen"] // Custom fullscreen button
                     ],
                     handlers: {
                         image: this.imageHandler.bind(this),
+                        fullscreen: this.toggleFullScreen.bind(this)
                     },
                 }
             };
 
-            // Only add imageResize if registered
             if (Quill.imports['modules/imageResize']) {
                 defaultModules.imageResize = {
                     displaySize: true,
@@ -84,6 +77,7 @@
                     },
                 });
 
+                this.setupUI();
                 this.setupEvents();
                 this.loadInitialContent();
             } catch (error) {
@@ -91,15 +85,31 @@
             }
         }
 
+        setupUI() {
+            if (!this.wrapper) return;
+
+            // Add Statistics HUD
+            this.statsBar = document.createElement('div');
+            this.statsBar.className = 'plugs-editor-stats';
+            this.statsBar.innerHTML = 'Words: 0 | Characters: 0';
+            this.wrapper.appendChild(this.statsBar);
+
+            // Add Fullscreen icon support
+            const fsBtn = this.wrapper.querySelector('.ql-fullscreen');
+            if (fsBtn) {
+                fsBtn.innerHTML = '<svg viewBox="0 0 18 18"><path class="ql-stroke" d="M11,4h4v4M7,14H3v-4M11,14h4v-4M7,4H3v4"></path></svg>';
+                fsBtn.title = 'Toggle Fullscreen';
+            }
+        }
+
         setupEvents() {
             if (!this.quill) return;
 
-            // Sync with hidden input
             this.quill.on("text-change", () => {
                 this.hiddenInput.value = this.quill.root.innerHTML;
+                this.updateStats();
             });
 
-            // Drop support
             this.quill.root.addEventListener("drop", (e) => {
                 e.preventDefault();
                 const files = e.dataTransfer?.files;
@@ -108,7 +118,29 @@
                 }
             });
 
+            this.updateStats();
             this.initTooltips();
+        }
+
+        updateStats() {
+            if (!this.statsBar || !this.quill) return;
+            const text = this.quill.getText().trim();
+            const charCount = text.length;
+            const wordCount = text.length > 0 ? text.split(/\s+/).length : 0;
+            this.statsBar.innerHTML = `Words: ${wordCount} | Characters: ${charCount}`;
+        }
+
+        toggleFullScreen() {
+            if (!this.wrapper) return;
+            this.wrapper.classList.toggle('plugs-editor-fullscreen');
+            
+            if (this.wrapper.classList.contains('plugs-editor-fullscreen')) {
+                document.body.style.overflow = 'hidden';
+            } else {
+                document.body.style.overflow = '';
+            }
+            
+            this.quill.focus();
         }
 
         loadInitialContent() {
@@ -131,7 +163,6 @@
 
         async uploadImage(file) {
             if (!this.quill) return;
-
             const formData = new FormData();
             formData.append("image", file);
             this.setLoading(true);
@@ -169,28 +200,28 @@
         }
 
         setLoading(loading) {
-            const wrapper = this.container.closest(".plugs-editor-wrapper");
-            if (!wrapper) return;
+            if (!this.wrapper) return;
             if (loading) {
                 const loader = document.createElement("div");
                 loader.className = "plugs-editor-uploading";
-                wrapper.appendChild(loader);
+                this.wrapper.appendChild(loader);
             } else {
-                const loader = wrapper.querySelector(".plugs-editor-uploading");
+                const loader = this.wrapper.querySelector(".plugs-editor-uploading");
                 if (loader) loader.remove();
             }
         }
 
         initTooltips() {
-            const toolbar = this.container.previousElementSibling;
-            if (!toolbar || !toolbar.classList.contains('ql-toolbar')) return;
+            const toolbar = this.wrapper?.querySelector('.ql-toolbar');
+            if (!toolbar) return;
             
             const tooltips = {
                 "ql-header": "Heading", "ql-bold": "Bold", "ql-italic": "Italic",
                 "ql-underline": "Underline", "ql-strike": "Strike", "ql-blockquote": "Quote",
                 "ql-code-block": "Code Block", "ql-list[value='ordered']": "Ordered List",
                 "ql-list[value='bullet']": "Bullet List", "ql-link": "Link",
-                "ql-image": "Image", "ql-clean": "Clear"
+                "ql-image": "Image", "ql-video": "Video", "ql-clean": "Clear",
+                "ql-align": "Alignment", "ql-color": "Text Color", "ql-background": "Background Color"
             };
 
             Object.entries(tooltips).forEach(([selector, text]) => {
@@ -199,15 +230,7 @@
         }
     }
 
-    // Expose to window
     window.PlugsEditor = PlugsEditor;
-
-    // Auto-init
-    if (document.readyState === 'loading') {
-        document.addEventListener("DOMContentLoaded", autoInit);
-    } else {
-        autoInit();
-    }
 
     function autoInit() {
         document.querySelectorAll("[data-plugs-editor]").forEach(el => {
@@ -216,5 +239,11 @@
                 el.dataset.initialized = "true";
             }
         });
+    }
+
+    if (document.readyState === 'loading') {
+        document.addEventListener("DOMContentLoaded", autoInit);
+    } else {
+        autoInit();
     }
 })();

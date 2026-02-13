@@ -1,98 +1,138 @@
-/* Rich Text Editor Styles */
+/* Rich Text Editor - Enhanced Professional Styles */
 .plugs-editor-wrapper {
   position: relative;
   border: 1px solid #dee2e6;
-  border-radius: 0.375rem;
+  border-radius: 0.5rem;
   overflow: hidden;
   background: #fff;
   width: 100%;
-  transition: border-color 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  display: flex;
+  flex-direction: column;
 }
 
 .plugs-editor-wrapper:focus-within {
-  border-color: #86b7fe;
-  box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
+  border-color: #0d6efd;
+  box-shadow: 0 0 0 4px rgba(13, 110, 253, 0.15);
 }
 
-.plugs-editor-container {
-  min-height: 250px;
-  font-family: inherit;
-  font-size: 1rem;
-}
-
+/* Sticky Toolbar */
 .ql-toolbar.ql-snow {
   border: none !important;
   border-bottom: 1px solid #dee2e6 !important;
   background: #f8f9fa;
-  display: flex !important;
-  flex-wrap: wrap;
+  padding: 8px 12px !important;
+  position: sticky;
+  top: 0;
+  z-index: 100;
 }
 
 .ql-container.ql-snow {
   border: none !important;
+  flex-grow: 1;
+  display: flex;
+  flex-direction: column;
 }
 
 .ql-editor {
-  min-height: 250px;
-  padding: 1.25rem;
+  min-height: 300px;
+  padding: 1.5rem;
+  font-size: 1.05rem;
+  line-height: 1.6;
+  color: #212529;
 }
 
-/* Ensure images inside the editor are responsive */
+/* Character & Word Count HUD */
+.plugs-editor-stats {
+  padding: 8px 15px;
+  background: #f8f9fa;
+  border-top: 1px solid #dee2e6;
+  font-size: 0.75rem;
+  color: #6c757d;
+  text-align: right;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+}
+
+/* Fullscreen Mode */
+.plugs-editor-fullscreen {
+  position: fixed !important;
+  top: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  bottom: 0 !important;
+  z-index: 9999 !important;
+  width: 100vw !important;
+  height: 100vh !important;
+  border-radius: 0 !important;
+  background: #fff !important;
+}
+
+.plugs-editor-fullscreen .ql-editor {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 4rem 2rem;
+}
+
+/* Visual Polish */
 .ql-editor img {
   max-width: 100%;
   height: auto;
-  border-radius: 4px;
+  border-radius: 8px;
   display: block;
-  margin: 1rem 0;
+  margin: 2rem auto;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
 }
 
-.ql-editor h1,
-.ql-editor h2,
-.ql-editor h3,
-.ql-editor h4,
-.ql-editor h5,
-.ql-editor h6 {
-  margin-top: 1.5rem;
-  margin-bottom: 1rem;
-  font-weight: 600;
-  line-height: 1.2;
+.ql-editor iframe.ql-video {
+  width: 100%;
+  aspect-ratio: 16/9;
+  border-radius: 12px;
+  margin: 2rem 0;
+  border: none;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
 }
 
-.ql-editor p {
-  margin-bottom: 1rem;
+.ql-editor h1, .ql-editor h2, .ql-editor h3 {
+  color: #1a1e21;
+  margin-top: 2rem;
 }
 
-.ql-editor blockquote {
-  border-left: 4px solid #0d6efd;
-  padding-left: 1rem;
-  margin: 1.5rem 0;
-  color: #6c757d;
-  font-style: italic;
+/* Custom Icons */
+.ql-fullscreen svg {
+  width: 18px;
+  height: 18px;
+}
+
+.ql-fullscreen .ql-stroke {
+  fill: none;
+  stroke: #444;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 2;
 }
 
 .plugs-editor-uploading {
   position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(255, 255, 255, 0.8);
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(255, 255, 255, 0.9);
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 1000;
-  backdrop-filter: blur(2px);
+  z-index: 1001;
+  backdrop-filter: blur(4px);
 }
 
 .plugs-editor-uploading::after {
-  content: "Uploading Image...";
+  content: "Publishing your view...";
   font-weight: 600;
   color: #0d6efd;
+  letter-spacing: 0.05em;
   animation: ql-pulse 1.5s infinite;
 }
 
 @keyframes ql-pulse {
-  0% { opacity: 1; }
-  50% { opacity: 0.5; }
-  100% { opacity: 1; }
+  0% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.05); opacity: 0.7; }
+  100% { transform: scale(1); opacity: 1; }
 }

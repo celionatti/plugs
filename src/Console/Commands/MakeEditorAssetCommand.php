@@ -16,8 +16,8 @@ class MakeEditorAssetCommand extends Command
   {
     $this->title('Editor Asset Generator');
 
-    $jsDirectory = getcwd() . '/public/assets/js';
-    $cssDirectory = getcwd() . '/public/assets/css';
+    $jsDirectory = public_path('assets/js');
+    $cssDirectory = public_path('assets/css');
     $jsFilename = 'plugs-editor.js';
     $cssFilename = 'plugs-editor.css';
 
