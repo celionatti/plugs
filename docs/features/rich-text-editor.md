@@ -1,25 +1,34 @@
 # Rich Text Editor
 
-PLUGS includes a lightweight, powerful rich text editor based on Quill.js. It features automatic image uploads, drag-and-drop support, and seamless integration with the PLUGS form builder and media system.
+PLUGS includes a lightweight, professional rich text editor based on Quill.js. It features automatic image uploads, drag-and-drop support, full-screen writing mode, real-time statistics, and seamless integration with the PLUGS form builder and media system.
 
 ## Key Features
 
-- **Rich Formatting**: Support for H1-H6, Bold, Italic, Lists, Quotes, and Code blocks.
-- **Automatic Image Uploads**: Drag-and-drop or select images; they are automatically uploaded to the backend.
+- **Rich Formatting**: Support for H1-H6, Bold, Italic, Underline, Strike, Lists (Ordered/Bullet), Quotes, and Code blocks.
+- **Advanced Media**: Automatic image uploads via drag-and-drop and support for video embedding (YouTube/Vimeo).
+- **Professional UX**:
+  - **Full-Screen Mode**: Dedicated toggle for focused, distraction-free writing.
+  - **Live Statistics**: Real-time Word and Character counter HUD.
+  - **Sticky Toolbar**: The toolbar stays pinned to the top of the viewport for easy access.
+  - **Image Resize**: Interactive handles to resize and align images.
 - **Image Size Constraints**: Configure maximum width and height for uploaded images.
 - **Interactive Tooltips**: Helpful hover descriptions for all toolbar icons.
-- **Responsiveness**: Fully responsive layout that fits into any container.
 - **Secure by Default**: Integrates with the PLUGS `Sanitizer` to ensure safe HTML output.
 
-## Installation
+## Installation & Assets
 
-Before using the editor, you must generate the required frontend assets using the framework's CLI:
+Before using the editor, you must generate or publish the required frontend assets using the framework's CLI:
 
 ```bash
-php theplugs make:editor-asset --min
+php theplugs make:editor-asset --force
 ```
 
-This command creates the necessary JS and CSS files in your `public/plugs` directory.
+**Options:**
+
+- `--min`: Create minified versions (`plugs-editor.min.js`, `plugs-editor.min.css`).
+- `--force`: Overwrite existing files.
+
+Assets are published to `public/assets/js/` and `public/assets/css/`.
 
 ---
 
@@ -39,7 +48,7 @@ $form = FormBuilder::create('/post/save')
     ->add(new SubmitField('Publish Post'));
 ```
 
-The component automatically handles script inclusion and links the editor to the form submission.
+The component automatically handles script inclusion, CSRF protection, and links the editor to the form submission.
 
 ---
 
@@ -55,28 +64,18 @@ Include the Quill library and the PLUGS editor assets in your layout:
 <!-- Quill (CDN) -->
 <link rel="stylesheet" href="https://cdn.quilljs.com/1.3.6/quill.snow.css" />
 <script src="https://cdn.quilljs.com/1.3.6/quill.min.js"></script>
-<!-- Image Resize Module -->
-<script src="https://cdn.jsdelivr.net/gh/scrapooo/quill-resize-module@1.0.2/dist/quill-resize-module.js"></script>
+
+<!-- Image Resize Module (CDN) -->
+<script src="https://cdn.jsdelivr.net/npm/quill-image-resize-module@3.0.0/image-resize.min.js"></script>
 
 <!-- PLUGS Editor (Local) -->
-<link rel="stylesheet" href="/plugs/plugs-editor.css" />
-<script src="/plugs/plugs-editor.js"></script>
+<link rel="stylesheet" href="/assets/css/plugs-editor.css" />
+<script src="/assets/js/plugs-editor.js"></script>
 ```
-
-### Image Resizing & Alignment
-
-The editor includes the `quill-resize-module`, allowing you to:
-
-- **Click** on an image to select it.
-- **Drag corners** to resize the image.
-- **Align** the image (Left, Center, Right) using the overlay toolbar.
-- **Display Size**: Pixel dimensions are shown while resizing.
-
-This is enabled by default in `plugs-editor.js`.
 
 ### 2. HTML Structure
 
-Use the `data-plugs-editor` attribute to link the editor container to a hidden input:
+Wrap the editor in a `.plugs-editor-wrapper` and use the `data-plugs-editor` attribute to link the container to a hidden input ID:
 
 ```html
 <div class="plugs-editor-wrapper">
@@ -90,6 +89,27 @@ Use the `data-plugs-editor` attribute to link the editor container to a hidden i
   <input type="hidden" name="content" id="content-input" />
 </div>
 ```
+
+---
+
+## Interactive Features
+
+### 🖥️ Full-Screen Mode
+
+A toggle icon is available in the toolbar to expand the editor to the full viewport. This provides a clean, centered interface for heavy content creation.
+
+### 📊 Content Statistics
+
+The editor includes a "HUD" at the bottom right that displays a real-time word and character count, helping authors track their content length.
+
+### 🖼️ Image Handling
+
+The editor includes the `quill-image-resize-module` by default:
+
+- **Resize**: Click any image to see resize handles.
+- **Align**: Use the overlay toolbar to set image alignment (Left, Center, Right).
+- **Delete**: Simply **select the image** and press the `Backspace` or `Delete` key on your keyboard.
+- **Upload**: Drag-and-drop an image directly into the editor for instant background publishing.
 
 ---
 
@@ -111,15 +131,11 @@ $field->maxImageWidth(1200)->maxImageHeight(800);
 <div id="editor" data-max-width="1200" data-max-height="800"></div>
 ```
 
-### Backend Media Handling
-
-Images are uploaded to `/plugs/media/upload` by default. This route is handled by the `MediaController`, which uses the `FileUploader` service to securely store images in the `public/uploads` directory.
-
 ---
 
 ## Security
 
-PLUGS automatically sanitizes editor content before it reaches your application logic. When retrieving content, it is recommended to use the `Sanitizer::safeHtml()` method if you need to perform additional server-side cleaning:
+PLUGS automatically sanitizes editor content. When retrieving content from the request, it is recommended to use the `Sanitizer::safeHtml()` method for server-side cleaning:
 
 ```php
 use Plugs\Security\Sanitizer;
@@ -127,4 +143,4 @@ use Plugs\Security\Sanitizer;
 $safeHtml = Sanitizer::safeHtml($request->get('content'));
 ```
 
-This ensures that only allowed HTML tags and attributes are preserved, protecting your application from XSS attacks.
+This ensures only allowed HTML tags and attributes are preserved, protecting your application from XSS attacks.
