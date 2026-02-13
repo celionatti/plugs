@@ -107,7 +107,7 @@ class QueryBuilder
         }
 
         // Handle standard where: where('col', 'val') or where('col', null)
-        if (func_num_args() === 2) {
+        if ($value === null && $operator !== null && !in_array(strtoupper((string) $operator), ['=', '<', '>', '<=', '>=', '<>', '!=', 'LIKE', 'IN', 'IS', 'BETWEEN', 'NOT IN', 'IS NOT'])) {
             $value = $operator;
             $operator = '=';
         }

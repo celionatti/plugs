@@ -66,7 +66,7 @@ class SessionGuard implements GuardInterface
             return false;
         }
 
-        $user = ($this->model)::where($this->getIdentifierName($credentials), $credentials[$this->getIdentifierName($credentials)])->first();
+        $user = ($this->model)::where($this->getIdentifierName($credentials), '=', $credentials[$this->getIdentifierName($credentials)])->first();
 
         if ($user && Hash::verify($credentials['password'], $user->getAuthPassword())) {
             return true;
@@ -77,7 +77,7 @@ class SessionGuard implements GuardInterface
 
     public function attempt(array $credentials = [], bool $remember = false): bool
     {
-        $user = ($this->model)::where($this->getIdentifierName($credentials), $credentials[$this->getIdentifierName($credentials)])->first();
+        $user = ($this->model)::where($this->getIdentifierName($credentials), '=', $credentials[$this->getIdentifierName($credentials)])->first();
 
         if ($user && Hash::verify($credentials['password'], $user->getAuthPassword())) {
             $this->login($user, $remember);
