@@ -27,6 +27,12 @@ class MailService
 
     public function __construct(array $config)
     {
+        if (!class_exists(Mailer::class)) {
+            throw new \RuntimeException(
+                'The "symfony/mailer" package is required to use the Mail service. ' .
+                'Please install it via composer: composer require symfony/mailer'
+            );
+        }
 
         // Create DSN (Data Source Name) for transport
         $dsn = $this->buildDsn($config);

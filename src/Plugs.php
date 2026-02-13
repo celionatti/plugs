@@ -56,6 +56,7 @@ class Plugs
         'providers' => 'bootstrapProviders',
         'ai' => 'bootstrapAi',
         'seo' => 'bootstrapSeo',
+        'mail' => 'bootstrapMail',
     ];
 
     /**
@@ -264,6 +265,14 @@ class Plugs
     private function bootstrapSeo(): object
     {
         return new \Plugs\Support\SEO(config('seo'));
+    }
+
+    private function bootstrapMail(): object
+    {
+        $mail = new \Plugs\Mail\MailServiceProvider($this->container);
+        $mail->register();
+
+        return $mail;
     }
 
     public function pipe(MiddlewareInterface $middleware): self

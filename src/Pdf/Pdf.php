@@ -17,6 +17,13 @@ class Pdf
 
     public function __construct(ViewEngine $view)
     {
+        if (!class_exists(Dompdf::class)) {
+            throw new RuntimeException(
+                'The "dompdf/dompdf" package is required to use the PDF service. ' .
+                'Please install it via composer: composer require dompdf/dompdf'
+            );
+        }
+
         $this->view = $view;
         $options = new Options();
         $options->set('isHtml5ParserEnabled', true);
