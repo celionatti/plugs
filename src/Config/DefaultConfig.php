@@ -206,6 +206,7 @@ class DefaultConfig
                     '#^/api/#',
                     '#^/webhook/#',
                     '#^/public/upload$#',
+                    '#^/plugs/media/upload$#',
                     '#^/plugs/component/action$#',
                     '#^/plugs/profiler#',
                 ],
