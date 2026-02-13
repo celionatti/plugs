@@ -386,6 +386,124 @@ if (!function_exists('filled')) {
     }
 }
 
+if (!function_exists('value')) {
+    /**
+     * Return the default value of the given value.
+     */
+    function value($value, ...$args)
+    {
+        return $value instanceof \Closure ? $value(...$args) : $value;
+    }
+}
+
+if (!function_exists('with')) {
+    /**
+     * Return the given value, optionally passed to a callback.
+     */
+    function with($value, callable $callback = null)
+    {
+        return is_null($callback) ? $value : $callback($value);
+    }
+}
+
+if (!function_exists('tap')) {
+    /**
+     * Call the given Closure with the given value then return the value.
+     */
+    function tap($value, $callback = null)
+    {
+        if (is_null($callback)) {
+            return new class ($value) {
+                public function __construct(public $target)
+                {}
+                public function __call($method, $parameters)
+                {
+                    $this->target->{$method}(...$parameters);
+                    return $this->target;
+                }
+            };
+        }
+
+        $callback($value);
+
+        return $value;
+    }
+}
+
+if (!function_exists('retry')) {
+    /**
+     * Retry an operation a given number of times.
+     */
+    function retry(int $times, callable $callback, int $sleepMilliseconds = 0)
+    {
+        $attempts = 0;
+
+        beginning:
+        $attempts++;
+        $times--;
+
+        try {
+            return $callback($attempts);
+        } catch (\Throwable $e) {
+            if ($times < 1) {
+                throw $e;
+            }
+
+            if ($sleepMilliseconds) {
+                usleep($sleepMilliseconds * 1000);
+            }
+
+            goto beginning;
+        }
+    }
+}
+
+if (!function_exists('data_get')) {
+    /**
+     * Get an item from an array or object using "dot" notation.
+     */
+    function data_get($target, $key, $default = null)
+    {
+        if (is_null($key)) {
+            return $target;
+        }
+
+        $key = is_array($key) ? $key : explode('.', $key);
+
+        foreach ($key as $i => $segment) {
+            unset($key[$i]);
+
+            if (is_null($segment)) {
+                return $target;
+            }
+
+            if (is_array($target)) {
+                if (array_key_exists($segment, $target)) {
+                    $target = $target[$segment];
+                } else {
+                    return value($default);
+                }
+            } elseif (is_object($target)) {
+                if (isset($target->{$segment})) {
+                    $target = $target->{$segment};
+                } else {
+                    return value($default);
+                }
+            } elseif ($target instanceof \ArrayAccess) {
+                if (isset($target[$segment])) {
+                    $target = $target[$segment];
+                } else {
+                    return value($default);
+                }
+            } else {
+                return value($default);
+            }
+        }
+
+        return $target;
+    }
+}
+
 if (!function_exists('abort')) {
     /**
      * Throw an HTTP exception with a given code.
