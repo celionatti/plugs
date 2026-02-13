@@ -27,6 +27,7 @@ class MakeComponentCommand extends Command
     protected function defineOptions(): array
     {
         return [
+            '--view, -w' => 'Create a view-only component',
             '--bolt, -b' => 'Create a reactive Bolt component',
             '--force, -f' => 'Overwrite existing files',
         ];
@@ -43,7 +44,19 @@ class MakeComponentCommand extends Command
         }
 
         $isBolt = $this->hasOption('bolt') || $this->hasOption('b');
+        $isView = $this->hasOption('view') || $this->hasOption('w');
         $force = $this->isForce();
+
+        // If no specific flag is provided, ask the user
+        if (!$isBolt && !$isView) {
+            $choice = $this->choice(
+                'What type of component would you like to create?',
+                ['View Only', 'Bolt (Class & View)'],
+                'View Only'
+            );
+
+            $isBolt = ($choice === 'Bolt (Class & View)');
+        }
 
         $className = Str::studly($name);
         $viewName = Str::kebab($name);
