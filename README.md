@@ -1,6 +1,6 @@
 <p align="center">
   <a href="https://github.com/celionatti/plugs">
-    <img src="/docs/banner.png" alt="Plugs Framework Logo" width="300">
+    <img src="/docs/banner.svg" alt="Plugs Framework Banner" width="100%">
   </a>
 </p>
 
@@ -28,7 +28,7 @@
 
 Whether you are building a simple API, a complex web application, or an AI-powered agent, Plugs provides the robust foundation you need.
 
-## 🚀 Key Features
+## <a id="features"></a>🚀 Key Features
 
 ### 🏎️ Performance First
 
@@ -49,7 +49,7 @@ Whether you are building a simple API, a complex web application, or an AI-power
 - **Database**: Fluent query builder and Active Record ORM.
 - **Security**: Built-in Shield, CSRF protection, and encryption.
 
-## 📦 Installation
+## <a id="installation"></a>📦 Installation
 
 ### Option 1: Start a New Project (Recommended)
 
@@ -69,7 +69,7 @@ composer require plugs/plugs
 
 > **Note:** The core package includes a `public/install` folder that assists in generating the necessary file structure and configuration for your project.
 
-## 🛠️ Setup & Web Installer
+## <a id="setup"></a>🛠️ Setup & Web Installer
 
 One of the standout features of Plugs is its zero-friction setup. Once you have installed the framework:
 
@@ -92,14 +92,16 @@ One of the standout features of Plugs is its zero-friction setup. Once you have 
 
 ### Routing
 
-Define routes in `routes/web.php`:
+Define routes in `routes/web.php` or `routes/api.php`:
 
 ```php
-use Plugs\Router\Route;
+use Plugs\Facades\Route;
 
 Route::get('/', function () {
     return view('welcome');
 });
+
+Route::get('/users', [UserController::class, 'index']);
 ```
 
 ### Controllers
@@ -110,6 +112,23 @@ Generate a controller using the CLI:
 php theplugs make:controller UserController
 ```
 
+```php
+namespace App\Http\Controllers;
+
+use App\Models\User;
+use Plugs\Base\Controller\Controller;
+
+class UserController extends Controller
+{
+    public function index()
+    {
+        return view('users.index', [
+            'users' => User::all()
+        ]);
+    }
+}
+```
+
 ### AI Chat
 
 Interact with your AI driver immediately:
@@ -117,6 +136,46 @@ Interact with your AI driver immediately:
 ```bash
 php theplugs ai:chat "Explain how the Service Container works"
 ```
+
+## <a id="documentation"></a>📚 Documentation
+
+For comprehensive documentation, please explore the [docs](docs/) folder. Here are some quick links:
+
+### 🚀 Getting Started
+
+- [Introduction](docs/getting-started/introduction.md)
+- [Installation](docs/getting-started/installation.md)
+- [Configuration](docs/getting-started/configuration.md)
+
+### 🧩 The Basics
+
+- [Routing](docs/the-basics/routing.md)
+- [Controllers](docs/the-basics/controllers.md)
+- [Requests & Responses](docs/the-basics/requests.md)
+- [Views & Components](docs/the-basics/views.md)
+- [Validation](docs/security/validation.md)
+
+### 🗄️ Database
+
+- [Database & ORM](docs/database/getting-started.md)
+- [Query Builder](docs/database/query-builder.md)
+- [Migrations](docs/database/migrations.md)
+
+### 🛡️ Security
+
+- [Authentication](docs/security/authentication.md)
+- [CSRF Protection](docs/security/csrf-protection.md)
+- [Security Shield](docs/security/security-shield.md)
+
+### 🤖 AI Features
+
+- [AI Integration](docs/features/ai.md)
+
+### ⚡ Advanced
+
+- [Queues](docs/advanced/queues.md)
+- [Caching](docs/advanced/cache.md)
+- [CLI Commands](docs/advanced/cli-commands.md)
 
 ## 🤝 Contributing
 

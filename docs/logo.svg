@@ -1,0 +1,39 @@
+<svg width="512" height="512" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="neonGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#00f2ff;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#00ff88;stop-opacity:1" />
+    </linearGradient>
+    <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="15" result="blur" />
+      <feComposite in="SourceGraphic" in2="blur" operator="over" />
+    </filter>
+  </defs>
+  
+  <!-- Background -->
+  <rect width="512" height="512" fill="#0a0a12" rx="30" ry="30"/>
+  
+  <!-- Circuit Pathways -->
+  <path d="M256 100 L256 200 M100 256 L200 256 M412 256 L312 256 M256 412 L256 312" 
+        stroke="#1a1a2e" stroke-width="4" stroke-linecap="round"/>
+
+  <!-- Central Node Structure -->
+  <g transform="translate(256, 256)" filter="url(#glow)">
+    <!-- Outer Ring -->
+    <circle cx="0" cy="0" r="100" fill="none" stroke="url(#neonGrad)" stroke-width="8" stroke-dasharray="60 40" stroke-opacity="0.8">
+      <animateTransform attributeName="transform" type="rotate" from="0 0 0" to="360 0 0" dur="20s" repeatCount="indefinite"/>
+    </circle>
+    
+    <!-- Inner Ring -->
+    <circle cx="0" cy="0" r="70" fill="none" stroke="#fff" stroke-width="2" stroke-opacity="0.5">
+      <animateTransform attributeName="transform" type="rotate" from="360 0 0" to="0 0 0" dur="15s" repeatCount="indefinite"/>
+    </circle>
+    
+    <!-- Core Connection -->
+    <path d="M-40 0 L40 0 M0 -40 L0 40 M-28 -28 L28 28 M-28 28 L28 -28" stroke="url(#neonGrad)" stroke-width="4" stroke-linecap="round" />
+    <circle cx="0" cy="0" r="15" fill="#fff" />
+  </g>
+  
+  <!-- Plugs Text (Optional/Minimal) -->
+  <text x="50%" y="460" text-anchor="middle" font-family="Arial, sans-serif" font-weight="bold" font-size="32" fill="#fff" letter-spacing="8" opacity="0.8">PLUGS</text>
+</svg>
