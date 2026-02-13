@@ -109,6 +109,8 @@ class ConsoleKernel
         'config:cache' => \Plugs\Console\Commands\ConfigCacheCommand::class,
         'config:clear' => \Plugs\Console\Commands\ConfigClearCommand::class,
         'optimize' => \Plugs\Console\Commands\OptimizeCommand::class,
+        'opcache:clear' => \Plugs\Console\Commands\OpCacheClearCommand::class,
+        'opcache:status' => \Plugs\Console\Commands\OpCacheStatusCommand::class,
 
         'migrate' => MigrateCommand::class,
         'migrate:rollback' => MigrateRollbackCommand::class,
@@ -197,7 +199,7 @@ class ConsoleKernel
             'make:ai-migration',
         ],
         'Routes' => ['route:list', 'route:cache', 'route:clear', 'route:test'],
-        'Utility' => ['serve', 'cache:clear', 'config:cache', 'optimize', 'queue:work', 'health', 'storage:link', 'type:gen', 'ai:chat', 'ai:fix', 'ai:audit', 'make:ai-test', 'ai:agent', 'ai:think'],
+        'Utility' => ['serve', 'cache:clear', 'config:cache', 'optimize', 'opcache:clear', 'opcache:status', 'queue:work', 'health', 'storage:link', 'type:gen', 'ai:chat', 'ai:fix', 'ai:audit', 'make:ai-test', 'ai:agent', 'ai:think'],
 
         'Scheduling' => ['schedule:run', 'schedule:list'],
         'Database' => ['migrate', 'migrate:rollback', 'migrate:status', 'migrate:fresh', 'migrate:validate', 'migrate:reset', 'make:migration', 'db:seed'],

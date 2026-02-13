@@ -24,6 +24,7 @@ class DefaultConfig
             'services' => self::services(),
             'ai' => self::ai(),
             'seo' => self::seo(),
+            'opcache' => self::opcache(),
             default => [],
         };
     }
@@ -496,6 +497,18 @@ class DefaultConfig
             'default_image' => asset('assets/img/og-image.png'),
             'keywords' => 'php, framework, plugs, fast, modular, web development',
             'robots' => 'index, follow',
+        ];
+    }
+    private static function opcache(): array
+    {
+        return [
+            'enabled' => env('OPCACHE_ENABLED', true),
+            'validate_timestamps' => env('OPCACHE_VALIDATE_TIMESTAMPS', false),
+            'revalidate_freq' => env('OPCACHE_REVALIDATE_FREQ', 0),
+            'max_accelerated_files' => env('OPCACHE_MAX_ACCELERATED_FILES', 10000),
+            'memory_consumption' => env('OPCACHE_MEMORY_CONSUMPTION', 128),
+            'interned_strings_buffer' => env('OPCACHE_INTERNED_STRINGS_BUFFER', 8),
+            'fast_shutdown' => env('OPCACHE_FAST_SHUTDOWN', true),
         ];
     }
 }

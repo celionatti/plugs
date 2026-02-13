@@ -57,6 +57,7 @@ class Plugs
         'ai' => 'bootstrapAi',
         'seo' => 'bootstrapSeo',
         'mail' => 'bootstrapMail',
+        'opcache' => 'bootstrapOpCache',
     ];
 
     /**
@@ -191,12 +192,16 @@ class Plugs
         $container->singleton(\Plugs\View\ViewEngine::class, function () use ($container) {
             $config = config('app.paths');
 
-            return new \Plugs\View\ViewEngine(
+            $engine = new \Plugs\View\ViewEngine(
                 $config['views'],
                 $config['cache'],
                 $container,
                 self::isProduction()
             );
+
+            $engine->setOpcacheEnabled(config('opcache.enabled', true));
+
+            return $engine;
         });
 
         $container->alias(\Plugs\View\ViewEngine::class, 'view');
@@ -273,6 +278,14 @@ class Plugs
         $mail->register();
 
         return $mail;
+    }
+
+    private function bootstrapOpCache(): object
+    {
+        $manager = new \Plugs\Support\OpCacheManager();
+        $this->container->instance('opcache', $manager);
+
+        return $manager;
     }
 
     public function pipe(MiddlewareInterface $middleware): self
