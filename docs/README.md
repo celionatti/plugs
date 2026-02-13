@@ -8,11 +8,13 @@ Welcome to the official documentation for the **Plugs** framework. Plugs is a li
 ## Documentation Sections
 
 ### 🚀 Getting Started
+
 - [Introduction](file:///docs/getting-started/introduction.md)
 - [Installation](file:///docs/getting-started/installation.md)
 - [Configuration](file:///docs/getting-started/configuration.md)
 
 ### 🛠️ Building APIs (New)
+
 - [**Production API Guide**](file:///docs/api-guide/introduction.md)
   - [Step 1: Modeling & Data](file:///docs/api-guide/step-1-modeling.md)
   - [Step 2: Resources & Transformation](file:///docs/api-guide/step-2-resources.md)
@@ -22,6 +24,7 @@ Welcome to the official documentation for the **Plugs** framework. Plugs is a li
   - [**Full Implementation Example**](file:///docs/api-guide/full-example.md)
 
 ### 🧩 The Basics
+
 - [Routing](file:///docs/the-basics/routing.md)
 - [Route Model Binding](file:///docs/the-basics/route-model-binding.md) (New)
 - [Controllers](file:///docs/the-basics/controllers.md)
@@ -42,6 +45,7 @@ Welcome to the official documentation for the **Plugs** framework. Plugs is a li
 - [Factories & Seeders](file:///docs/database/factories-seeders.md)
 
 ### 🗄️ Database
+
 - [Getting Started](file:///docs/database/getting-started.md)
 - [Query Builder](file:///docs/database/query-builder.md)
 - [Query Filtering](file:///docs/database/query-filtering.md) (New)
@@ -51,6 +55,7 @@ Welcome to the official documentation for the **Plugs** framework. Plugs is a li
 - [Factories & Seeders](file:///docs/database/factories-seeders.md)
 
 ### 🛡️ Security
+
 - [Authentication](file:///docs/security/authentication.md)
 - [Validation](file:///docs/security/validation.md) (New)
 - [CSRF Protection](file:///docs/security/csrf-protection.md)
@@ -58,6 +63,7 @@ Welcome to the official documentation for the **Plugs** framework. Plugs is a li
 - [Security Shield](file:///docs/security/security-shield.md)
 
 ### 🏛️ Architecture & Clean Code (New)
+
 - [Repositories](file:///docs/architecture/repositories.md)
 - [Service Layer](file:///docs/architecture/services.md)
 - [Form Requests](file:///docs/architecture/form-requests.md)
@@ -65,9 +71,11 @@ Welcome to the official documentation for the **Plugs** framework. Plugs is a li
 - [Complete CRUD Example](file:///docs/architecture/crud-example.md)
 
 ### ⚡ Advanced Features
+
 - [Cache System](file:///docs/advanced/cache.md)
 - [Queues](file:///docs/advanced/queues.md)
 - [Form Builder](file:///docs/advanced/form-builder.md)
+- [Rich Text Editor](file:///docs/features/rich-text-editor.md) (New)
 - [Payments & Transactions](file:///docs/features/payments.md)
 - [Inertia / SPA Mode](file:///docs/advanced/inertia-spa.md)
 - [Task Scheduling](file:///docs/advanced/scheduling.md)
