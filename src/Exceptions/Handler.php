@@ -14,6 +14,8 @@ namespace Plugs\Exceptions;
 */
 
 use Plugs\Container\Container;
+use Plugs\Exceptions\DatabaseException;
+use Plugs\Exceptions\TokenMismatchException;
 use Plugs\Http\ResponseFactory;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
@@ -41,6 +43,7 @@ class Handler
         HttpException::class,
         ModelNotFoundException::class,
         RouteNotFoundException::class,
+        RateLimitException::class,
     ];
 
     /**
@@ -56,6 +59,13 @@ class Handler
      * @var bool
      */
     protected bool $debug = false;
+
+    /**
+     * Guard against recursive error page rendering.
+     *
+     * @var bool
+     */
+    private bool $renderingErrorPage = false;
 
     /**
      * Create a new exception handler instance.
@@ -178,8 +188,12 @@ class Handler
             $e instanceof AuthenticationException => $this->renderAuthenticationException($request, $e),
             $e instanceof AuthorizationException => $this->renderAuthorizationException($request, $e),
             $e instanceof ModelNotFoundException => $this->renderModelNotFoundException($request, $e),
-            $e instanceof MethodNotAllowedException => $this->renderHttpException($request, $e),
+            $e instanceof MethodNotAllowedException => $this->renderMethodNotAllowedException($request, $e),
+            $e instanceof RateLimitException => $this->renderRateLimitException($request, $e),
             $e instanceof RouteNotFoundException => $this->renderRouteNotFoundException($request, $e),
+            $e instanceof TokenMismatchException => $this->renderTokenMismatchException($request, $e),
+            $e instanceof DatabaseException => $this->renderDatabaseException($request, $e),
+            $e instanceof EncryptionException => $this->renderEncryptionException($request, $e),
             $e instanceof HttpException => $this->renderHttpException($request, $e),
             default => $this->renderGenericException($request, $e),
         };
@@ -283,6 +297,95 @@ class Handler
     }
 
     /**
+     * Render a method not allowed exception.
+     *
+     * @param ServerRequestInterface $request
+     * @param MethodNotAllowedException $e
+     * @return ResponseInterface
+     */
+    protected function renderMethodNotAllowedException(
+        ServerRequestInterface $request,
+        MethodNotAllowedException $e
+    ): ResponseInterface {
+        $statusCode = 405;
+        $allowedMethods = $e->getAllowedMethods();
+
+        if ($this->expectsJson($request)) {
+            return ResponseFactory::json([
+                'message' => $e->getMessage(),
+                'allowed_methods' => $allowedMethods,
+            ], $statusCode)->withHeader('Allow', implode(', ', $allowedMethods));
+        }
+
+        $response = $this->renderErrorPage($request, $statusCode, $e->getMessage());
+
+        return $response->withHeader('Allow', implode(', ', $allowedMethods));
+    }
+
+    /**
+     * Render a rate limit exception.
+     *
+     * @param ServerRequestInterface $request
+     * @param RateLimitException $e
+     * @return ResponseInterface
+     */
+    protected function renderRateLimitException(
+        ServerRequestInterface $request,
+        RateLimitException $e
+    ): ResponseInterface {
+        $statusCode = 429;
+        $retryAfter = $e->getRetryAfter();
+        $headers = $retryAfter ? ['Retry-After' => (string) $retryAfter] : [];
+
+        if ($this->expectsJson($request)) {
+            $response = ResponseFactory::json([
+                'message' => $e->getMessage(),
+                'retry_after' => $retryAfter,
+            ], $statusCode);
+
+            foreach ($headers as $name => $value) {
+                $response = $response->withHeader($name, $value);
+            }
+
+            return $response;
+        }
+
+        $response = $this->renderErrorPage($request, $statusCode, $e->getMessage());
+
+        foreach ($headers as $name => $value) {
+            $response = $response->withHeader($name, $value);
+        }
+
+        return $response;
+    }
+
+    /**
+     * Render an encryption exception.
+     *
+     * Avoids leaking security-sensitive details in production.
+     *
+     * @param ServerRequestInterface $request
+     * @param EncryptionException $e
+     * @return ResponseInterface
+     */
+    protected function renderEncryptionException(
+        ServerRequestInterface $request,
+        EncryptionException $e
+    ): ResponseInterface {
+        $message = $this->debug ? $e->getMessage() : 'A data security error occurred.';
+
+        if ($this->expectsJson($request)) {
+            return ResponseFactory::json(['message' => $message], 500);
+        }
+
+        if ($this->debug) {
+            return $this->renderDebugPage($e);
+        }
+
+        return $this->renderErrorPage($request, 500, $message);
+    }
+
+    /**
      * Render an HTTP exception.
      *
      * @param ServerRequestInterface $request
@@ -358,7 +461,24 @@ class Handler
         int $statusCode,
         ?string $message = null
     ): ResponseInterface {
-        // Try to render a view for the error
+        // Guard against recursive error page rendering
+        if ($this->renderingErrorPage) {
+            // Ensure error helpers are available for the fallback
+            $errorFile = dirname(__DIR__) . '/functions/error.php';
+            if (!function_exists('getProductionErrorHtml') && file_exists($errorFile)) {
+                require_once $errorFile;
+            }
+
+            return ResponseFactory::html(
+                function_exists('getProductionErrorHtml')
+                ? getProductionErrorHtml($statusCode, null, $message)
+                : "<h1>Error {$statusCode}</h1><p>" . htmlspecialchars($message ?? 'An error occurred.') . '</p>',
+                $statusCode
+            );
+        }
+
+        $this->renderingErrorPage = true;
+
         try {
             $viewEngine = $this->container->make('view');
             $html = $viewEngine->render("errors.{$statusCode}", [
@@ -368,11 +488,20 @@ class Handler
 
             return ResponseFactory::html($html, $statusCode);
         } catch (Throwable $e) {
-            // Fallback to basic error page
+            // Ensure error helpers are available for the fallback
+            $errorFile = dirname(__DIR__) . '/functions/error.php';
+            if (!function_exists('getProductionErrorHtml') && file_exists($errorFile)) {
+                require_once $errorFile;
+            }
+
             return ResponseFactory::html(
-                getProductionErrorHtml($statusCode, null, $message),
+                function_exists('getProductionErrorHtml')
+                ? getProductionErrorHtml($statusCode, null, $message)
+                : "<h1>Error {$statusCode}</h1><p>" . htmlspecialchars($message ?? 'An error occurred.') . '</p>',
                 $statusCode
             );
+        } finally {
+            $this->renderingErrorPage = false;
         }
     }
 
@@ -384,19 +513,90 @@ class Handler
      */
     protected function renderDebugPage(Throwable $e): ResponseInterface
     {
-        // Ensure error.php is loaded (may have been deferred in production)
-        $errorFile = dirname(__DIR__) . '/functions/error.php';
-        if (!function_exists('renderDebugErrorPage') && file_exists($errorFile)) {
-            require_once $errorFile;
+        try {
+            // Ensure error.php is loaded (may have been deferred in production)
+            $errorFile = dirname(__DIR__) . '/functions/error.php';
+            if (!function_exists('renderDebugErrorPage') && file_exists($errorFile)) {
+                require_once $errorFile;
+            }
+
+            ob_start();
+            renderDebugErrorPage($e);
+            $html = ob_get_clean();
+
+            $statusCode = $e instanceof PlugsException ? $e->getStatusCode() : 500;
+
+            return ResponseFactory::html($html, $statusCode);
+        } catch (Throwable $renderError) {
+            // Emergency fallback — ensure user always sees something
+            ob_end_clean(); // Clean any partial output
+
+            $html = '<!DOCTYPE html><html><head><title>Error</title></head><body style="font-family:monospace;padding:2rem;background:#111;color:#eee;">';
+            $html .= '<h1 style="color:#ef4444;">' . htmlspecialchars(get_class($e)) . '</h1>';
+            $html .= '<p style="font-size:1.2rem;">' . htmlspecialchars($e->getMessage()) . '</p>';
+            $html .= '<pre style="background:#1a1a2e;padding:1rem;border-radius:8px;overflow:auto;margin:1rem 0;">' . htmlspecialchars($e->getTraceAsString()) . '</pre>';
+            $html .= '<hr style="border-color:#333;">';
+            $html .= '<p style="color:#f59e0b;">⚠ Debug page rendering also failed: ' . htmlspecialchars($renderError->getMessage()) . '</p>';
+            $html .= '</body></html>';
+
+            return ResponseFactory::html($html, 500);
+        }
+    }
+
+    /**
+     * Render a token mismatch (CSRF) exception.
+     *
+     * @param ServerRequestInterface $request
+     * @param TokenMismatchException $e
+     * @return ResponseInterface
+     */
+    protected function renderTokenMismatchException(
+        ServerRequestInterface $request,
+        TokenMismatchException $e
+    ): ResponseInterface {
+        if ($this->expectsJson($request)) {
+            return ResponseFactory::json(['message' => $e->getMessage()], 419);
         }
 
-        ob_start();
-        renderDebugErrorPage($e);
-        $html = ob_get_clean();
+        if ($this->debug) {
+            return $this->renderDebugPage($e);
+        }
 
-        $statusCode = $e instanceof PlugsException ? $e->getStatusCode() : 500;
+        return $this->renderErrorPage($request, 419, $e->getMessage());
+    }
 
-        return ResponseFactory::html($html, $statusCode);
+    /**
+     * Render a database exception.
+     *
+     * @param ServerRequestInterface $request
+     * @param DatabaseException $e
+     * @return ResponseInterface
+     */
+    protected function renderDatabaseException(
+        ServerRequestInterface $request,
+        DatabaseException $e
+    ): ResponseInterface {
+        if ($this->expectsJson($request)) {
+            $data = ['message' => 'A database error occurred.'];
+
+            if ($this->debug) {
+                $data = [
+                    'message' => $e->getMessage(),
+                    'exception' => get_class($e),
+                    'sql' => $e->getSql(),
+                    'bindings' => $e->getBindings(),
+                ];
+            }
+
+            return ResponseFactory::json($data, 500);
+        }
+
+        if ($this->debug) {
+            return $this->renderDebugPage($e);
+        }
+
+        // In production, never expose database details
+        return $this->renderErrorPage($request, 500);
     }
 
     /**

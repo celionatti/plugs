@@ -23,6 +23,7 @@ use Closure;
 use Exception;
 use InvalidArgumentException;
 use Plugs\Container\Container;
+use Plugs\Exceptions\RouteNotFoundException;
 use Plugs\Http\MiddlewareDispatcher;
 use Plugs\Http\ResponseFactory;
 use Plugs\Inertia\InertiaResponse;
@@ -482,10 +483,41 @@ class Router
         $route = $this->getRouteByName($name);
 
         if ($route === null) {
-            throw new RuntimeException("Route [{$name}] not found");
+            $message = "Route [{$name}] not found.";
+
+            if ($suggestion = $this->getRouteSuggestion($name)) {
+                $message .= " Did you mean [{$suggestion}]?";
+            }
+
+            throw new RouteNotFoundException($name, '', $message);
         }
 
         return $route->url($parameters, $absolute);
+    }
+
+    /**
+     * Get a suggestion for a missing route name.
+     */
+    private function getRouteSuggestion(string $name): ?string
+    {
+        $bestMatch = null;
+        $shortestDistance = -1;
+
+        foreach (array_keys($this->namedRoutes) as $routeName) {
+            $distance = levenshtein($name, $routeName);
+
+            if ($distance === 0) {
+                return $routeName;
+            }
+
+            if ($distance <= $shortestDistance || $shortestDistance < 0) {
+                $bestMatch = $routeName;
+                $shortestDistance = $distance;
+            }
+        }
+
+        // Only return if the distance is reasonably small (e.g., < 3)
+        return ($shortestDistance >= 0 && $shortestDistance < 3) ? $bestMatch : null;
     }
 
     /**

@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Plugs\Notification\Channels;
 
+use Plugs\Exceptions\ServiceException;
+
 class DatabaseChannel
 {
     /**
@@ -40,6 +42,6 @@ class DatabaseChannel
             return $notification->toArray($notifiable);
         }
 
-        throw new \RuntimeException('Notification is missing toDatabase or toArray method.');
+        throw ServiceException::missingMethod('toDatabase or toArray', get_class($notification));
     }
 }

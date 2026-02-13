@@ -13,6 +13,7 @@ namespace Plugs\Http\Middleware;
 | Now includes behavior-based throttling using ThreatDetector.
 */
 
+use Plugs\Exceptions\RateLimitException;
 use Plugs\Security\ThreatDetector;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
@@ -56,7 +57,7 @@ class RateLimitMiddleware implements MiddlewareInterface
         $data['count']++;
 
         if ($data['count'] > $effectiveLimit) {
-            throw new \RuntimeException('Too many requests', 429);
+            throw new RateLimitException('Too many requests', $data['reset_at'] - $currentTime);
         }
 
         $response = $handler->handle($request);

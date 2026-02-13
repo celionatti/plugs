@@ -390,7 +390,8 @@ class ViewEngine
                 sprintf('View [%s] not found at %s', $view, $viewFile),
                 0,
                 null,
-                $view
+                $view,
+                ViewException::VIEW_NOT_FOUND
             );
         }
 
@@ -420,7 +421,8 @@ class ViewEngine
                     sprintf('Component [%s] not found at %s', $componentName, $componentFile),
                     0,
                     null,
-                    $componentName
+                    $componentName,
+                    ViewException::COMPONENT_NOT_FOUND
                 );
             }
 
@@ -515,17 +517,7 @@ class ViewEngine
             // 3. View-only component (no class)
             return $this->render($componentName, $componentData, true);
         } catch (Throwable $e) {
-            // FIX: Better error context for component failures
-            throw new ViewException(
-                sprintf(
-                    'Error rendering component [%s]: %s',
-                    $componentName,
-                    $e->getMessage()
-                ),
-                (int) $e->getCode(),
-                $e,
-                $componentName
-            );
+            throw $this->wrapViewException($e, sprintf('Error rendering component [%s]', $componentName), $componentName);
         }
     }
 
@@ -601,11 +593,7 @@ class ViewEngine
             ob_end_clean();
             error_reporting($previousErrorLevel);
 
-            throw new ViewException(
-                sprintf('Error executing compiled content: %s', $e->getMessage()),
-                (int) $e->getCode(),
-                $e
-            );
+            throw $this->wrapViewException($e, 'Error executing compiled content');
         }
     }
 
@@ -697,16 +685,7 @@ class ViewEngine
             }
             error_reporting($previousErrorLevel);
 
-            throw new ViewException(
-                sprintf(
-                    'Error rendering compiled view: %s (File: %s, Line: %d)',
-                    $e->getMessage(),
-                    $compiled,
-                    $e->getLine()
-                ),
-                (int) $e->getCode(),
-                $e
-            );
+            throw $this->wrapViewException($e, 'Error rendering compiled view', $compiled);
         }
     }
 
@@ -781,16 +760,7 @@ class ViewEngine
             }
             error_reporting($previousErrorLevel);
 
-            throw new ViewException(
-                sprintf(
-                    'Error rendering view: %s (File: %s, Line: %d)',
-                    $e->getMessage(),
-                    $viewFile,
-                    $e->getLine()
-                ),
-                (int) $e->getCode(),
-                $e
-            );
+            throw $this->wrapViewException($e, 'Error rendering view', $viewFile);
         }
     }
 
@@ -803,7 +773,8 @@ class ViewEngine
                 sprintf('Parent view [%s] not found at %s', $parentView, $parentFile),
                 0,
                 null,
-                $parentView
+                $parentView,
+                ViewException::VIEW_NOT_FOUND
             );
         }
 
@@ -834,7 +805,8 @@ class ViewEngine
                 sprintf('Parent view [%s] not found', $parentView),
                 0,
                 null,
-                $parentView
+                $parentView,
+                ViewException::VIEW_NOT_FOUND
             );
         }
 
@@ -865,16 +837,7 @@ class ViewEngine
             ob_end_clean();
             error_reporting($previousErrorLevel);
 
-            throw new ViewException(
-                sprintf(
-                    'Error rendering parent view: %s (File: %s)',
-                    $e->getMessage(),
-                    $parentFile
-                ),
-                (int) $e->getCode(),
-                $e,
-                $parentView
-            );
+            throw $this->wrapViewException($e, sprintf('Error rendering parent view [%s]', $parentView), $parentView);
         }
     }
 
@@ -919,7 +882,8 @@ class ViewEngine
                         sprintf('Invalid view path: %s', $view),
                         0,
                         null,
-                        $view
+                        $view,
+                        ViewException::INVALID_PATH
                     );
                 }
 
@@ -937,7 +901,8 @@ class ViewEngine
             ),
             0,
             null,
-            $view
+            $view,
+            ViewException::VIEW_NOT_FOUND
         );
     }
 
@@ -949,7 +914,8 @@ class ViewEngine
                 sprintf('Invalid component name: %s (cannot contain path separators)', $componentName),
                 0,
                 null,
-                $componentName
+                $componentName,
+                ViewException::INVALID_PATH
             );
         }
 
@@ -976,7 +942,8 @@ class ViewEngine
                             sprintf('Invalid component path: %s', $componentName),
                             0,
                             null,
-                            $componentName
+                            $componentName,
+                            ViewException::INVALID_PATH
                         );
                     }
 
@@ -1647,5 +1614,34 @@ class ViewEngine
         $results['stats'] = $this->getPerformanceStats();
 
         return $results;
+    }
+
+    /**
+     * Wrap an exception in a ViewException with better context and cleaner messages.
+     */
+    private function wrapViewException(\Throwable $e, string $context, ?string $view = null): ViewException
+    {
+        $message = $e->getMessage();
+        $code = (int) $e->getCode();
+        $frameworkCode = null;
+
+        if ($e instanceof ViewException) {
+            $frameworkCode = $e->getFrameworkCode();
+            // Avoid repeating "Error rendering view" etc.
+            if (str_contains($message, $context)) {
+                return $e;
+            }
+            $message = "{$context} -> " . $message;
+        } else {
+            $message = "{$context}: {$message}";
+            $frameworkCode = ViewException::RUNTIME_ERROR;
+        }
+
+        // Include file and line if in debug mode
+        if ($this->isDebugMode() && !($e instanceof ViewException)) {
+            $message .= sprintf(' (File: %s, Line: %d)', $e->getFile(), $e->getLine());
+        }
+
+        return new ViewException($message, $code, $e, $view, $frameworkCode);
     }
 }

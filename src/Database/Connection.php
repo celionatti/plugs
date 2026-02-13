@@ -15,6 +15,8 @@ namespace Plugs\Database;
 
 use PDO;
 use PDOException;
+use Plugs\Exceptions\ConfigurationException;
+use Plugs\Exceptions\DatabaseException as PlugsDatabaseException;
 
 class Connection
 {
@@ -213,7 +215,7 @@ class Connection
                     $host = is_array($config['host']) ? implode(',', $config['host']) : ($config['host'] ?? 'unknown');
                     $db = $config['database'] ?? 'unknown';
 
-                    throw new \Plugs\Exceptions\DatabaseException(
+                    throw new PlugsDatabaseException(
                         "Database connection failed: Too many connections (SQLSTATE 08004) for [{$host}] database [{$db}]",
                         null,
                         [],
@@ -224,13 +226,13 @@ class Connection
                 if ($attempt === $this->maxRetries) {
                     $this->auditLog("Connection failure for [{$this->connectionName}]: " . $e->getMessage(), 'CRITICAL');
 
-                    throw \Plugs\Exceptions\DatabaseException::fromPDOException($e);
+                    throw PlugsDatabaseException::fromPDOException($e);
                 }
                 usleep(100000 * $attempt);
             }
         }
 
-        throw new \RuntimeException("Failed to create PDO instance.");
+        throw new PlugsDatabaseException("Failed to create PDO instance.");
     }
 
     private function buildDsn(array $config): string
@@ -257,7 +259,7 @@ class Connection
             return "pgsql:host={$host};port={$port};dbname={$database};options='--client_encoding={$charset}'";
         }
 
-        throw new \InvalidArgumentException("Unsupported database driver: {$driver}");
+        throw ConfigurationException::unsupportedDriver($driver);
     }
 
     /**
@@ -589,7 +591,7 @@ class Connection
             }
         }
 
-        throw new \RuntimeException(
+        throw new PlugsDatabaseException(
             "Connection pool [{$name}] exhausted (max: " . self::$poolConfig['max_connections'] .
             ", in-use: " . count($pool['in_use']) .
             "). Timeout after {$timeout}s waiting for available connection."
@@ -1122,7 +1124,7 @@ class Connection
             $config = $dbConfig['connections'][$connectionName] ?? null;
 
             if ($config === null) {
-                throw new \InvalidArgumentException("Connection [{$connectionName}] not configured.");
+                throw ConfigurationException::connectionNotConfigured($connectionName);
             }
         }
 
@@ -1144,7 +1146,7 @@ class Connection
         }
 
         if (!isset($dbConfig['connections'][$name])) {
-            throw new \InvalidArgumentException("Connection [{$name}] not configured.");
+            throw ConfigurationException::connectionNotConfigured($name);
         }
 
         return $dbConfig['connections'][$name];
@@ -1534,7 +1536,7 @@ class Connection
             $this->auditLog($message, 'ALERT');
 
             if ($this->strictMode) {
-                throw new \Plugs\Exceptions\DatabaseException($message);
+                throw new PlugsDatabaseException($message);
             }
         }
     }

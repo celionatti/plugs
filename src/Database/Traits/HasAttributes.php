@@ -7,6 +7,8 @@ namespace Plugs\Database\Traits;
 use DateTime;
 use Exception;
 use Plugs\Database\Collection;
+use Plugs\Exceptions\ConfigurationException;
+use Plugs\Exceptions\MassAssignmentException;
 
 /**
  * @phpstan-consistent-constructor
@@ -81,7 +83,7 @@ trait HasAttributes
             if ($this->isFillable($key)) {
                 $this->setAttribute($key, $value);
             } elseif (static::$strictMassAssignment) {
-                throw new \Exception("Add [{$key}] to fillable to allow mass assignment on [" . static::class . "].");
+                throw new MassAssignmentException($key, static::class);
             }
         }
 
@@ -876,7 +878,7 @@ trait HasAttributes
                 $this->{$key} = $value;
             } catch (\TypeError $e) {
                 if ($this->strictCasting) {
-                    throw new \InvalidArgumentException(
+                    throw new ConfigurationException(
                         "Type mismatch for property [{$key}]. Expected [{$type}], got [" . gettype($value) . "]. " . $e->getMessage()
                     );
                 }
@@ -935,7 +937,7 @@ trait HasAttributes
         };
 
         if (!$isValid) {
-            throw new \InvalidArgumentException(
+            throw new ConfigurationException(
                 "Strict cast failure for [{$key}]. Cannot cast [" . gettype($value) . "] to [{$type}]."
             );
         }

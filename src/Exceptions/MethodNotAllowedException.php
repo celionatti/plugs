@@ -16,7 +16,7 @@ class MethodNotAllowedException extends HttpException
 {
     /**
      * The allowed methods for the requested route.
-     /**
+     *
      * @var array
      */
     protected $allowedMethods;

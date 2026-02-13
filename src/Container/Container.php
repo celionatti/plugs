@@ -14,6 +14,7 @@ namespace Plugs\Container;
 */
 
 use Closure;
+use Plugs\Exceptions\BindingResolutionException;
 use Psr\Container\ContainerInterface;
 use Psr\Container\NotFoundExceptionInterface;
 use ReflectionClass;
@@ -203,12 +204,12 @@ class Container implements ContainerInterface
         try {
             $reflector = new ReflectionClass($concrete);
         } catch (ReflectionException $e) {
-            throw new \RuntimeException("Target class [{$concrete}] does not exist.", 0, $e);
+            throw BindingResolutionException::targetNotFound($concrete, $e);
         }
 
         // Check if class is instantiable
         if (!$reflector->isInstantiable()) {
-            throw new \RuntimeException("Target [{$concrete}] is not instantiable.");
+            throw BindingResolutionException::notInstantiable($concrete);
         }
 
         $constructor = $reflector->getConstructor();
@@ -266,9 +267,7 @@ class Container implements ContainerInterface
                 if ($parameter->isDefaultValueAvailable()) {
                     $dependencies[] = $parameter->getDefaultValue();
                 } else {
-                    throw new \RuntimeException(
-                        "Cannot resolve primitive parameter [{$name}]"
-                    );
+                    throw BindingResolutionException::unresolvedPrimitive($name);
                 }
             } else {
                 // Resolve class dependency
@@ -302,7 +301,7 @@ class Container implements ContainerInterface
         }
 
         if (!is_callable($callback)) {
-            throw new \RuntimeException('Invalid callback provided');
+            throw new BindingResolutionException('Invalid callback provided.');
         }
 
         $dependencies = $this->resolveCallbackDependencies($callback, $parameters);

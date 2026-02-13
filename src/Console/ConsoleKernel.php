@@ -54,6 +54,7 @@ use Plugs\Console\Commands\AiFixCommand;
 use Plugs\Console\Commands\AiAuditCommand;
 use Plugs\Console\Commands\AIAgentCommand;
 use Plugs\Console\Commands\AIThinkCommand;
+use Plugs\Exceptions\ConsoleException;
 
 
 /*
@@ -220,11 +221,11 @@ class ConsoleKernel
     public function register(string $name, string $class): void
     {
         if (!class_exists($class)) {
-            throw new \InvalidArgumentException("Command class '{$class}' does not exist.");
+            throw ConsoleException::classNotFound($class);
         }
 
         if (!is_subclass_of($class, Command::class)) {
-            throw new \InvalidArgumentException("Command class must extend " . Command::class);
+            throw ConsoleException::invalidClass($class, Command::class);
         }
 
         $this->commands[$name] = $class;
@@ -240,7 +241,7 @@ class ConsoleKernel
     public function alias(string $alias, string $commandName): void
     {
         if (!isset($this->commands[$commandName])) {
-            throw new \InvalidArgumentException("Cannot alias non-existent command '{$commandName}'");
+            throw ConsoleException::aliasNotFound($commandName);
         }
 
         $this->aliases[$alias] = $commandName;

@@ -13,6 +13,7 @@ namespace Plugs\Mail;
 | It supports simple emails, CC/BCC, attachments, and multipart messages.
 */
 
+use Plugs\Exceptions\ServiceException;
 use Symfony\Component\Mailer\Exception\TransportExceptionInterface;
 use Symfony\Component\Mailer\Mailer;
 use Symfony\Component\Mailer\Transport;
@@ -28,10 +29,7 @@ class MailService
     public function __construct(array $config)
     {
         if (!class_exists(Mailer::class)) {
-            throw new \RuntimeException(
-                'The "symfony/mailer" package is required to use the Mail service. ' .
-                'Please install it via composer: composer require symfony/mailer'
-            );
+            throw ServiceException::missingPackage('symfony/mailer', 'MailService');
         }
 
         // Create DSN (Data Source Name) for transport

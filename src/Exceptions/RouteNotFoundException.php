@@ -40,13 +40,14 @@ class RouteNotFoundException extends PlugsException
      *
      * @param string $path
      * @param string $method
+     * @param string $message
      */
-    public function __construct(string $path = '', string $method = '')
+    public function __construct(string $path = '', string $method = '', string $message = '')
     {
         $this->path = $path;
         $this->method = $method;
 
-        $message = $this->formatMessage();
+        $message = $message ?: $this->formatMessage();
         parent::__construct($message);
     }
 

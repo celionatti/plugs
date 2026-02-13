@@ -212,6 +212,39 @@ function renderDebugErrorPage(Throwable $e): void
             border: 1px solid var(--border-color);
         }
 
+        /* Breadcrumbs / Paths */
+        .render-path {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+            align-items: center;
+            margin-top: 1.5rem;
+            font-size: 0.8125rem;
+            color: var(--text-muted);
+            background: rgba(255, 255, 255, 0.03);
+            padding: 0.75rem 1rem;
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+        }
+
+        .path-item {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .path-item:not(:last-child)::after {
+            content: "›";
+            color: var(--text-muted);
+            font-size: 1.2rem;
+            line-height: 1;
+        }
+
+        .path-view {
+            color: var(--accent-primary);
+            font-weight: 500;
+        }
+
         /* Content Area */
         .content {
             flex: 1;
@@ -222,201 +255,6 @@ function renderDebugErrorPage(Throwable $e): void
         }
 
         .error-banner {
-            background: linear-gradient(to bottom, rgba(30, 41, 59, 0.4), transparent);
-            border-bottom: 1px solid var(--border-color);
-            padding: 3rem;
-            flex-shrink: 0;
-        }
-
-        .exception-type {
-            font-size: 0.875rem;
-            color: var(--danger);
-            font-weight: 600;
-            margin-bottom: 1rem;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            text-transform: uppercase;
-            letter-spacing: 0.05em;
-        }
-        
-        .exception-type::before {
-            content: "";
-            display: block;
-            width: 6px;
-            height: 6px;
-            background: var(--danger);
-            border-radius: 50%;
-            box-shadow: 0 0 0 4px rgba(239, 68, 68, 0.2);
-        }
-
-        .exception-message {
-            font-size: 1.75rem;
-            font-weight: 600;
-            color: var(--text-primary);
-            margin-bottom: 1.5rem;
-            line-height: 1.3;
-        }
-        
-        .exception-location {
-            font-family: "JetBrains Mono", monospace;
-            font-size: 0.875rem;
-            background: var(--bg-card);
-            padding: 0.75rem 1rem;
-            border-radius: 8px;
-            border: 1px solid var(--border-color);
-            color: var(--text-secondary);
-            display: inline-flex;
-            align-items: center;
-            gap: 0.75rem;
-        }
-
-        /* Code Viewer */
-        .code-viewer-container {
-            border-bottom: 1px solid var(--border-color);
-            background: rgba(13, 17, 23, 0.3);
-            flex-shrink: 0;
-            min-height: 100px;
-        }
-
-        .code-viewer {
-            padding: 0;
-            overflow-x: auto;
-            display: none;
-        }
-
-        .code-viewer.active {
-            display: block;
-        }
-        
-        .code-table {
-            width: 100%;
-            border-collapse: collapse;
-            font-family: "JetBrains Mono", monospace;
-            font-size: 0.875rem;
-        }
-        
-        .code-row {
-            line-height: 1.6;
-        }
-        
-        .code-line-num {
-            width: 60px;
-            text-align: right;
-            padding: 0 1rem;
-            color: var(--text-muted);
-            user-select: none;
-            border-right: 1px solid var(--border-color);
-            vertical-align: top;
-            background: rgba(255,255,255,0.01);
-        }
-        
-        .code-content {
-            padding: 0 1.5rem;
-            color: var(--text-secondary);
-            white-space: pre;
-            position: relative;
-        }
-        
-        .code-row.error-line {
-            background-color: var(--highlight-bg);
-        }
-        
-        .code-row.error-line .code-line-num {
-            color: var(--danger);
-            font-weight: bold;
-            border-right-color: rgba(239, 68, 68, 0.3);
-            background-color: var(--highlight-bg);
-        }
-        
-        .code-row.error-line .code-content {
-            color: var(--text-primary);
-        }
-
-        /* Sections */
-        .section-container {
-            padding: 3rem;
-        }
-        
-        .tabs {
-            display: flex;
-            gap: 2rem;
-            border-bottom: 1px solid var(--border-color);
-            margin-bottom: 2rem;
-        }
-        
-        .tab {
-            padding-bottom: 1rem;
-            color: var(--text-secondary);
-            cursor: pointer;
-            font-weight: 500;
-            transition: all 0.2s;
-            position: relative;
-            font-size: 0.95rem;
-        }
-        
-        .tab:hover { color: var(--text-primary); }
-        
-        .tab.active {
-            color: var(--accent-primary);
-        }
-        
-        .tab.active::after {
-            content: "";
-            position: absolute;
-            bottom: -1px;
-            left: 0;
-            width: 100%;
-            height: 2px;
-            background: var(--accent-primary);
-            box-shadow: 0 -2px 10px var(--accent-primary);
-        }
-        
-        .info-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-            gap: 1.5rem;
-        }
-        
-        .info-card {
-            background: var(--bg-card);
-            border: 1px solid var(--border-color);
-            border-radius: 12px;
-            padding: 1.5rem;
-            transition: transform 0.2s;
-        }
-        
-        .info-card:hover {
-            border-color: rgba(255,255,255,0.15);
-        }
-        
-        .info-label {
-            font-size: 0.75rem;
-            text-transform: uppercase;
-            color: var(--text-muted);
-            margin-bottom: 0.75rem;
-            font-weight: 700;
-            letter-spacing: 0.05em;
-        }
-        
-        .info-value {
-            font-family: "JetBrains Mono", monospace;
-            font-size: 0.875rem;
-            color: var(--text-primary);
-            word-break: break-all;
-        }
-
-        .tab-content { display: none; }
-        .tab-content.active { display: block; animation: fadeIn 0.3s ease-out; }
-        
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(10px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-        
-        @media (max-width: 1024px) {
-            .container { flex-direction: column-reverse; overflow: auto; }
-            .sidebar { width: 100%; height: 300px; border-right: none; border-top: 1px solid var(--border-color); }
             background: linear-gradient(to bottom, rgba(30, 41, 59, 0.4), transparent);
             border-bottom: 1px solid var(--border-color);
             padding: 3rem;
@@ -656,13 +494,38 @@ function renderDebugErrorPage(Throwable $e): void
 
         <main class="content">
             <div class="error-banner">
-                <div class="exception-type">' . htmlspecialchars($className) . '</div>
+                <div class="exception-type">
+                    ' . htmlspecialchars($className) . '
+                    ' . ($e instanceof \Plugs\Exceptions\ViewException && $e->getFrameworkCode() ? '<span style="margin-left: 8px; opacity: 0.6">[' . $e->getFrameworkCode() . ']</span>' : '') . '
+                </div>
                 <h1 class="exception-message">' . htmlspecialchars($e->getMessage()) . '</h1>
                 <div class="exception-location" id="active-location">
                     <span class="loc-file">' . htmlspecialchars(basename($file)) . '</span>
                     <span style="color: var(--border-color)">|</span>
                     <span class="loc-line">Line ' . $line . '</span>
-                </div>
+                </div>';
+
+    if ($e instanceof \Plugs\Exceptions\ViewException) {
+        $context = method_exists($e, 'getContext') ? $e->getContext() : [];
+        $renderPath = $context['render_path'] ?? [];
+        $viewName = $e->getView();
+
+        if ($viewName || !empty($renderPath)) {
+            $html .= '<div class="render-path">';
+            $html .= '<span style="margin-right: 8px; font-weight: 600; color: var(--text-secondary)">Render Path:</span>';
+
+            if (empty($renderPath) && $viewName) {
+                $html .= '<span class="path-item"><span class="path-view">' . htmlspecialchars($viewName) . '</span></span>';
+            } else {
+                foreach ($renderPath as $index => $pathView) {
+                    $html .= '<span class="path-item"><span class="path-view">' . htmlspecialchars($pathView) . '</span></span>';
+                }
+            }
+            $html .= '</div>';
+        }
+    }
+
+    $html .= '
             </div>
 
             <div class="code-viewer-container">

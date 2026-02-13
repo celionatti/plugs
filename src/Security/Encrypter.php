@@ -12,6 +12,8 @@ namespace Plugs\Security;
 | This class is for encrypting and decrypting data using OpenSSL.
 */
 
+use Plugs\Exceptions\EncryptionException;
+
 class Encrypter
 {
     private $key;
@@ -20,7 +22,7 @@ class Encrypter
     public function __construct(string $key)
     {
         if (strlen($key) !== 32) {
-            throw new \InvalidArgumentException('Encryption key must be 32 bytes');
+            throw EncryptionException::invalidKey();
         }
 
         $this->key = $key;
@@ -41,7 +43,7 @@ class Encrypter
         );
 
         if (!$encrypted) {
-            throw new \RuntimeException('Encryption failed');
+            throw EncryptionException::encryptionFailed();
         }
 
         return base64_encode($iv . $tag . $encrypted);
@@ -52,13 +54,13 @@ class Encrypter
         $data = base64_decode($encrypted, true);
 
         if ($data === false) {
-            throw new \RuntimeException('Invalid encrypted data');
+            throw EncryptionException::invalidPayload('Invalid encrypted data');
         }
 
         $ivLength = openssl_cipher_iv_length($this->cipher);
 
         if (strlen($data) < $ivLength + 16) {
-            throw new \RuntimeException('Encrypted data is too short');
+            throw EncryptionException::invalidPayload('Encrypted data is too short');
         }
 
         $iv = substr($data, 0, $ivLength);
@@ -75,7 +77,7 @@ class Encrypter
         );
 
         if ($decrypted === false) {
-            throw new \RuntimeException('Decryption failed — data may be tampered');
+            throw EncryptionException::decryptionFailed();
         }
 
         return json_decode($decrypted, true, 512, JSON_THROW_ON_ERROR);

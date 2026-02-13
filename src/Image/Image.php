@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Plugs\Image;
 
 use GdImage;
+use Plugs\Exceptions\ImageException;
 
 /*
 |--------------------------------------------------------------------------
@@ -29,17 +30,17 @@ class Image
     public function load(string $path): self
     {
         if (!file_exists($path)) {
-            throw new \RuntimeException("Image not found: {$path}");
+            throw ImageException::fileNotFound($path);
         }
 
         if (!is_readable($path)) {
-            throw new \RuntimeException("Image is not readable: {$path}");
+            throw new ImageException("Image is not readable: {$path}", $path);
         }
 
         $info = @getimagesize($path);
 
         if ($info === false) {
-            throw new \RuntimeException("Invalid image file: {$path}");
+            throw new ImageException("Invalid image file: {$path}", $path);
         }
 
         $this->width = $info[0];
@@ -72,7 +73,7 @@ class Image
                     break;
                 case IMAGETYPE_WEBP:
                     if (!function_exists('imagecreatefromwebp')) {
-                        throw new \RuntimeException("WebP support not available");
+                        throw ImageException::unsupportedType('WebP');
                     }
                     $image = imagecreatefromwebp($path);
 
@@ -81,19 +82,19 @@ class Image
                     if (function_exists('imagecreatefrombmp')) {
                         $image = imagecreatefrombmp($path);
                     } else {
-                        throw new \RuntimeException("BMP support not available");
+                        throw ImageException::unsupportedType('BMP');
                     }
 
                     break;
                 default:
-                    throw new \RuntimeException("Unsupported image type: " . image_type_to_mime_type($this->type));
+                    throw ImageException::unsupportedType(image_type_to_mime_type($this->type), $path);
             }
         } catch (\Exception $e) {
-            throw new \RuntimeException("Failed to load image: " . $e->getMessage());
+            throw new ImageException("Failed to load image: " . $e->getMessage(), $path, $e);
         }
 
         if (!$image) {
-            throw new \RuntimeException("Failed to create image resource from: {$path}");
+            throw ImageException::operationFailed('load', $path);
         }
 
         $this->image = $image;
@@ -107,7 +108,7 @@ class Image
     public function fromResource($resource): self
     {
         if (!$resource instanceof GdImage) {
-            throw new \InvalidArgumentException("Invalid GD resource provided");
+            throw new ImageException("Invalid GD resource provided");
         }
 
         $this->image = $resource;
@@ -150,7 +151,7 @@ class Image
         $newImage = imagecreatetruecolor($newWidth, $newHeight);
 
         if ($newImage === false) {
-            throw new \RuntimeException('Failed to create new image resource');
+            throw ImageException::operationFailed('create new image resource');
         }
 
         // Preserve transparency for PNG and GIF
@@ -172,7 +173,7 @@ class Image
         if (!$result) {
             imagedestroy($newImage);
 
-            throw new \RuntimeException('Failed to resize image');
+            throw ImageException::operationFailed('resize');
         }
 
         imagedestroy($this->image);
@@ -212,7 +213,7 @@ class Image
         $tempImage = imagecreatetruecolor($newWidth, $newHeight);
 
         if ($tempImage === false) {
-            throw new \RuntimeException('Failed to create temporary image');
+            throw ImageException::operationFailed('create temporary image');
         }
 
         $this->preserveTransparency($tempImage);
@@ -236,7 +237,7 @@ class Image
         if ($newImage === false) {
             imagedestroy($tempImage);
 
-            throw new \RuntimeException('Failed to create final image');
+            throw ImageException::operationFailed('create final image');
         }
 
         $this->preserveTransparency($newImage);
@@ -265,13 +266,13 @@ class Image
 
         // Validate crop coordinates
         if ($x < 0 || $y < 0 || $x + $width > $this->width || $y + $height > $this->height) {
-            throw new \InvalidArgumentException('Crop coordinates exceed image boundaries');
+            throw new ImageException('Crop coordinates exceed image boundaries');
         }
 
         $newImage = imagecreatetruecolor($width, $height);
 
         if ($newImage === false) {
-            throw new \RuntimeException('Failed to create cropped image');
+            throw ImageException::operationFailed('create cropped image');
         }
 
         $this->preserveTransparency($newImage);
@@ -296,7 +297,7 @@ class Image
         $newImage = imagerotate($this->image, $angle, $bgColor);
 
         if ($newImage === false) {
-            throw new \RuntimeException('Failed to rotate image');
+            throw ImageException::operationFailed('rotate');
         }
 
         imagedestroy($this->image);
@@ -398,13 +399,13 @@ class Image
         $this->ensureImageLoaded();
 
         if (!file_exists($watermarkPath)) {
-            throw new \RuntimeException("Watermark image not found: {$watermarkPath}");
+            throw ImageException::fileNotFound($watermarkPath);
         }
 
         $watermark = @imagecreatefrompng($watermarkPath);
 
         if ($watermark === false) {
-            throw new \RuntimeException('Failed to load watermark image');
+            throw ImageException::operationFailed('load watermark', $watermarkPath);
         }
 
         $wmWidth = imagesx($watermark);
@@ -444,7 +445,7 @@ class Image
                     (int) (($this->height - $wmHeight) / 2),
                 ];
             default:
-                throw new \InvalidArgumentException("Invalid watermark position: {$position}");
+                throw new ImageException("Invalid watermark position: {$position}");
         }
     }
 
@@ -481,17 +482,17 @@ class Image
         $this->ensureImageLoaded();
 
         if (!function_exists('imagettftext')) {
-            throw new \RuntimeException('FreeType support is not enabled in your PHP installation');
+            throw new ImageException('FreeType support is not enabled in your PHP installation');
         }
 
         if (!file_exists($fontPath)) {
-            throw new \RuntimeException("Font file not found: {$fontPath}");
+            throw ImageException::fileNotFound($fontPath);
         }
 
         $textColor = imagecolorallocate($this->image, $color[0], $color[1], $color[2]);
 
         if ($textColor === false) {
-            throw new \RuntimeException('Failed to allocate text color');
+            throw ImageException::operationFailed('allocate text color');
         }
 
         imagettftext($this->image, $size, $angle, $x, $y, $textColor, $fontPath, $text);
@@ -605,12 +606,12 @@ class Image
         $directory = dirname($path);
         if (!is_dir($directory)) {
             if (!mkdir($directory, 0755, true)) {
-                throw new \RuntimeException("Failed to create directory: {$directory}");
+                throw new ImageException("Failed to create directory: {$directory}");
             }
         }
 
         if (!is_writable($directory)) {
-            throw new \RuntimeException("Directory is not writable: {$directory}");
+            throw new ImageException("Directory is not writable: {$directory}");
         }
 
         $result = false;
@@ -632,20 +633,20 @@ class Image
                     break;
                 case IMAGETYPE_WEBP:
                     if (!function_exists('imagewebp')) {
-                        throw new \RuntimeException("WebP support not available");
+                        throw ImageException::unsupportedType('WebP');
                     }
                     $result = imagewebp($this->image, $path, $this->quality);
 
                     break;
                 default:
-                    throw new \RuntimeException("Unsupported image type for saving");
+                    throw ImageException::unsupportedType('unknown', $path);
             }
         } catch (\Exception $e) {
-            throw new \RuntimeException("Failed to save image: " . $e->getMessage());
+            throw new ImageException("Failed to save image: " . $e->getMessage(), $path, $e);
         }
 
         if (!$result) {
-            throw new \RuntimeException("Failed to save image to: {$path}");
+            throw ImageException::operationFailed('save', $path);
         }
 
         // Set file permissions
@@ -653,7 +654,7 @@ class Image
 
         // Verify file was saved
         if (!file_exists($path) || filesize($path) === 0) {
-            throw new \RuntimeException("Image file was not saved correctly");
+            throw new ImageException("Image file was not saved correctly", $path);
         }
 
         return true;
@@ -696,7 +697,7 @@ class Image
 
                 break;
             default:
-                throw new \RuntimeException("Unsupported image type for output");
+                throw ImageException::unsupportedType('unknown');
         }
     }
 
@@ -741,7 +742,7 @@ class Image
         $memoryLimit = $this->getMemoryLimit();
 
         if ($memoryLimit > 0 && $memoryNeeded > $memoryLimit - memory_get_usage()) {
-            throw new \RuntimeException(
+            throw new ImageException(
                 'Insufficient memory to process image. Required: ' .
                 round($memoryNeeded / 1024 / 1024, 2) . 'MB'
             );
@@ -765,10 +766,10 @@ class Image
         switch ($unit) {
             case 'g':
                 $value *= 1024;
-                // no break
+            // no break
             case 'm':
                 $value *= 1024;
-                // no break
+            // no break
             case 'k':
                 $value *= 1024;
         }
@@ -782,7 +783,7 @@ class Image
     private function ensureImageLoaded(): void
     {
         if ($this->image === null) {
-            throw new \RuntimeException('No image loaded. Call load() first.');
+            throw new ImageException('No image loaded. Call load() first.');
         }
     }
 

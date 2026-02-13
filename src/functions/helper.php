@@ -17,7 +17,7 @@ function truncateText(string $text, int $maxLength, string $suffix = '...'): str
 
     // Try to break at word boundary
     $lastSpace = strrpos($truncated, ' ');
-    $threshold = max(20, (int)($maxLength * 0.7)); // At least 70% of max length
+    $threshold = max(20, (int) ($maxLength * 0.7)); // At least 70% of max length
 
     if ($lastSpace !== false && $lastSpace > $threshold) {
         $truncated = substr($truncated, 0, $lastSpace);
@@ -317,4 +317,26 @@ function generateExcerpt(string $content, int $length = 200, string $suffix = '.
     $text = cleanHtmlText($content);
 
     return truncateText($text, $length, $suffix);
+}
+
+if (!function_exists('abort')) {
+    /**
+     * Throw an HTTP exception with a given code.
+     *
+     * @param int $code
+     * @param string $message
+     * @param array $headers
+     * @return never
+     *
+     * @throws \Plugs\Exceptions\HttpException
+     * @throws \Plugs\Exceptions\ModelNotFoundException
+     */
+    function abort(int $code, string $message = '', array $headers = []): never
+    {
+        if ($code === 404) {
+            throw new \Plugs\Exceptions\HttpException($code, $message ?: 'Not Found', null, $headers);
+        }
+
+        throw new \Plugs\Exceptions\HttpException($code, $message, null, $headers);
+    }
 }
