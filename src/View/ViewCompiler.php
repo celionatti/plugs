@@ -263,6 +263,9 @@ class ViewCompiler
             $content = $contentWithLines;
         }
 
+        // Phase 0.5: Compile layout tags before component extraction
+        $content = $this->compileLayoutTag($content);
+
         // Phase 1: Extract components first (they have highest priority)
         $content = $this->extractComponentsWithSlots($content);
 
@@ -349,7 +352,7 @@ class ViewCompiler
         ) ?? $content;
 
         // 5. Lowercase components: <counter /> (excluding common HTML tags)
-        $htmlTags = 'a|abbr|address|area|article|aside|audio|b|base|bdi|bdo|blockquote|body|br|button|canvas|caption|cite|code|col|colgroup|data|datalist|dd|del|details|dfn|dialog|div|dl|dt|em|embed|fieldset|figcaption|figure|footer|form|h1|h2|h3|h4|h5|h6|head|header|hgroup|hr|html|i|iframe|img|input|ins|kbd|label|legend|li|link|main|map|mark|math|menu|meta|meter|nav|noscript|object|ol|optgroup|option|output|p|param|picture|pre|progress|q|rp|rt|ruby|s|samp|script|section|select|slot|small|source|span|strong|style|sub|summary|sup|svg|table|tbody|td|template|textarea|tfoot|th|thead|time|title|tr|track|u|ul|var|video|wbr';
+        $htmlTags = 'a|abbr|address|area|article|aside|audio|b|base|bdi|bdo|blockquote|body|br|button|canvas|caption|cite|code|col|colgroup|data|datalist|dd|del|details|dfn|dialog|div|dl|dt|em|embed|fieldset|figcaption|figure|footer|form|h1|h2|h3|h4|h5|h6|head|header|hgroup|hr|html|i|iframe|img|input|ins|kbd|label|layout|legend|li|link|main|map|mark|math|menu|meta|meter|nav|noscript|object|ol|optgroup|option|output|p|param|picture|pre|progress|q|rp|rt|ruby|s|samp|script|section|select|slot|small|source|span|strong|style|sub|summary|sup|svg|table|tbody|td|template|textarea|tfoot|th|thead|time|title|tr|track|u|ul|var|video|wbr';
         $content = preg_replace_callback(
             '/<(?!(?:' . $htmlTags . ')\b)([a-z][a-zA-Z0-9]*)' . $attrRegex . '\/>/s',
             function ($matches) {
@@ -850,6 +853,47 @@ class ViewCompiler
         $content = preg_replace('/<\/for\s*>/s', '<?php endfor; ?>', $content);
 
         return $content;
+    }
+
+    /**
+     * Compile tag-based layout inheritance: <layout name="..."> content </layout>
+     */
+    private function compileLayoutTag(string $content): string
+    {
+        return preg_replace_callback('/<layout\s+name=["\'](.+?)["\']\s*>(.*?)<\/layout>/s', function ($matches) {
+            $layoutName = $matches[1];
+            $body = $matches[2];
+
+            $sections = [];
+            $defaultContent = [];
+
+            // 1. Parse <slot name="..."> content </slot>
+            $body = preg_replace_callback('/<slot\s+name=["\'](.+?)["\']\s*>(.*?)<\/slot>/s', function ($sMatches) use (&$sections) {
+                $sections[$sMatches[1]] = trim($sMatches[2]);
+                return '';
+            }, $body);
+
+            // 2. Parse <x-slot:name> content </x-slot:name>
+            $body = preg_replace_callback('/<x-slot:([\w:-]+)\s*>(.*?)<\/x-slot(?::\1)?>/s', function ($sMatches) use (&$sections) {
+                $sections[$sMatches[1]] = trim($sMatches[2]);
+                return '';
+            }, $body);
+
+            // 3. Anything left goes to @section('content')
+            $defaultContent = trim($body);
+
+            $result = "@extends('{$layoutName}')\n\n";
+
+            foreach ($sections as $name => $content) {
+                $result .= "@section('{$name}')\n{$content}\n@endsection\n\n";
+            }
+
+            if (!empty($defaultContent)) {
+                $result .= "@section('content')\n{$defaultContent}\n@endsection";
+            }
+
+            return $result;
+        }, $content);
     }
 
     private function compileConditionals(string $content): string
