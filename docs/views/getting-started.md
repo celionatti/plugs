@@ -84,26 +84,36 @@ return view('welcome')
     ->withData(['message' => 'Thanks for visiting.']);
 ```
 
-## Echo Statements
+## Echo Statements & Security
+
+Plugs V5 introduces a **security-first** escaping model that is context-aware.
 
 ### Escaped Output (Safe)
 
 ```blade
-{{-- Escapes HTML entities --}}
+{{-- Context-aware escaping (HTML body by default) --}}
 {{ $userInput }}
+```
 
-{{-- Equivalent to: --}}
-<?php echo htmlspecialchars($userInput, ENT_QUOTES, 'UTF-8'); ?>
+### Context-Specific Escaping
+
+For maximum security, use specialized helpers within attributes or scripts:
+
+```blade
+{{-- Attribute safe escaping --}}
+<div title="{{ attr($description) }}">...</div>
+
+{{-- JavaScript safe encoding --}}
+<script>
+    const config = {{ js($configArray) }};
+</script>
 ```
 
 ### Raw Output (Unescaped)
 
 ```blade
-{{-- Outputs raw HTML - use carefully! --}}
+{{-- Outputs raw HTML - use only for trusted content! --}}
 {!! $trustedHtml !!}
-
-{{-- Equivalent to: --}}
-<?php echo $trustedHtml; ?>
 ```
 
 ### Comments
@@ -128,15 +138,15 @@ return view('welcome')
     <header>
         @include('partials.header')
     </header>
-    
+
     <main>
         @yield('content')
     </main>
-    
+
     <footer>
         @include('partials.footer')
     </footer>
-    
+
     @stack('scripts')
 </body>
 </html>
@@ -166,62 +176,51 @@ return view('welcome')
 
 ## Control Structures
 
+Plugs supports two styles of control structures: traditional **@directives** and modern **Tags**.
+
 ### Conditionals
+
+#### Directive Style
 
 ```blade
 @if($user->isAdmin())
     <p>Welcome, Admin!</p>
-@elseif($user->isModerator())
-    <p>Welcome, Moderator!</p>
 @else
     <p>Welcome, {{ $user->name }}!</p>
 @endif
+```
 
-{{-- Unless (inverse if) --}}
-@unless($user->isBanned())
-    <p>You have access.</p>
-@endunless
+#### Modern Tag Style
 
-{{-- Isset check --}}
-@isset($records)
-    <p>Records found: {{ count($records) }}</p>
-@endisset
-
-{{-- Empty check --}}
-@empty($records)
-    <p>No records found.</p>
-@endempty
+```html
+<if :condition="$user->isAdmin()">
+  <p>Welcome, Admin!</p>
+  <else />
+  <p>Welcome, {{ $user->name }}!</p>
+</if>
 ```
 
 ### Loops
 
+#### Directive Style
+
 ```blade
-{{-- Foreach loop --}}
 @foreach($items as $item)
     <li>{{ $item->name }}</li>
 @endforeach
+```
 
-{{-- Foreach with empty fallback --}}
-@forelse($items as $item)
-    <li>{{ $item->name }}</li>
-@empty
-    <li>No items found.</li>
-@endforelse
+#### Modern Tag Style
 
-{{-- For loop --}}
-@for($i = 0; $i < 10; $i++)
-    <p>Iteration {{ $i }}</p>
-@endfor
-
-{{-- While loop --}}
-@while($condition)
-    <p>Looping...</p>
-@endwhile
+```html
+<loop :items="$items" as="$item">
+  <li>{{ $item->name }}</li>
+</loop>
 ```
 
 ### Loop Variable
 
-Access the `$loop` variable inside loops:
+Access the `$loop` variable inside both types of loops:
 
 ```blade
 @foreach($items as $item)

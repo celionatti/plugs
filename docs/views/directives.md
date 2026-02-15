@@ -4,10 +4,10 @@ Complete reference for all available template directives in the Plugs View syste
 
 ## Echo Statements
 
-| Syntax | Description |
-|--------|-------------|
-| `{{ $var }}` | Escaped output (XSS-safe) |
-| `{!! $var !!}` | Raw/unescaped output |
+| Syntax              | Description                     |
+| ------------------- | ------------------------------- |
+| `{{ $var }}`        | Escaped output (XSS-safe)       |
+| `{!! $var !!}`      | Raw/unescaped output            |
 | `{{-- comment --}}` | Template comment (not rendered) |
 
 ---
@@ -68,18 +68,18 @@ Complete reference for all available template directives in the Plugs View syste
 
 Available inside `@foreach` and `@forelse`:
 
-| Property | Description |
-|----------|-------------|
-| `$loop->index` | Current index (0-based) |
-| `$loop->iteration` | Current iteration (1-based) |
-| `$loop->count` | Total items |
-| `$loop->first()` | Is first iteration |
-| `$loop->last()` | Is last iteration |
-| `$loop->even()` | Is even iteration |
-| `$loop->odd()` | Is odd iteration |
-| `$loop->remaining()` | Remaining iterations |
-| `$loop->depth` | Nesting level |
-| `$loop->parent` | Parent loop variable |
+| Property             | Description                 |
+| -------------------- | --------------------------- |
+| `$loop->index`       | Current index (0-based)     |
+| `$loop->iteration`   | Current iteration (1-based) |
+| `$loop->count`       | Total items                 |
+| `$loop->first()`     | Is first iteration          |
+| `$loop->last()`      | Is last iteration           |
+| `$loop->even()`      | Is even iteration           |
+| `$loop->odd()`       | Is odd iteration            |
+| `$loop->remaining()` | Remaining iterations        |
+| `$loop->depth`       | Nesting level               |
+| `$loop->parent`      | Parent loop variable        |
 
 ---
 
@@ -104,15 +104,80 @@ Available inside `@foreach` and `@forelse`:
 
 ---
 
-## Includes & Components
+---
 
-```blade
-@include('partials.header')
-@include('partials.card', ['title' => 'My Card'])
+## Modern Tag Syntax (New in V5)
 
-{{-- Components --}}
-<x-button type="primary">Click Me</x-button>
-<x-card :title="$title" :data="$data" />
+Plugs V5 introduces a modern, HTML-friendly tag syntax for control structures. This is simpler to read and integrates perfectly with IDE highlighting.
+
+### Tag-Based Conditionals
+
+| Tag        | Attribute    | Description                            |
+| ---------- | ------------ | -------------------------------------- |
+| `<if>`     | `:condition` | Renders content if condition is true.  |
+| `<elseif>` | `:condition` | Sequential conditional check.          |
+| `<else />` | -            | Fallback content.                      |
+| `<unless>` | `:condition` | Renders content if condition is false. |
+
+**Example:**
+
+```html
+<if :condition="$user->isAdmin()">
+  <x-admin-badge />
+  <elseif :condition="$user->isVerified()" />
+  <i class="bi bi-patch-check"></i>
+  <else />
+  <x-guest-badge />
+</if>
+```
+
+### Tag-Based Loops
+
+| Tag       | Attribute                      | Description                              |
+| --------- | ------------------------------ | ---------------------------------------- |
+| `<loop>`  | `:items`                       | The array or collection to iterate over. |
+| `<loop>`  | `as`                           | The variable name for each item.         |
+| `<for>`   | `:init`, `:condition`, `:step` | Standard for-loop.                       |
+| `<while>` | `:condition`                   | Standard while-loop.                     |
+
+**Example:**
+
+```html
+<loop :items="$posts" as="$post">
+  <article>{{ $post->title }}</article>
+</loop>
+
+<for :init="$i = 0" :condition="$i < 5" :step="$i++">
+  <span>Rating: {{ $i }}</span>
+</for>
+```
+
+---
+
+## Security & Contextual Escaping
+
+Plugs uses a context-aware escaping engine to prevent XSS in different parts of your HTML.
+
+| Directive / Helper | Context         | Description                                           |
+| ------------------ | --------------- | ----------------------------------------------------- |
+| `{{ $var }}`       | HTML Body       | Default escaping for standard text.                   |
+| `attr($var)`       | HTML Attributes | Escapes quotes and special characters for attributes. |
+| `js($var)`         | Script Tags     | Safe JSON encoding with script tag protection.        |
+| `{!! $var !!}`     | Raw             | Disables escaping (use with extreme caution).         |
+
+**Examples:**
+
+```html
+{{-- Safe for page content --}}
+<div>{{ $bio }}</div>
+
+{{-- Safe for attributes --}}
+<button title="{{ attr($tooltip) }}">Hover Me</button>
+
+{{-- Safe for JS variables --}}
+<script>
+  const userRole = {{ js($role) }};
+</script>
 ```
 
 ---
@@ -238,12 +303,12 @@ Available inside `@foreach` and `@forelse`:
 @sanitize($content, 'rich')
 ```
 
-| Mode | Allowed Tags |
-|------|--------------|
-| `strict` | None |
-| `basic` | `<p><br><strong><em><b><i>` |
+| Mode      | Allowed Tags                               |
+| --------- | ------------------------------------------ |
+| `strict`  | None                                       |
+| `basic`   | `<p><br><strong><em><b><i>`                |
 | `default` | `<p><br><strong><em><b><i><ul><ol><li><a>` |
-| `rich` | Above + `<h1-h6><blockquote><code><pre>` |
+| `rich`    | Above + `<h1-h6><blockquote><code><pre>`   |
 
 ---
 

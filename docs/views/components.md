@@ -55,7 +55,7 @@ Usage:
     'icon' => null
 ])
 
-<button 
+<button
     class="btn btn-{{ $type }} btn-{{ $size }}"
     @disabled($disabled)
 >
@@ -126,9 +126,9 @@ Usage:
     <x-slot:header>
         <h3>Custom Header</h3>
     </x-slot:header>
-    
+
     <p>Card body content here.</p>
-    
+
     <x-slot:footer>
         <button>Action</button>
     </x-slot:footer>
@@ -194,20 +194,82 @@ $viewEngine->alias('icon', 'ui.icon');
 
 ---
 
-## Dynamic Components
+---
 
-Render components dynamically:
+## Scoped Component Referencing (New in V5)
+
+For complex applications, you can organize components into sub-directories and reference them using the `::` scoped syntax.
+
+### Automatic Directory Mapping
+
+- `<User::Profile />` maps to `resources/views/components/user/profile.plug.php`.
+- `<Admin::Dashboard::Stats />` maps to `resources/views/components/admin/dashboard/stats.plug.php`.
+
+**Usage Example:**
+
+```html
+{{-- Standard Tag Syntax --}}
+<Admin::Sidebar />
+
+{{-- x-prefix Syntax --}}
+<x-Admin::Sidebar />
+```
+
+---
+
+## Reactive Components (Livewire Style)
+
+Plugs V5 includes a built-in reactive component bridge powered by `plugs-spa.js`. This allows you to create interactive components that update via AJAX without complex JavaScript.
+
+### 1. The PHP Component
+
+Extend the `ReactiveComponent` class to enable state management.
 
 ```php
-// In controller
-$component = $userType === 'admin' ? 'admin-dashboard' : 'user-dashboard';
-return view('page', ['component' => $component]);
+namespace App\Components;
+
+use Plugs\View\ReactiveComponent;
+
+class Counter extends ReactiveComponent {
+    public int $count = 0;
+
+    public function increment() {
+        $this->count++;
+    }
+
+    public function render() {
+        return 'components.counter';
+    }
+}
 ```
 
-```blade
-{{-- In view - using ViewEngine --}}
-<?php echo $view->renderDynamic($component, ['user' => $user]); ?>
+### 2. The Interactive View
+
+Use the `p-` attributes to bind events and data.
+
+```html
+{{-- components/counter.plug.php --}}
+<div>
+  <h1>Count: {{ $count }}</h1>
+
+  {{-- Trigger a server-side method --}}
+  <button p-click="increment">+</button>
+
+  {{-- Bind input to a method (setName($value)) --}}
+  <input type="text" p-model="setName" placeholder="Your name" />
+</div>
 ```
+
+### Available Interactive Attributes (`plugs-spa.js`)
+
+| Attribute     | Description                                                  |
+| ------------- | ------------------------------------------------------------ |
+| `p-click`     | Trigger action on click.                                     |
+| `p-submit`    | Handle form submission via AJAX.                             |
+| `p-model`     | Two-way data binding (syncs input value to property/method). |
+| `p-poll`      | Poll the server at intervals (e.g., `p-poll="3000"`).        |
+| `p-intersect` | Trigger action when the element enters the viewport.         |
+| `p-debounce`  | Delay the action in milliseconds (e.g., `p-debounce="500"`). |
 
 ---
 
@@ -264,8 +326,8 @@ Access data from parent components:
         {{ $slot }}
     </a>
 @else
-    <button 
-        type="{{ $type }}" 
+    <button
+        type="{{ $type }}"
         @disabled($disabled || $loading)
         {{ $attributes->merge(['class' => $classes]) }}
     >
@@ -332,8 +394,8 @@ Access data from parent components:
             @if($required)<span class="required">*</span>@endif
         </label>
     @endif
-    
-    <input 
+
+    <input
         type="{{ $type }}"
         name="{{ $name }}"
         id="{{ $name }}"
@@ -341,7 +403,7 @@ Access data from parent components:
         @required($required)
         {{ $attributes->merge(['class' => 'form-control']) }}
     >
-    
+
     @if($error)
         <span class="error-message">{{ $error }}</span>
     @elseif($hint)
@@ -353,9 +415,9 @@ Access data from parent components:
 Usage:
 
 ```blade
-<x-forms-input 
-    name="email" 
-    type="email" 
+<x-forms-input
+    name="email"
+    type="email"
     label="Email Address"
     :value="$user->email"
     :error="$errors->first('email')"
