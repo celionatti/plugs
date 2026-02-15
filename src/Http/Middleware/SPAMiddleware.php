@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace Plugs\Http\Middleware;
 
 use Plugs\Container\Container;
-use Plugs\View\ViewEngine;
+use Plugs\View\ViewEngineInterface;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Server\MiddlewareInterface;
@@ -17,8 +17,8 @@ class SPAMiddleware implements MiddlewareInterface
     {
         if ($request->hasHeader('X-Plugs-SPA')) {
             $container = Container::getInstance();
-            if ($container->bound(ViewEngine::class)) {
-                $viewEngine = $container->make(ViewEngine::class);
+            if ($container->bound(ViewEngineInterface::class)) {
+                $viewEngine = $container->make(ViewEngineInterface::class);
                 $viewEngine->suppressLayout(true);
 
                 // Handle specific section requests

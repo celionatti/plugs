@@ -14,7 +14,7 @@ class PdfServiceProvider extends ServiceProvider
     public function register(): void
     {
         $this->app->singleton('pdf', function ($app) {
-            return new Pdf($app->make(\Plugs\View\ViewEngine::class));
+            return new Pdf($app->make(\Plugs\View\ViewEngineInterface::class));
         });
     }
 

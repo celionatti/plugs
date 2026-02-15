@@ -6,16 +6,16 @@ namespace Plugs\Pdf;
 
 use Dompdf\Dompdf;
 use Dompdf\Options;
-use Plugs\View\ViewEngine;
+use Plugs\View\ViewEngineInterface;
 use RuntimeException;
 
 class Pdf
 {
     protected Dompdf $dompdf;
-    protected ViewEngine $view;
+    protected ViewEngineInterface $view;
     protected string $html = '';
 
-    public function __construct(ViewEngine $view)
+    public function __construct(ViewEngineInterface $view)
     {
         if (!class_exists(Dompdf::class)) {
             throw new RuntimeException(

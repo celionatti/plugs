@@ -219,22 +219,16 @@ class Plugs
     {
         $container = $this->container;
 
-        $container->singleton(\Plugs\View\ViewEngine::class, function () use ($container) {
-            $config = config('app.paths');
-
-            $engine = new \Plugs\View\ViewEngine(
-                $config['views'],
-                $config['cache'],
-                $container,
-                self::isProduction()
-            );
-
-            $engine->setOpcacheEnabled(config('opcache.enabled', true));
-
-            return $engine;
+        $container->singleton(\Plugs\View\ViewManager::class, function () use ($container) {
+            return new \Plugs\View\ViewManager($container);
         });
 
-        $container->alias(\Plugs\View\ViewEngine::class, 'view');
+        $container->singleton(\Plugs\View\ViewEngineInterface::class, function () use ($container) {
+            return $container->make(\Plugs\View\ViewManager::class)->driver();
+        });
+
+        $container->alias(\Plugs\View\ViewManager::class, 'view.manager');
+        $container->alias(\Plugs\View\ViewEngineInterface::class, 'view');
     }
 
     private function bootstrapDatabase(): object

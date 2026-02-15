@@ -6,7 +6,7 @@ namespace Plugs\Http\Middleware;
 
 use Plugs\Container\Container;
 use Plugs\View\ErrorMessage;
-use Plugs\View\ViewEngine;
+use Plugs\View\ViewEngineInterface;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Server\MiddlewareInterface;
@@ -31,7 +31,7 @@ class ShareErrorsFromSession implements MiddlewareInterface
             $errors = new ErrorMessage($_SESSION['errors'] ?? []);
 
             // Share 'errors' variable with all views
-            if ($view instanceof ViewEngine) {
+            if ($view instanceof ViewEngineInterface) {
                 $view->share('errors', $errors);
             }
 

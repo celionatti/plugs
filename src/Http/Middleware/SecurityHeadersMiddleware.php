@@ -62,8 +62,8 @@ class SecurityHeadersMiddleware implements MiddlewareInterface
 
             // Inject into ViewEngine
             $container = \Plugs\Container\Container::getInstance();
-            if ($container->has(\Plugs\View\ViewEngine::class)) {
-                $viewEngine = $container->make(\Plugs\View\ViewEngine::class);
+            if ($container->has(\Plugs\View\ViewEngineInterface::class)) {
+                $viewEngine = $container->make(\Plugs\View\ViewEngineInterface::class);
                 $viewEngine->setCspNonce($nonce);
             }
 

@@ -19,14 +19,14 @@ use Plugs\Http\Message\ServerRequest;
 use Plugs\Http\ResponseFactory;
 use Plugs\Security\Validator;
 use Plugs\View\ErrorMessage;
-use Plugs\View\ViewEngine;
+use Plugs\View\ViewEngineInterface;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use RuntimeException;
 
 abstract class Controller
 {
-    protected ViewEngine $view;
+    protected ViewEngineInterface $view;
     protected $db;
     protected ?ServerRequest $currentRequest = null;
 
@@ -41,7 +41,7 @@ abstract class Controller
      * Initialize the controller with framework dependencies.
      * This is called by the Router after instantiation.
      */
-    public function initialize(ViewEngine $view, $db = null): void
+    public function initialize(ViewEngineInterface $view, $db = null): void
     {
         $this->view = $view;
         $this->db = $db;

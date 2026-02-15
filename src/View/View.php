@@ -26,7 +26,7 @@ class View
     /**
      * View engine instance
      */
-    private ViewEngine $engine;
+    private ViewEngineInterface $engine;
 
     /**
      * View template name
@@ -61,11 +61,11 @@ class View
     /**
      * Create a new View instance
      *
-     * @param ViewEngine $engine View engine for rendering
+     * @param ViewEngineInterface $engine View engine for rendering
      * @param string $view View template name
      * @param array $data Initial data for the view
      */
-    public function __construct(ViewEngine $engine, string $view, array $data = [])
+    public function __construct(ViewEngineInterface $engine, string $view, array $data = [])
     {
         $this->engine = $engine;
         $this->view = $view;
@@ -102,9 +102,9 @@ class View
     /**
      * Get the view engine instance
      *
-     * @return ViewEngine
+     * @return ViewEngineInterface
      */
-    public function getEngine(): ViewEngine
+    public function getEngine(): ViewEngineInterface
     {
         return $this->engine;
     }

@@ -5,14 +5,15 @@ declare(strict_types=1);
 namespace Plugs\View;
 
 use Plugs\Http\ResponseFactory;
+use Plugs\View\ViewEngineInterface;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 
 class ReactiveController
 {
-    protected ViewEngine $viewEngine;
+    protected ViewEngineInterface $viewEngine;
 
-    public function __construct(ViewEngine $viewEngine)
+    public function __construct(ViewEngineInterface $viewEngine)
     {
         $this->viewEngine = $viewEngine;
     }

@@ -17,7 +17,7 @@ use Plugs\Exceptions\ViewException;
 use RuntimeException;
 use Throwable;
 
-class ViewEngine
+class PlugViewEngine implements ViewEngineInterface
 {
     private string $viewPath;
     private string $cachePath;
@@ -1615,6 +1615,14 @@ class ViewEngine
 
         return $results;
     }
+
+
+
+
+
+
+
+
 
     /**
      * Wrap an exception in a ViewException with better context and cleaner messages.

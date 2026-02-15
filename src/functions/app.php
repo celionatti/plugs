@@ -132,7 +132,7 @@ if (!function_exists('resource_path')) {
 if (!function_exists('view')) {
     function view(string $view, array $data = []): \Plugs\View\View
     {
-        $engine = app(\Plugs\View\ViewEngine::class);
+        $engine = app(\Plugs\View\ViewEngineInterface::class);
 
         return new \Plugs\View\View($engine, $view, $data);
     }
