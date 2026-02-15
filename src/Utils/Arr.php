@@ -144,4 +144,22 @@ class Arr
 
         return array_keys($keys) !== $keys;
     }
+    /**
+     * Conditionally compile classes from an array.
+     *
+     * @param  array  $array
+     * @return string
+     */
+    public static function toCssClasses(array $array): string
+    {
+        $classList = array_map(function ($key, $value) {
+            if (is_int($key)) {
+                return $value;
+            }
+
+            return $value ? $key : '';
+        }, array_keys($array), array_values($array));
+
+        return implode(' ', array_filter($classList));
+    }
 }

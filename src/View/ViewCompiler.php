@@ -265,6 +265,9 @@ class ViewCompiler
         // Phase 0.5: Compile layout tags before component extraction
         $content = $this->compileLayoutTag($content);
 
+        // Phase 0.6: Compile tag-based directives into @ equivalents
+        $content = $this->compileTagDirectives($content);
+
         // Phase 1: Extract components first (they have highest priority)
         $content = $this->extractComponentsWithSlots($content);
 
@@ -913,11 +916,165 @@ class ViewCompiler
             }
 
             if (!empty($defaultContent)) {
-                $result .= "@section('content')\n{$defaultContent}\n@endsection";
+                if (isset($sections['content'])) {
+                    // If content slot is already defined, unrelated content (push/stack/etc) 
+                    // should be appended raw, not wrapped in a duplicate content section.
+                    $result .= $defaultContent;
+                } else {
+                    $result .= "@section('content')\n{$defaultContent}\n@endsection";
+                }
             }
 
             return $result;
         }, $content);
+    }
+
+    /**
+     * Compile tag-based directives into their @ equivalents.
+     * This runs early so the main compiler can process the resulting @ directives.
+     *
+     * Supported tags:
+     *   <push:name>...</push:name>       → @push('name')...@endpush
+     *   <stack:name />                   → @stack('name')
+     *   <yield:name />                   → @yield('name')
+     *   <yield:name default=".." />      → @yield('name', '...')
+     *   <csrf />                         → @csrf
+     *   <include view=".." />            → @include('...')
+     *   <fragment name="..">...</fragment>   → @fragment('..')...@endfragment
+     *   <teleport to="..">...</teleport>    → @teleport('..')...@endteleport
+     *   <forelse :items=".." as="..">    → @forelse(.. as ..)
+     *   <empty />                        → @empty
+     *   </forelse>                       → @endforelse
+     *   <auth>...</auth>                 → @auth...@endauth
+     *   <guest>...</guest>               → @guest...@endguest
+     *   <skeletonStyles />               → @skeletonStyles
+     */
+    private function compileTagDirectives(string $content): string
+    {
+        // 1. <push:name> ... </push:name>
+        $content = preg_replace_callback('/<push:([\w-]+)\s*>/s', function ($m) {
+            return "@push('{$m[1]}')";
+        }, $content);
+        $content = preg_replace('/<\/push:[\w-]+\s*>/s', '@endpush', $content);
+
+        // 2. <prepend:name> ... </prepend:name>
+        $content = preg_replace_callback('/<prepend:([\w-]+)\s*>/s', function ($m) {
+            return "@prepend('{$m[1]}')";
+        }, $content);
+        $content = preg_replace('/<\/prepend:[\w-]+\s*>/s', '@endprepend', $content);
+
+        // 3. <stack:name /> — self-closing, renders the stack
+        $content = preg_replace_callback('/<stack:([\w-]+)\s*\/>/s', function ($m) {
+            return "@stack('{$m[1]}')";
+        }, $content);
+
+        // 4. <yield:name default="..." /> or <yield:name />
+        $content = preg_replace_callback('/<yield:([\w-]+)\s+default=["\'](.+?)["\']\s*\/>/s', function ($m) {
+            return "@yield('{$m[1]}', '{$m[2]}')";
+        }, $content);
+        $content = preg_replace_callback('/<yield:([\w-]+)\s*\/>/s', function ($m) {
+            return "@yield('{$m[1]}')";
+        }, $content);
+
+        // 5. <csrf /> — self-closing
+        $content = preg_replace('/<csrf\s*\/>/s', '@csrf', $content);
+
+        // 6. <include view="..." :data="[...]" /> or <include view="..." />
+        $content = preg_replace_callback('/<include\s+view=["\'](.+?)["\']\s+:data=["\'](.+?)["\']\s*\/>/s', function ($m) {
+            return "@include('{$m[1]}', {$m[2]})";
+        }, $content);
+        $content = preg_replace_callback('/<include\s+view=["\'](.+?)["\']\s*\/>/s', function ($m) {
+            return "@include('{$m[1]}')";
+        }, $content);
+
+        // 7. <fragment name="..."> ... </fragment>
+        $content = preg_replace_callback('/<fragment\s+name=["\'](.+?)["\']\s*>/s', function ($m) {
+            return "@fragment('{$m[1]}')";
+        }, $content);
+        $content = preg_replace('/<\/fragment\s*>/s', '@endfragment', $content);
+
+        // 8. <teleport to="..."> ... </teleport>
+        $content = preg_replace_callback('/<teleport\s+to=["\'](.+?)["\']\s*>/s', function ($m) {
+            return "@teleport('{$m[1]}')";
+        }, $content);
+        $content = preg_replace('/<\/teleport\s*>/s', '@endteleport', $content);
+
+        // 9. <forelse :items="..." as="..."> ... <empty /> ... </forelse>
+        $content = preg_replace_callback('/<forelse\s+:items=["\'](.+?)["\']\s+as=["\'](.+?)["\']\s*>/s', function ($m) {
+            return "@forelse({$m[1]} as {$m[2]})";
+        }, $content);
+        $content = preg_replace('/<empty\s*\/>/s', '@empty', $content);
+        $content = preg_replace('/<\/forelse\s*>/s', '@endforelse', $content);
+
+        // 10. <auth> ... </auth>  and  <auth guard="..."> ... </auth>
+        $content = preg_replace_callback('/<auth\s+guard=["\'](.+?)["\']\s*>/s', function ($m) {
+            return "@auth('{$m[1]}')";
+        }, $content);
+        $content = preg_replace('/<auth\s*>/s', '@auth', $content);
+        $content = preg_replace('/<\/auth\s*>/s', '@endauth', $content);
+
+        // 11. <guest> ... </guest>  and  <guest guard="..."> ... </guest>
+        $content = preg_replace_callback('/<guest\s+guard=["\'](.+?)["\']\s*>/s', function ($m) {
+            return "@guest('{$m[1]}')";
+        }, $content);
+        $content = preg_replace('/<guest\s*>/s', '@guest', $content);
+        $content = preg_replace('/<\/guest\s*>/s', '@endguest', $content);
+
+        // 12. <skeletonStyles /> — self-closing
+        $content = preg_replace('/<skeletonStyles\s*\/>/s', '@skeletonStyles', $content);
+
+        // 13. <method type="PUT" /> — self-closing
+        $content = preg_replace_callback('/<method\s+type=["\'](.+?)["\']\s*\/>/s', function ($m) {
+            return "@method('{$m[1]}')";
+        }, $content);
+
+        // 14. <skeleton :code="..." /> — self-closing (for fluent builder)
+        $content = preg_replace_callback('/<skeleton\s+:code=["\'](.+?)["\']\s*\/>/s', function ($m) {
+            return "@skeleton({$m[1]})";
+        }, $content);
+
+        // 15. <cache key="..." ttl="..."> ... </cache>
+        $content = preg_replace_callback('/<cache\s+key=["\'](.+?)["\']\s+(?:ttl=["\'](.+?)["\']\s*)?>/s', function ($m) {
+            $key = $m[1];
+            $ttl = $m[2] ?? 'null';
+            if ($ttl !== 'null') {
+                return "@cache('{$key}', {$ttl})";
+            }
+            return "@cache('{$key}')";
+        }, $content);
+        $content = preg_replace('/<\/cache\s*>/s', '@endcache', $content);
+        // 16. <if :condition="..."> ... <elseif :condition="..."> ... <else /> ... </if>
+        $content = preg_replace_callback('/<if\s+:condition=["\'](.+?)["\']\s*>/s', function ($m) {
+            return "@if({$m[1]})";
+        }, $content);
+        $content = preg_replace_callback('/<elseif\s+:condition=["\'](.+?)["\']\s*>/s', function ($m) {
+            return "@elseif({$m[1]})";
+        }, $content);
+        $content = preg_replace('/<else\s*\/>/s', '@else', $content);
+        $content = preg_replace('/<\/if\s*>/s', '@endif', $content);
+
+        // 17. <loop :items="..." :as="..."> ... </loop>
+        $content = preg_replace_callback('/<loop\s+:items=["\'](.+?)["\']\s+(?::)?as=["\'](.+?)["\']\s*>/s', function ($m) {
+            return "@foreach({$m[1]} as {$m[2]})";
+        }, $content);
+        $content = preg_replace('/<\/loop\s*>/s', '@endforeach', $content);
+
+        $content = preg_replace('/<\/loop\s*>/s', '@endforeach', $content);
+
+        // 18. <error field="..."> ... </error>
+        $content = preg_replace_callback('/<error\s+field=["\'](.+?)["\']\s*>/s', function ($m) {
+            return "@error('{$m[1]}')";
+        }, $content);
+        $content = preg_replace('/<\/error\s*>/s', '@enderror', $content);
+
+        // 19. <class :map="..." />
+        // Compiles to @class(...)
+        $content = preg_replace_callback('/<class\s+:map=["\'](.+?)["\']\s*\/>/s', function ($m) {
+            return "@class({$m[1]})";
+        }, $content);
+
+        return $content;
+        return $content;
     }
 
     private function compileConditionals(string $content): string
@@ -1315,16 +1472,17 @@ class ViewCompiler
      * @class(['btn', 'btn-primary' => $isPrimary, 'disabled' => !$isActive])
      * Compile conditional class attributes
      */
+    /*
+     * @class(['btn', 'btn-primary' => $isPrimary, 'disabled' => !$isActive])
+     * Compile conditional class attributes
+     */
     private function compileClass(string $content): string
     {
         return preg_replace_callback(
             '/@class\s*\((\[.+?\])\)/s',
             function ($matches) {
                 return sprintf(
-                    '<?php echo \'class="\' . implode(\' \', array_filter(array_map(function($k, $v) {
-                    return is_int($k) ? $v : ($v ? $k : null);
-                }, array_keys(%s), array_values(%s)))) . \'"\'; ?>',
-                    $matches[1],
+                    '<?php echo \'class="\' . \Plugs\Utils\Arr::toCssClasses(%s) . \'"\'; ?>',
                     $matches[1]
                 );
             },
