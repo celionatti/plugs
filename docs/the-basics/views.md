@@ -140,10 +140,10 @@ Components allow you to reuse UI elements. They live in `resources/views/compone
 
 ### Using A Component
 
-Use the `x-` syntax:
+Use the PascalCase syntax:
 
 ```html
-<x-alert type="danger" title="Whoops!"> Something went wrong. </x-alert>
+<Alert type="danger" title="Whoops!"> Something went wrong. </Alert>
 ```
 
 ### Passing Data
@@ -151,8 +151,8 @@ Use the `x-` syntax:
 You may pass data using HTML attributes. Plain strings are passed as-is, while PHP variables should be prefixed with `:`:
 
 ```html
-<x-button class="btn-lg" type="submit">Save</x-button>
-<x-user-profile :user="$user" />
+<button class="btn-lg" type="submit">Save</button>
+<User::Profile :user="$user" />
 ```
 
 ---

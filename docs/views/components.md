@@ -33,12 +33,17 @@ resources/views/components/
 
 Usage:
 
-```blade
-<x-alert type="success" message="Operation completed!" />
+```html
+{{-- Root level component (PascalCase) --}}
+<Alert type="success" message="Operation completed!" />
 
-<x-alert type="warning">
-    This is a warning message with <strong>HTML</strong>.
-</x-alert>
+{{-- Nested component (Module::Component) --}}
+<Forms::Input type="text" name="email" label="Email" />
+
+{{-- Component with content (Slots) --}}
+<Alert type="warning">
+  This is a warning message with <strong>HTML</strong>.
+</Alert>
 ```
 
 ---
@@ -68,17 +73,15 @@ Usage:
 
 ### Passing Props
 
-```blade
+```html
 {{-- String values --}}
-<x-button type="danger" size="lg">Delete</x-button>
+<button type="danger" size="lg">Delete</button>
 
 {{-- Dynamic values with : prefix --}}
-<x-button :type="$buttonType" :disabled="$isLoading">
-    Submit
-</x-button>
+<button :type="$buttonType" :disabled="$isLoading">Submit</button>
 
 {{-- Boolean props --}}
-<x-button disabled>Can't Click</x-button>
+<button disabled>Can't Click</button>
 ```
 
 ---
@@ -94,9 +97,9 @@ Usage:
 </div>
 
 {{-- Usage --}}
-<x-card>
+<Card>
     <p>This is the card content.</p>
-</x-card>
+</Card>
 ```
 
 ### Named Slots
@@ -120,19 +123,19 @@ Usage:
 </div>
 ```
 
-```blade
+```html
 {{-- Usage --}}
-<x-card>
-    <x-slot:header>
-        <h3>Custom Header</h3>
-    </x-slot:header>
+<Card>
+  <slot:header>
+    <h3>Custom Header</h3>
+  </slot:header>
 
-    <p>Card body content here.</p>
+  <p>Card body content here.</p>
 
-    <x-slot:footer>
-        <button>Action</button>
-    </x-slot:footer>
-</x-card>
+  <slot:footer>
+    <button>Action</button>
+  </slot:footer>
+</Card>
 ```
 
 ---
@@ -150,9 +153,9 @@ Usage:
 </button>
 
 {{-- Usage - extra attributes are merged --}}
-<x-button class="mt-4" id="submit-btn" @click="handleClick">
+<Button class="mt-4" id="submit-btn" @click="handleClick">
     Submit
-</x-button>
+</Button>
 
 {{-- Renders: --}}
 <button type="button" class="mt-4" id="submit-btn" @click="handleClick">
@@ -170,9 +173,9 @@ Usage:
 </button>
 ```
 
-```blade
-<x-button class="mt-4">Click</x-button>
-{{-- Renders: class="btn btn-primary mt-4" --}}
+```html
+<button class="mt-4">Click</button> {{-- Renders: class="btn btn-primary mt-4"
+--}}
 ```
 
 ---
@@ -208,11 +211,11 @@ For complex applications, you can organize components into sub-directories and r
 **Usage Example:**
 
 ```html
-{{-- Standard Tag Syntax --}}
+{{-- Nested directory resolution --}}
 <Admin::Sidebar />
 
-{{-- x-prefix Syntax --}}
-<x-Admin::Sidebar />
+{{-- Deeply nested --}}
+<Admin::Dashboard::Stats :total="500" />
 ```
 
 ---
@@ -414,14 +417,14 @@ Access data from parent components:
 
 Usage:
 
-```blade
-<x-forms-input
-    name="email"
-    type="email"
-    label="Email Address"
-    :value="$user->email"
-    :error="$errors->first('email')"
-    required
-    placeholder="you@example.com"
+```html
+<Forms::Input
+  name="email"
+  type="email"
+  label="Email Address"
+  :value="$user->email"
+  :error="$errors->first('email')"
+  required
+  placeholder="you@example.com"
 />
 ```

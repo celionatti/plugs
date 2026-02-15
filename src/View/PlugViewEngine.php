@@ -908,10 +908,10 @@ class PlugViewEngine implements ViewEngineInterface
 
     private function getComponentPath(string $componentName): string
     {
-        // Validate component name to prevent path traversal
-        if (preg_match('/[\.\/\\\\]/', $componentName)) {
+        // Prevent directory traversal
+        if (str_contains($componentName, '..')) {
             throw new ViewException(
-                sprintf('Invalid component name: %s (cannot contain path separators)', $componentName),
+                sprintf('Invalid component name: %s (traversal detected)', $componentName),
                 0,
                 null,
                 $componentName,
@@ -919,10 +919,12 @@ class PlugViewEngine implements ViewEngineInterface
             );
         }
 
-        $kebab = $this->pascalToKebabCase($componentName);
-        $snake = str_replace('-', '_', $kebab);
+        // Replace dots with directory separators for nested components
+        $path = str_replace('.', DIRECTORY_SEPARATOR, $componentName);
+        $kebab = $this->pascalToKebabPath($path);
 
-        $filenames = array_unique([$componentName, $kebab, $snake]);
+        // Try multiple naming conventions
+        $filenames = array_unique([$path, $kebab]);
 
         foreach ($filenames as $filename) {
             foreach (self::VIEW_EXTENSIONS as $extension) {
@@ -952,7 +954,20 @@ class PlugViewEngine implements ViewEngineInterface
             }
         }
 
+        // Fallback to kebab-case path if not found
         return $this->componentPath . DIRECTORY_SEPARATOR . $kebab . self::VIEW_EXTENSIONS[0];
+    }
+
+    /**
+     * Convert PascalCase path to kebab-case path
+     * Example: User.ProfileCard -> user/profile-card
+     */
+    private function pascalToKebabPath(string $path): string
+    {
+        $segments = explode(DIRECTORY_SEPARATOR, $path);
+        $kebabSegments = array_map([$this, 'pascalToKebabCase'], $segments);
+
+        return implode(DIRECTORY_SEPARATOR, $kebabSegments);
     }
 
     private function getCompiledPath(string $view): string

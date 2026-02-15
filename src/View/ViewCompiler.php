@@ -127,13 +127,11 @@ class ViewCompiler
             'php_inline' => '/@php\s*\((.+?)\)/s',
 
             // Component patterns
-            'component_self_close' => '/<([A-Z][a-zA-Z0-9]*)((?:\s+(?:[^>"\'\/]+|"[^"]*"|\'[^\']*\'))*?)\/>/',
-            'component_with_content' => '/<([A-Z][a-zA-Z0-9]*)((?:\s+(?:[^>"\'\/]+|"[^"]*"|\'[^\']*\'))*?)>(.*?)<\/\1\s*>/s',
-            'x_component_self_close' => '/<x-([\w-]+)((?:\s+(?:[^>"\'\/]+|"[^"]*"|\'[^\']*\'))*?)\/>/',
-            'x_component_with_content' => '/<x-([\w-]+)((?:\s+(?:[^>"\'\/]+|"[^"]*"|\'[^\']*\'))*?)>(.*?)<\/x-\1\s*>/s',
+            'component_self_close' => '/<([A-Z][a-zA-Z0-9]*(?:::[A-Z][a-zA-Z0-9]*)*)((?:\s+(?:[^>"\'\/]+|"[^"]*"|\'[^\']*\'))*?)\/>/',
+            'component_with_content' => '/<([A-Z][a-zA-Z0-9]*(?:::[A-Z][a-zA-Z0-9]*)*)((?:\s+(?:[^>"\'\/]+|"[^"]*"|\'[^\']*\'))*?)>(.*?)<\/\1\s*>/s',
 
             // Slot patterns
-            'named_slot' => '/<x-slot(?:\s+name=["\']([^"\']+)["\']|:([\w-]+))(.*?)>(.*?)<\/x-slot>/s',
+            'named_slot' => '/<slot(?:\s+name=["\']([^"\']+)["\']|:([\w-]+))(.*?)>(.*?)<\/slot>/s',
 
             // Control structure patterns
             'if' => '/@if\s*\(([^()]*+(?:\((?1)\)[^()]*+)*+)\)/s',
@@ -325,58 +323,6 @@ class ViewCompiler
             $content
         ) ?? $content;
 
-        // 3. Documented x- prefix components: <x-header /> or <x-user::card />
-        $content = preg_replace_callback(
-            '/<x-([\w:-]+)' . $attrRegex . '\/>/s',
-            function ($matches) {
-                $name = str_replace('::', '.', $matches[1]);
-                $componentName = $this->kebabToPascalCase($name);
-                $attributes = $matches[2];
-
-                return $this->createComponentPlaceholder($componentName, trim($attributes), '');
-            },
-            $content
-        ) ?? $content;
-
-        // 4. Documented x- prefix with slots: <x-alert>...</x-alert>
-        $content = preg_replace_callback(
-            '/<x-([\w:-]+)' . $attrRegex . '>(.*?)<\/x-\1\s*>/s',
-            function ($matches) {
-                $name = str_replace('::', '.', $matches[1]);
-                $componentName = $this->kebabToPascalCase($name);
-                $attributes = $matches[2];
-                $slotContent = $matches[3];
-
-                return $this->createComponentPlaceholder($componentName, trim($attributes), $slotContent);
-            },
-            $content
-        ) ?? $content;
-
-        // 5. Lowercase components: <counter /> (excluding common HTML tags)
-        $htmlTags = 'a|abbr|address|area|article|aside|audio|b|base|bdi|bdo|blockquote|body|br|button|canvas|caption|cite|code|col|colgroup|data|datalist|dd|del|details|dfn|dialog|div|dl|dt|em|embed|fieldset|figcaption|figure|footer|form|h1|h2|h3|h4|h5|h6|head|header|hgroup|hr|html|i|iframe|img|input|ins|kbd|label|layout|legend|li|link|main|map|mark|math|menu|meta|meter|nav|noscript|object|ol|optgroup|option|output|p|param|picture|pre|progress|q|rp|rt|ruby|s|samp|script|section|select|slot|small|source|span|strong|style|sub|summary|sup|svg|table|tbody|td|template|textarea|tfoot|th|thead|time|title|tr|track|u|ul|var|video|wbr';
-        $content = preg_replace_callback(
-            '/<(?!(?:' . $htmlTags . ')\b)([a-z][a-zA-Z0-9]*)' . $attrRegex . '\/>/s',
-            function ($matches) {
-                $componentName = $this->anyToPascalCase($matches[1]);
-                $attributes = $matches[2];
-
-                return $this->createComponentPlaceholder($componentName, trim($attributes), '');
-            },
-            $content
-        ) ?? $content;
-
-        $content = preg_replace_callback(
-            '/<(?!(?:' . $htmlTags . ')\b)([a-z][a-zA-Z0-9]*)' . $attrRegex . '>(.*?)<\/\1\s*>/s',
-            function ($matches) {
-                $componentName = $this->anyToPascalCase($matches[1]);
-                $attributes = $matches[2];
-                $slotContent = $matches[3];
-
-                return $this->createComponentPlaceholder($componentName, trim($attributes), $slotContent);
-            },
-            $content
-        ) ?? $content;
-
         return $content;
     }
 
@@ -401,11 +347,11 @@ class ViewCompiler
         $slots = [];
         $defaultSlot = $slotContent;
 
-        // Parse named slots: <x-slot name="header">...</x-slot> OR <x-slot:header>...</x-slot>
-        if (str_contains($slotContent, '<x-slot')) {
-            // 1. Shorthand syntax: <x-slot:header ...>...</x-slot:header>
+        // Parse named slots: <slot name="header">...</slot> OR <slot:header>...</slot>
+        if (str_contains($slotContent, '<slot')) {
+            // 1. Shorthand syntax: <slot:header ...>...</slot[:header]>
             $slotContent = preg_replace_callback(
-                '/<x-slot:([\w-]+)(.*?)>(.*?)<\/x-slot(?::\1)?>/s',
+                '/<slot:([\w-]+)(.*?)>(.*?)<\/slot(?::\1)?>/s',
                 function ($matches) use (&$slots) {
                     $name = $matches[1];
                     $slotAttrStr = trim($matches[2]);
@@ -419,11 +365,11 @@ class ViewCompiler
                     return '';
                 },
                 $slotContent
-            );
+            ) ?? $slotContent;
 
-            // 2. Standard syntax: <x-slot name="header" ...>...</x-slot>
+            // 2. Standard syntax: <slot name="header" ...>...</slot>
             $slotContent = preg_replace_callback(
-                '/<x-slot\s+name=["\']([^"\']+)["\'](.*?)>(.*?)<\/x-slot>/s',
+                '/<slot\s+name=["\']([^"\']+)["\'](.*?)>(.*?)<\/slot>/s',
                 function ($matches) use (&$slots) {
                     $name = $matches[1];
                     $slotAttrStr = trim($matches[2]);
@@ -437,7 +383,7 @@ class ViewCompiler
                     return '';
                 },
                 $slotContent
-            );
+            ) ?? $slotContent;
 
             $defaultSlot = $slotContent;
         }

@@ -124,11 +124,11 @@ Plugs V5 introduces a modern, HTML-friendly tag syntax for control structures. T
 
 ```html
 <if :condition="$user->isAdmin()">
-  <x-admin-badge />
+  <AdminBadge />
   <elseif :condition="$user->isVerified()" />
   <i class="bi bi-patch-check"></i>
   <else />
-  <x-guest-badge />
+  <GuestBadge />
 </if>
 ```
 
