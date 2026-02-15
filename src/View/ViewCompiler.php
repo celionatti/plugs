@@ -897,7 +897,13 @@ class ViewCompiler
                 return '';
             }, $body);
 
-            // 2. Parse <x-slot:name> content </x-slot:name>
+            // 2. Parse <slot:name> content </slot:name> (V5 shorthand syntax)
+            $body = preg_replace_callback('/<slot:([\w:-]+)\s*>(.*?)<\/slot(?::\1)?>/s', function ($sMatches) use (&$sections) {
+                $sections[$sMatches[1]] = trim($sMatches[2]);
+                return '';
+            }, $body);
+
+            // 3. Parse <x-slot:name> content </x-slot:name> (legacy, kept for compatibility)
             $body = preg_replace_callback('/<x-slot:([\w:-]+)\s*>(.*?)<\/x-slot(?::\1)?>/s', function ($sMatches) use (&$sections) {
                 $sections[$sMatches[1]] = trim($sMatches[2]);
                 return '';
