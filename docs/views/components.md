@@ -246,6 +246,9 @@ class Counter extends ReactiveComponent {
 }
 ```
 
+> [!TIP]
+> **Convention over Configuration**: The `render()` method is optional for both standard and reactive components. If missing, the engine automatically resolves the view based on the class location (e.g., `App\Components\Alert` -> `components/Alert.plug.php`). All **public properties** of the class are automatically available as variables in the view.
+
 ### 2. The Interactive View
 
 Use the `p-` attributes to bind events and data.

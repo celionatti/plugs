@@ -441,8 +441,10 @@ class PlugViewEngine implements ViewEngineInterface
 
             $componentData = array_merge($data, ['slot' => $slot]);
 
-            // Check if there's a PHP class for this component
-            $className = "App\\Components\\" . $this->anyToPascalCase(str_replace('.', '\\', $componentName));
+            // Resolve class name (e.g. Test.AutoCard -> App\Components\Test\AutoCard)
+            $segments = explode('.', $componentName);
+            $pascalSegments = array_map([$this, 'anyToPascalCase'], $segments);
+            $className = "App\\Components\\" . implode('\\', $pascalSegments);
 
             if (class_exists($className)) {
                 // Determine creation parameters based on type
@@ -458,7 +460,8 @@ class PlugViewEngine implements ViewEngineInterface
 
                 // 1. ReactiveComponent (Needs wrapper + state)
                 if ($component instanceof ReactiveComponent) {
-                    $view = $component->render();
+                    $hasRender = method_exists($component, 'render');
+                    $view = $hasRender ? $component->render() : $componentName;
                     $state = $component->getState();
                     $dataToMerge = array_merge($componentData, $state);
 
@@ -467,7 +470,8 @@ class PlugViewEngine implements ViewEngineInterface
                         $html = $view->withData($dataToMerge)->render();
                     } elseif (is_string($view)) {
                         if (strpos($view, '<') === false) {
-                            $html = $this->render($view, $dataToMerge, false);
+                            // Use isComponent = true if we're auto-discovering or if it looks like a component path
+                            $html = $this->render($view, $dataToMerge, !$hasRender || strpos($view, 'components.') === 0);
                         } else {
                             $html = $view;
                         }
@@ -491,26 +495,26 @@ class PlugViewEngine implements ViewEngineInterface
                     );
                 }
 
-                // 2. Standard Component (render method)
-                if (method_exists($component, 'render')) {
-                    $view = $component->render();
+                // 2. Standard Component
+                $hasRender = method_exists($component, 'render');
+                $view = $hasRender ? $component->render() : $componentName;
 
-                    // Retrieve public properties to pass to view
-                    $publicProps = get_object_vars($component);
-                    $dataToMerge = array_merge($componentData, $publicProps);
+                // Retrieve public properties to pass to view
+                $publicProps = get_object_vars($component);
+                $dataToMerge = array_merge($componentData, $publicProps);
 
-                    if ($view instanceof View) {
-                        return $view->withData($dataToMerge)->render();
+                if ($view instanceof View) {
+                    return $view->withData($dataToMerge)->render();
+                }
+
+                if (is_string($view)) {
+                    // If it looks like a view name (contains dot or is filepath-like) and not HTML
+                    if (strpos($view, '<') === false) {
+                        // Use isComponent = true if we're auto-discovering or if it looks like a component path
+                        return $this->render($view, $dataToMerge, !$hasRender || strpos($view, 'components.') === 0);
                     }
-
-                    if (is_string($view)) {
-                        // If it looks like a view name (contains dot or is filepath-like) and not HTML
-                        if (strpos($view, '<') === false) {
-                            return $this->render($view, $dataToMerge, false);
-                        }
-                        // Otherwise, return raw string (HTML)
-                        return $view;
-                    }
+                    // Otherwise, return raw string (HTML)
+                    return $view;
                 }
             }
 
