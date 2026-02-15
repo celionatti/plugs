@@ -296,11 +296,11 @@ class ViewCompiler
         // Regex to match attributes while ignoring '>' inside quotes
         $attrRegex = '((?:\s+(?:[^>"\'\/]+|"[^"]*"|\'[^\']*\')*)*?)';
 
-        // 1. Self-closing components: <ComponentName attr="value" />
+        // 1. Self-closing components: <ComponentName attr="value" /> or <Module::Component />
         $content = preg_replace_callback(
-            '/<([A-Z][a-zA-Z0-9]*)' . $attrRegex . '\/>/s',
+            '/<([A-Z][a-zA-Z0-9]*(?:::[A-Z][a-zA-Z0-9]*)*)' . $attrRegex . '\/>/s',
             function ($matches) {
-                $componentName = $matches[1];
+                $componentName = str_replace('::', '.', $matches[1]);
                 $attributes = $matches[2];
 
                 return $this->createComponentPlaceholder($componentName, trim($attributes), '');
@@ -310,9 +310,9 @@ class ViewCompiler
 
         // 2. Components with content: <ComponentName>...</ComponentName>
         $content = preg_replace_callback(
-            '/<([A-Z][a-zA-Z0-9]*)' . $attrRegex . '>(.*?)<\/\1\s*>/s',
+            '/<([A-Z][a-zA-Z0-9]*(?:::[A-Z][a-zA-Z0-9]*)*)' . $attrRegex . '>(.*?)<\/\1\s*>/s',
             function ($matches) {
-                $componentName = $matches[1];
+                $componentName = str_replace('::', '.', $matches[1]);
                 $attributes = $matches[2];
                 $slotContent = $matches[3];
 
@@ -321,11 +321,12 @@ class ViewCompiler
             $content
         ) ?? $content;
 
-        // 3. Documented x- prefix components: <x-header />
+        // 3. Documented x- prefix components: <x-header /> or <x-user::card />
         $content = preg_replace_callback(
-            '/<x-([\w-]+)' . $attrRegex . '\/>/s',
+            '/<x-([\w:-]+)' . $attrRegex . '\/>/s',
             function ($matches) {
-                $componentName = $this->kebabToPascalCase($matches[1]);
+                $name = str_replace('::', '.', $matches[1]);
+                $componentName = $this->kebabToPascalCase($name);
                 $attributes = $matches[2];
 
                 return $this->createComponentPlaceholder($componentName, trim($attributes), '');
@@ -335,9 +336,35 @@ class ViewCompiler
 
         // 4. Documented x- prefix with slots: <x-alert>...</x-alert>
         $content = preg_replace_callback(
-            '/<x-([\w-]+)' . $attrRegex . '>(.*?)<\/x-\1\s*>/s',
+            '/<x-([\w:-]+)' . $attrRegex . '>(.*?)<\/x-\1\s*>/s',
             function ($matches) {
-                $componentName = $this->kebabToPascalCase($matches[1]);
+                $name = str_replace('::', '.', $matches[1]);
+                $componentName = $this->kebabToPascalCase($name);
+                $attributes = $matches[2];
+                $slotContent = $matches[3];
+
+                return $this->createComponentPlaceholder($componentName, trim($attributes), $slotContent);
+            },
+            $content
+        ) ?? $content;
+
+        // 5. Lowercase components: <counter /> (excluding common HTML tags)
+        $htmlTags = 'a|abbr|address|area|article|aside|audio|b|base|bdi|bdo|blockquote|body|br|button|canvas|caption|cite|code|col|colgroup|data|datalist|dd|del|details|dfn|dialog|div|dl|dt|em|embed|fieldset|figcaption|figure|footer|form|h1|h2|h3|h4|h5|h6|head|header|hgroup|hr|html|i|iframe|img|input|ins|kbd|label|legend|li|link|main|map|mark|math|menu|meta|meter|nav|noscript|object|ol|optgroup|option|output|p|param|picture|pre|progress|q|rp|rt|ruby|s|samp|script|section|select|slot|small|source|span|strong|style|sub|summary|sup|svg|table|tbody|td|template|textarea|tfoot|th|thead|time|title|tr|track|u|ul|var|video|wbr';
+        $content = preg_replace_callback(
+            '/<(?!(?:' . $htmlTags . ')\b)([a-z][a-zA-Z0-9]*)' . $attrRegex . '\/>/s',
+            function ($matches) {
+                $componentName = $this->anyToPascalCase($matches[1]);
+                $attributes = $matches[2];
+
+                return $this->createComponentPlaceholder($componentName, trim($attributes), '');
+            },
+            $content
+        ) ?? $content;
+
+        $content = preg_replace_callback(
+            '/<(?!(?:' . $htmlTags . ')\b)([a-z][a-zA-Z0-9]*)' . $attrRegex . '>(.*?)<\/\1\s*>/s',
+            function ($matches) {
+                $componentName = $this->anyToPascalCase($matches[1]);
                 $attributes = $matches[2];
                 $slotContent = $matches[3];
 
@@ -349,14 +376,17 @@ class ViewCompiler
         return $content;
     }
 
+    private function anyToPascalCase(string $input): string
+    {
+        return str_replace(['_', '-', '.', ' ', '\\'], '', ucwords($input, '_-. \\'));
+    }
+
     /**
      * Convert kebab-case or snake_case to PascalCase
      */
     private function kebabToPascalCase(string $input): string
     {
-        $input = str_replace(['-', '_'], ' ', $input);
-
-        return str_replace(' ', '', ucwords($input));
+        return $this->anyToPascalCase($input);
     }
 
     private function createComponentPlaceholder(string $componentName, string $attributes, string $slotContent): string

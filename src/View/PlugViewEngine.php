@@ -978,7 +978,7 @@ class PlugViewEngine implements ViewEngineInterface
 
     public function anyToPascalCase(string $input): string
     {
-        return str_replace(['_', '-'], '', ucwords($input, '_-'));
+        return str_replace(['_', '-', '.', ' ', '\\'], '', ucwords($input, '_-. \\'));
     }
 
     private function isDebugMode(): bool
