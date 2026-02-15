@@ -903,12 +903,6 @@ class ViewCompiler
                 return '';
             }, $body);
 
-            // 3. Parse <x-slot:name> content </x-slot:name> (legacy, kept for compatibility)
-            $body = preg_replace_callback('/<x-slot:([\w:-]+)\s*>(.*?)<\/x-slot(?::\1)?>/s', function ($sMatches) use (&$sections) {
-                $sections[$sMatches[1]] = trim($sMatches[2]);
-                return '';
-            }, $body);
-
             // 3. Anything left goes to @section('content')
             $defaultContent = trim($body);
 
