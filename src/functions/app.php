@@ -384,14 +384,34 @@ if (!function_exists('sanitize')) {
 if (!function_exists('escape')) {
     function escape($value): string
     {
-        return htmlspecialchars((string) $value, ENT_QUOTES, 'UTF-8');
+        return \Plugs\View\Escaper::html($value);
     }
 }
 
 if (!function_exists('e')) {
     function e($value): string
     {
-        return htmlspecialchars((string) $value, ENT_QUOTES, 'UTF-8');
+        return \Plugs\View\Escaper::html($value);
+    }
+}
+
+if (!function_exists('attr')) {
+    /**
+     * Escape for HTML attributes
+     */
+    function attr($value): string
+    {
+        return \Plugs\View\Escaper::attr($value);
+    }
+}
+
+if (!function_exists('js')) {
+    /**
+     * Escape for JavaScript context
+     */
+    function js($value): string
+    {
+        return \Plugs\View\Escaper::js($value);
     }
 }
 

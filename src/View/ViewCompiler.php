@@ -253,6 +253,16 @@ class ViewCompiler
             return $this->compilationCache[$cacheKey];
         }
 
+        // Phase 0: Line tracking preparation (only if enabled)
+        if ($this->sourceMapEnabled) {
+            $originalLines = explode("\n", $content);
+            $contentWithLines = '';
+            foreach ($originalLines as $i => $line) {
+                $contentWithLines .= "<?php /** line: " . ($i + 1) . " **/ ?>" . $line . "\n";
+            }
+            $content = $contentWithLines;
+        }
+
         // Phase 1: Extract components first (they have highest priority)
         $content = $this->extractComponentsWithSlots($content);
 
@@ -357,25 +367,45 @@ class ViewCompiler
         $slots = [];
         $defaultSlot = $slotContent;
 
-        // Parse named slots: <x-slot name="header">...</x-slot>
-        // Supports: <x-slot name="header">, <x-slot:header>
-        // Use a loop to find all occurrences
+        // Parse named slots: <x-slot name="header">...</x-slot> OR <x-slot:header>...</x-slot>
         if (str_contains($slotContent, '<x-slot')) {
-            $defaultSlot = preg_replace_callback(
-                '/<x-slot(?:\s+name=["\']([^"\']+)["\']|:([\w-]+))(.*?)>(.*?)<\/x-slot>/s',
+            // 1. Shorthand syntax: <x-slot:header ...>...</x-slot:header>
+            $slotContent = preg_replace_callback(
+                '/<x-slot:([\w-]+)(.*?)>(.*?)<\/x-slot(?::\1)?>/s',
                 function ($matches) use (&$slots) {
-                    $name = !empty($matches[1]) ? $matches[1] : $matches[2];
-                    $slotAttr = $matches[3]; // unused for now, could be passed as slot attributes
-                    $content = $matches[4];
+                    $name = $matches[1];
+                    $slotAttrStr = trim($matches[2]);
+                    $content = $matches[3];
 
-                    // Compile the slot content immediately so it's ready for inclusion
-                    $slots[$name] = $this->compileNonComponentContent($content);
+                    $slotAttrArray = $this->parseAttributes($slotAttrStr);
+                    $slotDataPhp = $this->buildDataArray($slotAttrArray);
 
-                    // Remove from default slot
+                    $compiled = $this->compileNonComponentContent($content);
+                    $slots[$name] = ['content' => $compiled, 'attributes' => $slotDataPhp];
                     return '';
                 },
                 $slotContent
             );
+
+            // 2. Standard syntax: <x-slot name="header" ...>...</x-slot>
+            $slotContent = preg_replace_callback(
+                '/<x-slot\s+name=["\']([^"\']+)["\'](.*?)>(.*?)<\/x-slot>/s',
+                function ($matches) use (&$slots) {
+                    $name = $matches[1];
+                    $slotAttrStr = trim($matches[2]);
+                    $content = $matches[3];
+
+                    $slotAttrArray = $this->parseAttributes($slotAttrStr);
+                    $slotDataPhp = $this->buildDataArray($slotAttrArray);
+
+                    $compiled = $this->compileNonComponentContent($content);
+                    $slots[$name] = ['content' => $compiled, 'attributes' => $slotDataPhp];
+                    return '';
+                },
+                $slotContent
+            );
+
+            $defaultSlot = $slotContent;
         }
 
         $dataArray = $dataPhp;
@@ -387,8 +417,11 @@ class ViewCompiler
         }
 
         // Add Named Slots
-        foreach ($slots as $name => $content) {
-            $dataArray .= (empty($dataArray) ? '' : ', ') . sprintf("'%s' => '%s'", addslashes($name), addslashes($content));
+        foreach ($slots as $name => $info) {
+            $dataArray .= (empty($dataArray) ? '' : ', ') . sprintf("'%s' => '%s'", addslashes($name), addslashes($info['content']));
+            if (!empty($info['attributes'])) {
+                $dataArray .= sprintf(", '%s_attributes' => [%s]", addslashes($name), $info['attributes']);
+            }
         }
 
         // Inject ComponentAttributes bag
@@ -404,7 +437,6 @@ class ViewCompiler
 
     private function compileNonComponentContent(string $content): string
     {
-        // CRITICAL: Order matters for correct compilation
         // Helper to safely apply preg-based compilation
         $safeCompile = fn(callable $method, string $c) => $method($c) ?? $c;
 
@@ -474,9 +506,15 @@ class ViewCompiler
         $content = $safeCompile([$this, 'compileTooltip'], $content);
         $content = $safeCompile([$this, 'compileDump'], $content);
         $content = $safeCompile([$this, 'compileMarkdown'], $content);
+        $content = $safeCompile([$this, 'compileMarkdownTag'], $content);
+
+        // 10c. Short-attribute binding on regular tags (after components)
+        $content = $safeCompile([$this, 'compileShortAttributes'], $content);
 
         // 11. Echo statements LAST (after all directives)
         $content = $safeCompile([$this, 'compileRawEchos'], $content);
+        $content = $safeCompile([$this, 'compileTagConditionals'], $content);
+        $content = $safeCompile([$this, 'compileTagLoops'], $content);
         $content = $safeCompile([$this, 'compileEscapedEchos'], $content);
 
         // Restore verbatim blocks LAST
@@ -525,8 +563,16 @@ class ViewCompiler
 
         foreach ($matches as $match) {
             $key = $match[1];
+            $isDynamic = false;
+
+            // Support :attr="..." syntax
+            if (str_starts_with($key, ':')) {
+                $key = substr($key, 1);
+                $isDynamic = true;
+            }
+
             $value = str_replace('\\' . $match[2], $match[2], $match[3]);
-            $hasExpression = false;
+            $hasExpression = $isDynamic;
 
             if (strpos($value, '___EXPR_') !== false) {
                 $parts = preg_split('/(___EXPR_\d+___)/', $value, -1, PREG_SPLIT_DELIM_CAPTURE | PREG_SPLIT_NO_EMPTY);
@@ -541,6 +587,8 @@ class ViewCompiler
                 }
 
                 $value = implode(" . ", $exprParts);
+                $hasExpression = true;
+            } elseif ($isDynamic) {
                 $hasExpression = true;
             }
 
@@ -602,7 +650,32 @@ class ViewCompiler
 
     private function compileComments(string $content): string
     {
-        return preg_replace('/\{\{--.*?--\}\}/s', '', $content);
+        // Simple comments: {{-- comment --}}
+        $content = preg_replace('/\{\{--.*?--\}\}/s', '', $content);
+
+        // HTML-style hidden comments: <!--# comment #-->
+        return preg_replace('/<!--#.*?#-->/s', '', $content);
+    }
+
+    /**
+     * Compile short-attribute binding: :class="$active ? 'a' : 'b'"
+     */
+    private function compileShortAttributes(string $content): string
+    {
+        // Matches :attr="expression" in any tag, ensuring it's not preceded by a space or start of line
+        // We use a negative lookbehind to avoid matching components if possible, 
+        // but actually components should handle their own attributes.
+        // This is for regular HTML tags.
+        return preg_replace_callback(
+            '/\s:([\w-]+)=((["\'])(.*?)\3)/s',
+            function ($matches) {
+                $attr = $matches[1];
+                $expression = $matches[4];
+
+                return sprintf(' %s="<?php echo e(%s); ?>"', $attr, $expression);
+            },
+            $content
+        );
     }
 
     private function compileVerbatim(string $content): string
@@ -667,9 +740,86 @@ class ViewCompiler
         // Escaped output: {{ $var }}
         return preg_replace(
             '/\{\{\s*(.+?)\s*\}\}/s',
-            '<?php echo htmlspecialchars((string)($1), ENT_QUOTES, \'UTF-8\'); ?>',
+            '<?php echo e($1); ?>',
             $content
         );
+    }
+
+    /**
+     * Compile tag-based conditionals: <if :condition="...">
+     */
+    private function compileTagConditionals(string $content): string
+    {
+        // <if :condition="$user">
+        $content = preg_replace_callback('/<if\s+:condition=["\'](.+?)["\']\s*>/s', function ($matches) {
+            return "<?php if ({$matches[1]}): ?>";
+        }, $content);
+
+        // <elseif :condition="...">
+        $content = preg_replace_callback('/<elseif\s+:condition=["\'](.+?)["\']\s*\/?>/s', function ($matches) {
+            return "<?php elseif ({$matches[1]}): ?>";
+        }, $content);
+
+        // <else />
+        $content = preg_replace('/<else\s*\/?>/s', '<?php else: ?>', $content);
+
+        // </if>
+        $content = preg_replace('/<\/if\s*>/s', '<?php endif; ?>', $content);
+
+        // <unless :condition="...">
+        $content = preg_replace_callback('/<unless\s+:condition=["\'](.+?)["\']\s*>/s', function ($matches) {
+            return "<?php if (!({$matches[1]})): ?>";
+        }, $content);
+
+        // </unless>
+        $content = preg_replace('/<\/unless\s*>/s', '<?php endif; ?>', $content);
+
+        return $content;
+    }
+
+    /**
+     * Compile tag-based loops: <loop :items="..." as="...">
+     */
+    private function compileTagLoops(string $content): string
+    {
+        // <loop :items="$users" as="$user">
+        $content = preg_replace_callback('/<loop\s+:items=["\'](.+?)["\']\s+as=["\'](.+?)["\']\s*>/s', function ($matches) {
+            $array = trim($matches[1]);
+            $iteration = trim($matches[2]);
+            $checkIsset = preg_match('/^\$[\w]+$/', $array) ? "isset($array) && " : '';
+
+            $initLoop = '$__loop_parent = $loop ?? null; $loop = new \Plugs\View\Loop(' . $array . ', $__loop_parent, ($__loop_parent->depth ?? 0) + 1);';
+
+            return sprintf(
+                '<?php if(%sis_iterable(%s)): %s foreach (%s as %s): ?>',
+                $checkIsset,
+                $array,
+                $initLoop,
+                $array,
+                $iteration
+            );
+        }, $content);
+
+        // </loop>
+        $content = preg_replace('/<\/loop\s*>/s', '<?php $loop->tick(); endforeach; $loop = $__loop_parent; endif; ?>', $content);
+
+        // <while :condition="...">
+        $content = preg_replace_callback('/<while\s+:condition=["\'](.+?)["\']\s*>/s', function ($matches) {
+            return "<?php while ({$matches[1]}): ?>";
+        }, $content);
+
+        // </while>
+        $content = preg_replace('/<\/while\s*>/s', '<?php endwhile; ?>', $content);
+
+        // <for :init="..." :condition="..." :step="...">
+        $content = preg_replace_callback('/<for\s+:init=["\'](.+?)["\']\s+:condition=["\'](.+?)["\']\s+:step=["\'](.+?)["\']\s*>/s', function ($matches) {
+            return "<?php for ({$matches[1]}; {$matches[2]}; {$matches[3]}): ?>";
+        }, $content);
+
+        // </for>
+        $content = preg_replace('/<\/for\s*>/s', '<?php endfor; ?>', $content);
+
+        return $content;
     }
 
     private function compileConditionals(string $content): string
@@ -2607,49 +2757,68 @@ class ViewCompiler
         return preg_replace_callback(
             '/@markdown\s*\n?(.*?)@endmarkdown/s',
             function ($matches) {
-                $md = addslashes(trim($matches[1]));
-
-                return sprintf(
-                    '<?php echo (function($md) {
-                    // Code blocks (fenced)
-                    $md = preg_replace_callback("/```(\\w+)?\\n(.*?)```/s", function($m) {
-                        $lang = $m[1] ?? "";
-                        return "<pre><code class=\"language-" . htmlspecialchars($lang) . "\">" . htmlspecialchars($m[2]) . "</code></pre>";
-                    }, $md);
-                    // Inline code
-                    $md = preg_replace("/`([^`]+)`/", "<code>$1</code>", $md);
-                    // Headings
-                    $md = preg_replace("/^######\\s+(.+)$/m", "<h6>$1</h6>", $md);
-                    $md = preg_replace("/^#####\\s+(.+)$/m", "<h5>$1</h5>", $md);
-                    $md = preg_replace("/^####\\s+(.+)$/m", "<h4>$1</h4>", $md);
-                    $md = preg_replace("/^###\\s+(.+)$/m", "<h3>$1</h3>", $md);
-                    $md = preg_replace("/^##\\s+(.+)$/m", "<h2>$1</h2>", $md);
-                    $md = preg_replace("/^#\\s+(.+)$/m", "<h1>$1</h1>", $md);
-                    // Bold and italic
-                    $md = preg_replace("/\\*\\*\\*(.+?)\\*\\*\\*/s", "<strong><em>$1</em></strong>", $md);
-                    $md = preg_replace("/\\*\\*(.+?)\\*\\*/s", "<strong>$1</strong>", $md);
-                    $md = preg_replace("/\\*(.+?)\\*/s", "<em>$1</em>", $md);
-                    // Links
-                    $md = preg_replace("/\\[([^\\]]+)\\]\\(([^)]+)\\)/", "<a href=\"$2\">$1</a>", $md);
-                    // Images
-                    $md = preg_replace("/!\\[([^\\]]*?)\\]\\(([^)]+)\\)/", "<img src=\"$2\" alt=\"$1\">", $md);
-                    // Blockquotes
-                    $md = preg_replace("/^>\\s+(.+)$/m", "<blockquote>$1</blockquote>", $md);
-                    // Horizontal rule
-                    $md = preg_replace("/^---$/m", "<hr>", $md);
-                    // Unordered lists
-                    $md = preg_replace("/^[\\-\\*]\\s+(.+)$/m", "<li>$1</li>", $md);
-                    $md = preg_replace("/((?:<li>.*?<\\/li>\\n?)+)/s", "<ul>$1</ul>", $md);
-                    // Paragraphs
-                    $md = preg_replace("/\\n\\n+/", "</p><p>", trim($md));
-                    $md = "<p>" . $md . "</p>";
-                    $md = str_replace("<p></p>", "", $md);
-                    return $md;
-                })(\'%s\'); ?>',
-                    $md
-                );
+                return $this->renderMarkdown($matches[1]);
             },
             $content
         ) ?? $content;
+    }
+
+    /**
+     * Compile <markdown> tag
+     */
+    private function compileMarkdownTag(string $content): string
+    {
+        return preg_replace_callback(
+            '/<markdown\s*>(.*?)<\/markdown>/s',
+            function ($matches) {
+                return $this->renderMarkdown($matches[1]);
+            },
+            $content
+        ) ?? $content;
+    }
+
+    private function renderMarkdown(string $markdown): string
+    {
+        $md = addslashes(trim($markdown));
+
+        return sprintf(
+            '<?php echo (function($md) {
+                // Code blocks (fenced)
+                $md = preg_replace_callback("/```(\\\\w+)?\\\\n(.*?)```/s", function($m) {
+                    $lang = $m[1] ?? "";
+                    return "<pre><code class=\"language-" . htmlspecialchars($lang) . "\">" . htmlspecialchars($m[2]) . "</code></pre>";
+                }, $md);
+                // Inline code
+                $md = preg_replace("/`([^`]+)`/", "<code>$1</code>", $md);
+                // Headings
+                $md = preg_replace("/^######\\\\s+(.+)$/m", "<h6>$1</h6>", $md);
+                $md = preg_replace("/^#####\\\\s+(.+)$/m", "<h5>$1</h5>", $md);
+                $md = preg_replace("/^####\\\\s+(.+)$/m", "<h4>$1</h4>", $md);
+                $md = preg_replace("/^###\\\\s+(.+)$/m", "<h3>$1</h3>", $md);
+                $md = preg_replace("/^##\\\\s+(.+)$/m", "<h2>$1</h2>", $md);
+                $md = preg_replace("/^#\\\\s+(.+)$/m", "<h1>$1</h1>", $md);
+                // Bold and italic
+                $md = preg_replace("/\\\\*\\\\*\\\\*(.+?)\\\\*\\\\*\\\\*/s", "<strong><em>$1</em></strong>", $md);
+                $md = preg_replace("/\\\\*\\\\*(.+?)\\\\*\\\\*/s", "<strong>$1</strong>", $md);
+                $md = preg_replace("/\\\\*(.+?)\\\\*/s", "<em>$1</em>", $md);
+                // Links
+                $md = preg_replace("/\\\\[([^\\\\]]+)\\\\]\\\\(([^)]+)\\\\)/", "<a href=\\\"$2\\\">$1</a>", $md);
+                // Images
+                $md = preg_replace("/!\\\\[([^\\\\]]*?)\\\\]\\\\(([^)]+)\\\\)/", "<img src=\\\"$2\\\" alt=\\\"$1\\\">", $md);
+                // Blockquotes
+                $md = preg_replace("/^>\\\\s+(.+)$/m", "<blockquote>$1</blockquote>", $md);
+                // Horizontal rule
+                $md = preg_replace("/^---$/m", "<hr>", $md);
+                // Unordered lists
+                $md = preg_replace("/^[\\\\-\\\\*]\\\\s+(.+)$/m", "<li>$1</li>", $md);
+                $md = preg_replace("/((?:<li>.*?<\\\\/li>\\\\n?)+)/s", "<ul>$1</ul>", $md);
+                // Paragraphs
+                $md = preg_replace("/\\\\n\\\\n+/", "</p><p>", trim($md));
+                $md = "<p>" . $md . "</p>";
+                $md = str_replace("<p></p>", "", $md);
+                return $md;
+            })(\'%s\'); ?>',
+            $md
+        );
     }
 }
