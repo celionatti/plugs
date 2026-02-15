@@ -26,43 +26,45 @@ $router->get('/', function () {
 The Plugs view engine provides several directives for common PHP operations:
 
 ### Echoing Data
+
 ```html
-{{ $variable }}        <!-- Escaped (XSS Protection) -->
-{!! $rawVariable !!}   <!-- Unescaped (Use for trusted content only) -->
+{{ $variable }}
+<!-- Context-Aware Escaped (XSS Protection) -->
+{{{ $rawVariable }}}
+<!-- Raw/Unescaped (Preferred) -->
+{!! $rawVariable !!}
+<!-- Raw/Unescaped (Alternative) -->
 ```
 
 ### Conditionals
+
 ```html
 @if($user->isAdmin())
-    <button>Delete</button>
+<button>Delete</button>
 @elseif($user->isEditor())
-    <button>Edit</button>
+<button>Edit</button>
 @else
-    <span>View Only</span>
+<span>View Only</span>
 @endif
 
 <!-- Semantic Helpers -->
-@auth
-    User is logged in.
-@endauth
-
-@guest
-    Please login.
-@endguest
+@auth User is logged in. @endauth @guest Please login. @endguest
 ```
 
 ### Loops
+
 The `@foreach` directive provides a `$loop` variable for easy iteration control.
 
 ```html
 @foreach($users as $user)
-    <div class="{{ $loop->first() ? 'bg-primary' : '' }}">
-        {{ $loop->iteration }}. {{ $user->name }}
-    </div>
+<div class="{{ $loop->first() ? 'bg-primary' : '' }}">
+  {{ $loop->iteration }}. {{ $user->name }}
+</div>
 @endforeach
 ```
 
 **Loop Properties:**
+
 - `$loop->index`: 0-based index
 - `$loop->iteration`: 1-based iteration counter
 - `$loop->remaining()`: Items remaining in loop
@@ -71,25 +73,23 @@ The `@foreach` directive provides a `$loop` variable for easy iteration control.
 - `$loop->even()` / `$loop->odd()`: Booleans
 
 ### Form Helpers
+
 Simplified form attribute handling:
 
 ```html
-<input type="checkbox" name="active" @checked($user->isActive)>
-<option value="admin" @selected($role == 'admin')>Admin</option>
+<input type="checkbox" name="active" @checked($user- />isActive)>
+<option value="admin" @selected($role="" ="admin" )>Admin</option>
 <button @disabled($isProcessing)>Submit</button>
-<input type="text" value="@old('username')">
+<input type="text" value="@old('username')" />
 ```
 
 ### Session & Flash
+
 ```html
 @session('success')
-    <div class="alert alert-success">
-        @flash('success')
-    </div>
-@endsession
-
-@error('email')
-    <span class="error text-danger">{{ $errors->first('email') }}</span>
+<div class="alert alert-success">@flash('success')</div>
+@endsession @error('email')
+<span class="error text-danger">{{ $errors->first('email') }}</span>
 @enderror
 ```
 
@@ -98,31 +98,27 @@ Simplified form attribute handling:
 ## 🏗️ Layouts & Inheritance
 
 ### Defining A Layout
+
 ```html
 <!-- resources/views/layouts/app.plug.php -->
 <html>
-<head>
+  <head>
     <title>@yield('title', 'My App')</title>
-</head>
-<body>
-    <div class="container">
-        @yield('content')
-    </div>
-    
+  </head>
+  <body>
+    <div class="container">@yield('content')</div>
+
     <x-flash />
-</body>
+  </body>
 </html>
 ```
 
 ### Extending A Layout
+
 ```html
 <!-- resources/views/child.plug.php -->
-@extends('layouts.app')
-
-@section('title', 'Home Page')
-
-@section('content')
-    <p>This is my body content.</p>
+@extends('layouts.app') @section('title', 'Home Page') @section('content')
+<p>This is my body content.</p>
 @endsection
 ```
 
@@ -133,29 +129,30 @@ Simplified form attribute handling:
 Components allow you to reuse UI elements. They live in `resources/views/components`.
 
 ### Creating A Component
+
 ```html
 <!-- resources/views/components/alert.plug.php -->
 <div class="alert alert-{{ $type }}" role="alert">
-    <strong>{{ $title }}</strong>
-    {{ $slot }}
+  <strong>{{ $title }}</strong>
+  {{ $slot }}
 </div>
 ```
 
 ### Using A Component
+
 Use the `x-` syntax:
 
 ```html
-<x-alert type="danger" title="Whoops!">
-    Something went wrong.
-</x-alert>
+<x-alert type="danger" title="Whoops!"> Something went wrong. </x-alert>
 ```
 
 ### Passing Data
+
 You may pass data using HTML attributes. Plain strings are passed as-is, while PHP variables should be prefixed with `:`:
 
 ```html
 <x-button class="btn-lg" type="submit">Save</x-button>
-<x-user-profile :user=$user />
+<x-user-profile :user="$user" />
 ```
 
 ---
@@ -163,10 +160,18 @@ You may pass data using HTML attributes. Plain strings are passed as-is, while P
 ## 🛡️ Security
 
 ### XSS Protection
-By default, `{{ $variable }}` is automatically escaped using `htmlspecialchars`. 
+
+By default, `{{ $variable }}` is automatically escaped. The engine is **context-aware**, meaning it chooses the best escaping strategy based on where the echo is placed:
+
+- **HTML Body**: Applied `e()` for standard text.
+- **Attributes**: Applies `attr()` (e.g., `title="{{ $var }}"`).
+- **Scripts**: Applies `js()` (safe JSON encoding) inside `<script>` tags.
+- **Links/Assets**: Applies `safeUrl()` for `href` and `src` to sanitize protocols.
 
 ### Content Security Policy (CSP)
+
 The engine supports injecting a CSP nonce into scripts.
+
 ```php
 // In a middleware
 $viewEngine->setCspNonce($nonce);
@@ -176,13 +181,13 @@ $viewEngine->setCspNonce($nonce);
 
 ## 💡 Advanced Directives
 
-| Directive | Description |
-|-----------|-------------|
-| `@inject('service', 'Class')` | Inject a service directly into the view. |
-| `@asset('path')` | Link to an asset with automatic cache busting. |
-| `@style([...])` | Dynamically bind inline styles. |
-| `@json($data)` | Output data as a JSON string. |
-| `@production` ... `@endproduction` | Render content only in production. |
+| Directive                          | Description                                    |
+| ---------------------------------- | ---------------------------------------------- |
+| `@inject('service', 'Class')`      | Inject a service directly into the view.       |
+| `@asset('path')`                   | Link to an asset with automatic cache busting. |
+| `@style([...])`                    | Dynamically bind inline styles.                |
+| `@json($data)`                     | Output data as a JSON string.                  |
+| `@production` ... `@endproduction` | Render content only in production.             |
 
 ---
 

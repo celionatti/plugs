@@ -4,11 +4,12 @@ Complete reference for all available template directives in the Plugs View syste
 
 ## Echo Statements
 
-| Syntax              | Description                     |
-| ------------------- | ------------------------------- |
-| `{{ $var }}`        | Escaped output (XSS-safe)       |
-| `{!! $var !!}`      | Raw/unescaped output            |
-| `{{-- comment --}}` | Template comment (not rendered) |
+| Syntax              | Description                                    |
+| ------------------- | ---------------------------------------------- |
+| `{{ $var }}`        | Context-aware escaped output (Safe by default) |
+| `{{{ $var }}}`      | Raw/unescaped output (Preferred)               |
+| `{!! $var !!}`      | Raw/unescaped output (Alternative)             |
+| `{{-- comment --}}` | Template comment (not rendered)                |
 
 ---
 
@@ -156,14 +157,17 @@ Plugs V5 introduces a modern, HTML-friendly tag syntax for control structures. T
 
 ## Security & Contextual Escaping
 
-Plugs uses a context-aware escaping engine to prevent XSS in different parts of your HTML.
+Plugs uses a context-aware escaping engine to prevent XSS. The `{{ $var }}` directive automatically detects the context and applies the best escaping method.
 
 | Directive / Helper | Context         | Description                                           |
 | ------------------ | --------------- | ----------------------------------------------------- |
-| `{{ $var }}`       | HTML Body       | Default escaping for standard text.                   |
+| `{{ $var }}`       | Auto            | Automatically detects HTML, Script, or Attribute.     |
+| `e($var)`          | HTML Body       | Default escaping for standard text.                   |
 | `attr($var)`       | HTML Attributes | Escapes quotes and special characters for attributes. |
+| `safeUrl($var)`    | Links/Assets    | Sanitizes protocols (e.g. `javascript:`) for URLs.    |
+| `u($var)`          | URL Query       | Escapes values for query parameters (e.g. `?q=...`).  |
 | `js($var)`         | Script Tags     | Safe JSON encoding with script tag protection.        |
-| `{!! $var !!}`     | Raw             | Disables escaping (use with extreme caution).         |
+| `{{{ $var }}}`     | Raw             | Disables escaping (use with extreme caution).         |
 
 **Examples:**
 
@@ -171,13 +175,20 @@ Plugs uses a context-aware escaping engine to prevent XSS in different parts of 
 {{-- Safe for page content --}}
 <div>{{ $bio }}</div>
 
-{{-- Safe for attributes --}}
-<button title="{{ attr($tooltip) }}">Hover Me</button>
+{{-- Safe for links (Auto-sanitizes protocols) --}}
+<a href="{{ $profileUrl }}">Profile</a>
 
-{{-- Safe for JS variables --}}
+{{-- Safe for attributes (Auto-uses attr()) --}}
+<button title="{{ $tooltip }}">Hover Me</button>
+
+{{-- Safe for JS variables (Auto-uses js()) --}}
 <script>
-  const userRole = {{ js($role) }};
+  const userRole = {{ $role }};
 </script>
+
+{{-- Explicitly forced helpers are ignored by auto-detection --}}
+<div title="{{ e($unsafe) }}"></div>
+<a href="/search?q={{ u($query) }}">Search</a>
 ```
 
 ---

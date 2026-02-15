@@ -164,3 +164,55 @@ Throw an HTTP exception.
 ```php
 abort(403, 'Unauthorized action.');
 ```
+
+## View & Security Helpers
+
+### `e()`
+
+Escape HTML special characters for body content.
+
+```php
+echo e('<b>Bold</b>'); // &lt;b&gt;Bold&lt;/b&gt;
+```
+
+### `attr()`
+
+Escape values for use in HTML attributes.
+
+```php
+echo attr('value="quoted"'); // value=&quot;quoted&quot;
+```
+
+### `js()`
+
+Securely encode data for use in JavaScript.
+
+```php
+<script>
+  const config = {{ js($data) }};
+</script>
+```
+
+### `safeUrl()`
+
+Sanitize a URL for use in `href` or `src`, neutralizing dangerous protocols like `javascript:`.
+
+```php
+<a href="{{ safeUrl($unsafe) }}">Link</a>
+```
+
+### `u()`
+
+Alias for `query()`. Escapes values for URL query parameters.
+
+```php
+<a href="/search?q={{ u($query) }}">Search</a>
+```
+
+### `query()`
+
+Escapes values for URL query parameters using `urlencode`.
+
+```php
+$url = '/search?q=' . query($term);
+```

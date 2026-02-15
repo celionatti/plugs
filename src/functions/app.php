@@ -415,6 +415,37 @@ if (!function_exists('js')) {
     }
 }
 
+if (!function_exists('u')) {
+    /**
+     * Escape for URL query parameter context
+     * (Formerly url(), renamed to u() to avoid conflict with core framework URL functions)
+     */
+    function u($value): string
+    {
+        return \Plugs\View\Escaper::query($value);
+    }
+}
+
+if (!function_exists('json')) {
+    /**
+     * Escape for JSON context
+     */
+    function json($value): string
+    {
+        return \Plugs\View\Escaper::json($value);
+    }
+}
+
+if (!function_exists('safeUrl')) {
+    /**
+     * Provide protocol-safe URL escaping for attributes.
+     */
+    function safeUrl($value): string
+    {
+        return \Plugs\View\Escaper::safeUrl($value);
+    }
+}
+
 if (!function_exists('mask')) {
     /**
      * Mask sensitive data with asterisks or custom character

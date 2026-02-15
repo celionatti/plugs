@@ -52,7 +52,56 @@ class Escaper
     {
         $json = json_encode($value, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_THROW_ON_ERROR);
 
-        // Ensure it's treated as a string/value in JS
         return $json;
+    }
+
+    /**
+     * Escape for URL query parameter context.
+     * 
+     * @param mixed $value
+     * @return string
+     */
+    public static function query(mixed $value): string
+    {
+        return urlencode((string) $value);
+    }
+
+    /**
+     * Provide protocol-safe URL escaping for href/src attributes.
+     * Rejects javascript:, data: (non-image), etc.
+     * 
+     * @param mixed $value
+     * @return string
+     */
+    public static function safeUrl(mixed $value): string
+    {
+        $value = (string) $value;
+
+        // Basic protocol sanitization
+        $dangerProtocols = ['javascript:', 'data:', 'vbscript:', 'file:'];
+        $cleanValue = strtolower(trim($value));
+
+        foreach ($dangerProtocols as $protocol) {
+            if (str_starts_with($cleanValue, $protocol)) {
+                // If it's a data URL, we only allow images
+                if ($protocol === 'data:' && str_starts_with($cleanValue, 'data:image/')) {
+                    continue;
+                }
+                return '#'; // Neutralize dangerous links
+            }
+        }
+
+        return self::attr($value);
+    }
+
+    /**
+     * Escape for JSON context (proxy to js for safe injection).
+     * 
+     * @param mixed $value
+     * @return string
+     */
+    public static function json(mixed $value): string
+    {
+        return self::js($value);
     }
 }

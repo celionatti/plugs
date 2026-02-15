@@ -90,30 +90,28 @@ Plugs V5 introduces a **security-first** escaping model that is context-aware.
 
 ### Escaped Output (Safe)
 
-```blade
+The standard echo statement automatically detects its context and applies the best escaping:
+
+```html
 {{-- Context-aware escaping (HTML body by default) --}}
-{{ $userInput }}
-```
+<div>{{ $userInput }}</div>
 
-### Context-Specific Escaping
-
-For maximum security, use specialized helpers within attributes or scripts:
-
-```blade
-{{-- Attribute safe escaping --}}
-<div title="{{ attr($description) }}">...</div>
-
-{{-- JavaScript safe encoding --}}
+{{-- Automatically uses js() --}}
 <script>
-    const config = {{ js($configArray) }};
+  const data = {{ $config }};
 </script>
+
+{{-- Automatically uses safeUrl() --}}
+<a href="{{ $url }}">Link</a>
 ```
 
 ### Raw Output (Unescaped)
 
-```blade
-{{-- Outputs raw HTML - use only for trusted content! --}}
-{!! $trustedHtml !!}
+Use triple braces for raw output. Use this only for content you trust completely!
+
+```html
+{{-- Preferred raw syntax --}} {{{ $trustedHtml }}} {{-- Alternative raw syntax
+--}} {!! $trustedHtml !!}
 ```
 
 ### Comments

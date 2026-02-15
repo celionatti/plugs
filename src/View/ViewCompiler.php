@@ -112,9 +112,9 @@ class ViewCompiler
 
         self::$patterns = [
             // Echo patterns
-            'escaped_echo' => '/\{\{\s*(.+?)\s*\}\}/s',
-            'raw_echo' => '/\{!!\s*(.+?)\s*!!\}/s',
-            'legacy_raw_echo' => '/\{\{\{\s*(.+?)\s*\}\}\}/s',
+            'escaped_echo' => '/\{\{\s*(.*?)\s*\}\}/s',
+            'raw_echo' => '/\{!!\s*(.*?)\s*!!\}/s',
+            'legacy_raw_echo' => '/\{\{\{\s*(.*?)\s*\}\}\}/s',
 
             // Comment patterns
             'comment' => '/\{\{--.*?--\}\}/s',
@@ -169,6 +169,7 @@ class ViewCompiler
             'aware' => '/@aware\s*\((\[.+?\])\)/s',
             'sanitize' => '/@sanitize\s*\((.+?)\)/s',
             'entangle' => '/@entangle\s*\([\'"](.+?)[\'"]\)/s',
+            'raw' => '/@raw\s*\((.+?)\)/s',
         ];
     }
 
@@ -519,6 +520,7 @@ class ViewCompiler
         $content = $safeCompile([$this, 'compileAware'], $content);
         $content = $safeCompile([$this, 'compileSanitize'], $content);
         $content = $safeCompile([$this, 'compileEntangle'], $content);
+        $content = $safeCompile([$this, 'compileRawDirective'], $content);
 
         // 10. Utilities
         $content = $safeCompile([$this, 'compileInject'], $content);
@@ -753,29 +755,105 @@ class ViewCompiler
 
     private function compileRawEchos(string $content): string
     {
-        // Raw output: {!! $var !!}
-        $content = preg_replace(
-            '/\{\!\!\s*(.+?)\s*\!\!\}/s',
-            '<?php echo $1; ?>',
-            $content
-        );
+        // 1. Raw output: {!! $var !!}
+        $content = preg_replace_callback(self::$patterns['raw_echo'], function ($matches) {
+            $expr = trim($matches[1]);
+            if ($expr === '')
+                return '';
+            return "<?php echo {$expr}; ?>";
+        }, $content);
 
-        // Legacy Raw output: {{{ $var }}}
-        return preg_replace(
-            '/\{\{\{\s*(.+?)\s*\}\}\}/s',
-            '<?php echo $1; ?>',
-            $content
-        );
+        // 2. Legacy Raw output: {{{ $var }}}
+        return preg_replace_callback(self::$patterns['legacy_raw_echo'], function ($matches) {
+            $expr = trim($matches[1]);
+            if ($expr === '')
+                return '';
+            return "<?php echo {$expr}; ?>";
+        }, $content);
     }
 
     private function compileEscapedEchos(string $content): string
     {
-        // Escaped output: {{ $var }}
-        return preg_replace(
-            '/\{\{\s*(.+?)\s*\}\}/s',
-            '<?php echo e($1); ?>',
-            $content
-        );
+        /**
+         * Context-Aware Auto-Detection Logic
+         * 1. Script Context: Inside <script> tags use js()
+         * 2. Attribute Context: Inside HTML attributes use attr()
+         * 3. Text Context: Default behavior use e()
+         */
+
+        // 1. Handle <script> blocks (highest priority)
+        $content = preg_replace_callback('/(<\s*script\b[^>]*>)(.*?)(<\/\s*script\s*>)/is', function ($matches) {
+            $tagOpen = $matches[1];
+            $scriptBody = $matches[2];
+            $tagClose = $matches[3];
+
+            $scriptBody = preg_replace_callback('/\{\{\s*(.*?)\s*\}\}/s', function ($eMatches) {
+                $expr = trim($eMatches[1]);
+                if ($expr === '')
+                    return '';
+                if (preg_match('/^(js|json|attr|e|u|query|json_encode)\b\s*\(/', $expr)) {
+                    return "<?php echo {$expr}; ?>";
+                }
+                return "<?php echo js({$expr}); ?>";
+            }, $scriptBody);
+
+            return $tagOpen . $scriptBody . $tagClose;
+        }, $content);
+
+        // 2. Handle HTML attributes
+        $content = preg_replace_callback('/(<[\w:-]+\s+)([^>]+)(>)/is', function ($tagMatches) {
+            $tagStart = $tagMatches[1];
+            $attributes = $tagMatches[2];
+            $tagEnd = $tagMatches[3];
+
+            if (!str_contains($attributes, '{{')) {
+                return $tagMatches[0];
+            }
+
+            // Replace all attributes that contain {{ }}
+            $newAttributes = preg_replace_callback('/([\w:-]+\s*=\s*(["\']))(.*?)\2/is', function ($attrMatches) {
+                $attrFull = $attrMatches[0];
+                $attrStart = $attrMatches[1];
+                $quote = $attrMatches[2];
+                $attrValue = $attrMatches[3];
+
+                if (str_contains($attrValue, '{{')) {
+                    $attrName = strtolower(trim(explode('=', $attrStart)[0]));
+                    $isUrlAttr = in_array($attrName, ['href', 'src', 'formaction', 'poster', 'action', 'data', 'background']);
+
+                    $newAttrValue = preg_replace_callback('/\{\{\s*(.*?)\s*\}\}/s', function ($eMatches) use ($isUrlAttr) {
+                        $expr = trim($eMatches[1]);
+                        if ($expr === '')
+                            return '';
+
+                        // Respect explicit helpers: u, query, route, etc.
+                        if (preg_match('/^(attr|u|query|route|e|js|json|json_encode|safeUrl)\b\s*\(/', $expr)) {
+                            return "<?php echo {$expr}; ?>";
+                        }
+
+                        // Auto-detect: safeUrl for links/assets, attr for others
+                        return $isUrlAttr ? "<?php echo safeUrl({$expr}); ?>" : "<?php echo attr({$expr}); ?>";
+                    }, $attrValue);
+
+                    return $attrStart . $newAttrValue . $quote;
+                }
+
+                return $attrFull;
+            }, $attributes);
+
+            return $tagStart . $newAttributes . $tagEnd;
+        }, $content);
+
+        // 3. Default: HTML text context
+        return preg_replace_callback('/\{\{\s*(.*?)\s*\}\}/s', function ($matches) {
+            $expr = trim($matches[1]);
+            if ($expr === '')
+                return '';
+            if (preg_match('/^(e|attr|u|query|route|js|json|json_encode)\b\s*\(/', $expr)) {
+                return "<?php echo {$expr}; ?>";
+            }
+            return "<?php echo e({$expr}); ?>";
+        }, $content);
     }
 
     /**
@@ -860,7 +938,7 @@ class ViewCompiler
      */
     private function compileLayoutTag(string $content): string
     {
-        return preg_replace_callback('/<layout\s+name=["\'](.+?)["\']\s*>(.*?)<\/layout>/s', function ($matches) {
+        return preg_replace_callback('/<layout\s+name=["\'](.+?)["\']\s*>(.*?)<\/layout\s*>/is', function ($matches) {
             $layoutName = $matches[1];
             $body = $matches[2];
 
@@ -2849,6 +2927,13 @@ class ViewCompiler
             },
             $content
         ) ?? $content;
+    }
+
+    private function compileRawDirective(string $content): string
+    {
+        return preg_replace_callback(self::$patterns['raw'], function ($matches) {
+            return "<?php echo {$matches[1]}; ?>";
+        }, $content);
     }
 
     private function renderMarkdown(string $markdown): string

@@ -45,7 +45,10 @@ Whether you are building a simple API, a complex web application, or an AI-power
 ### 📦 Full-Stack Capable
 
 - **Web Installer**: A beautiful, built-in installer to set up your environment, database, and admin account in seconds.
-- **View Engine**: Powerful templating with component support and caching.
+- **View Engine V5**:
+  - 🛡️ **Context-Aware Escaping**: Zero-config security that auto-detects HTML, Script, and Attribute contexts.
+  - 🏷️ **Modern Tag Syntax**: Native `<if>`, `<loop>`, and `<layout>` tags for cleaner templates.
+  - 🚀 **Next-Gen Performance**: Optimized compilation and opcache integration.
 - **Database**: Fluent query builder and Active Record ORM.
 - **Security**: Built-in Shield, CSRF protection, and encryption.
 

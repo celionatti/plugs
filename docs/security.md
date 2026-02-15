@@ -5,6 +5,7 @@ Plugs is "Secure by Default." The framework includes an advanced **Security Shie
 ## 1. The Security Shield
 
 The Shield is a high-performance middleware that analyzes every request for:
+
 - SQL Injection patterns
 - XSS Payloads
 - Path Traversal attempts
@@ -29,9 +30,19 @@ class User extends Model {
 }
 ```
 
-## 4. Zero-Config Security Headers
+## 5. View Security (Context-Aware)
+
+Plugs V5 includes a context-aware escaping engine. It automatically detects the output context and sanitizes it accordingly:
+
+- **Body**: Standard HTML escaping (`e()`).
+- **Attributes**: Quote and special character escaping (`attr()`).
+- **Scripts**: Safe JSON encoding (`js()`).
+- **URLs**: Protocol-aware sanitization (`safeUrl()`).
+
+## 6. Zero-Config Security Headers
 
 Plugs automatically injects hardened HTTP headers:
+
 - `X-Content-Type-Options: nosniff`
 - `X-Frame-Options: SAMEORIGIN`
 - `Content-Security-Policy` (configurable)
