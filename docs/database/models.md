@@ -471,12 +471,49 @@ Get the first result or throw an exception if none found:
 $user = User::where('email', 'john@example.com')->firstOrFail();
 ```
 
-### Find Many
-
 Retrieve multiple models by their primary keys:
 
 ```php
 $users = User::findMany([1, 2, 3]);
+```
+
+### Logical Grouping (nestedWhere)
+
+You may use `nestedWhere` directly on your model for complex query grouping:
+
+```php
+$users = User::nestedWhere(function ($query) {
+    $query->where('votes', '>', 100)
+          ->orWhere('title', 'Admin');
+})->get();
+```
+
+### Conditional Queries (when / unless)
+
+Models support the `when` and `unless` methods for building queries conditionally:
+
+```php
+$role = $request->input('role');
+
+$users = User::when($role, function ($query, $role) {
+    $query->where('role_id', $role);
+})->get();
+
+$users = User::unless($user->isAdmin(), function ($query) {
+    $query->where('active', 1);
+})->get();
+```
+
+### Relationship Existence (whereHas / whereDoesntHave)
+
+Static shortcuts for relationship filters are also available:
+
+```php
+// Users with posts
+$users = User::whereHas('posts')->get();
+
+// Users with NO posts
+$users = User::whereDoesntHave('posts')->get();
 ```
 
 ## Chunking Results
@@ -637,4 +674,3 @@ Plugs models are equipped with high-end features for enterprise applications:
 - **[Model Health](diagnostics.md)**: Automated orphaned record and index detection.
 - **[Observability](observability.md)**: Built-in query timing and performance tracking.
 - **[Domain Events](domain-events.md)**: Explicit event recording and replayability.
-

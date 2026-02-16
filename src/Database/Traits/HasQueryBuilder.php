@@ -193,6 +193,31 @@ trait HasQueryBuilder
         return static::query()->whereIn($column, $values);
     }
 
+    public static function nestedWhere(\Closure $callback, string $boolean = 'AND'): QueryBuilder
+    {
+        return static::query()->nestedWhere($callback, $boolean);
+    }
+
+    public static function whereHas(string $relation, ?\Closure $callback = null): QueryBuilder
+    {
+        return static::query()->whereHas($relation, $callback);
+    }
+
+    public static function whereDoesntHave(string $relation, ?\Closure $callback = null): QueryBuilder
+    {
+        return static::query()->whereDoesntHave($relation, $callback);
+    }
+
+    public static function when($value, callable $callback, callable $default = null): QueryBuilder
+    {
+        return static::query()->when($value, $callback, $default);
+    }
+
+    public static function unless($value, callable $callback, callable $default = null): QueryBuilder
+    {
+        return static::query()->unless($value, $callback, $default);
+    }
+
     public static function orderBy(string $column, string $direction = 'asc'): QueryBuilder
     {
         return static::query()->orderBy($column, $direction);

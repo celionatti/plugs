@@ -79,7 +79,7 @@ use Plugs\Database\Traits\Filterable;
 class Post extends PlugModel
 {
     use Filterable;
-    
+
     protected $table = 'posts';
 }
 ```
@@ -104,7 +104,7 @@ class PostController extends Controller
     {
         $filter = new PostFilter(request());
         $posts = Post::filter($filter)->paginate(15);
-        
+
         return view('posts.index', compact('posts'));
     }
 }
@@ -181,6 +181,22 @@ $posts = Post::query()
     ->get();
 ```
 
+### whereDoesntHave
+
+Filter records that **do not** have related records:
+
+```php
+class PostFilter extends QueryFilter
+{
+    public function no_comments($value)
+    {
+        if ($value) {
+            $this->builder->whereDoesntHave('comments');
+        }
+    }
+}
+```
+
 ## Pagination with Preserved Filters
 
 When using pagination with filters, all current query parameters are automatically preserved in the pagination links:
@@ -193,6 +209,7 @@ $posts = Post::filter($filter)->paginate(15);
 ```
 
 This works automatically with:
+
 - `paginate()`
 - `simplePaginate()`
 - `search()`
@@ -239,7 +256,7 @@ class ArticleFilter extends QueryFilter
 
     public function search($value)
     {
-        $this->builder->where(function($q) use ($value) {
+        $this->builder->nestedWhere(function($q) use ($value) {
             $q->where('title', 'LIKE', "%{$value}%")
               ->orWhere('content', 'LIKE', "%{$value}%");
         });
@@ -267,7 +284,7 @@ use Plugs\Database\Traits\Filterable;
 class Article extends PlugModel
 {
     use Filterable;
-    
+
     protected $table = 'articles';
 
     public function tags()
@@ -297,11 +314,11 @@ class ArticleController extends Controller
     public function index()
     {
         $filter = new ArticleFilter(request());
-        
+
         $articles = Article::with(['author', 'tags'])
             ->filter($filter)
             ->paginate(20);
-        
+
         return view('articles.index', compact('articles'));
     }
 }
@@ -311,10 +328,10 @@ class ArticleController extends Controller
 
 ```html
 @foreach($articles['data'] as $article)
-    <article>
-        <h2>{{ $article->title }}</h2>
-        <p>By {{ $article->author->name }}</p>
-    </article>
+<article>
+  <h2>{{ $article->title }}</h2>
+  <p>By {{ $article->author->name }}</p>
+</article>
 @endforeach
 
 <!-- Pagination links automatically include all filters -->

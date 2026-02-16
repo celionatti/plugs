@@ -18,7 +18,7 @@ foreach ($users as $user) {
 
 ### Retrieving A Single Row / Column From A Table
 
-```php
+````php
 $user = DB::table('users')->where('name', 'John')->first();
 
 echo $user->email;
@@ -31,14 +31,15 @@ If you would like to retrieve a record or throw an exception if none is found, u
 $user = DB::table('users')->where('active', true)->firstOrFail();
 
 $user = DB::table('users')->findOrFail(1);
-```
+````
 
 ### Retrieving Multiple Records By ID
 
 ```php
 $users = DB::table('users')->findMany([1, 2, 3]);
 ```
-```
+
+````
 
 ## Aggregates
 
@@ -48,7 +49,7 @@ The query builder also provides a variety of methods for retrieving aggregate va
 $users = DB::table('users')->count();
 
 $price = DB::table('orders')->max('price');
-```
+````
 
 ## Select Statements
 
@@ -77,6 +78,22 @@ $users = DB::table('users')
                     ->orWhere('name', 'John')
                     ->get();
 ```
+
+### Logical Grouping (nestedWhere)
+
+Sometimes you may need to group several "where" clauses within parentheses to achieve a specific logical grouping. You can use the `nestedWhere` or `orNestedWhere` methods for this:
+
+```php
+$users = DB::table('users')
+           ->where('name', '=', 'John')
+           ->nestedWhere(function ($query) {
+               $query->where('votes', '>', 100)
+                     ->orWhere('title', '=', 'Admin');
+           })
+           ->get();
+```
+
+As you can see, passing a `Closure` into the `nestedWhere` method instructs the query builder to begin a constraint group. The `Closure` will receive a query builder instance which you can use to set the constraints that should be contained within the parenthesis group.
 
 ### Null Where Clauses
 
@@ -213,6 +230,48 @@ DB::table('users')
 DB::table('users')->where('votes', '>', 100)->delete();
 ```
 
+## Conditional Clauses
+
+Sometimes you may want certain query clauses to apply to a query only when something else is true. For instance, you may only want to apply a `where` statement if a given input value is present on the incoming HTTP request. You may accomplish this using the `when` method:
+
+```php
+$role = $request->input('role');
+
+$users = DB::table('users')
+                ->when($role, function ($query, $role) {
+                    $query->where('role_id', $role);
+                })
+                ->get();
+```
+
+The `when` method only executes the given closure when the first argument is `true`. If the first argument is `false`, the closure will not be executed.
+
+You may pass another closure as the third argument to the `when` method. This closure will execute if the first argument evaluates as `false`:
+
+```php
+$sortBy = null;
+
+$users = DB::table('users')
+                ->when($sortBy, function ($query, $sortBy) {
+                    $query->orderBy($sortBy);
+                }, function ($query) {
+                    $query->orderBy('name');
+                })
+                ->get();
+```
+
+The `unless` method is the inverse of `when`. The given closure will only execute if the first argument is `false`:
+
+```php
+$is_admin = $user->isAdmin();
+
+$users = DB::table('users')
+                ->unless($is_admin, function ($query) {
+                    $query->where('active', 1);
+                })
+                ->get();
+```
+
 ## Relationship Queries (whereHas)
 
 Query records based on the existence of related records:
@@ -235,6 +294,25 @@ $posts = Post::query()
     ->whereHas('comments')
     ->orWhereHas('likes')
     ->get();
+```
+
+### whereDoesntHave
+
+The `whereDoesntHave` method works similarly to `whereHas`, but filters results that **do not** have matching related records:
+
+```php
+// Get all posts that don't have any comments
+$posts = Post::whereDoesntHave('comments')->get();
+
+// Get all posts that don't have any spam comments
+$posts = Post::whereDoesntHave('comments', function($query) {
+    $query->where('type', 'spam');
+})->get();
+
+// With OR condition
+$posts = Post::where('status', 'draft')
+             ->orWhereDoesntHave('author')
+             ->get();
 ```
 
 ## Raw Expressions

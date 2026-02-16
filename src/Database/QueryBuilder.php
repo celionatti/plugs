@@ -64,6 +64,11 @@ class QueryBuilder
         return $this;
     }
 
+    public function getTable(): ?string
+    {
+        return $this->table;
+    }
+
     public function select(array $columns = ['*']): self
     {
         $this->select = array_map([QueryUtils::class, 'sanitizeColumn'], $columns);
@@ -137,6 +142,22 @@ class QueryBuilder
     public function orWhere($column, $operator = null, $value = null): self
     {
         return $this->where($column, $operator, $value, 'OR');
+    }
+
+    /**
+     * Add a nested where clause (alias for where with a closure).
+     */
+    public function nestedWhere(Closure $callback, string $boolean = 'AND'): self
+    {
+        return $this->where($callback, null, null, $boolean);
+    }
+
+    /**
+     * Add a nested or where clause (alias for orWhere with a closure).
+     */
+    public function orNestedWhere(Closure $callback): self
+    {
+        return $this->nestedWhere($callback, 'OR');
     }
 
     /**
@@ -249,6 +270,111 @@ class QueryBuilder
     public function orWhereHas(string $relation, ?Closure $callback = null): self
     {
         return $this->whereHas($relation, $callback, 'OR');
+    }
+
+    /**
+     * Add a "where doesn't have" relationship constraint.
+     */
+    public function whereDoesntHave(string $relation, ?Closure $callback = null, string $boolean = 'AND'): self
+    {
+        if (!$this->model) {
+            throw new Exception("whereDoesntHave requires a model to be set on the builder.");
+        }
+
+        $modelInstance = new $this->model();
+
+        if (!method_exists($modelInstance, $relation)) {
+            throw new Exception("Relationship [{$relation}] not found on model [" . get_class($modelInstance) . "].");
+        }
+
+        $proxy = $modelInstance->$relation();
+        $reflection = new \ReflectionObject($proxy);
+
+        $relatedBuilder = null;
+        $foreignKey = null;
+        $localKey = null;
+        $pivotTable = null;
+        $foreignPivotKey = null;
+        $relatedPivotKey = null;
+
+        if ($reflection->hasProperty('builder')) {
+            $prop = $reflection->getProperty('builder');
+            $prop->setAccessible(true);
+            $relatedBuilder = $prop->getValue($proxy);
+        }
+
+        if ($reflection->hasProperty('foreignKey')) {
+            $prop = $reflection->getProperty('foreignKey');
+            $prop->setAccessible(true);
+            $foreignKey = $prop->getValue($proxy);
+        }
+
+        if ($reflection->hasProperty('localKey')) {
+            $prop = $reflection->getProperty('localKey');
+            $prop->setAccessible(true);
+            $localKey = $prop->getValue($proxy);
+        }
+
+        if ($reflection->hasProperty('ownerKey')) {
+            $prop = $reflection->getProperty('ownerKey');
+            $prop->setAccessible(true);
+            $localKey = $prop->getValue($proxy);
+        }
+
+        if (str_contains(get_class($proxy), 'BelongsToManyProxy')) {
+            $prop = $reflection->getProperty('config');
+            $prop->setAccessible(true);
+            $config = $prop->getValue($proxy);
+
+            $pivotTable = $config['pivotTable'];
+            $foreignPivotKey = $config['foreignPivotKey'];
+            $relatedPivotKey = $config['relatedPivotKey'];
+            $relatedClass = $config['relatedClass'];
+            $relatedBuilder = $relatedClass::query();
+        }
+
+        if (!$relatedBuilder) {
+            throw new Exception("Could not resolve relationship builder for [{$relation}].");
+        }
+
+        $relatedTable = $relatedBuilder->getTable();
+        $parentTable = $this->table;
+
+        $subQuery = new static($this->connection);
+        $subQuery->table($relatedTable);
+        $subQuery->select(['1']);
+
+        if ($pivotTable) {
+            $subQuery->join($pivotTable, "{$pivotTable}.{$relatedPivotKey}", '=', "{$relatedTable}.id");
+            $subQuery->where("{$pivotTable}.{$foreignPivotKey}", '=', new \Plugs\Database\Raw("{$parentTable}.id"));
+        } else {
+            $subQuery->where("{$relatedTable}.{$foreignKey}", '=', new \Plugs\Database\Raw("{$parentTable}.{$localKey}"));
+        }
+
+        if ($callback) {
+            $callback($subQuery);
+        }
+
+        $sql = $subQuery->buildSelectSql();
+
+        $this->where[] = [
+            'type' => 'Raw',
+            'sql' => "NOT EXISTS ({$sql})",
+            'boolean' => $boolean,
+            'params' => $subQuery->getParams(),
+        ];
+
+        $this->params = array_merge($this->params, $subQuery->getParams());
+
+        return $this;
+    }
+
+    /**
+     * Add an "or where doesn't have" relationship constraint.
+     */
+    public function orWhereDoesntHave(string $relation, ?Closure $callback = null): self
+    {
+        return $this->whereDoesntHave($relation, $callback, 'OR');
     }
 
     public function join(string $table, string $first, string $operator, string $second, string $type = 'INNER'): self
@@ -508,6 +634,34 @@ class QueryBuilder
         ];
 
         $this->params[$placeholder] = json_encode($value);
+
+        return $this;
+    }
+
+    /**
+     * Apply a callback to the query builder if a condition is true.
+     */
+    public function when($value, callable $callback, callable $default = null): self
+    {
+        if ($value) {
+            $callback($this, $value);
+        } elseif ($default) {
+            $default($this, $value);
+        }
+
+        return $this;
+    }
+
+    /**
+     * Apply a callback to the query builder if a condition is false.
+     */
+    public function unless($value, callable $callback, callable $default = null): self
+    {
+        if (!$value) {
+            $callback($this, $value);
+        } elseif ($default) {
+            $default($this, $value);
+        }
 
         return $this;
     }
