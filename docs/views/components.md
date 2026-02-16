@@ -241,13 +241,13 @@ class Counter extends ReactiveComponent {
     }
 
     public function render() {
-        return 'components.counter';
+        return 'counter'; // Resolves to resources/views/components/counter.plug.php
     }
 }
 ```
 
 > [!TIP]
-> **Convention over Configuration**: The `render()` method is optional for both standard and reactive components. If missing, the engine automatically resolves the view based on the class location (e.g., `App\Components\Alert` -> `components/Alert.plug.php`). All **public properties** of the class are automatically available as variables in the view.
+> **Smart View Resolution**: The `render()` method is optional. If you do provide it, you can return a view name like `'counter'`. The engine is smart enough to check `resources/views/components/` first. If found, it renders as a component. If not, it falls back to `resources/views/` (standard view). This allows you to use both dedicated component views and standard partials seamlessly. All **public properties** are automatically available in the view.
 
 ### 2. The Interactive View
 

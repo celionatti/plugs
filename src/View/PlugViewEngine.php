@@ -470,8 +470,15 @@ class PlugViewEngine implements ViewEngineInterface
                         $html = $view->withData($dataToMerge)->render();
                     } elseif (is_string($view)) {
                         if (strpos($view, '<') === false) {
-                            // Always resolve as component since we're in renderComponent context
-                            $html = $this->render($view, $dataToMerge, true);
+                            // Smart detection: Check if it exists as a component first
+                            try {
+                                $componentPath = $this->getComponentPath($view);
+                                $isComponent = file_exists($componentPath);
+                            } catch (ViewException $e) {
+                                $isComponent = false;
+                            }
+
+                            $html = $this->render($view, $dataToMerge, $isComponent);
                         } else {
                             $html = $view;
                         }
@@ -510,8 +517,14 @@ class PlugViewEngine implements ViewEngineInterface
                 if (is_string($view)) {
                     // If it looks like a view name (contains dot or is filepath-like) and not HTML
                     if (strpos($view, '<') === false) {
-                        // Always resolve as component since we're in renderComponent context
-                        return $this->render($view, $dataToMerge, true);
+                        // Smart detection: Check if it exists as a component first
+                        try {
+                            $componentPath = $this->getComponentPath($view);
+                            $isComponent = file_exists($componentPath);
+                        } catch (ViewException $e) {
+                            $isComponent = false;
+                        }
+                        return $this->render($view, $dataToMerge, $isComponent);
                     }
                     // Otherwise, return raw string (HTML)
                     return $view;

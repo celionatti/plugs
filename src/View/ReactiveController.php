@@ -49,8 +49,14 @@ class ReactiveController
             $componentName = $data['component'] ?? null;
             $action = $data['action'] ?? null;
             $state = $data['state'] ?? null;
-            $payload = $data['payload'] ?? [];
-            $params = is_array($payload) ? $payload : [$payload];
+            $payload = $data['payload'] ?? null;
+
+            // Fix: Only pass arguments if payload is provided
+            $params = [];
+            if ($payload !== null) {
+                $params = is_array($payload) ? $payload : [$payload];
+            }
+
             $id = $data['id'] ?? null;
 
             if (!$componentName || !$action || !$state) {
@@ -90,7 +96,8 @@ class ReactiveController
 
             // Re-render
             $viewPath = $component->render();
-            $html = $this->viewEngine->render($viewPath, array_merge($component->getState(), ['slot' => '']), false);
+            // FIX: Always treat as component view to match engine behavior
+            $html = $this->viewEngine->render($viewPath, array_merge($component->getState(), ['slot' => '']), true);
 
             return ResponseFactory::json([
                 'html' => $html,
