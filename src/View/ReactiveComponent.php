@@ -27,6 +27,11 @@ abstract class ReactiveComponent
     }
 
     /**
+     * Internal keys injected by the framework that should not be treated as HTML attributes
+     */
+    private const INTERNAL_KEYS = ['attributes', 'slot', 'view', '__slot_id', '__fragmentRenderer', '__sections', '__stacks'];
+
+    /**
      * Fill component properties from data
      */
     public function fill(array $data): void
@@ -34,6 +39,12 @@ abstract class ReactiveComponent
         $reflection = new ReflectionClass($this);
         foreach ($data as $key => $value) {
             $key = (string) $key;
+
+            // Skip internal framework keys entirely
+            if (in_array($key, self::INTERNAL_KEYS, true)) {
+                continue;
+            }
+
             $cleanKey = ltrim($key, ':');
             if (property_exists($this, $cleanKey)) {
                 $property = $reflection->getProperty($cleanKey);
@@ -51,6 +62,8 @@ abstract class ReactiveComponent
                 }
 
                 $this->$cleanKey = $value;
+            } elseif (is_scalar($value)) {
+                $this->attributes[$key] = $value;
             }
         }
     }
@@ -143,8 +156,10 @@ abstract class ReactiveComponent
         return $this->name;
     }
 
+    protected array $attributes = [];
+
     public function getAttributes(): array
     {
-        return [];
+        return $this->attributes;
     }
 }

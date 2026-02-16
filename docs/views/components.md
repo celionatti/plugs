@@ -220,6 +220,58 @@ For complex applications, you can organize components into sub-directories and r
 
 ---
 
+## Class-Based Components
+
+For more complex logic, you can back a component with a PHP class. This allows you to prepare data, dependency inject services, and manage state before rendering.
+
+### 1. Create the Class
+
+Create a class in `app/Components/` (namespace `App\Components`).
+
+```php
+namespace App\Components;
+
+class UserProfile
+{
+    public $user;
+    public $title;
+
+    public function __construct($user, $title = 'Profile')
+    {
+        $this->user = $user;
+        $this->title = $title;
+    }
+
+    public function render()
+    {
+        // View resolves to resources/views/components/user-profile.plug.php
+        // OR resources/views/components/user/profile.plug.php
+        return 'user-profile';
+    }
+}
+```
+
+### 2. Create the View
+
+Create the corresponding view file. Public properties from the class are automatically available.
+
+```blade
+{{-- components/user-profile.plug.php --}}
+<div class="profile-card">
+    <h3>{{ $title }}</h3>
+    <img src="{{ $user->avatar }}" alt="{{ $user->name }}">
+    <p>{{ $user->bio }}</p>
+</div>
+```
+
+### 3. Usage
+
+```html
+<UserProfile :user="$currentUser" title="My Account" />
+```
+
+---
+
 ## Reactive Components (Livewire Style)
 
 Plugs V5 includes a built-in reactive component bridge powered by `plugs-spa.js`. This allows you to create interactive components that update via AJAX without complex JavaScript.
