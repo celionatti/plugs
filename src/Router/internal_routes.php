@@ -59,7 +59,13 @@ $router->group(['prefix' => '_plugs'], function () use ($router) {
     // API Documentation (OpenAPI/Swagger)
     $router->get('/docs', [\Plugs\Http\Controllers\OpenApiController::class, 'ui'])->name('plugs.docs');
     $router->get('/docs/spec', [\Plugs\Http\Controllers\OpenApiController::class, 'spec'])->name('plugs.docs.spec');
+
+    // Lazy Component Rendering
+    $router->post('/component/render', [\Plugs\Http\Controllers\ComponentController::class, 'render'])->name('plugs.component.render');
 });
+
+// Media Routes
+$router->post('/plugs/media/upload', [\Plugs\Http\Controllers\MediaController::class, 'upload'])->name('plugs.media.upload');
 
 $router->get('/reactive-test', function () {
     return view('reactive_test');

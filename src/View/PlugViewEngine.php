@@ -470,8 +470,8 @@ class PlugViewEngine implements ViewEngineInterface
                         $html = $view->withData($dataToMerge)->render();
                     } elseif (is_string($view)) {
                         if (strpos($view, '<') === false) {
-                            // Use isComponent = true if we're auto-discovering or if it looks like a component path
-                            $html = $this->render($view, $dataToMerge, !$hasRender || strpos($view, 'components.') === 0);
+                            // Always resolve as component since we're in renderComponent context
+                            $html = $this->render($view, $dataToMerge, true);
                         } else {
                             $html = $view;
                         }
@@ -510,8 +510,8 @@ class PlugViewEngine implements ViewEngineInterface
                 if (is_string($view)) {
                     // If it looks like a view name (contains dot or is filepath-like) and not HTML
                     if (strpos($view, '<') === false) {
-                        // Use isComponent = true if we're auto-discovering or if it looks like a component path
-                        return $this->render($view, $dataToMerge, !$hasRender || strpos($view, 'components.') === 0);
+                        // Always resolve as component since we're in renderComponent context
+                        return $this->render($view, $dataToMerge, true);
                     }
                     // Otherwise, return raw string (HTML)
                     return $view;

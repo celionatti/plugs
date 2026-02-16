@@ -345,6 +345,14 @@ class ViewCompiler
     private function createComponentPlaceholder(string $componentName, string $attributes, string $slotContent): string
     {
         $attributesArray = $this->parseAttributes($attributes);
+
+        // Check for 'lazy' attribute
+        $isLazy = false;
+        if (isset($attributesArray['lazy'])) {
+            $isLazy = true;
+            unset($attributesArray['lazy']);
+        }
+
         $dataPhp = $this->buildDataArray($attributesArray);
 
         $slots = [];
@@ -411,11 +419,40 @@ class ViewCompiler
         $attributesConstruction = sprintf("new \Plugs\View\ComponentAttributes([%s])", $dataPhp);
         $dataArray .= (empty($dataArray) ? '' : ', ') . "'attributes' => " . $attributesConstruction;
 
-        return sprintf(
+        // Initial Render (Standard)
+        $renderCall = sprintf(
             '<?php echo $view->renderComponent(\'%s\', [%s]); ?>',
             addslashes($componentName),
             $dataArray
         );
+
+        // Lazy Loading Logic
+        if ($isLazy) {
+            // We need to serialize the attributes for the payload
+            // Note: We can only securely serialize scalar values or arrays of scalars here basically.
+            // Complex objects (like Models) passed as variables ($post) need special handling
+            // or should be passed as IDs. For now, we assume standard data.
+
+            // We'll generate a runtime PHP snippet to encrypt the payload
+            // This ensures variables ($var) are evaluated before encryption.
+            return sprintf(
+                '<?php
+                $lazyPayload = [
+                    "component" => "%s",
+                    "attributes" => [%s]
+                ];
+                $encryptedPayload = \Plugs\Facades\Crypt::encrypt($lazyPayload);
+                ?>
+                <div class="plugs-lazy-component" data-plugs-lazy-payload="<?php echo $encryptedPayload; ?>">
+                    %s
+                </div>',
+                addslashes($componentName),
+                $dataPhp, // We use $dataPhp (key => value) not $dataArray which includes slots
+                isset($slots['loading']) ? $slots['loading']['content'] : '<div class="text-center p-3"><span class="spinner-border spinner-border-sm"></span> Loading...</div>'
+            );
+        }
+
+        return $renderCall;
     }
 
     private function compileNonComponentContent(string $content): string
