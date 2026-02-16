@@ -4,29 +4,29 @@ declare(strict_types=1);
 
 namespace Plugs\Http\Controllers;
 
-use Plugs\Http\Request;
+use Plugs\Http\Message\ServerRequest;
+use Plugs\Http\ResponseFactory;
 use Plugs\Facades\Crypt;
 use Plugs\Facades\View;
-use Plugs\Http\Response;
 
 class ComponentController
 {
-    public function render(Request $request)
+    public function render(ServerRequest $request)
     {
         $payload = $request->input('payload');
 
         if (!$payload) {
-            return response()->json(['error' => 'Missing payload'], 400);
+            return ResponseFactory::json(['error' => 'Missing payload'], 400);
         }
 
         try {
             $data = Crypt::decrypt($payload);
         } catch (\Exception $e) {
-            return response()->json(['error' => 'Invalid payload'], 400);
+            return ResponseFactory::json(['error' => 'Invalid payload'], 400);
         }
 
         if (!isset($data['component']) || !isset($data['attributes'])) {
-            return response()->json(['error' => 'Invalid component data'], 400);
+            return ResponseFactory::json(['error' => 'Invalid component data'], 400);
         }
 
         $componentName = $data['component'];
@@ -69,7 +69,7 @@ class ComponentController
             return $html;
 
         } catch (\Exception $e) {
-            return response()->json(['error' => 'Rendering error: ' . $e->getMessage()], 500);
+            return ResponseFactory::json(['error' => 'Rendering error: ' . $e->getMessage()], 500);
         }
     }
 }

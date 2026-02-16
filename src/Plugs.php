@@ -67,6 +67,7 @@ class Plugs
         'cache' => 'bootstrapCache',
         'view' => 'bootstrapView',
         'events' => 'bootstrapEvents',
+        'encryption' => 'bootstrapEncryption',
     ];
 
     /**
@@ -227,8 +228,26 @@ class Plugs
             return $container->make(\Plugs\View\ViewManager::class)->driver();
         });
 
+
         $container->alias(\Plugs\View\ViewManager::class, 'view.manager');
         $container->alias(\Plugs\View\ViewEngineInterface::class, 'view');
+    }
+
+    private function bootstrapEncryption(): void
+    {
+        $container = $this->container;
+
+        $container->singleton('encrypter', function () {
+            $key = config('app.key');
+
+            if (str_starts_with($key, 'base64:')) {
+                $key = base64_decode(substr($key, 7));
+            }
+
+            return new \Plugs\Security\Encrypter($key);
+        });
+
+        $container->alias('encrypter', \Plugs\Security\Encrypter::class);
     }
 
     private function bootstrapDatabase(): object
