@@ -194,6 +194,11 @@ class AssetManager
             return rtrim($this->cdnUrl, '/') . '/' . ltrim($path, '/');
         }
 
+        // Use the global url() helper if available to handle subdirectories/base_url correctly
+        if (function_exists('url')) {
+            return url($path);
+        }
+
         return $path;
     }
 
@@ -328,7 +333,7 @@ class AssetManager
                 if ($absolutePath && file_exists($absolutePath)) {
                     $webPath = str_replace($this->publicPath, '/', $absolutePath);
                     $webPath = str_replace('\\', '/', $webPath); // Ensure web path uses forward slashes
-
+    
                     return 'url(' . $webPath . ')';
                 }
 

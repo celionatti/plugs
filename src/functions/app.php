@@ -27,19 +27,26 @@ if (!function_exists('class_basename')) {
 if (!function_exists('env')) {
     function env(string $key, $default = null)
     {
-        $value = $_ENV[$key] ?? getenv($key);
+        if (isset($GLOBALS['__env_overrides'][$key])) {
+            return $GLOBALS['__env_overrides'][$key];
+        }
 
-        if ($value === false) {
+        $value = $GLOBALS['__env_overrides'][$key] ?? $_ENV[$key] ?? $_SERVER[$key] ?? getenv($key);
+
+        if ($value === false || $value === null) {
             return $default;
         }
 
-        switch (strtolower($value)) {
+        switch (strtolower((string) $value)) {
             case 'true':
             case '(true)':
                 return true;
             case 'false':
             case '(false)':
                 return false;
+            case 'empty':
+            case '(empty)':
+                return '';
             case 'null':
             case '(null)':
                 return null;

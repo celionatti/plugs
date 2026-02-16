@@ -149,6 +149,8 @@ class Config
             self::$loaded = [];
         }
 
+        self::$path = null;
+
         // Also clear physical cache file if it exists
         $cacheFile = self::getCachePath();
         if (file_exists($cacheFile)) {

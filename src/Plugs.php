@@ -372,39 +372,7 @@ class Plugs
 
     private function createServerRequest(): ServerRequestInterface
     {
-        $method = $_SERVER['REQUEST_METHOD'] ?? 'GET';
-        $uri = $_SERVER['REQUEST_URI'] ?? '/';
-
-        // Parse query string
-        $queryParams = [];
-        if (isset($_SERVER['QUERY_STRING'])) {
-            parse_str($_SERVER['QUERY_STRING'], $queryParams);
-        }
-
-        $headers = [];
-        foreach ($_SERVER as $key => $value) {
-            if (strpos($key, 'HTTP_') === 0) {
-                $header = str_replace('_', '-', strtolower(substr($key, 5)));
-                $headers[$header] = $value;
-            }
-        }
-
-        $body = new Stream(fopen('php://input', 'r'));
-
-        $request = new ServerRequest(
-            $method,
-            $uri,
-            $headers,
-            $body,
-            $_SERVER['SERVER_PROTOCOL'] ?? '1.1',
-            $_SERVER
-        );
-
-        return $request
-            ->withQueryParams($queryParams)
-            ->withParsedBody($_POST)
-            ->withCookieParams($_COOKIE)
-            ->withUploadedFiles($this->normalizeFiles($_FILES));
+        return ServerRequest::fromGlobals();
     }
 
     private function normalizeFiles(array $files): array

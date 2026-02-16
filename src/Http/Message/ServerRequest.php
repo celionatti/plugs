@@ -131,12 +131,19 @@ class ServerRequest implements ServerRequestInterface
     private static function buildUriFromGlobals(): UriInterface
     {
         $scheme = 'http';
-        if (
-            (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ||
-            (!empty($_SERVER['HTTP_X_FORWARDED_PROTO']) && $_SERVER['HTTP_X_FORWARDED_PROTO'] === 'https') ||
-            (!empty($_SERVER['HTTP_X_FORWARDED_SSL']) && $_SERVER['HTTP_X_FORWARDED_SSL'] === 'on') ||
-            (isset($_SERVER['SERVER_PORT']) && (int) $_SERVER['SERVER_PORT'] === 443)
-        ) {
+        if (self::isProxyTrusted()) {
+            if (!empty($_SERVER['HTTP_X_FORWARDED_PROTO'])) {
+                $scheme = strtolower((string) $_SERVER['HTTP_X_FORWARDED_PROTO']);
+            } elseif (!empty($_SERVER['HTTP_X_FORWARDED_SSL']) && $_SERVER['HTTP_X_FORWARDED_SSL'] === 'on') {
+                $scheme = 'https';
+            }
+        }
+
+        if ($scheme === 'http' && isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') {
+            $scheme = 'https';
+        }
+
+        if ($scheme === 'http' && isset($_SERVER['SERVER_PORT']) && (int) $_SERVER['SERVER_PORT'] === 443) {
             $scheme = 'https';
         }
 
@@ -168,7 +175,9 @@ class ServerRequest implements ServerRequestInterface
     private static function getHost(): string
     {
         $host = '';
-        if (!empty($_SERVER['HTTP_HOST'])) {
+        if (self::isProxyTrusted() && !empty($_SERVER['HTTP_X_FORWARDED_HOST'])) {
+            $host = $_SERVER['HTTP_X_FORWARDED_HOST'];
+        } elseif (!empty($_SERVER['HTTP_HOST'])) {
             $host = $_SERVER['HTTP_HOST'];
         } elseif (!empty($_SERVER['SERVER_NAME'])) {
             $host = $_SERVER['SERVER_NAME'];
@@ -209,11 +218,13 @@ class ServerRequest implements ServerRequestInterface
 
     private static function getPort(string $scheme): ?int
     {
-        if (!isset($_SERVER['SERVER_PORT'])) {
+        if (self::isProxyTrusted() && !empty($_SERVER['HTTP_X_FORWARDED_PORT'])) {
+            $port = (int) $_SERVER['HTTP_X_FORWARDED_PORT'];
+        } elseif (!isset($_SERVER['SERVER_PORT'])) {
             return null;
+        } else {
+            $port = (int) $_SERVER['SERVER_PORT'];
         }
-
-        $port = (int) $_SERVER['SERVER_PORT'];
 
         if (($scheme === 'http' && $port === 80) || ($scheme === 'https' && $port === 443)) {
             return null;
@@ -725,6 +736,28 @@ class ServerRequest implements ServerRequestInterface
         }
 
         return $remoteAddr;
+    }
+
+    /**
+     * Check if the current remote address is a trusted proxy.
+     */
+    private static function isProxyTrusted(): bool
+    {
+        $remoteAddr = $_SERVER['REMOTE_ADDR'] ?? null;
+
+        if (empty(self::$trustedProxies) || $remoteAddr === null) {
+            return false;
+        }
+
+        foreach (self::$trustedProxies as $proxy) {
+            if ($proxy === '*' || $proxy === $remoteAddr) {
+                return true;
+            }
+
+            // Basic CIDR support could be added here if needed
+        }
+
+        return false;
     }
 
     /**

@@ -63,22 +63,22 @@ if (!function_exists('url')) {
         if ($baseUrl && (str_starts_with($baseUrl, 'http://') || str_starts_with($baseUrl, 'https://'))) {
             $url = rtrim($baseUrl, '/') . $path;
         } else {
-            // Fallback to dynamic derivation with subdirectory awareness
-            $basePath = get_base_path();
+            // Use current request to build base URL
             $request = request();
+            $basePath = get_base_path();
 
-            if ($request === null) {
-                $scheme = isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off' ? 'https' : 'http';
-                $host = $_SERVER['HTTP_HOST'] ?? 'localhost';
-            } else {
+            if ($request !== null) {
                 $uri = $request->getUri();
                 $scheme = $uri->getScheme();
-                $host = $uri->getHost();
-                $port = $uri->getPort();
-                $host .= ($port && !in_array($port, [80, 443])) ? ":$port" : '';
-            }
+                $authority = $uri->getAuthority();
 
-            $url = $scheme . '://' . $host . rtrim($basePath, '/') . $path;
+                $url = ($scheme ? $scheme . '://' : '') . $authority . rtrim($basePath, '/') . $path;
+            } else {
+                // Fallback to dynamic derivation if no request object
+                $scheme = isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off' ? 'https' : 'http';
+                $host = $_SERVER['HTTP_HOST'] ?? 'localhost';
+                $url = $scheme . '://' . $host . rtrim($basePath, '/') . $path;
+            }
         }
 
         if (!empty($parameters)) {
