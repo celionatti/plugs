@@ -55,4 +55,25 @@ class OpenAIDriver extends AIBaseDriver
             throw new RuntimeException("OpenAI API Error: " . $e->getMessage(), (int) $e->getCode(), $e);
         }
     }
+
+    /**
+     * @inheritDoc
+     */
+    public function embed(string $text): array
+    {
+        try {
+            $response = $this->client->post('embeddings', [
+                'json' => [
+                    'model' => $this->config['embedding_model'] ?? 'text-embedding-3-small',
+                    'input' => $text,
+                ],
+            ]);
+
+            $data = json_decode($response->getBody()->getContents(), true);
+
+            return $data['data'][0]['embedding'] ?? [];
+        } catch (\Exception $e) {
+            throw new RuntimeException("OpenAI Embedding Error: " . $e->getMessage(), (int) $e->getCode(), $e);
+        }
+    }
 }

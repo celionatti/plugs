@@ -108,9 +108,44 @@ class Async
         }
 
         if ($error) {
-            throw $error instanceof Throwable ? $error : new \Exception((string) $error);
+            throw $error instanceof \Throwable ? $error : new \Exception((string) $error);
         }
 
         return $result;
+    }
+
+    /**
+     * Run a task in the background using the event loop.
+     */
+    public static function background(callable $callback): void
+    {
+        $loop = app(LoopManager::class);
+        $loop->futureTick($callback);
+    }
+
+    /**
+     * Non-blocking delay.
+     */
+    public static function delay(float $seconds, ?callable $callback = null): ?PromiseInterface
+    {
+        $loop = app(LoopManager::class);
+
+        if ($callback) {
+            $loop->addTimer($seconds, $callback);
+            return null;
+        }
+
+        $promise = new \GuzzleHttp\Promise\Promise();
+        $loop->addTimer($seconds, fn() => $promise->resolve(true));
+
+        return $promise;
+    }
+
+    /**
+     * Non-blocking sleep (alias for delay when used with await).
+     */
+    public static function sleep(float $seconds): void
+    {
+        static::await(static::delay($seconds));
     }
 }

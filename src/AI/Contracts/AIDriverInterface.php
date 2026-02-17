@@ -31,4 +31,12 @@ interface AIDriverInterface
      * @return self
      */
     public function withModel(string $model): self;
+
+    /**
+     * Generate an embedding for the given text.
+     *
+     * @param string $text
+     * @return array
+     */
+    public function embed(string $text): array;
 }

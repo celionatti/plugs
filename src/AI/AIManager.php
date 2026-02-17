@@ -116,4 +116,42 @@ class AIManager
     {
         return $this->driver()->$method(...$parameters);
     }
+
+    /**
+     * Render a prompt template and send it to the driver.
+     */
+    public function prompt(string $template, array $data = [], array $options = []): string
+    {
+        // Simple prompt if it doesn't look like a template file
+        if (!preg_match('/^[a-zA-Z0-9._-]+$/', $template) || !file_exists(resource_path("prompts/{$template}.prompt"))) {
+            return $this->driver()->prompt($template, $options);
+        }
+
+        $content = file_get_contents(resource_path("prompts/{$template}.prompt"));
+
+        foreach ($data as $key => $value) {
+            $content = str_replace('{{' . $key . '}}', (string) $value, $content);
+        }
+
+        return $this->driver()->prompt($content, $options);
+    }
+
+    /**
+     * Classify text into categories.
+     */
+    public function classify(string $text, array $categories = [], array $options = []): string
+    {
+        $categoryList = implode(', ', $categories);
+        $prompt = "Classify the following text into one of these categories: {$categoryList}.\n\nText: \"{$text}\"\n\nCategory:";
+
+        return trim($this->driver()->prompt($prompt, array_merge(['max_tokens' => 10], $options)));
+    }
+
+    /**
+     * Get a vector store instance.
+     */
+    public function vector(): VectorManager
+    {
+        return app(VectorManager::class);
+    }
 }

@@ -33,4 +33,12 @@ abstract class AIBaseDriver implements AIDriverInterface
     {
         return $this->config[$key] ?? $default;
     }
+
+    /**
+     * @inheritDoc
+     */
+    public function embed(string $text): array
+    {
+        throw new \RuntimeException(sprintf('Embedding is not supported by the [%s] driver.', class_basename(static::class)));
+    }
 }

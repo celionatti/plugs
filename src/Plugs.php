@@ -68,6 +68,7 @@ class Plugs
         'view' => 'bootstrapView',
         'events' => 'bootstrapEvents',
         'encryption' => 'bootstrapEncryption',
+        'concurrency' => 'bootstrapConcurrency',
     ];
 
     /**
@@ -310,6 +311,15 @@ class Plugs
         return new \Plugs\AI\AIManager(config('ai'));
     }
 
+    private function bootstrapConcurrency(): void
+    {
+        $this->container->singleton(\Plugs\Concurrency\LoopManager::class, function () {
+            return new \Plugs\Concurrency\LoopManager(config('concurrency', []));
+        });
+
+        $this->container->alias(\Plugs\Concurrency\LoopManager::class, 'loop');
+    }
+
     private function bootstrapSeo(): object
     {
         return new \Plugs\Support\SEO(config('seo'));
@@ -408,6 +418,13 @@ class Plugs
 
     private function emitResponse(ResponseInterface $response): void
     {
+        // If we are in async mode, we might not want to use PHP's native header/echo
+        // if the server driver handles it. But for basic Swoole/React usage,
+        // we can still emit if it's the expected way, or the server takes the return.
+        if (\Plugs\Bootstrap\DetectMode::isAsync()) {
+            return;
+        }
+
         if (headers_sent() && PHP_SAPI !== 'cli') {
             echo $response->getBody();
 

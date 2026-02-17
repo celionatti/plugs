@@ -82,4 +82,25 @@ class GeminiDriver extends AIBaseDriver
             throw new RuntimeException("Gemini API Error: " . $e->getMessage(), (int) $e->getCode(), $e);
         }
     }
+
+    /**
+     * @inheritDoc
+     */
+    public function embed(string $text): array
+    {
+        try {
+            $response = $this->client->post($this->getUrl('embedContent'), [
+                'json' => [
+                    'model' => 'models/' . ($this->config['embedding_model'] ?? 'text-embedding-004'),
+                    'content' => ['parts' => [['text' => $text]]]
+                ],
+            ]);
+
+            $data = json_decode($response->getBody()->getContents(), true);
+
+            return $data['embedding']['values'] ?? [];
+        } catch (\Exception $e) {
+            throw new RuntimeException("Gemini Embedding Error: " . $e->getMessage(), (int) $e->getCode(), $e);
+        }
+    }
 }

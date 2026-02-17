@@ -9,6 +9,9 @@ use Plugs\Facade;
 /**
  * @method static string prompt(string $prompt, array $options = [])
  * @method static string chat(array $messages, array $options = [])
+ * @method static string classify(string $text, array $categories = [])
+ * @method static array embed(string $text)
+ * @method static \Plugs\AI\VectorManager vector()
  * @method static \Plugs\AI\Contracts\AIDriverInterface withModel(string $model)
  * @method static \Plugs\AI\Contracts\AIDriverInterface driver(?string $name = null)
  * 
