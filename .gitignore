@@ -30,3 +30,4 @@ openapi.json
 /openapi.json
 /.php-cs-fixer.cache
 /.phpstan.cache
+PRODUCTION_NOTES.md
