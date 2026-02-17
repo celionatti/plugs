@@ -654,7 +654,40 @@ $posts = Post::with('author')->get();
 dq();
 ```
 
-### Performance Profiling
+### Lifecycle Events
+
+Plugs models fire several events throughout their lifecycle, allowing you to hook into various points in a model's existence.
+
+### Available Events
+
+- `retrieved`: After a model has been retrieved from the database.
+- `creating` / `created`: Before and after a record is created.
+- `updating` / `updated`: Before and after a record is updated.
+- `saving` / `saved`: Before and after a record is created or updated.
+- `deleting` / `deleted`: Before and after a record is deleted.
+- `restoring` / `restored`: Before and after a soft-deleted record is restored.
+
+### Registering Listeners
+
+You may use the `observe` method or static event hooks in your model's `boot` method:
+
+```php
+class User extends PlugModel
+{
+    protected static function boot()
+    {
+        parent::boot();
+
+        static::retrieved(function ($user) {
+            // Logic after model is loaded
+        });
+    }
+}
+```
+
+---
+
+## ⚡ Performance Profiling
 
 Profile a block of code:
 

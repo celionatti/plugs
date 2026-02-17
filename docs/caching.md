@@ -5,6 +5,7 @@ Plugs implements a high-performance **Tiered Caching** system that ensures your 
 ## 1. Tiered Cache (L1/L2)
 
 The framework can use multiple cache layers simultaneously:
+
 - **L1 (Local)**: Fast in-memory/APC cache for hot data.
 - **L2 (Distributed)**: Redis or Memcached for shared data across nodes.
 
@@ -41,3 +42,16 @@ Eliminate bootstrap overhead in production by freezing your application state.
 # Compile everything for maximum speed
 php theplugs optimize
 ```
+
+---
+
+## 🛠️ Debugging Cache
+
+You can monitor your cache performance in real-time using the **Profiler Bar** at the bottom of your browser.
+
+- **Hits (H)**: Shown in green. Indicates data was successfully retrieved from the cache.
+- **Misses (M)**: Shown in red. Indicates data was not found in the cache and had to be generated/fetched.
+
+Example floating bar display: `Cache: 5H / 2M`
+
+For a full breakdown of every cache operation during the current request, open the **Profiler** and check the **Application** tab.

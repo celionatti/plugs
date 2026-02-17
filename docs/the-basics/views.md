@@ -215,3 +215,15 @@ public function index()
 ```
 
 In your view, `$users` and `$posts` will be the actual response objects, fully resolved.
+
+---
+
+## 📈 Performance Tracking
+
+All views in Plugs are automatically instrumented for the Profiler. When you render a view, the framework records:
+
+- The exact time taken to render (using high-resolution timers).
+- The memory consumed during rendering.
+- The view path and name.
+
+You can see these metrics in the **"Timeline"** tab of the [Profiler Bar](debugging.md#profiler-bar).

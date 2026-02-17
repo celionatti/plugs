@@ -12,6 +12,22 @@ php theplugs list
 
 ## Built-in Commands
 
+### Framework Insights (New)
+
+The `framework:explain` command is an educational tool that explains framework concepts, lifecycles, and architecture directly in your terminal:
+
+```bash
+php theplugs framework:explain controller
+php theplugs framework:explain model
+php theplugs framework:explain middleware
+```
+
+Outputs include:
+
+- **Concept Definition**: Clear explanation of the role.
+- **Visual Lifecycle**: ASCII diagrams of request/data flow.
+- **Common Mistakes**: Proactive tips to avoid typical developer pitfalls.
+
 ### Key Generation
 
 The `key:generate` command sets your application key in your `.env` file:
@@ -115,6 +131,7 @@ php theplugs make:component [name]
 ```
 
 **Options:**
+
 - `--bolt, -b`: Create a reactive Bolt component (with PHP class).
 - `--force, -f`: Overwrite existing files.
 
@@ -129,11 +146,13 @@ php theplugs make:spa-asset
 ```
 
 **Options:**
+
 - `--min`: Create a minified version (`plugs-spa.min.js`).
 - `--force`: Overwrite existing files.
 
 **Alias:** `g:spa`
-```
+
+````
 
 ### PDF Templates
 
@@ -141,7 +160,7 @@ Generate professional, pre-designed PDF templates:
 
 ```bash
 php theplugs make:pdf-template [type]
-```
+````
 
 **Types:** `invoice`, `receipt`, `ticket`, `booking`, `certificate`, `cv`.
 

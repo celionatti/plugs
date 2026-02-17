@@ -8,6 +8,7 @@ use Plugs\Console\Commands\CacheClearCommand;
 use Plugs\Console\Commands\DemoCommand;
 use Plugs\Console\Commands\HealthCommand;
 use Plugs\Console\Commands\HelpCommand;
+use Plugs\Console\Commands\ExplainCommand;
 use Plugs\Console\Commands\InspireCommand;
 use Plugs\Console\Commands\MakeActionCommand;
 use Plugs\Console\Commands\MakeApiRequestCommand;
@@ -74,6 +75,7 @@ class ConsoleKernel
         'demo' => DemoCommand::class,
         'inspire' => InspireCommand::class,
 
+        'framework:explain' => ExplainCommand::class,
         'make:controller' => MakeControllerCommand::class,
         'make:model' => MakeModelCommand::class,
         'make:command' => MakeCommandCommand::class,

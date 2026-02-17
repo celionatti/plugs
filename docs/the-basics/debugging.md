@@ -38,6 +38,7 @@ The `dd()` helper provides a beautiful, searchable, and interactive view of your
 ### Dump Queries (`dq`)
 
 The `dq()` helper opens the **Query Insights Dashboard**, which provides:
+
 - Total query count and time analysis.
 - N+1 problem detection.
 - A premium, glassmorphic log of every SQL statement executed.
@@ -50,6 +51,7 @@ dq(); // View the query dashboard
 ## API Debugging
 
 When your application is in development mode (`APP_ENV=local`), standardized API responses automatically include a `debug` object containing:
+
 - Peak memory usage.
 - Model load statistics.
 - Total execution time.
@@ -120,6 +122,7 @@ dp(function() {
 ```
 
 This displays:
+
 - **Execution time** in milliseconds
 - **Memory usage**
 - **Query count and time**
@@ -163,6 +166,7 @@ try {
 ```
 
 This displays:
+
 - Exception class and message
 - File location with code context
 - Full stack trace (expandable)
@@ -178,6 +182,7 @@ dh($response);
 ```
 
 This displays:
+
 - Status code with color-coded indicator
 - Request URL
 - Response time (if available)
@@ -200,12 +205,12 @@ dd($data);
 
 ### Available Themes
 
-| Theme | Description |
-|-------|-------------|
-| `dark` | Default purple/blue dark theme |
-| `light` | Clean light mode for bright environments |
-| `dracula` | Popular Dracula color palette |
-| `monokai` | Classic Monokai editor theme |
+| Theme     | Description                              |
+| --------- | ---------------------------------------- |
+| `dark`    | Default purple/blue dark theme           |
+| `light`   | Clean light mode for bright environments |
+| `dracula` | Popular Dracula color palette            |
+| `monokai` | Classic Monokai editor theme             |
 
 ## Dump Model (`dm`)
 
@@ -217,30 +222,33 @@ dm($user);
 ```
 
 This displays:
+
 - Model attributes (respects `__debugInfo()`)
 - Table name and primary key
 - Related queries executed
 
 ## Complete Helper Reference
 
-| Function | Description |
-|----------|-------------|
-| `dd(...$vars)` | Dump and die |
-| `d(...$vars)` | Dump without dying |
-| `dt($theme)` | Set debug theme |
+| Function       | Description        |
+| -------------- | ------------------ |
+| `dd(...$vars)` | Dump and die       |
+| `d(...$vars)`  | Dump without dying |
+| `dt($theme)`   | Set debug theme    |
 
 ## Profiler Bar
 
 The **Profiler Bar** is automatically injected into all HTML pages when in `debug` mode. It stays at the bottom of your screen and provides instant performance feedback.
 
 **Features:**
-- **Real-time Status:** Shows execution time, memory usage, query count, and HTTP status code.
+
+- **Real-time Status:** Shows execution time (standardized on high-resolution timers), memory usage, query count, and HTTP status code.
+- **Improved Cache Stats:** The floating bar now displays clearer labels for cache activity: **H** for Hits (green) and **M** for Misses (red). Hover over the values for detailed tooltips.
 - **Detailed Modal:** Click **"Profiler"** to open a comprehensive debug dashboard overlay with:
   - **Overview:** High-level stats and performance health check.
   - **Queries:** Full log of executed SQL queries with syntax highlighting and bindings.
+  - **Timeline:** Visual representation of the request lifecycle, including middleware and view rendering durations.
   - **Request:** Detailed request parameters, headers, and route info.
-  - **Models:** Memory usage and loaded model statistics.
+  - **Models:** Memory usage, loaded model statistics, and lifecycle events (e.g., `retrieved`).
 
 > [!TIP]
 > The profiler modal uses the same rich, tabbed interface as `dd()`, giving you a consistent debugging experience across your application.
-
