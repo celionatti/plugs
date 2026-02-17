@@ -26,3 +26,7 @@ settings.json
 plugs.lock
 openapi.json
 /example-bridge
+/phpstan_output.txt
+/openapi.json
+/.php-cs-fixer.cache
+/.phpstan.cache
