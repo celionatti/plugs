@@ -65,6 +65,7 @@ class Connection
     private int $maxRetries = 3;
     private static array $queryLog = [];
     private static bool $loggingQueries = false;
+    private ?\Plugs\Database\Optimization\OptimizationManager $optimizationManager = null;
 
     // Security & Advanced Features
     private bool $sticky = false;
@@ -89,6 +90,7 @@ class Connection
         $this->poolId = bin2hex(random_bytes(16));
         $this->sticky = $config['sticky'] ?? false;
         self::$config[$name] = $config;
+        $this->optimizationManager = new \Plugs\Database\Optimization\OptimizationManager($this, $config['optimizations'] ?? []);
         // Connection deferred until first query (Lazy Loading)
     }
 
@@ -821,6 +823,10 @@ class Connection
 
             // --- Observability & Metrics ---
             $this->recordObservabilityMetrics($sql, $params, $executionTime);
+
+            if ($this->optimizationManager) {
+                $this->optimizationManager->process($sql, $params, $executionTime, $backtrace);
+            }
 
             return $stmt;
         } catch (PDOException $e) {
