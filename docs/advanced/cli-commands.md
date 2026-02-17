@@ -152,6 +152,21 @@ php theplugs make:spa-asset
 
 **Alias:** `g:spa`
 
+### Plugs Core Assets (New)
+
+Publish and minify core framework assets (Editor, Lazy Loading) to the `public/plugs` directory:
+
+```bash
+php theplugs make:plugs-assets
+```
+
+**Options:**
+
+- `--min`: Create minified versions (`.min.js`, `.min.css`).
+- `--force`: Overwrite existing files.
+
+**Alias:** `g:assets`
+
 ````
 
 ### PDF Templates

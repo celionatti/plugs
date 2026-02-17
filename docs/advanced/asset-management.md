@@ -39,19 +39,24 @@ echo '<link rel="stylesheet" href="' . $url . '">';
 ## Advanced Features
 
 ### Cache Busting & Versioning
+
 Plugs automatically appends a version hash to your asset URLs to ensure users always get the latest version after a deployment.
+
 ```php
 echo $assets->url('css/style.css'); // Outputs: /css/style.css?v=8a2b3c4d
 ```
 
 ### CDN Support
+
 Easily serve your assets from a CDN by setting a global CDN URL.
+
 ```php
 $assets->setCdnUrl('https://cdn.example.com');
 echo $assets->url('js/app.js'); // Outputs: https://cdn.example.com/js/app.js
 ```
 
 ### Security (SRI & CSP)
+
 Plugs supports **Subresource Integrity (SRI)** and **Content Security Policy (CSP)** nonces.
 
 ```php
@@ -66,6 +71,7 @@ echo $assets->tags(['js/app.js'], 'js');
 ```
 
 ### Image Optimization
+
 Resize and optimize images on the fly. Optimized images are cached for performance.
 
 ```php
@@ -81,6 +87,7 @@ echo '<img src="' . $url . '">';
 ```
 
 ### Resource Hints
+
 Improve performance by preloading or prefetching critical assets.
 
 ```php
@@ -88,6 +95,7 @@ echo $assets->resourceHint('/fonts/brand.woff2', 'preload');
 ```
 
 ### Precompression
+
 Generate Gzip and Brotli versions of your assets automatically during compilation.
 
 ```php
@@ -105,8 +113,39 @@ The `AssetManager` automatically configures itself based on your `APP_ENV`.
 - **Production**: Assets are automatically combined, minified, and versioned.
 
 You can override these settings manually:
+
 ```php
 $assets->setMinify(false)
        ->setCombine(true)
        ->setVersioning(true);
+```
+
+---
+
+## 🛠️ Framework Assets
+
+Plugs provides several core assets for internal features like the Rich Text Editor and Lazy Loading. These are managed separately from your application assets.
+
+### Publishing Assets
+
+Use the CLI to publish framework assets to your `public/plugs` directory:
+
+```bash
+# Publish and minify all core assets
+php theplugs make:plugs-assets --min
+```
+
+This will publish:
+
+- `plugs-editor.js` & `plugs-editor.css`
+- `plugs-lazy.js`
+
+### Usage in Layouts
+
+Once published, you can include them in your layouts using standard script/link tags:
+
+```html
+<link rel="stylesheet" href="/plugs/plugs-editor.min.css" />
+<script src="/plugs/plugs-editor.min.js"></script>
+<script src="/plugs/plugs-lazy.min.js"></script>
 ```

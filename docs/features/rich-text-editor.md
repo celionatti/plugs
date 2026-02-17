@@ -20,7 +20,7 @@ PLUGS includes a lightweight, professional rich text editor based on Quill.js. I
 Before using the editor, you must generate or publish the required frontend assets using the framework's CLI:
 
 ```bash
-php theplugs make:editor-asset --force
+php theplugs make:plugs-assets --force
 ```
 
 **Options:**
@@ -28,7 +28,7 @@ php theplugs make:editor-asset --force
 - `--min`: Create minified versions (`plugs-editor.min.js`, `plugs-editor.min.css`).
 - `--force`: Overwrite existing files.
 
-Assets are published to `public/assets/js/` and `public/assets/css/`.
+Assets are published to `public/plugs/`.
 
 ---
 
@@ -69,8 +69,8 @@ Include the Quill library and the PLUGS editor assets in your layout:
 <script src="https://cdn.jsdelivr.net/npm/quill-image-resize-module@3.0.0/image-resize.min.js"></script>
 
 <!-- PLUGS Editor (Local) -->
-<link rel="stylesheet" href="/assets/css/plugs-editor.css" />
-<script src="/assets/js/plugs-editor.js"></script>
+<link rel="stylesheet" href="/plugs/plugs-editor.css" />
+<script src="/plugs/plugs-editor.js"></script>
 ```
 
 ### 2. HTML Structure
