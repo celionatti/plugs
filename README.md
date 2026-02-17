@@ -1,12 +1,10 @@
-# <img src="docs/logo.svg" width="48" height="48" valign="middle"> Plugs Framework
-
 <p align="center">
   <a href="https://github.com/celionatti/plugs">
     <img src="/docs/banner.svg" alt="Plugs Framework Banner" width="100%">
   </a>
 </p>
 
-<h1 align="center">Plugs Framework</h1>
+<h1 align="center"><img src="docs/logo.svg" width="48" height="48" valign="middle"> Plugs Framework</h1>
 
 <p align="center">
   <strong>The High-Performance, AI-Native Core Engine for Modern PHP.</strong>
