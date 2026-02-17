@@ -2,9 +2,9 @@ name: CI
 
 on:
   push:
-    branches: [ "main", "master" ]
+    branches: ["main", "master"]
   pull_request:
-    branches: [ "main", "master" ]
+    branches: ["main", "master"]
 
 permissions:
   contents: read
@@ -14,32 +14,35 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-    - name: Setup PHP
-      uses: shivammathur/setup-php@v2
-      with:
-        php-version: '8.2'
-        extensions: mbstring, intl, pdo_sqlite
-        tools: composer:v2, cs2pr
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: "8.2"
+          extensions: mbstring, intl, pdo_sqlite
+          tools: composer:v2, cs2pr
 
-    - name: Validate composer.json and composer.lock
-      run: composer validate --strict
+      - name: Validate composer.json and composer.lock
+        run: composer validate --strict
 
-    - name: Cache Composer packages
-      id: composer-cache
-      uses: actions/cache@v3
-      with:
-        path: vendor
-        key: ${{ runner.os }}-php-${{ hashFiles('**/composer.lock') }}
-        restore-keys: |
-          ${{ runner.os }}-php-
+      - name: Cache Composer packages
+        id: composer-cache
+        uses: actions/cache@v3
+        with:
+          path: vendor
+          key: ${{ runner.os }}-php-${{ hashFiles('**/composer.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-php-
 
-    - name: Install dependencies
-      run: composer install --prefer-dist --no-progress
+      - name: Install dependencies
+        run: composer install --prefer-dist --no-progress
 
-    - name: Check Coding Standards (PHP-CS-Fixer)
-      run: vendor/bin/php-cs-fixer fix --dry-run --diff --format=checkstyle | cs2pr
+      - name: Check Coding Standards (PHP-CS-Fixer)
+        run: vendor/bin/php-cs-fixer fix --dry-run --diff --format=checkstyle | cs2pr
 
-    - name: Static Analysis (PHPStan)
-      run: vendor/bin/phpstan analyse --error-format=github
+      - name: Static Analysis (PHPStan)
+        run: vendor/bin/phpstan analyse --error-format=github
+
+      - name: Execute Tests (Unit and Feature)
+        run: vendor/bin/phpunit
