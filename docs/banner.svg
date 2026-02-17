@@ -1,51 +1,34 @@
-<svg width="1200" height="400" viewBox="0 0 1200 400" xmlns="http://www.w3.org/2000/svg">
+<svg width="800" height="200" viewBox="0 0 800 200" xmlns="http://www.w3.org/2000/svg">
   <defs>
-    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="0%" y2="100%">
-      <stop offset="0%" style="stop-color:#050510;stop-opacity:1" />
-      <stop offset="100%" style="stop-color:#0a0a20;stop-opacity:1" />
+    <linearGradient id="bg-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#1e293b;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#0f172a;stop-opacity:1" />
     </linearGradient>
-    <linearGradient id="horizonGrad" x1="0%" y1="0%" x2="0%" y2="100%">
-      <stop offset="0%" style="stop-color:#00f2ff;stop-opacity:0" />
-      <stop offset="50%" style="stop-color:#00f2ff;stop-opacity:0.1" />
-      <stop offset="100%" style="stop-color:#00f2ff;stop-opacity:0.3" />
+    <linearGradient id="text-grad" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" style="stop-color:#a78bfa;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#60a5fa;stop-opacity:1" />
     </linearGradient>
-    <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
-      <feGaussianBlur stdDeviation="8" result="blur" />
-      <feComposite in="SourceGraphic" in2="blur" operator="over" />
-    </filter>
+    <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
+      <path d="M 40 0 L 0 0 0 40" fill="none" stroke="rgba(139, 92, 246, 0.1)" stroke-width="1"/>
+    </pattern>
   </defs>
-
-  <!-- Background -->
-  <rect width="1200" height="400" fill="url(#bgGrad)"/>
   
-  <!-- Perspective Grid -->
-  <path d="M0 400 L600 200 L1200 400 M100 400 L600 200 L1100 400 M200 400 L600 200 L1000 400 M300 400 L600 200 L900 400 M400 400 L600 200 L800 400 M500 400 L600 200 L700 400" 
-        stroke="url(#horizonGrad)" stroke-width="1" fill="none"/>
-  <line x1="0" y1="200" x2="1200" y2="200" stroke="#00f2ff" stroke-width="1" stroke-opacity="0.3"/>
-
-  <!-- Glowing Particles -->
-  <circle cx="200" cy="150" r="2" fill="#00ff88" opacity="0.6"/>
-  <circle cx="900" cy="100" r="3" fill="#00f2ff" opacity="0.5"/>
-  <circle cx="1050" cy="250" r="2" fill="#fff" opacity="0.4"/>
-  <circle cx="150" cy="300" r="2" fill="#fff" opacity="0.3"/>
-
-  <!-- Center Content -->
-  <g transform="translate(600, 180)">
-    <!-- Logo Icon -->
-    <g filter="url(#glow)">
-         <circle cx="0" cy="-40" r="50" fill="none" stroke="#00f2ff" stroke-width="4" stroke-dasharray="40 20">
-            <animateTransform attributeName="transform" type="rotate" from="0 0 -40" to="360 0 -40" dur="20s" repeatCount="indefinite"/>
-         </circle>
-         <circle cx="0" cy="-40" r="30" fill="none" stroke="#00ff88" stroke-width="2">
-            <animateTransform attributeName="transform" type="rotate" from="360 0 -40" to="0 0 -40" dur="15s" repeatCount="indefinite"/>
-         </circle>
-         <circle cx="0" cy="-40" r="10" fill="#fff" />
-    </g>
-
-    <!-- Main Text -->
-    <text x="0" y="50" text-anchor="middle" font-family="Arial, sans-serif" font-weight="bold" font-size="60" fill="#fff" letter-spacing="4" filter="url(#glow)">PLUGS</text>
-    
-    <!-- Subtitle -->
-    <text x="0" y="90" text-anchor="middle" font-family="Arial, sans-serif" font-size="16" fill="#00f2ff" letter-spacing="2" opacity="0.8">HIGH-PERFORMANCE CORE ENGINE</text>
-  </g>
+  <!-- Background -->
+  <rect width="800" height="200" fill="url(#bg-grad)" />
+  <rect width="800" height="200" fill="url(#grid)" />
+  
+  <!-- Abstract Data Lines -->
+  <path d="M0 150 Q 200 50 400 150 T 800 50" stroke="rgba(96, 165, 250, 0.2)" stroke-width="2" fill="none" />
+  <path d="M0 180 Q 250 80 500 180 T 800 80" stroke="rgba(167, 139, 250, 0.15)" stroke-width="1" fill="none" />
+  
+  <!-- Main Text -->
+  <text x="400" y="110" font-family="'JetBrains Mono', monospace, Arial" font-size="64" font-weight="800" text-anchor="middle" fill="url(#text-grad)" style="letter-spacing: 12px; filter: drop-shadow(0 0 10px rgba(167, 139, 250, 0.5));">PLUGS</text>
+  
+  <!-- Subtext -->
+  <text x="400" y="145" font-family="Arial, sans-serif" font-size="16" font-weight="400" text-anchor="middle" fill="rgba(148, 163, 184, 0.8)" style="letter-spacing: 4px;">HIGH-PERFORMANCE PHP FRAMEWORK</text>
+  
+  <!-- Accents -->
+  <circle cx="200" cy="110" r="3" fill="#60a5fa" />
+  <circle cx="600" cy="110" r="3" fill="#a78bfa" />
+  <path d="M190 110 L210 110 M590 110 L610 110" stroke="rgba(255,255,255,0.3)" stroke-width="1" />
 </svg>

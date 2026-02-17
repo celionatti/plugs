@@ -1,4 +1,6 @@
-# Plugs Framework Documentation
+![Plugs Framework Banner](banner.svg)
+
+# <img src="logo.svg" width="48" height="48" valign="middle"> Plugs Framework Documentation
 
 Welcome to the official documentation for the **Plugs** framework. Plugs is a lightweight, modular, and high-performance PHP framework designed for modern web development.
 
