@@ -154,8 +154,9 @@ class Output
         $rawLines = explode(PHP_EOL, $text);
 
         foreach ($rawLines as $rawLine) {
+            $parsedLine = $this->parseTags($rawLine);
             // Wrap long lines using our wrapText helper (which respects ANSI codes)
-            $wrappedLines = $this->wrapText($rawLine, $contentWidth);
+            $wrappedLines = $this->wrapText($parsedLine, $contentWidth);
 
             // If empty (e.g. just a newline), ensure we print at least one line
             if (empty($wrappedLines)) {
@@ -1257,6 +1258,43 @@ class Output
     private function stripAnsiCodes(string $text): string
     {
         return preg_replace('/\033\[[0-9;]*m/', '', $text);
+    }
+
+    private function parseTags(string $text): string
+    {
+        $tags = [
+            'fg=black' => self::BLACK,
+            'fg=red' => self::RED,
+            'fg=green' => self::GREEN,
+            'fg=yellow' => self::YELLOW,
+            'fg=blue' => self::BLUE,
+            'fg=magenta' => self::MAGENTA,
+            'fg=cyan' => self::CYAN,
+            'fg=white' => self::WHITE,
+            'fg=gray' => self::BRIGHT_BLACK,
+            'options=bold' => self::BOLD,
+            'options=dim' => self::DIM,
+            'options=italic' => self::ITALIC,
+            'options=underline' => self::UNDERLINE,
+        ];
+
+        // Match tags like <fg=red>, <options=bold>, or combined <fg=red;options=bold>
+        return preg_replace_callback('/<([^>]+)>(.*?)<\/?>/s', function ($matches) use ($tags) {
+            $tagContent = $matches[1];
+            $innerText = $matches[2];
+
+            // Handle closing tag </> separately if needed, but the regex above handles <tag>text</>
+            $parts = explode(';', $tagContent);
+            $ansiPrefix = '';
+
+            foreach ($parts as $part) {
+                if (isset($tags[trim($part)])) {
+                    $ansiPrefix .= $tags[trim($part)];
+                }
+            }
+
+            return $ansiPrefix . $innerText . self::RESET;
+        }, $text);
     }
 
     public function metrics(float $time, int $memory): void
