@@ -1,6 +1,4 @@
-![Plugs Framework Banner](banner.svg)
-
-# <img src="logo.svg" width="48" height="48" valign="middle"> Plugs Framework
+# <img src="docs/logo.svg" width="48" height="48" valign="middle"> Plugs Framework
 
 <p align="center">
   <a href="https://github.com/celionatti/plugs">
