@@ -33,6 +33,7 @@ use Plugs\Console\Commands\MakeSeederCommand;
 use Plugs\Console\Commands\MakeServiceCommand;
 use Plugs\Console\Commands\MakeSpaAssetCommand;
 use Plugs\Console\Commands\MakeEditorAssetCommand;
+use Plugs\Console\Commands\MakePlugsAssetsCommand;
 use Plugs\Console\Commands\MigrateCommand;
 use Plugs\Console\Commands\MigrateFreshCommand;
 use Plugs\Console\Commands\MigrateResetCommand;
@@ -96,6 +97,7 @@ class ConsoleKernel
         'make:pagination-template' => MakePaginationTemplateCommand::class,
         'make:spa-asset' => MakeSpaAssetCommand::class,
         'make:editor-asset' => MakeEditorAssetCommand::class,
+        'make:plugs-assets' => MakePlugsAssetsCommand::class,
         'make:component' => MakeComponentCommand::class,
         'make:event' => MakeEventCommand::class,
         'make:listener' => MakeListenerCommand::class,
@@ -161,6 +163,7 @@ class ConsoleKernel
         'g:seed' => 'make:seeder',
         'g:spa' => 'make:spa-asset',
         'g:editor' => 'make:editor-asset',
+        'g:assets' => 'make:plugs-assets',
         'g:comp' => 'make:component',
         'g:evt' => 'make:event',
         'g:lis' => 'make:listener',
@@ -201,6 +204,7 @@ class ConsoleKernel
             'make:pagination-template',
             'make:spa-asset',
             'make:editor-asset',
+            'make:plugs-assets',
             'make:component',
             'make:event',
             'make:listener',
