@@ -138,7 +138,15 @@ class View
     public function render(): string
     {
         try {
-            return $this->engine->render($this->view, $this->data);
+            $start = microtime(true);
+            $content = $this->engine->render($this->view, $this->data);
+            $duration = (microtime(true) - $start) * 1000;
+
+            if (class_exists(\Plugs\Debug\Profiler::class)) {
+                \Plugs\Debug\Profiler::getInstance()->addView($this->view, $duration);
+            }
+
+            return $content;
         } catch (Throwable $e) {
             throw new RuntimeException(
                 sprintf(

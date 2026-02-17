@@ -24,6 +24,12 @@ class Profiler
     private array $views = [];
     private array $logs = [];
     private array $models = [];
+    private array $cache = [
+        'hits' => 0,
+        'misses' => 0,
+        'keys' => [],
+    ];
+    private array $events = [];
     private bool $enabled = false;
     private ?array $currentProfile = null;
 
@@ -145,6 +151,8 @@ class Profiler
                 'headers' => $this->getResponseHeaders(),
             ],
             'database' => $dbReport,
+            'cache' => $this->cache,
+            'events' => $this->events,
             'timeline' => $this->timeline,
             'views' => $this->views,
             'logs' => $this->logs,
@@ -248,11 +256,11 @@ class Profiler
             'time' => microtime(true),
         ];
 
-        // Also add to timeline for visibility
+        $now = $this->useHrTime ? (float) hrtime(true) / 1e9 : microtime(true);
         $this->timeline['view_' . uniqid()] = [
             'label' => 'View: ' . $name,
-            'start' => microtime(true) - ($duration / 1000),
-            'end' => microtime(true),
+            'start' => $now - ($duration / 1000),
+            'end' => $now,
             'duration' => round($duration, 2),
             'memory_start' => memory_get_usage(true),
             'memory_end' => memory_get_usage(true),
@@ -291,6 +299,56 @@ class Profiler
             'event' => $event,
             'time' => microtime(true),
             'time_offset' => $this->getElapsedTime(),
+        ];
+    }
+
+    /**
+     * Record a cache access
+     */
+    public function recordCache(string $key, bool $hit): void
+    {
+        if (!$this->enabled) {
+            return;
+        }
+
+        if ($hit) {
+            $this->cache['hits']++;
+        } else {
+            $this->cache['misses']++;
+        }
+
+        $this->cache['keys'][] = [
+            'key' => $key,
+            'hit' => $hit,
+            'time' => microtime(true),
+            'time_offset' => $this->getElapsedTime(),
+        ];
+    }
+
+    /**
+     * Record an event firing
+     */
+    public function recordEvent(string $name, float $duration): void
+    {
+        if (!$this->enabled) {
+            return;
+        }
+
+        $this->events[] = [
+            'name' => $name,
+            'duration' => round($duration * 1000, 2), // ms
+            'time' => microtime(true),
+            'time_offset' => $this->getElapsedTime(),
+        ];
+
+        $now = $this->useHrTime ? (float) hrtime(true) / 1e9 : microtime(true);
+        $this->timeline['event_' . uniqid()] = [
+            'label' => 'Event: ' . $name,
+            'start' => $now - $duration,
+            'end' => $now,
+            'duration' => round($duration * 1000, 2),
+            'memory_start' => memory_get_usage(true),
+            'memory_end' => memory_get_usage(true),
         ];
     }
 
@@ -401,12 +459,10 @@ class Profiler
         return $this->enabled;
     }
 
-    /**
-     * Get elapsed time since start
-     */
     public function getElapsedTime(): float
     {
-        return round((microtime(true) - $this->startTime) * 1000, 2);
+        $now = $this->useHrTime ? (float) hrtime(true) / 1e9 : microtime(true);
+        return round(($now - $this->startTime) * 1000, 2);
     }
 
     /**

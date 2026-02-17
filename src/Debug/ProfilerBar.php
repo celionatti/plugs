@@ -20,6 +20,9 @@ class ProfilerBar
         $memory = $profile['memory']['peak_formatted'] ?? '0 B';
         $queryCount = $profile['database']['query_count'] ?? 0;
         $queryTime = round($profile['database']['total_time'] ?? 0, 2);
+        $cacheHits = $profile['cache']['hits'] ?? 0;
+        $cacheMisses = $profile['cache']['misses'] ?? 0;
+        $eventCount = count($profile['events'] ?? []);
         $statusCode = $profile['request']['status_code'] ?? 200;
         $profileId = $profile['id'] ?? '';
 
@@ -287,6 +290,18 @@ class ProfilerBar
             <span class="pbar-value" style="color: #a78bfa;">' . $queryCount . '</span>
             <span class="pbar-label">(' . $queryTime . 'ms)</span>
         </div>
+
+        <div class="pbar-item">
+            <span class="pbar-label">Cache:</span>
+            <span class="pbar-value" style="color: #10b981;" title="Cache Hits">' . $cacheHits . 'H</span>
+            <span style="color:#64748b; margin:0 2px;">/</span>
+            <span class="pbar-value" style="color: #ef4444;" title="Cache Misses">' . $cacheMisses . 'M</span>
+        </div>
+
+        <div class="pbar-item">
+            <span class="pbar-label">Events:</span>
+            <span class="pbar-value" style="color: #f59e0b;">' . $eventCount . '</span>
+        </div>
         
         <div class="pbar-item">
             <span class="pbar-label">HTTP:</span>
@@ -327,6 +342,9 @@ class ProfilerBar
         $totalDuration = $profile['duration'] ?? 0;
         $controllerTime = $profile['timeline']['controller']['duration'] ?? 0;
         $middlewareTime = max(0, $totalDuration - $controllerTime);
+        $cacheHits = $profile['cache']['hits'] ?? 0;
+        $cacheMisses = $profile['cache']['misses'] ?? 0;
+        $eventCount = count($profile['events'] ?? []);
 
         $data = [
             'execution_time_ms' => $profile['duration'] ?? 0,
@@ -367,6 +385,8 @@ class ProfilerBar
         echo '<button class="plugs-tab-btn active" data-tab="tab-overview">📊 Overview</button>';
         echo '<button class="plugs-tab-btn" data-tab="tab-timeline">⏱️ Timeline</button>';
         echo '<button class="plugs-tab-btn" data-tab="tab-queries">🔮 Queries (' . count($data['queries']) . ')</button>';
+        echo '<button class="plugs-tab-btn" data-tab="tab-cache">💾 Cache (' . ($cacheHits + $cacheMisses) . ')</button>';
+        echo '<button class="plugs-tab-btn" data-tab="tab-events">⚡ Events (' . $eventCount . ')</button>';
         echo '<button class="plugs-tab-btn" data-tab="tab-route">🛣️ Route</button>';
         echo '<button class="plugs-tab-btn" data-tab="tab-request">🌐 Request</button>';
         echo '<button class="plugs-tab-btn" data-tab="tab-app">🧠 Application</button>';
@@ -400,6 +420,16 @@ class ProfilerBar
         // Tab: Queries
         echo '<div id="tab-queries" class="plugs-tab-content" style="padding: 0;">';
         echo plugs_render_queries($data);
+        echo '</div>';
+
+        // Tab: Cache
+        echo '<div id="tab-cache" class="plugs-tab-content" style="padding: 32px;">';
+        echo self::renderCacheTab($profile);
+        echo '</div>';
+
+        // Tab: Events
+        echo '<div id="tab-events" class="plugs-tab-content" style="padding: 32px;">';
+        echo self::renderEventsTab($profile);
         echo '</div>';
 
         // Tab: Route, Request, App, Files, History, Config
@@ -875,6 +905,72 @@ JS;
         if (stripos($html, '</body>') === false)
             return $html;
         return str_ireplace('</body>', self::render($profile, $nonce) . '</body>', $html);
+    }
+
+    private static function renderCacheTab(array $profile): string
+    {
+        $cache = $profile['cache'] ?? ['hits' => 0, 'misses' => 0, 'keys' => []];
+        $total = $cache['hits'] + $cache['misses'];
+        $hitRate = $total > 0 ? round(($cache['hits'] / $total) * 100, 1) : 0;
+
+        $html = '<div class="plugs-cache-dashboard">';
+        $html .= '<div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; margin-bottom: 32px;">';
+        $stats = [
+            'Hits' => ['val' => $cache['hits'], 'color' => '#10b981'],
+            'Misses' => ['val' => $cache['misses'], 'color' => '#ef4444'],
+            'Hit Rate' => ['val' => $hitRate . '%', 'color' => '#3b82f6'],
+        ];
+        foreach ($stats as $label => $s) {
+            $html .= sprintf('<div style="background: rgba(255,255,255,0.02); padding: 20px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.05); text-align: center;">
+                <div style="color: #64748b; font-size: 11px; text-transform: uppercase;">%s</div>
+                <div style="font-size: 24px; font-weight: 700; color: %s; margin-top: 8px;">%s</div>
+            </div>', $label, $s['color'], $s['val']);
+        }
+        $html .= '</div>';
+
+        $html .= '<h3 style="color: #cbd5e1; margin-bottom: 16px; font-size: 16px;">Cache Operations</h3>';
+        if (empty($cache['keys'])) {
+            $html .= '<p style="color: #64748b; font-style: italic;">No cache operations recorded.</p>';
+        } else {
+            $html .= '<table style="width: 100%; border-collapse: collapse; font-size: 13px;">';
+            $html .= '<thead style="background: rgba(255,255,255,0.03);"><tr><th style="padding: 12px; text-align: left;">Key</th><th style="padding: 12px; text-align: left;">Status</th><th style="padding: 12px; text-align: right;">Time</th></tr></thead><tbody>';
+            foreach ($cache['keys'] as $k) {
+                $statusColor = $k['hit'] ? '#10b981' : '#ef4444';
+                $statusText = $k['hit'] ? 'HIT' : 'MISS';
+                $html .= sprintf('<tr style="border-bottom: 1px solid rgba(255,255,255,0.03);">
+                    <td style="padding: 12px; color: #f8fafc; font-family: monospace;">%s</td>
+                    <td style="padding: 12px;"><span class="plugs-badge" style="background: %s15; color: %s; border: 1px solid %s30;">%s</span></td>
+                    <td style="padding: 12px; text-align: right; color: #94a3b8; font-family: monospace;">+%s ms</td>
+                </tr>', htmlspecialchars($k['key']), $statusColor, $statusColor, $statusColor, $statusText, number_format($k['time_offset'] ?? 0, 2));
+            }
+            $html .= '</tbody></table>';
+        }
+        $html .= '</div>';
+        return $html;
+    }
+
+    private static function renderEventsTab(array $profile): string
+    {
+        $events = $profile['events'] ?? [];
+        $html = '<div class="plugs-events-dashboard">';
+        $html .= '<h3 style="color: #cbd5e1; margin-bottom: 16px; font-size: 16px;">Dispatched Events</h3>';
+
+        if (empty($events)) {
+            $html .= '<p style="color: #64748b; font-style: italic;">No events were dispatched during this request.</p>';
+        } else {
+            $html .= '<table style="width: 100%; border-collapse: collapse; font-size: 13px;">';
+            $html .= '<thead style="background: rgba(255,255,255,0.03);"><tr><th style="padding: 12px; text-align: left;">Event</th><th style="padding: 12px; text-align: right;">Duration</th><th style="padding: 12px; text-align: right;">Fired At</th></tr></thead><tbody>';
+            foreach ($events as $e) {
+                $html .= sprintf('<tr style="border-bottom: 1px solid rgba(255,255,255,0.03);">
+                    <td style="padding: 12px; color: #f8fafc; font-weight: 500;">%s</td>
+                    <td style="padding: 12px; text-align: right; color: #f59e0b; font-family: monospace;">%s ms</td>
+                    <td style="padding: 12px; text-align: right; color: #94a3b8; font-family: monospace;">+%s ms</td>
+                </tr>', htmlspecialchars($e['name']), number_format($e['duration'] ?? 0, 2), number_format($e['time_offset'] ?? 0, 2));
+            }
+            $html .= '</tbody></table>';
+        }
+        $html .= '</div>';
+        return $html;
     }
 
     private static function getDurationClass(float $duration): string

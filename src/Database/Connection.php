@@ -1457,6 +1457,10 @@ class Connection
      */
     private function getPdoForQuery(string $sql): PDO
     {
+        if ($this->shouldUseTenantConnection()) {
+            return $this->getTenantPdo();
+        }
+
         if ($this->pdo === null) {
             $this->connect(self::$config[$this->connectionName]);
         }
@@ -1469,6 +1473,48 @@ class Connection
         $this->ensureReadConnectionHealth();
 
         return $this->readPdo;
+    }
+
+    protected function shouldUseTenantConnection(): bool
+    {
+        if (!class_exists(\Plugs\Support\Facades\App::class)) {
+            return false;
+        }
+
+        try {
+            /** @var \Plugs\Tenancy\TenantManager|null $manager */
+            $manager = \Plugs\Support\Facades\App::getContainer()->bound(\Plugs\Tenancy\TenantManager::class)
+                ? \Plugs\Support\Facades\App::make(\Plugs\Tenancy\TenantManager::class)
+                : null;
+
+            return $manager && $manager->isActive() && $manager->getTenant()->getTenantDatabaseConfig() !== null;
+        } catch (\Throwable $e) {
+            return false;
+        }
+    }
+
+    protected function getTenantPdo(): PDO
+    {
+        /** @var \Plugs\Tenancy\TenantManager $manager */
+        $manager = \Plugs\Support\Facades\App::make(\Plugs\Tenancy\TenantManager::class);
+        $tenant = $manager->getTenant();
+        $dbConfig = $tenant->getTenantDatabaseConfig();
+
+        $tenantId = $tenant->getTenantKey();
+        $connectionName = "tenant_{$tenantId}";
+
+        if (isset(self::$instances[$connectionName])) {
+            return self::$instances[$connectionName]->pdo;
+        }
+
+        // Create a temporary connection for the tenant
+        $config = array_merge(self::$config[$this->connectionName], $dbConfig);
+        $instance = new self($config, $connectionName);
+        $instance->connect($config);
+
+        self::$instances[$connectionName] = $instance;
+
+        return $instance->pdo;
     }
 
     /**

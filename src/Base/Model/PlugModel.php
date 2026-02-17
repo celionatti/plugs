@@ -101,6 +101,7 @@ abstract class PlugModel implements \JsonSerializable
 
         if ($exists) {
             $this->setRawAttributes($attributes);
+            $this->fireModelEvent('retrieved', ['attributes' => $attributes]);
         } else {
             $this->fill($attributes);
         }

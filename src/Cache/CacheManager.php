@@ -63,7 +63,18 @@ class CacheManager
 
     public function get(string $key, $default = null)
     {
-        return $this->driver()->get($key, $default);
+        $value = $this->driver()->get($key, $default);
+
+        $this->recordAccess($key, $value !== $default);
+
+        return $value;
+    }
+
+    protected function recordAccess(string $key, bool $hit): void
+    {
+        if (class_exists(\Plugs\Debug\Profiler::class)) {
+            \Plugs\Debug\Profiler::getInstance()->recordCache($key, $hit);
+        }
     }
 
     public function set(string $key, $value, int|null $ttl = null): bool

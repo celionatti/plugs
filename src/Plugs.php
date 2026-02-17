@@ -90,6 +90,7 @@ class Plugs
         'seo' => 'bootstrapSeo',
         'mail' => 'bootstrapMail',
         'opcache' => 'bootstrapOpCache',
+        'tenancy' => 'bootstrapTenancy',
     ];
 
     /**
@@ -102,6 +103,7 @@ class Plugs
     public function __construct()
     {
         $this->container = \Plugs\Container\Container::getInstance();
+        $this->container->instance('app', $this->container);
 
         $this->bootstrap();
         $this->registerDeferredServices();
@@ -339,6 +341,11 @@ class Plugs
         $this->container->instance('opcache', $manager);
 
         return $manager;
+    }
+
+    private function bootstrapTenancy(): object
+    {
+        return new \Plugs\Tenancy\TenantManager();
     }
 
     public function pipe(MiddlewareInterface $middleware): self

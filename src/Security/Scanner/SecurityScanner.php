@@ -34,31 +34,48 @@ class SecurityScanner
         $issues = [];
         $filesScanned = 0;
 
-        $iterator = new RecursiveIteratorIterator(
-            new RecursiveDirectoryIterator($directory, RecursiveDirectoryIterator::SKIP_DOTS)
-        );
+        // Directories to prioritize (Standard Plugs Application Structure)
+        $appDirs = ['app', 'routes', 'resources', 'config', 'database'];
+        $dirsToScan = [];
 
-        foreach ($iterator as $file) {
-            if ($file->isDir() || $file->getExtension() !== 'php' && $file->getExtension() !== 'html') {
-                continue;
+        foreach ($appDirs as $dir) {
+            if (is_dir($directory . DIRECTORY_SEPARATOR . $dir)) {
+                $dirsToScan[] = $directory . DIRECTORY_SEPARATOR . $dir;
             }
+        }
 
-            $path = $file->getPathname();
+        // If none of the app dirs exist, we're likely in framework dev mode, scan the whole directory
+        if (empty($dirsToScan)) {
+            $dirsToScan = [$directory];
+        }
 
-            // Skip excluded paths
-            foreach ($this->excludedPaths as $excluded) {
-                if (str_contains($path, DIRECTORY_SEPARATOR . $excluded . DIRECTORY_SEPARATOR)) {
-                    continue 2;
+        foreach ($dirsToScan as $scanPath) {
+            $iterator = new RecursiveIteratorIterator(
+                new RecursiveDirectoryIterator($scanPath, RecursiveDirectoryIterator::SKIP_DOTS)
+            );
+
+            foreach ($iterator as $file) {
+                if ($file->isDir() || !in_array($file->getExtension(), ['php', 'html'])) {
+                    continue;
                 }
-            }
 
-            $filesScanned++;
-            $content = file_get_contents($path);
+                $path = $file->getPathname();
 
-            foreach ($this->scanners as $scanner) {
-                $found = $scanner->scan($path, $content);
-                if (!empty($found)) {
-                    $issues = array_merge($issues, $found);
+                // Skip excluded paths
+                foreach ($this->excludedPaths as $excluded) {
+                    if (str_contains($path, DIRECTORY_SEPARATOR . $excluded . DIRECTORY_SEPARATOR)) {
+                        continue 2;
+                    }
+                }
+
+                $filesScanned++;
+                $content = file_get_contents($path);
+
+                foreach ($this->scanners as $scanner) {
+                    $found = $scanner->scan($path, $content);
+                    if (!empty($found)) {
+                        $issues = array_merge($issues, $found);
+                    }
                 }
             }
         }

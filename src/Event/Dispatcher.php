@@ -125,12 +125,14 @@ class Dispatcher implements DispatcherInterface
             return null;
         }
 
+        $start = microtime(true);
         $responses = [];
 
         foreach ($this->getListeners($eventName) as $listener) {
             $response = $this->callListener($listener, $payload);
 
             if ($halt && !is_null($response)) {
+                $this->recordEvent($eventName, microtime(true) - $start);
                 return [$response];
             }
 
@@ -146,7 +148,16 @@ class Dispatcher implements DispatcherInterface
             }
         }
 
+        $this->recordEvent($eventName, microtime(true) - $start);
+
         return $responses;
+    }
+
+    protected function recordEvent(string $event, float $duration): void
+    {
+        if (class_exists(\Plugs\Debug\Profiler::class)) {
+            \Plugs\Debug\Profiler::getInstance()->recordEvent($event, $duration);
+        }
     }
 
     /**
