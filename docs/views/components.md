@@ -6,23 +6,21 @@ Build reusable, self-contained UI components with props, slots, and attributes.
 
 ### File Location
 
-Components are stored in `resources/views/components/`:
+Components are stored in `resources/views/components/`. You can organize them into subdirectories.
 
-```
+```text
 resources/views/components/
-├── button.plug.php
-├── card.plug.php
-├── forms/
-│   ├── input.plug.php
-│   └── select.plug.php
-└── modals/
-    └── dialog.plug.php
+├── Alert.plug.php
+├── Card.plug.php
+├── Forms/
+│   ├── Input.plug.php
+│   └── Select.plug.php
 ```
 
 ### Basic Component
 
 ```blade
-{{-- components/alert.plug.php --}}
+{{-- components/Alert.plug.php --}}
 @props(['type' => 'info', 'message' => ''])
 
 <div class="alert alert-{{ $type }}" {{ $attributes }}>
@@ -31,13 +29,15 @@ resources/views/components/
 </div>
 ```
 
-Usage:
+### Usage
+
+Plugs V5 uses **PascalCase** tags to distinguish components from regular HTML tags.
 
 ```html
-{{-- Root level component (PascalCase) --}}
+{{-- Root level component --}}
 <Alert type="success" message="Operation completed!" />
 
-{{-- Nested component (Module::Component) --}}
+{{-- Nested component (Maps to Forms/Input.plug.php) --}}
 <Forms::Input type="text" name="email" label="Email" />
 
 {{-- Component with content (Slots) --}}

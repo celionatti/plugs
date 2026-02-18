@@ -105,53 +105,12 @@ Available inside `@foreach` and `@forelse`:
 
 ---
 
----
+## 🏗️ Modern Tag Syntax (V5)
 
-## Modern Tag Syntax (New in V5)
+Plugs V5 introduces a modern, HTML-friendly tag syntax for control structures. It is highly recommended for building cleaner templates.
 
-Plugs V5 introduces a modern, HTML-friendly tag syntax for control structures. This is simpler to read and integrates perfectly with IDE highlighting.
-
-### Tag-Based Conditionals
-
-| Tag        | Attribute    | Description                            |
-| ---------- | ------------ | -------------------------------------- |
-| `<if>`     | `:condition` | Renders content if condition is true.  |
-| `<elseif>` | `:condition` | Sequential conditional check.          |
-| `<else />` | -            | Fallback content.                      |
-| `<unless>` | `:condition` | Renders content if condition is false. |
-
-**Example:**
-
-```html
-<if :condition="$user->isAdmin()">
-  <AdminBadge />
-  <elseif :condition="$user->isVerified()" />
-  <i class="bi bi-patch-check"></i>
-  <else />
-  <GuestBadge />
-</if>
-```
-
-### Tag-Based Loops
-
-| Tag       | Attribute                      | Description                              |
-| --------- | ------------------------------ | ---------------------------------------- |
-| `<loop>`  | `:items`                       | The array or collection to iterate over. |
-| `<loop>`  | `as`                           | The variable name for each item.         |
-| `<for>`   | `:init`, `:condition`, `:step` | Standard for-loop.                       |
-| `<while>` | `:condition`                   | Standard while-loop.                     |
-
-**Example:**
-
-```html
-<loop :items="$posts" as="$post">
-  <article>{{ $post->title }}</article>
-</loop>
-
-<for :init="$i = 0" :condition="$i < 5" :step="$i++">
-  <span>Rating: {{ $i }}</span>
-</for>
-```
+> [!IMPORTANT]
+> For the complete reference on HTML-style tags (Layouts, Forms, Loops, etc.), see the dedicated **[Modern Tag Syntax](tags.md)** documentation.
 
 ---
 

@@ -33,7 +33,7 @@ Welcome to the official documentation for the **Plugs** framework. Plugs is a li
 - [Requests & Responses](file:///docs/the-basics/requests.md)
 - [API Responses](file:///docs/the-basics/api-responses.md)
 - [API Resources](file:///docs/the-basics/api-resources.md)
-- [Views & Components](file:///docs/the-basics/views.md)
+- [**Views & Components**](file:///docs/views/README.md)
 - [Navigation](file:///docs/the-basics/navigation.md)
 - [Validation](file:///docs/security/validation.md)
 - [Localization](file:///docs/the-basics/localization.md) (New)
@@ -43,7 +43,7 @@ Welcome to the official documentation for the **Plugs** framework. Plugs is a li
 - [Image Manipulation](file:///docs/features/image-manipulation.md) (New)
 - [Flash Messages](file:///docs/features/flash-messages.md)
 - [Health Checks](file:///docs/features/health-checks.md) (New)
-- [Testing](file:///docs/testing.md)
+- [**Testing**](file:///docs/testing/basics.md)
 - [Factories & Seeders](file:///docs/database/factories-seeders.md)
 
 ### 🗄️ Database
