@@ -351,6 +351,51 @@ class PlugViewEngine implements ViewEngineInterface
         $this->directive('enderror', function () {
             return "<?php endif; ?>";
         });
+
+        // RBAC Directives
+        $this->directive('can', function ($expression) {
+            return "<?php if (\\Plugs\\Facades\\Auth::user() && \\Plugs\\Facades\\Auth::user()->hasPermission($expression)): ?>";
+        });
+
+        $this->directive('cannot', function ($expression) {
+            return "<?php if (!\\Plugs\\Facades\\Auth::user() || !\\Plugs\\Facades\\Auth::user()->hasPermission($expression)): ?>";
+        });
+
+        $this->directive('elsecan', function ($expression) {
+            return "<?php elseif (\\Plugs\\Facades\\Auth::user() && \\Plugs\\Facades\\Auth::user()->hasPermission($expression)): ?>";
+        });
+
+        $this->directive('role', function ($expression) {
+            return "<?php if (\\Plugs\\Facades\\Auth::user() && \\Plugs\\Facades\\Auth::user()->hasRole($expression)): ?>";
+        });
+
+        $this->directive('endrole', function () {
+            return "<?php endif; ?>";
+        });
+
+        $this->directive('hasrole', function ($expression) {
+            return "<?php if (\\Plugs\\Facades\\Auth::user() && \\Plugs\\Facades\\Auth::user()->hasRole($expression)): ?>";
+        });
+
+        $this->directive('endhasrole', function () {
+            return "<?php endif; ?>";
+        });
+
+        $this->directive('hasanyrole', function ($expression) {
+            return "<?php if (\\Plugs\\Facades\\Auth::user() && \\Plugs\\Facades\\Auth::user()->hasRole($expression)): ?>";
+        });
+
+        $this->directive('endhasanyrole', function () {
+            return "<?php endif; ?>";
+        });
+
+        $this->directive('hasallroles', function ($expression) {
+            return "<?php if (\\Plugs\\Facades\\Auth::user() && \\Plugs\\Facades\\Auth::user()->hasAllRoles($expression)): ?>";
+        });
+
+        $this->directive('endhasallroles', function () {
+            return "<?php endif; ?>";
+        });
     }
 
     public function render(string $view, array $data = [], bool $isComponent = false): string

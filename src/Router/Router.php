@@ -755,13 +755,25 @@ class Router
             $this->middlewareAliases = is_array($config) ? ($config['aliases'] ?? []) : [];
         }
 
+        $params = [];
+        if (strpos($middleware, ':') !== false) {
+            [$name, $paramString] = explode(':', $middleware, 2);
+            $middleware = $name;
+            $params = explode(',', $paramString);
+        }
+
         if (isset($this->middlewareAliases[$middleware])) {
             $middleware = $this->middlewareAliases[$middleware];
         }
 
         $container = Container::getInstance();
+        $instance = $container->make($middleware);
 
-        return $container->make($middleware);
+        if (!empty($params) && method_exists($instance, 'setParameters')) {
+            $instance->setParameters($params);
+        }
+
+        return $instance;
     }
 
     /**

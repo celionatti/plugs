@@ -168,6 +168,15 @@ class ViewCompiler
             'sanitize' => '/@sanitize\s*\((.+?)\)/s',
             'entangle' => '/@entangle\s*\([\'"](.+?)[\'"]\)/s',
             'raw' => '/@raw\s*\((.+?)\)/s',
+
+            // RBAC patterns
+            'can' => '/@can\s*\(([^()]*+(?:\((?1)\)[^()]*+)*+)\)/s',
+            'cannot' => '/@cannot\s*\(([^()]*+(?:\((?1)\)[^()]*+)*+)\)/s',
+            'elsecan' => '/@elsecan\s*\(([^()]*+(?:\((?1)\)[^()]*+)*+)\)/s',
+            'role' => '/@role\s*\(([^()]*+(?:\((?1)\)[^()]*+)*+)\)/s',
+            'hasrole' => '/@hasrole\s*\(([^()]*+(?:\((?1)\)[^()]*+)*+)\)/s',
+            'hasanyrole' => '/@hasanyrole\s*\(([^()]*+(?:\((?1)\)[^()]*+)*+)\)/s',
+            'hasallroles' => '/@hasallroles\s*\(([^()]*+(?:\((?1)\)[^()]*+)*+)\)/s',
         ];
     }
 
@@ -496,6 +505,10 @@ class ViewCompiler
         // 8b. Security directives
         $content = $safeCompile([$this, 'compileNonce'], $content);
         $content = $safeCompile([$this, 'compileHoneypot'], $content);
+
+        // 8c. RBAC directives
+        $content = $safeCompile([$this, 'compileCan'], $content);
+        $content = $safeCompile([$this, 'compileRole'], $content);
 
         // 9. NEW DIRECTIVES - Component & HTMX support
         $content = $safeCompile([$this, 'compileProps'], $content);
@@ -1110,7 +1123,48 @@ class ViewCompiler
             return "@class({$m[1]})";
         }, $content);
 
-        return $content;
+        // 20. RBAC Tags
+        // <can :ability="..."> ... </can>
+        $content = preg_replace_callback('/<can\s+:ability=["\'](.+?)["\']\s*>/s', function ($m) {
+            return "@can({$m[1]})";
+        }, $content);
+        $content = preg_replace('/<\/can\s*>/s', '@endcan', $content);
+
+        // <cannot :ability="..."> ... </cannot>
+        $content = preg_replace_callback('/<cannot\s+:ability=["\'](.+?)["\']\s*>/s', function ($m) {
+            return "@cannot({$m[1]})";
+        }, $content);
+        $content = preg_replace('/<\/cannot\s*>/s', '@endcannot', $content);
+
+        // <elsecan :ability="...">
+        $content = preg_replace_callback('/<elsecan\s+:ability=["\'](.+?)["\']\s*\/>/s', function ($m) {
+            return "@elsecan({$m[1]})";
+        }, $content);
+
+        // <role :name="..."> ... </role>
+        $content = preg_replace_callback('/<role\s+:name=["\'](.+?)["\']\s*>/s', function ($m) {
+            return "@role({$m[1]})";
+        }, $content);
+        $content = preg_replace('/<\/role\s*>/s', '@endrole', $content);
+
+        // <hasrole :name="..."> ... </hasrole>
+        $content = preg_replace_callback('/<hasrole\s+:name=["\'](.+?)["\']\s*>/s', function ($m) {
+            return "@hasrole({$m[1]})";
+        }, $content);
+        $content = preg_replace('/<\/hasrole\s*>/s', '@endhasrole', $content);
+
+        // <hasanyrole :roles="..."> ... </hasanyrole>
+        $content = preg_replace_callback('/<hasanyrole\s+:roles=["\'](.+?)["\']\s*>/s', function ($m) {
+            return "@hasanyrole({$m[1]})";
+        }, $content);
+        $content = preg_replace('/<\/hasanyrole\s*>/s', '@endhasanyrole', $content);
+
+        // <hasallroles :roles="..."> ... </hasallroles>
+        $content = preg_replace_callback('/<hasallroles\s+:roles=["\'](.+?)["\']\s*>/s', function ($m) {
+            return "@hasallroles({$m[1]})";
+        }, $content);
+        $content = preg_replace('/<\/hasallroles\s*>/s', '@endhasallroles', $content);
+
         return $content;
     }
 
@@ -1428,6 +1482,72 @@ class ViewCompiler
             '<?php echo \'<input type="hidden" name="_method" value="$1">\'; ?>',
             $content
         );
+    }
+
+    private function compileCan(string $content): string
+    {
+        // @can
+        $content = preg_replace_callback('/@can\s*\(([^()]*+(?:\((?1)\)[^()]*+)*+)\)/s', function ($matches) {
+            return "<?php if (function_exists('gate') && gate()->check({$matches[1]})): ?>";
+        }, $content);
+
+        // @cannot
+        $content = preg_replace_callback('/@cannot\s*\(([^()]*+(?:\((?1)\)[^()]*+)*+)\)/s', function ($matches) {
+            return "<?php if (function_exists('gate') && gate()->denies({$matches[1]})): ?>";
+        }, $content);
+
+        // @elsecan
+        $content = preg_replace_callback('/@elsecan\s*\(([^()]*+(?:\((?1)\)[^()]*+)*+)\)/s', function ($matches) {
+            return "<?php elseif (function_exists('gate') && gate()->check({$matches[1]})): ?>";
+        }, $content);
+
+        // @elsecannot
+        $content = preg_replace_callback('/@elsecannot\s*\(([^()]*+(?:\((?1)\)[^()]*+)*+)\)/s', function ($matches) {
+            return "<?php elseif (function_exists('gate') && gate()->denies({$matches[1]})): ?>";
+        }, $content);
+
+        // @endcan and @endcannot
+        $content = preg_replace('/@endcan\s*(?:\r?\n)?/', '<?php endif; ?>', $content);
+        $content = preg_replace('/@endcannot\s*(?:\r?\n)?/', '<?php endif; ?>', $content);
+
+        return $content;
+    }
+
+    private function compileRole(string $content): string
+    {
+        // @role
+        $content = preg_replace_callback('/@role\s*\(([^()]*+(?:\((?1)\)[^()]*+)*+)\)/s', function ($matches) {
+            return "<?php if (auth()->check() && auth()->user()->hasRole({$matches[1]})): ?>";
+        }, $content);
+
+        // @endrole
+        $content = preg_replace('/@endrole\s*(?:\r?\n)?/', '<?php endif; ?>', $content);
+
+        // @hasrole
+        $content = preg_replace_callback('/@hasrole\s*\(([^()]*+(?:\((?1)\)[^()]*+)*+)\)/s', function ($matches) {
+            return "<?php if (auth()->check() && auth()->user()->hasRole({$matches[1]})): ?>";
+        }, $content);
+
+        // @endhasrole
+        $content = preg_replace('/@endhasrole\s*(?:\r?\n)?/', '<?php endif; ?>', $content);
+
+        // @hasanyrole
+        $content = preg_replace_callback('/@hasanyrole\s*\(([^()]*+(?:\((?1)\)[^()]*+)*+)\)/s', function ($matches) {
+            return "<?php if (auth()->check() && auth()->user()->hasAnyRole({$matches[1]})): ?>";
+        }, $content);
+
+        // @endhasanyrole
+        $content = preg_replace('/@endhasanyrole\s*(?:\r?\n)?/', '<?php endif; ?>', $content);
+
+        // @hasallroles
+        $content = preg_replace_callback('/@hasallroles\s*\(([^()]*+(?:\((?1)\)[^()]*+)*+)\)/s', function ($matches) {
+            return "<?php if (auth()->check() && auth()->user()->hasAllRoles({$matches[1]})): ?>";
+        }, $content);
+
+        // @endhasallroles
+        $content = preg_replace('/@endhasallroles\s*(?:\r?\n)?/', '<?php endif; ?>', $content);
+
+        return $content;
     }
 
     private function compileOnce(string $content): string
