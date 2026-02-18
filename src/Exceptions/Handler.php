@@ -16,6 +16,7 @@ namespace Plugs\Exceptions;
 use Plugs\Container\Container;
 use Plugs\Exceptions\DatabaseException;
 use Plugs\Exceptions\TokenMismatchException;
+use Plugs\Exceptions\MissingRouteParameterException;
 use Plugs\Http\ResponseFactory;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
@@ -195,8 +196,31 @@ class Handler
             $e instanceof DatabaseException => $this->renderDatabaseException($request, $e),
             $e instanceof EncryptionException => $this->renderEncryptionException($request, $e),
             $e instanceof HttpException => $this->renderHttpException($request, $e),
+            $e instanceof MissingRouteParameterException => $this->renderMissingRouteParameterException($request, $e),
             default => $this->renderGenericException($request, $e),
         };
+    }
+
+    /**
+     * Render a missing route parameter exception.
+     *
+     * @param ServerRequestInterface $request
+     * @param MissingRouteParameterException $e
+     * @return ResponseInterface
+     */
+    protected function renderMissingRouteParameterException(
+        ServerRequestInterface $request,
+        MissingRouteParameterException $e
+    ): ResponseInterface {
+        if ($this->expectsJson($request)) {
+            return ResponseFactory::json($e->toArray(), 500);
+        }
+
+        if ($this->debug) {
+            throw $e;
+        }
+
+        return $this->renderErrorPage($request, 500, $e->getMessage());
     }
 
     /**

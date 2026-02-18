@@ -545,9 +545,13 @@ class Route
 
         $path = preg_replace('/\{[^}]+\?\}/', '', $path);
 
-        if (preg_match('/\{([^}?]+)\}/', $path, $matches)) {
-            throw new RuntimeException(
-                "Missing required parameter [{$matches[1]}] for route"
+        preg_match_all('/\{([^}?]+)\}/', $path, $matches);
+        if (!empty($matches[1])) {
+            throw new \Plugs\Exceptions\MissingRouteParameterException(
+                $this->name ?? 'unnamed',
+                $this->path,
+                $matches[1],
+                $parameters
             );
         }
 

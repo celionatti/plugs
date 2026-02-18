@@ -381,6 +381,9 @@ class Plugs
             $response = $this->dispatcher->handle($request);
             $this->emitResponse($response);
         } catch (\Throwable $e) {
+            if (config('app.debug', false)) {
+                throw $e;
+            }
             $handler = $this->container->make(\Plugs\Exceptions\Handler::class);
             $response = $handler->handle($e, $request);
             $this->emitResponse($response);
