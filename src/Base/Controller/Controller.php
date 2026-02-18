@@ -20,12 +20,15 @@ use Plugs\Http\ResponseFactory;
 use Plugs\Security\Validator;
 use Plugs\View\ErrorMessage;
 use Plugs\View\ViewEngineInterface;
+use Plugs\AI\Traits\InteractWithAI;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use RuntimeException;
 
 abstract class Controller
 {
+    use InteractWithAI;
+
     protected ViewEngineInterface $view;
     protected $db;
     protected ?ServerRequest $currentRequest = null;

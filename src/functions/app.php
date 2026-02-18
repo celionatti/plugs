@@ -663,3 +663,13 @@ function paginate($data, $perPage = 15, $page = null)
     // Assume it's PlugModel pagination array
     return \Plugs\Paginator\Pagination::fromArray((array) $data);
 }
+
+if (!function_exists('ai')) {
+    /**
+     * Get the AI manager instance
+     */
+    function ai(): \Plugs\AI\AIManager
+    {
+        return app('ai');
+    }
+}

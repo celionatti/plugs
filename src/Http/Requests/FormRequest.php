@@ -191,4 +191,36 @@ abstract class FormRequest
     {
         return $this->data;
     }
+
+    /**
+     * Send a quick prompt to the AI using request data for context.
+     */
+    public function aiPrompt(string $prompt, array $options = []): string
+    {
+        $context = json_encode($this->all());
+        return ai()->prompt("Request Context: {$context}\n\nTask: {$prompt}", [], $options);
+    }
+
+    /**
+     * Analyze request data using AI and return structured feedback.
+     */
+    public function aiAnalyze(string $instruction = "Analyze this request for potential issues or optimizations."): array
+    {
+        $context = json_encode($this->all());
+        $response = ai()->prompt("Request Data: {$context}\n\nTask: {$instruction}. Return ONLY a JSON object of results.", [], ['max_tokens' => 500]);
+
+        if (preg_match('/\{[\s\S]*\}/', $response, $matches)) {
+            return json_decode($matches[0], true) ?: [];
+        }
+
+        return ['raw_response' => $response];
+    }
+
+    /**
+     * Get all input data.
+     */
+    protected function all(): array
+    {
+        return $this->data;
+    }
 }

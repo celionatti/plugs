@@ -34,6 +34,7 @@ use Plugs\Database\Traits\HasObservability;
 use Plugs\Database\Traits\HasDomainEvents;
 use Plugs\Database\Traits\HasDiagnostics;
 use Plugs\Database\Exceptions\ConcurrencyException;
+use Plugs\AI\Traits\HasAI;
 
 /**
  * PlugModel
@@ -61,7 +62,8 @@ abstract class PlugModel implements \JsonSerializable
         HasSerialization,
         HasObservability,
         HasDomainEvents,
-        HasDiagnostics;
+        HasDiagnostics,
+        HasAI;
 
     use HasEvents, HasScopes {
         HasScopes::addGlobalScope insteadof HasEvents;

@@ -360,6 +360,7 @@ class Validator
             'contains' => 'The :attribute must contain the value: :value.',
             'lowercase' => 'The :attribute must be lowercase.',
             'uppercase' => 'The :attribute must be uppercase.',
+            'ai_fail' => 'The :attribute failed AI validation: :reason',
         ];
 
         return $messages[$rule] ?? "The :attribute is invalid.";
@@ -718,6 +719,27 @@ class Validator
 
         if (!preg_match($pattern, (string) $value)) {
             $this->addError($field, 'uuid');
+        }
+    }
+
+    /**
+     * AI-powered validation
+     * Usage: ai:check if the text is constructive
+     */
+    private function validateAi(string $field, $value, array $params): void
+    {
+        if (empty($value)) {
+            return;
+        }
+
+        $instruction = $params[0] ?? "Validate this input.";
+        $prompt = "Task: {$instruction}\nInput for field '{$field}': \"{$value}\"\n\nDoes this input satisfy the requirement? Return ONLY 'yes' or a brief explanation of why it fails.";
+
+        $response = ai()->prompt($prompt, [], ['max_tokens' => 50]);
+        $response = strtolower(trim($response));
+
+        if ($response !== 'yes' && strpos($response, 'yes') !== 0) {
+            $this->addError($field, 'ai_fail', ['reason' => $response]);
         }
     }
 
