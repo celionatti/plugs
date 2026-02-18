@@ -40,8 +40,9 @@ class DefaultConfig
             'key' => env('APP_KEY'),
             'locale' => env('APP_LOCALE', 'en'),
             'fallback_locale' => env('APP_FALLBACK_LOCALE', 'en'),
+            'theme' => env('APP_THEME', 'default'),
             'paths' => [
-                'views' => base_path('resources/views'),
+                'views' => env('VIEW_PATH', base_path('resources')),
                 'cache' => base_path('storage/cache'),
                 'logs' => base_path('storage/logs'),
                 'storage' => base_path('storage'),

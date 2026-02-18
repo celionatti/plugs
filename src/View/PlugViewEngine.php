@@ -29,6 +29,7 @@ class PlugViewEngine implements ViewEngineInterface
     private bool $suppressLayout = false;
     private ?string $requestedSection = null;
     private bool $fastCache = false;
+    private ?string $theme = null;
 
     private const VIEW_EXTENSIONS = ['.plug.php', '.php', '.html'];
     private const PRODUCTION_ERROR_LEVEL = E_ERROR | E_PARSE | E_CORE_ERROR | E_COMPILE_ERROR;
@@ -124,6 +125,17 @@ class PlugViewEngine implements ViewEngineInterface
         // Initialize fragment renderer and view cache
         $this->fragmentRenderer = new FragmentRenderer();
         $this->viewCache = new ViewCache($this->cachePath);
+    }
+
+    public function setTheme(?string $theme): self
+    {
+        $this->theme = $theme;
+        return $this;
+    }
+
+    public function getTheme(): ?string
+    {
+        return $this->theme;
     }
 
     public function setCspNonce(string $nonce): void
@@ -928,6 +940,17 @@ class PlugViewEngine implements ViewEngineInterface
     {
         $view = str_replace('.', DIRECTORY_SEPARATOR, $view);
 
+        // Check theme path first if theme is set
+        if ($this->theme && $this->theme !== 'default') {
+            foreach (self::VIEW_EXTENSIONS as $extension) {
+                $themeViewPath = $this->viewPath . DIRECTORY_SEPARATOR . 'themes' . DIRECTORY_SEPARATOR . $this->theme . DIRECTORY_SEPARATOR . $view . $extension;
+
+                if (file_exists($themeViewPath)) {
+                    return $themeViewPath;
+                }
+            }
+        }
+
         foreach (self::VIEW_EXTENSIONS as $extension) {
             $viewPath = $this->viewPath . DIRECTORY_SEPARATOR . $view . $extension;
 
@@ -955,8 +978,9 @@ class PlugViewEngine implements ViewEngineInterface
 
         throw new ViewException(
             sprintf(
-                'View [%s] not found. Looked for: %s',
+                'View [%s] not found. Looked for: %s%s',
                 $view,
+                $this->theme ? "Theme [{$this->theme}] and " : '',
                 implode(', ', array_map(function ($ext) use ($view) {
                     return $view . $ext;
                 }, self::VIEW_EXTENSIONS))
@@ -990,6 +1014,15 @@ class PlugViewEngine implements ViewEngineInterface
 
         foreach ($filenames as $filename) {
             foreach (self::VIEW_EXTENSIONS as $extension) {
+                // Check theme component path first
+                if ($this->theme && $this->theme !== 'default') {
+                    $themeComponentPath = $this->viewPath . DIRECTORY_SEPARATOR . 'themes' . DIRECTORY_SEPARATOR . $this->theme . DIRECTORY_SEPARATOR . 'components' . DIRECTORY_SEPARATOR . $filename . $extension;
+
+                    if (file_exists($themeComponentPath)) {
+                        return $themeComponentPath;
+                    }
+                }
+
                 $componentPath = $this->componentPath . DIRECTORY_SEPARATOR . $filename . $extension;
 
                 if (file_exists($componentPath)) {
@@ -1016,7 +1049,7 @@ class PlugViewEngine implements ViewEngineInterface
             }
         }
 
-        // Fallback to kebab-case path if not found
+        // Fallback to kebab-case path if not found (default location)
         return $this->componentPath . DIRECTORY_SEPARATOR . $kebab . self::VIEW_EXTENSIONS[0];
     }
 

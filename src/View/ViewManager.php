@@ -108,6 +108,7 @@ class ViewManager
         );
 
         $engine->setOpcacheEnabled(config('opcache.enabled', true));
+        $engine->setTheme(config('app.theme'));
 
         return $engine;
     }
