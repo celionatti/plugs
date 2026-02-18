@@ -7,26 +7,26 @@ function getMethodClass($method)
 {
     $method = strtoupper($method);
 
-    return 'method-' . $method;
+    return 'plugs-dbg-method-' . $method;
 }
 
 function getStatusBadge($code)
 {
     if ($code >= 200 && $code < 300) {
-        return 'status-success';
+        return 'plugs-dbg-status-success';
     }
     if ($code >= 300 && $code < 400) {
-        return 'status-info';
+        return 'plugs-dbg-status-info';
     }
     if ($code >= 400 && $code < 500) {
-        return 'status-warning';
+        return 'plugs-dbg-status-warning';
     }
 
-    return 'status-danger';
+    return 'plugs-dbg-status-danger';
 }
 ?>
 
-<div class="glass-panel animate-fade-up" style="animation-delay: 0.2s; overflow: hidden;">
+<div class="plugs-dbg-glass-panel plugs-dbg-animate-fade-up" style="animation-delay: 0.2s; overflow: hidden;">
     <div
         style="padding: 1.5rem 2rem; border-bottom: 1px solid var(--border-glass); display: flex; justify-content: space-between; align-items: center;">
         <h2 style="font-size: 1.25rem; font-weight: 700; display: flex; align-items: center; gap: 0.75rem;">
@@ -42,32 +42,20 @@ function getStatusBadge($code)
     </div>
 
     <div style="overflow-x: auto;">
-        <table class="plugs-table">
+        <table class="plugs-dbg-table">
             <thead>
                 <tr>
                     <th>Method</th>
                     <th>Path</th>
                     <th>Status</th>
-                    <th class="hide-mobile">Duration</th>
-                    <th class="hide-mobile">Memory</th>
-                    <th class="hide-tablet">Time</th>
+                    <th class="plugs-dbg-hide-mobile">Duration</th>
+                    <th class="plugs-dbg-hide-mobile">Memory</th>
+                    <th class="plugs-dbg-hide-tablet">Time</th>
                     <th></th>
                 </tr>
             </thead>
             <tbody>
                 <?php if (empty($profiles)): ?>
-                    <tr>
-                        <td colspan="7" style="text-align: center; padding: 4rem 2rem;">
-                            <div style="opacity: 0.5; margin-bottom: 1rem;">
-                                <svg width="48" height="48" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                        d="M9.172 9.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z">
-                                    </path>
-                                </svg>
-                            </div>
-                            <p style="color: var(--text-secondary); font-weight: 500;">No profiles captured yet.</p>
-                            <p style="color: var(--text-muted); font-size: 0.85rem; margin-top: 0.5rem;">Make some
-                                requests
                     <tr>
                         <td colspan="7" style="text-align: center; padding: 4rem 2rem;">
                             <div style="opacity: 0.5; margin-bottom: 1rem;">
@@ -86,31 +74,32 @@ function getStatusBadge($code)
                 <?php endif; ?>
 
                 <?php foreach ($profiles as $p): ?>
-                    <tr class="profile-row" data-href="/debug/performance/<?= $p['id'] ?>">
+                    <tr class="plugs-dbg-profile-row" data-href="/debug/performance/<?= $p['id'] ?>">
                         <td>
-                            <span class="method-label <?= getMethodClass($p['request']['method']) ?>">
+                            <span class="plugs-dbg-method-label <?= getMethodClass($p['request']['method']) ?>">
                                 <?= $p['request']['method'] ?>
-                                <div style="max-width: 400px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-family: 'JetBrains Mono', monospace; font-size: 0.9rem;"
-                                    title="<?= $p['request']['uri'] ?>">
-                                    <?= $p['request']['path'] ?>
-                                </div>
+                            </span>
+                            <div style="max-width: 400px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-family: 'JetBrains Mono', monospace; font-size: 0.9rem;"
+                                title="<?= $p['request']['uri'] ?>">
+                                <?= $p['request']['path'] ?>
+                            </div>
                         </td>
                         <td>
-                            <span class="status-badge <?= getStatusBadge($p['request']['status_code']) ?>">
+                            <span class="plugs-dbg-status-badge <?= getStatusBadge($p['request']['status_code']) ?>">
                                 <?= $p['request']['status_code'] ?>
                             </span>
                         </td>
-                        <td class="hide-mobile">
+                        <td class="plugs-dbg-hide-mobile">
                             <span
                                 style="font-weight: 600; color: <?= $p['duration'] > 100 ? 'var(--warning)' : 'var(--text-primary)' ?>;">
                                 <?= number_format($p['duration'], 2) ?> <span
                                     style="font-size: 0.75rem; opacity: 0.6; font-weight: 400;">ms</span>
                             </span>
                         </td>
-                        <td class="hide-mobile" style="color: var(--text-secondary); font-size: 0.9rem;">
+                        <td class="plugs-dbg-hide-mobile" style="color: var(--text-secondary); font-size: 0.9rem;">
                             <?= $p['memory_peak_formatted'] ?>
                         </td>
-                        <td class="hide-tablet">
+                        <td class="plugs-dbg-hide-tablet">
                             <div style="font-size: 0.85rem; color: var(--text-primary);">
                                 <?= date('H:i:s', $p['timestamp']) ?>
                             </div>
@@ -119,7 +108,7 @@ function getStatusBadge($code)
                             </div>
                         </td>
                         <td style="text-align: right;">
-                            <div class="btn-action">
+                            <div class="plugs-dbg-btn-action">
                                 <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7">
                                     </path>
@@ -134,12 +123,12 @@ function getStatusBadge($code)
 </div>
 
 <style>
-    .plugs-table {
+    .plugs-dbg-table {
         width: 100%;
         border-collapse: collapse;
     }
 
-    .plugs-table th {
+    .plugs-dbg-table th {
         text-align: left;
         padding: 1rem 1.5rem;
         font-size: 0.75rem;
@@ -150,16 +139,16 @@ function getStatusBadge($code)
         background: rgba(0, 0, 0, 0.1);
     }
 
-    .plugs-table td {
+    .plugs-dbg-table td {
         padding: 1.25rem 1.5rem;
         border-bottom: 1px solid var(--border-glass);
     }
 
-    .plugs-table tr:last-child td {
+    .plugs-dbg-table tr:last-child td {
         border-bottom: none;
     }
 
-    .method-label {
+    .plugs-dbg-method-label {
         font-family: 'JetBrains Mono', monospace;
         font-weight: 700;
         font-size: 0.75rem;
@@ -167,27 +156,27 @@ function getStatusBadge($code)
         border-radius: 4px;
     }
 
-    .method-GET {
+    .plugs-dbg-method-GET {
         color: var(--info);
         background: rgba(14, 165, 233, 0.1);
     }
 
-    .method-POST {
+    .plugs-dbg-method-POST {
         color: var(--success);
         background: rgba(16, 185, 129, 0.1);
     }
 
-    .method-PUT {
+    .plugs-dbg-method-PUT {
         color: var(--warning);
         background: rgba(245, 158, 11, 0.1);
     }
 
-    .method-DELETE {
+    .plugs-dbg-method-DELETE {
         color: var(--danger);
         background: rgba(239, 68, 68, 0.1);
     }
 
-    .status-badge {
+    .plugs-dbg-status-badge {
         display: inline-flex;
         align-items: center;
         gap: 0.4rem;
@@ -195,65 +184,65 @@ function getStatusBadge($code)
         font-size: 0.85rem;
     }
 
-    .status-badge::before {
+    .plugs-dbg-status-badge::before {
         content: '';
         width: 8px;
         height: 8px;
         border-radius: 50%;
     }
 
-    .status-success {
+    .plugs-dbg-status-success {
         color: var(--success);
     }
 
-    .status-success::before {
+    .plugs-dbg-status-success::before {
         background: var(--success);
         box-shadow: 0 0 8px var(--success);
     }
 
-    .status-info {
+    .plugs-dbg-status-info {
         color: var(--info);
     }
 
-    .status-info::before {
+    .plugs-dbg-status-info::before {
         background: var(--info);
     }
 
-    .status-warning {
+    .plugs-dbg-status-warning {
         color: var(--warning);
     }
 
-    .status-warning::before {
+    .plugs-dbg-status-warning::before {
         background: var(--warning);
     }
 
-    .status-danger {
+    .plugs-dbg-status-danger {
         color: var(--danger);
     }
 
-    .status-danger::before {
+    .plugs-dbg-status-danger::before {
         background: var(--danger);
         box-shadow: 0 0 8px var(--danger);
     }
 
-    .btn-action {
+    .plugs-dbg-btn-action {
         color: var(--text-muted);
         transition: all 0.2s;
     }
 
-    .profile-row:hover .btn-action {
+    .plugs-dbg-profile-row:hover .plugs-dbg-btn-action {
         color: var(--accent);
         transform: translateX(4px);
     }
 
     @media (max-width: 1024px) {
-        .hide-tablet {
+        .plugs-dbg-hide-tablet {
             display: none;
         }
     }
 
     @media (max-width: 768px) {
-        .hide-mobile {
+        .plugs-dbg-hide-mobile {
             display: none;
         }
     }

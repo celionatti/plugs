@@ -203,7 +203,7 @@ class ProfilerBar
             #plugs-profiler-modal .plugs-debug-header {
                 padding: 16px !important;
             }
-            #plugs-profiler-modal .plugs-tabs-nav {
+            #plugs-profiler-modal .plugs-dbg-tabs-nav {
                 flex-wrap: nowrap;
                 overflow-x: auto;
                 gap: 4px;
@@ -211,24 +211,24 @@ class ProfilerBar
                 scrollbar-width: none;
                 -ms-overflow-style: none;
             }
-            #plugs-profiler-modal .plugs-tabs-nav::-webkit-scrollbar { display: none; }
-            #plugs-profiler-modal .plugs-tab-btn {
+            #plugs-profiler-modal .plugs-dbg-tabs-nav::-webkit-scrollbar { display: none; }
+            #plugs-profiler-modal .plugs-dbg-tab-btn {
                 padding: 8px 12px;
                 font-size: 11px;
                 white-space: nowrap;
                 flex-shrink: 0;
             }
-            #plugs-profiler-modal .plugs-tab-content {
+            #plugs-profiler-modal .plugs-dbg-tab-content {
                 padding: 16px !important;
             }
-            #plugs-profiler-modal .plugs-stats-grid {
+            #plugs-profiler-modal .plugs-dbg-stats-grid {
                 grid-template-columns: repeat(2, 1fr) !important;
                 gap: 12px !important;
             }
-            #plugs-profiler-modal .plugs-stat-card {
+            #plugs-profiler-modal .plugs-dbg-stat-card {
                 padding: 12px !important;
             }
-            #plugs-profiler-modal .plugs-stat-value {
+            #plugs-profiler-modal .plugs-dbg-stat-value {
                 font-size: 14px !important;
             }
             #plugs-profiler-modal .timeline-row {
@@ -247,10 +247,10 @@ class ProfilerBar
             #plugs-profiler-bar .pbar-items {
                 gap: 8px;
             }
-            #plugs-profiler-modal .plugs-stats-grid {
+            #plugs-profiler-modal .plugs-dbg-stats-grid {
                 grid-template-columns: 1fr !important;
             }
-            #plugs-profiler-modal .plugs-header-top {
+            #plugs-profiler-modal .plugs-dbg-header-top {
                 flex-direction: column !important;
                 gap: 12px !important;
                 text-align: center;
@@ -365,41 +365,41 @@ class ProfilerBar
         echo '<div class="plugs-debug-wrapper" data-theme="dark">';
 
         // Header
-        echo '<div class="plugs-debug-header">';
-        echo '<div class="plugs-header-top">';
-        echo '<div class="plugs-logo-section"><div class="plugs-brand">Plugs Profiler</div>';
+        echo '<div class="plugs-dbg-header">';
+        echo '<div class="plugs-dbg-header-top">';
+        echo '<div class="plugs-logo-section"><div class="plugs-dbg-brand">Plugs Profiler</div>';
 
         if (!empty($profile['git']['branch'])) {
-            echo '<div class="git-badge" title="Commit: ' . ($profile['git']['hash'] ?? '') . '">';
+            echo '<div class="pbar-git-badge" title="Commit: ' . ($profile['git']['hash'] ?? '') . '">';
             echo '<svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="margin-right:4px"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 8v8m-4-5v5m-4-2v2m-2 4h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>';
             echo htmlspecialchars($profile['git']['branch']);
             echo ' <span style="opacity:0.6;font-size:0.9em">#' . ($profile['git']['short_hash'] ?? '') . '</span>';
             echo '</div>';
-            echo '<style' . $nonceAttr . '>.git-badge { display:flex; align-items:center; background:rgba(255,255,255,0.1); padding:4px 8px; border-radius:4px; font-size:12px; color:#cbd5e1; font-family:monospace; margin-left:12px; }</style>';
+            echo '<style' . $nonceAttr . '>.pbar-git-badge { display:flex; align-items:center; background:rgba(255,255,255,0.1); padding:4px 8px; border-radius:4px; font-size:12px; color:#cbd5e1; font-family:monospace; margin-left:12px; }</style>';
         }
 
         echo '</div>'; // End Logo Section
-        echo '<div class="plugs-header-controls"><button id="plugs-profiler-modal-close" class="plugs-action-btn">Close ✕</button></div></div>';
+        echo '<div class="plugs-dbg-header-controls"><button id="plugs-profiler-modal-close" class="plugs-dbg-action-btn">Close ✕</button></div></div>';
 
-        echo '<div class="plugs-tabs-nav">';
-        echo '<button class="plugs-tab-btn active" data-tab="tab-overview">📊 Overview</button>';
-        echo '<button class="plugs-tab-btn" data-tab="tab-timeline">⏱️ Timeline</button>';
-        echo '<button class="plugs-tab-btn" data-tab="tab-queries">🔮 Queries (' . count($data['queries']) . ')</button>';
-        echo '<button class="plugs-tab-btn" data-tab="tab-cache">💾 Cache (' . ($cacheHits + $cacheMisses) . ')</button>';
-        echo '<button class="plugs-tab-btn" data-tab="tab-events">⚡ Events (' . $eventCount . ')</button>';
-        echo '<button class="plugs-tab-btn" data-tab="tab-route">🛣️ Route</button>';
-        echo '<button class="plugs-tab-btn" data-tab="tab-request">🌐 Request</button>';
-        echo '<button class="plugs-tab-btn" data-tab="tab-app">🧠 Application</button>';
-        echo '<button class="plugs-tab-btn" data-tab="tab-files">📂 Files (' . ($profile['files']['count'] ?? 0) . ')</button>';
-        echo '<button class="plugs-tab-btn" data-tab="tab-history">📜 History</button>';
-        echo '<button class="plugs-tab-btn" data-tab="tab-config">⚙️ Config</button>';
+        echo '<div class="plugs-dbg-tabs-nav">';
+        echo '<button class="plugs-dbg-tab-btn active" data-tab="tab-overview">📊 Overview</button>';
+        echo '<button class="plugs-dbg-tab-btn" data-tab="tab-timeline">⏱️ Timeline</button>';
+        echo '<button class="plugs-dbg-tab-btn" data-tab="tab-queries">🔮 Queries (' . count($data['queries']) . ')</button>';
+        echo '<button class="plugs-dbg-tab-btn" data-tab="tab-cache">💾 Cache (' . ($cacheHits + $cacheMisses) . ')</button>';
+        echo '<button class="plugs-dbg-tab-btn" data-tab="tab-events">⚡ Events (' . $eventCount . ')</button>';
+        echo '<button class="plugs-dbg-tab-btn" data-tab="tab-route">🛣️ Route</button>';
+        echo '<button class="plugs-dbg-tab-btn" data-tab="tab-request">🌐 Request</button>';
+        echo '<button class="plugs-dbg-tab-btn" data-tab="tab-app">🧠 Application</button>';
+        echo '<button class="plugs-dbg-tab-btn" data-tab="tab-files">📂 Files (' . ($profile['files']['count'] ?? 0) . ')</button>';
+        echo '<button class="plugs-dbg-tab-btn" data-tab="tab-history">📜 History</button>';
+        echo '<button class="plugs-dbg-tab-btn" data-tab="tab-config">⚙️ Config</button>';
         echo '</div>';
         echo '</div>'; // End Header
 
-        echo '<div class="plugs-debug-content">';
+        echo '<div class="plugs-dbg-content">';
 
         // Tab: Overview
-        echo '<div id="tab-overview" class="plugs-tab-content active" style="padding: 32px;">';
+        echo '<div id="tab-overview" class="plugs-dbg-tab-content active" style="padding: 32px;">';
         if (config('security.ai_profiler.enabled', true)) {
             echo '<div style="margin-bottom: 24px; padding: 16px; background: rgba(139, 92, 246, 0.1); border: 1px dashed rgba(139, 92, 246, 0.4); border-radius: 12px; display: flex; justify-content: space-between; align-items: center;">';
             echo '<div>';
@@ -413,42 +413,42 @@ class ProfilerBar
         echo '</div>';
 
         // Tab: Timeline
-        echo '<div id="tab-timeline" class="plugs-tab-content" style="padding: 32px;">';
+        echo '<div id="tab-timeline" class="plugs-dbg-tab-content" style="padding: 32px;">';
         echo self::renderTimelineTab($profile);
         echo '</div>';
 
         // Tab: Queries
-        echo '<div id="tab-queries" class="plugs-tab-content" style="padding: 0;">';
+        echo '<div id="tab-queries" class="plugs-dbg-tab-content" style="padding: 0;">';
         echo plugs_render_queries($data);
         echo '</div>';
 
         // Tab: Cache
-        echo '<div id="tab-cache" class="plugs-tab-content" style="padding: 32px;">';
+        echo '<div id="tab-cache" class="plugs-dbg-tab-content" style="padding: 32px;">';
         echo self::renderCacheTab($profile);
         echo '</div>';
 
         // Tab: Events
-        echo '<div id="tab-events" class="plugs-tab-content" style="padding: 32px;">';
+        echo '<div id="tab-events" class="plugs-dbg-tab-content" style="padding: 32px;">';
         echo self::renderEventsTab($profile);
         echo '</div>';
 
         // Tab: Route, Request, App, Files, History, Config
-        echo '<div id="tab-route" class="plugs-tab-content" style="padding: 32px;">' . self::renderRouteTab($profile) . '</div>';
-        echo '<div id="tab-request" class="plugs-tab-content" style="padding: 32px;">' . self::renderRequestTab($profile) . '</div>';
+        echo '<div id="tab-route" class="plugs-dbg-tab-content" style="padding: 32px;">' . self::renderRouteTab($profile) . '</div>';
+        echo '<div id="tab-request" class="plugs-dbg-tab-content" style="padding: 32px;">' . self::renderRequestTab($profile) . '</div>';
 
         // Tab: App (Models & Views)
-        echo '<div id="tab-app" class="plugs-tab-content" style="padding: 32px;">';
-        echo '<div class="plugs-tab-grid" style="display:grid; grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); gap:24px;">';
+        echo '<div id="tab-app" class="plugs-dbg-tab-content" style="padding: 32px;">';
+        echo '<div class="pbar-tab-grid" style="display:grid; grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); gap:24px;">';
 
         // Models
-        echo '<div class="plugs-info-group" style="background:rgba(255,255,255,0.02); padding:20px; border-radius:12px; border:1px solid rgba(255,255,255,0.05);">';
+        echo '<div class="pbar-info-group" style="background:rgba(255,255,255,0.02); padding:20px; border-radius:12px; border:1px solid rgba(255,255,255,0.05);">';
         echo '<h3 style="color:#a78bfa; margin-bottom:16px; font-size:16px; display:flex; justify-content:space-between; align-items:center;">';
         echo '<span>🏗️ Model Lifecycle</span>';
-        echo '<span class="plugs-badge" style="background:rgba(167,139,250,0.1); color:#a78bfa;">' . count($profile['models'] ?? []) . '</span>';
+        echo '<span class="plugs-dbg-badge" style="background:rgba(167,139,250,0.1); color:#a78bfa;">' . count($profile['models'] ?? []) . '</span>';
         echo '</h3>';
 
         if (!empty($profile['models'])) {
-            echo '<table class="plugs-info-table" style="width:100%; border-collapse:collapse; font-size:13px;">';
+            echo '<table class="plugs-dbg-info-table" style="width:100%; border-collapse:collapse; font-size:13px;">';
             foreach ($profile['models'] as $m) {
                 $eventColor = match (strtolower($m['event'] ?? '')) {
                     'created', 'saved' => '#10b981',
@@ -458,7 +458,7 @@ class ProfilerBar
                 };
                 echo '<tr style="border-bottom:1px solid rgba(255,255,255,0.03);">';
                 echo '<td style="padding:10px 0; color:#cbd5e1; font-weight:500;">' . basename(str_replace('\\', '/', $m['model'])) . '</td>';
-                echo '<td style="padding:10px 0;"><span class="plugs-badge" style="background:' . $eventColor . '15; color:' . $eventColor . '; border:1px solid ' . $eventColor . '30;">' . strtoupper($m['event'] ?? 'UNKNOWN') . '</span></td>';
+                echo '<td style="padding:10px 0;"><span class="plugs-dbg-badge" style="background:' . $eventColor . '15; color:' . $eventColor . '; border:1px solid ' . $eventColor . '30;">' . strtoupper($m['event'] ?? 'UNKNOWN') . '</span></td>';
                 echo '<td style="padding:10px 0; text-align:right; font-family:monospace; color:#94a3b8;">+' . number_format($m['time_offset'] ?? 0, 2) . ' ms</td>';
                 echo '</tr>';
             }
@@ -469,14 +469,14 @@ class ProfilerBar
         echo '</div>';
 
         // Views
-        echo '<div class="plugs-info-group" style="background:rgba(255,255,255,0.02); padding:20px; border-radius:12px; border:1px solid rgba(255,255,255,0.05);">';
+        echo '<div class="pbar-info-group" style="background:rgba(255,255,255,0.02); padding:20px; border-radius:12px; border:1px solid rgba(255,255,255,0.05);">';
         echo '<h3 style="color:#10b981; margin-bottom:16px; font-size:16px; display:flex; justify-content:space-between; align-items:center;">';
         echo '<span>🖼️ Rendered Views</span>';
-        echo '<span class="plugs-badge" style="background:rgba(16,185,129,0.1); color:#10b981;">' . count($profile['views'] ?? []) . '</span>';
+        echo '<span class="plugs-dbg-badge" style="background:rgba(16,185,129,0.1); color:#10b981;">' . count($profile['views'] ?? []) . '</span>';
         echo '</h3>';
 
         if (!empty($profile['views'])) {
-            echo '<table class="plugs-info-table" style="width:100%; border-collapse:collapse; font-size:13px;">';
+            echo '<table class="plugs-dbg-info-table" style="width:100%; border-collapse:collapse; font-size:13px;">';
             foreach ($profile['views'] as $v) {
                 echo '<tr style="border-bottom:1px solid rgba(255,255,255,0.03);">';
                 echo '<td style="padding:10px 0; color:#cbd5e1;">' . htmlspecialchars($v['name'] ?? 'Unknown') . '</td>';
@@ -489,12 +489,13 @@ class ProfilerBar
         }
         echo '</div>';
 
-        echo '</div></div>';
-        echo '<div id="tab-files" class="plugs-tab-content" style="padding: 32px;">' . self::renderFilesTab($profile, $nonce) . '</div>';
-        echo '<div id="tab-history" class="plugs-tab-content" style="padding: 32px;">' . self::renderHistoryTab($nonce) . '</div>';
-        echo '<div id="tab-config" class="plugs-tab-content" style="padding: 32px;">' . self::renderConfigTab($profile) . '</div>';
+        echo '</div>'; // End grid and tab-app
+        echo '</div>'; // End tab-app
+        echo '<div id="tab-files" class="plugs-dbg-tab-content" style="padding: 32px;">' . self::renderFilesTab($profile, $nonce) . '</div>';
+        echo '<div id="tab-history" class="plugs-dbg-tab-content" style="padding: 32px;">' . self::renderHistoryTab($nonce) . '</div>';
+        echo '<div id="tab-config" class="plugs-dbg-tab-content" style="padding: 32px;">' . self::renderConfigTab($profile) . '</div>';
 
-        echo '</div></div>';
+        echo '</div></div>'; // End content and wrapper
 
         $dataJson = json_encode($data);
         echo <<<JS
@@ -535,12 +536,12 @@ class ProfilerBar
             });
         }
 
-        document.querySelectorAll('.plugs-tab-btn[data-tab]').forEach(btn => {
+        document.querySelectorAll('.plugs-dbg-tab-btn[data-tab]').forEach(btn => {
             btn.addEventListener('click', function() {
                 const tabId = this.getAttribute('data-tab');
                 const wrapper = this.closest('.plugs-debug-wrapper');
-                wrapper.querySelectorAll('.plugs-tab-btn').forEach(b => b.classList.remove('active'));
-                wrapper.querySelectorAll('.plugs-tab-content').forEach(c => c.classList.remove('active'));
+                wrapper.querySelectorAll('.plugs-dbg-tab-btn').forEach(b => b.classList.remove('active'));
+                wrapper.querySelectorAll('.plugs-dbg-tab-content').forEach(c => c.classList.remove('active'));
                 this.classList.add('active');
                 wrapper.querySelector('#' + tabId).classList.add('active');
             });
@@ -569,7 +570,7 @@ class ProfilerBar
 
         const showLoading = (title) => {
             aiModal.querySelector('h3 span').textContent = title;
-            document.getElementById('plugs-ai-content').innerHTML = '<div style="display:flex; align-items:center; gap:12px; height:100px; justify-content:center; color:#94a3b8;"><svg class="animate-spin" width="24" height="24" fill="none" viewBox="0 0 24 24"><circle style="opacity:0.25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path style="opacity:0.75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg> AI is analyzing...</div>';
+            document.getElementById('plugs-ai-content').innerHTML = '<div style="display:flex; align-items:center; gap:12px; height:100px; justify-content:center; color:#94a3b8;"><svg class="plugs-dbg-animate-spin" width="24" height="24" fill="none" viewBox="0 0 24 24"><circle style="opacity:0.25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path style="opacity:0.75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg> AI is analyzing...</div>';
             aiModal.style.display = 'block';
         };
 
@@ -608,7 +609,7 @@ class ProfilerBar
         });
 
         const style = document.createElement('style');
-        style.textContent = '.animate-spin { animation: spin 1s linear infinite; } @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }';
+        style.textContent = '.plugs-dbg-animate-spin { animation: plugsDbgSpin 1s linear infinite; } @keyframes plugsDbgSpin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }';
         document.head.appendChild(style);
     })();
 </script>
@@ -679,7 +680,7 @@ JS;
 
         // Search & Stats Header
         $html .= '<div style="display: flex; gap: 20px; align-items: center; background: rgba(255,255,255,0.02); padding: 20px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.05);">';
-        $html .= '<div style="flex: 1;"><input type="text" placeholder="Filter ' . count($files) . ' included files..." id="plugs-file-filter" style="width: 100%; padding: 12px 16px; background: rgba(0,0,0,0.3); border: 1px solid rgba(139, 92, 246, 0.3); color: white; border-radius: 8px; font-family: \'JetBrains Mono\', monospace; font-size: 13px; outline: none;"></div>';
+        $html .= '<div style="flex: 1;"><input type="text" placeholder="Filter ' . count($files) . ' included files..." id="pbar-file-filter" style="width: 100%; padding: 12px 16px; background: rgba(0,0,0,0.3); border: 1px solid rgba(139, 92, 246, 0.3); color: white; border-radius: 8px; font-family: \'JetBrains Mono\', monospace; font-size: 13px; outline: none;"></div>';
         $html .= '<div style="text-align: center; padding: 0 20px; border-left: 1px solid rgba(255,255,255,0.1);"><div style="color: #94a3b8; font-size: 10px; text-transform: uppercase;">Total Files</div><div style="color: #a78bfa; font-size: 18px; font-weight: 600;">' . count($files) . '</div></div>';
         $html .= '</div>';
 
@@ -688,7 +689,7 @@ JS;
         foreach ($groups as $groupName => $groupFiles) {
             if (empty($groupFiles))
                 continue;
-            $html .= '<div class="plugs-file-group" style="background: rgba(255, 255, 255, 0.02); border: 1px solid rgba(255, 255, 255, 0.05); border-radius: 12px; padding: 20px;">';
+            $html .= '<div class="pbar-file-group" style="background: rgba(255, 255, 255, 0.02); border: 1px solid rgba(255, 255, 255, 0.05); border-radius: 12px; padding: 20px;">';
             $html .= '<h4 style="color: #cbd5e1; margin-bottom: 16px; display: flex; justify-content: space-between; align-items: center; font-size: 15px;">';
             $html .= '<span>' . $groupName . '</span>';
             $html .= '<span style="font-size: 11px; background: rgba(255,255,255,0.05); padding: 2px 8px; border-radius: 100px;">' . count($groupFiles) . '</span>';
@@ -696,8 +697,8 @@ JS;
 
             $html .= '<div class="file-list-container">';
             foreach ($groupFiles as $f) {
-                $html .= '<div class="plugs-file-item" style="padding: 6px 0; border-bottom: 1px solid rgba(255,255,255,0.02); font-family: \'JetBrains Mono\', monospace; font-size: 11px; color: #94a3b8; word-break: break-all;">';
-                $html .= '<span class="file-path">' . htmlspecialchars($f['path']) . '</span>';
+                $html .= '<div class="pbar-file-item" style="padding: 6px 0; border-bottom: 1px solid rgba(255,255,255,0.02); font-family: \'JetBrains Mono\', monospace; font-size: 11px; color: #94a3b8; word-break: break-all;">';
+                $html .= '<span class="pbar-file-path">' . htmlspecialchars($f['path']) . '</span>';
                 $html .= '</div>';
             }
             $html .= '</div></div>';
@@ -706,16 +707,16 @@ JS;
         $html .= '</div>'; // End grid
 
         $html .= '<script' . $nonceAttr . '>
-            document.getElementById("plugs-file-filter")?.addEventListener("input", function(e) {
+            document.getElementById("pbar-file-filter")?.addEventListener("input", function(e) {
                 const val = e.target.value.toLowerCase();
-                document.querySelectorAll(".plugs-file-item").forEach(el => {
-                    const path = el.querySelector(".file-path").textContent.toLowerCase();
+                document.querySelectorAll(".pbar-file-item").forEach(el => {
+                    const path = el.querySelector(".pbar-file-path").textContent.toLowerCase();
                     el.style.display = path.includes(val) ? "block" : "none";
                 });
                 
                 // Hide empty groups
-                document.querySelectorAll(".plugs-file-group").forEach(group => {
-                    const visibleItems = group.querySelectorAll(".plugs-file-item[style*=\'display: block\'], .plugs-file-item:not([style*=\'display: none\'])").length;
+                document.querySelectorAll(".pbar-file-group").forEach(group => {
+                    const visibleItems = group.querySelectorAll(".pbar-file-item[style*=\'display: block\'], .pbar-file-item:not([style*=\'display: none\'])").length;
                     group.style.display = visibleItems > 0 ? "block" : "none";
                 });
             });
@@ -726,18 +727,18 @@ JS;
     private static function renderHistoryTab(?string $nonce = null): string
     {
         $profiles = Profiler::getProfiles(50);
-        $html = '<div class="plugs-history-management" style="padding:20px;">';
-        $html .= '<div style="display:flex; justify-content:space-between; margin-bottom:20px;"><h3 style="color:#f8fafc;">Recent Requests</h3><button id="plugs-clear-history" class="plugs-action-btn" style="background:#ef4444; border-color:#ef4444; color:white;">Clear All</button></div>';
+        $html = '<div class="plugs-dbg-history-management" style="padding:20px;">';
+        $html .= '<div style="display:flex; justify-content:space-between; margin-bottom:20px;"><h3 style="color:#f8fafc;">Recent Requests</h3><button id="plugs-clear-history" class="plugs-dbg-action-btn" style="background:#ef4444; border-color:#ef4444; color:white;">Clear All</button></div>';
 
         if (empty($profiles))
             return $html . '<p style="color:#64748b;">No history found.</p></div>';
 
-        $html .= '<div style="overflow-x:auto;"><table class="plugs-info-table" style="width:100%; border-collapse:collapse; font-size:13px;">';
+        $html .= '<div style="overflow-x:auto;"><table class="plugs-dbg-info-table" style="width:100%; border-collapse:collapse; font-size:13px;">';
         $html .= '<thead style="background:rgba(255,255,255,0.03);"><tr><th style="padding:10px; text-align:left;">Method</th><th style="padding:10px; text-align:left;">URI</th><th style="padding:10px; text-align:left;">Time</th><th style="padding:10px; text-align:left;">Status</th></tr></thead><tbody>';
 
         foreach ($profiles as $p) {
             $html .= sprintf('<tr style="border-bottom:1px solid rgba(255,255,255,0.03);">
-                <td style="padding:10px;"><span class="plugs-badge">%s</span></td>
+                <td style="padding:10px;"><span class="plugs-dbg-badge">%s</span></td>
                 <td style="padding:10px; color:#f8fafc; font-family:monospace;">%s</td>
                 <td style="padding:10px; color:#94a3b8;">%s ms</td>
                 <td style="padding:10px; color:#10b981;">%d</td>
@@ -775,10 +776,10 @@ JS;
             ]
         ];
 
-        $html = '<div class="plugs-config-dashboard" style="padding: 32px; display: grid; grid-template-columns: repeat(auto-fit, minmax(350px, 1fr)); gap: 24px;">';
+        $html = '<div class="pbar-config-dashboard" style="padding: 32px; display: grid; grid-template-columns: repeat(auto-fit, minmax(350px, 1fr)); gap: 24px;">';
 
         foreach ($groups as $title => $items) {
-            $html .= '<div class="config-group" style="background: rgba(255, 255, 255, 0.02); border: 1px solid rgba(255, 255, 255, 0.05); border-radius: 12px; padding: 20px; box-shadow: 0 4px 20px rgba(0,0,0,0.1);">';
+            $html .= '<div class="pbar-config-group" style="background: rgba(255, 255, 255, 0.02); border: 1px solid rgba(255, 255, 255, 0.05); border-radius: 12px; padding: 20px; box-shadow: 0 4px 20px rgba(0,0,0,0.1);">';
             $html .= '<h3 style="color: #a78bfa; font-size: 16px; margin-bottom: 20px; border-bottom: 1px solid rgba(167, 139, 250, 0.2); padding-bottom: 12px;">' . $title . '</h3>';
             $html .= '<table style="width: 100%; border-collapse: collapse; font-size: 13px;">';
 

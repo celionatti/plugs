@@ -306,14 +306,14 @@ function plugs_dump(array $vars, bool $die = false, string $mode = 'default', ?s
         // Event Delegation for Plugs Debugging
         document.addEventListener('click', function(e) {
             // Tab Switching
-            const tabBtn = e.target.closest('.plugs-tab-btn, .tab-btn');
+            const tabBtn = e.target.closest('.plugs-dbg-tab-btn');
             if (tabBtn) {
                 const tabId = tabBtn.getAttribute('data-tab') || (tabBtn.getAttribute('onclick') ? tabBtn.getAttribute('onclick').match(/'([^']+)'/)[1] : null);
                 if (tabId) {
                     const container = tabBtn.closest('.plugs-debug-wrapper, #plugs-profiler-modal');
                     if (container) {
-                        container.querySelectorAll('.tab-btn, .plugs-tab-btn').forEach(b => b.classList.remove('active'));
-                        container.querySelectorAll('.tab-content, .plugs-tab-content').forEach(c => c.classList.remove('active'));
+                        container.querySelectorAll('.plugs-dbg-tab-btn').forEach(b => b.classList.remove('active'));
+                        container.querySelectorAll('.plugs-dbg-tab-content').forEach(c => c.classList.remove('active'));
                         tabBtn.classList.add('active');
                         const target = container.querySelector('#' + tabId);
                         if (target) target.classList.add('active');
@@ -323,7 +323,7 @@ function plugs_dump(array $vars, bool $die = false, string $mode = 'default', ?s
             }
 
             // Toggle Var Header
-            const varHeader = e.target.closest('.var-header');
+            const varHeader = e.target.closest('.plugs-dbg-var-header');
             if (varHeader) {
                 const body = varHeader.nextElementSibling;
                 if (body) {
@@ -335,10 +335,10 @@ function plugs_dump(array $vars, bool $die = false, string $mode = 'default', ?s
             }
 
             // Copy Value
-            const copyIcon = e.target.closest('.plugs-copy-icon');
+            const copyIcon = e.target.closest('.plugs-dbg-copy-icon');
             if (copyIcon) {
                 const container = copyIcon.parentElement;
-                const stringSpan = container.querySelector('.plugs-syntax-string');
+                const stringSpan = container.querySelector('.plugs-dbg-syntax-string');
                 const textToCopy = stringSpan ? stringSpan.getAttribute('data-full-value') : container.innerText.trim();
                 
                 navigator.clipboard.writeText(textToCopy).then(() => {
@@ -354,12 +354,12 @@ function plugs_dump(array $vars, bool $die = false, string $mode = 'default', ?s
             }
 
             // Reveal Secret
-            const secret = e.target.closest('.plugs-masked-secret');
+            const secret = e.target.closest('.plugs-dbg-masked-secret');
             if (secret) {
                 const val = secret.getAttribute('data-secret');
                 if (val) {
                     secret.innerText = val;
-                    secret.classList.remove('plugs-masked-secret');
+                    secret.classList.remove('plugs-dbg-masked-secret');
                     secret.style.color = '#10b981';
                     secret.style.fontStyle = 'normal';
                     secret.style.background = 'rgba(16, 185, 129, 0.1)';
@@ -368,20 +368,20 @@ function plugs_dump(array $vars, bool $die = false, string $mode = 'default', ?s
             }
             
             // Expand/Collapse All
-            const expandBtn = e.target.closest('.plugs-action-btn[data-action="expand"]');
+            const expandBtn = e.target.closest('.plugs-dbg-action-btn[data-action="expand"]');
             if (expandBtn) {
                 plugsToggleAll(true);
                 return;
             }
             
-            const collapseBtn = e.target.closest('.plugs-action-btn[data-action="collapse"]');
+            const collapseBtn = e.target.closest('.plugs-dbg-action-btn[data-action="collapse"]');
             if (collapseBtn) {
                 plugsToggleAll(false);
                 return;
             }
 
             // Truncated String Click
-            const truncatedStr = e.target.closest('.plugs-syntax-string[data-truncated="true"]');
+            const truncatedStr = e.target.closest('.plugs-dbg-syntax-string[data-truncated="true"]');
             if (truncatedStr) {
                 const full = truncatedStr.getAttribute('data-full-value');
                 truncatedStr.innerText = '"' + full + '"';
@@ -396,9 +396,9 @@ function plugs_dump(array $vars, bool $die = false, string $mode = 'default', ?s
         if (debugSearch) {
             debugSearch.addEventListener('input', (e) => {
                 const query = e.target.value.toLowerCase();
-                document.querySelectorAll('.plugs-tab-content.active .plugs-var-item, .plugs-debug-content .plugs-var-item').forEach(item => {
+                document.querySelectorAll('.plugs-dbg-tab-content.active .plugs-dbg-var-item, .plugs-debug-content .plugs-dbg-var-item').forEach(item => {
                     const text = item.innerText.toLowerCase();
-                    if (item.classList.contains('var-item') || item.classList.contains('plugs-var-item')) {
+                    if (item.classList.contains('plugs-dbg-var-item')) {
                         item.style.display = text.includes(query) ? 'block' : 'none';
                     }
                 });
@@ -409,22 +409,22 @@ function plugs_dump(array $vars, bool $die = false, string $mode = 'default', ?s
         const breadcrumbBar = document.getElementById('breadcrumb-bar');
         if (breadcrumbBar) {
             document.addEventListener('mouseover', (e) => {
-                const keySpan = e.target.closest('.plugs-syntax-key');
+                const keySpan = e.target.closest('.plugs-dbg-syntax-key');
                 if (keySpan) {
                     const path = keySpan.getAttribute('data-path');
                     if (path) {
-                        breadcrumbBar.innerHTML = 'Current Path: <span class="plugs-breadcrumb-item">' + path + '</span>';
+                        breadcrumbBar.innerHTML = 'Current Path: <span class="plugs-dbg-breadcrumb-item">' + path + '</span>';
                         breadcrumbBar.style.display = 'block';
                     }
-                } else if (!e.target.closest('.plugs-breadcrumbs')) {
+                } else if (!e.target.closest('.plugs-dbg-breadcrumbs')) {
                     breadcrumbBar.style.display = 'none';
                 }
             });
         }
 
         function plugsToggleAll(expand) {
-            document.querySelectorAll('.var-body, .plugs-var-body').forEach(body => {
-                const parent = body.closest('.plugs-tab-content.active, .plugs-debug-content');
+            document.querySelectorAll('.plugs-dbg-var-body').forEach(body => {
+                const parent = body.closest('.plugs-dbg-tab-content.active, .plugs-debug-content');
                 if (parent && body.closest('.plugs-debug-wrapper').style.display !== 'none') {
                     body.style.display = expand ? 'block' : 'none';
                     if (body.previousElementSibling) {
@@ -503,7 +503,7 @@ function plugs_render_styles(bool $scoped = false, ?string $nonce = null): strin
         --glow: 0 0 15px rgba(255, 132, 0, 0.1);
     }
 
-    .plugs-safe-scope .plugs-debug-header::before {
+    .plugs-safe-scope .plugs-dbg-header::before {
         content: '';
         position: absolute;
         top: 0;
@@ -621,7 +621,7 @@ HTML;
         color: var(--text-primary);
     }
     
-    .plugs-debug-header {
+    .plugs-dbg-header {
         background: var(--bg-card);
         backdrop-filter: blur(12px);
         border: 1px solid var(--border-color);
@@ -633,7 +633,7 @@ HTML;
         overflow: hidden;
     }
     
-    .plugs-debug-header::before {
+    .plugs-dbg-header::before {
         content: '';
         position: absolute;
         top: 0;
@@ -643,7 +643,7 @@ HTML;
         background: linear-gradient(90deg, var(--accent-primary), var(--accent-secondary));
     }
     
-    .plugs-header-top {
+    .plugs-dbg-header-top {
         display: flex;
         justify-content: space-between;
         align-items: center;
@@ -652,13 +652,13 @@ HTML;
         border-bottom: 1px solid var(--border-color);
     }
     
-    .plugs-logo-section {
+    .plugs-dbg-logo-section {
         display: flex;
         align-items: center;
         gap: 16px;
     }
     
-    .plugs-brand {
+    .plugs-dbg-brand {
         font-family: "Dancing Script", cursive;
         font-size: 2.25rem;
         font-weight: 700;
@@ -677,13 +677,13 @@ HTML;
         margin-top: -8px;
     }
 
-    .plugs-header-controls {
+    .plugs-dbg-header-controls {
         display: flex;
         align-items: center;
         gap: 16px;
     }
 
-    .tabs-nav {
+    .plugs-dbg-tabs-nav {
         display: flex;
         gap: 2px;
         background: rgba(15, 23, 42, 0.5);
@@ -693,7 +693,7 @@ HTML;
         border: 1px solid var(--border-color);
     }
 
-    .tab-btn {
+    .plugs-dbg-tab-btn {
         background: transparent;
         border: none;
         color: var(--text-muted);
@@ -709,27 +709,27 @@ HTML;
         gap: 8px;
     }
 
-    .tab-btn:hover {
+    .plugs-dbg-tab-btn:hover {
         color: var(--text-primary);
         background: rgba(255, 255, 255, 0.05);
     }
 
-    .tab-btn.active {
+    .plugs-dbg-tab-btn.active {
         background: var(--accent-primary);
         color: white;
         box-shadow: 0 4px 12px rgba(168, 85, 247, 0.3);
     }
 
-    .plugs-tab-content {
+    .plugs-dbg-tab-content {
         display: none !important;
-        animation: fadeIn 0.3s ease-out;
+        animation: plugsDbgFadeIn 0.3s ease-out;
     }
 
-    .plugs-tab-content.active {
+    .plugs-dbg-tab-content.active {
         display: block !important;
     }
 
-    .search-input {
+    .plugs-dbg-search-input {
         background: rgba(15, 23, 42, 0.5);
         border: 1px solid var(--border-color);
         border-radius: 8px;
@@ -742,17 +742,17 @@ HTML;
         transition: all 0.2s;
     }
 
-    .search-input:focus {
+    .plugs-dbg-search-input:focus {
         border-color: var(--accent-primary);
         box-shadow: 0 0 0 2px rgba(139, 92, 246, 0.2);
     }
 
-    .plugs-global-actions {
+    .plugs-dbg-global-actions {
         display: flex;
         gap: 8px;
     }
 
-    .plugs-action-btn {
+    .plugs-dbg-action-btn {
         background: rgba(255, 255, 255, 0.05);
         border: 1px solid var(--border-color);
         color: var(--text-secondary);
@@ -767,12 +767,12 @@ HTML;
         gap: 6px;
     }
 
-    .action-btn:hover {
+    .plugs-dbg-action-btn:hover {
         background: rgba(255, 255, 255, 0.1);
         color: var(--text-primary);
     }
     
-    .plugs-status-badge {
+    .plugs-dbg-status-badge {
         background: rgba(16, 185, 129, 0.1);
         color: var(--success);
         padding: 8px 16px;
@@ -782,13 +782,13 @@ HTML;
         border: 1px solid rgba(16, 185, 129, 0.2);
     }
     
-    .plugs-stats-grid {
+    .plugs-dbg-stats-grid {
         display: grid;
         grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
         gap: 20px;
     }
     
-    .plugs-stat-card {
+    .plugs-dbg-stat-card {
         background: rgba(15, 23, 42, 0.3);
         border: 1px solid var(--border-color);
         border-radius: 12px;
@@ -796,12 +796,12 @@ HTML;
         transition: all 0.3s ease;
     }
     
-    .stat-card:hover {
+    .plugs-dbg-stat-card:hover {
         border-color: var(--accent-primary);
         background: rgba(15, 23, 42, 0.5);
     }
     
-    .plugs-stat-label {
+    .plugs-dbg-stat-label {
         font-size: 11px;
         font-weight: 700;
         text-transform: uppercase;
@@ -813,14 +813,14 @@ HTML;
         gap: 8px;
     }
     
-    .plugs-stat-value {
+    .plugs-dbg-stat-value {
         font-size: 18px;
         font-weight: 600;
         color: var(--text-primary);
         font-family: 'JetBrains Mono', monospace;
     }
     
-    .plugs-debug-content {
+    .plugs-dbg-content {
         background: var(--bg-card);
         border: 1px solid var(--border-color);
         border-radius: 16px;
@@ -828,13 +828,13 @@ HTML;
         box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3);
     }
     
-    .variables-grid {
+    .plugs-dbg-variables-grid {
         display: grid;
         gap: 24px;
         padding: 32px;
     }
     
-    .var-item {
+    .plugs-dbg-var-item {
         background: rgba(15, 23, 42, 0.2);
         border: 1px solid var(--border-color);
         border-radius: 12px;
@@ -842,11 +842,11 @@ HTML;
         transition: opacity 0.3s;
     }
 
-    .var-item.hidden {
+    .plugs-dbg-var-item.hidden {
         display: none;
     }
     
-    .var-header {
+    .plugs-dbg-var-header {
         padding: 16px 24px;
         background: rgba(255, 255, 255, 0.03);
         border-bottom: 1px solid var(--border-color);
@@ -856,7 +856,7 @@ HTML;
         cursor: pointer;
     }
     
-    .var-title {
+    .plugs-dbg-var-title {
         font-size: 15px;
         font-weight: 600;
         color: var(--text-secondary);
@@ -865,12 +865,12 @@ HTML;
         gap: 8px;
     }
     
-    .var-badges {
+    .plugs-dbg-var-badges {
         display: flex;
         gap: 8px;
     }
     
-    .plugs-badge {
+    .plugs-dbg-badge {
         background: rgba(139, 92, 246, 0.1);
         color: var(--accent-primary);
         padding: 4px 12px;
@@ -880,11 +880,11 @@ HTML;
         border: 1px solid rgba(139, 92, 246, 0.2);
     }
     
-    .var-body {
+    .plugs-dbg-var-body {
         padding: 24px;
     }
     
-    .section-title {
+    .plugs-dbg-section-title {
         font-size: 12px;
         font-weight: 700;
         text-transform: uppercase;
@@ -896,7 +896,7 @@ HTML;
         letter-spacing: 0.1em;
     }
     
-    .plugs-code-block {
+    .plugs-dbg-code-block {
         background: var(--code-bg);
         border: 1px solid var(--border-color);
         color: var(--text-primary);
@@ -909,16 +909,16 @@ HTML;
         position: relative;
     }
     
-    .plugs-syntax-key { color: var(--accent-primary); font-weight: 500; cursor: help; }
-    .plugs-syntax-key:hover { text-decoration: underline; }
-    .plugs-syntax-string { color: var(--success); }
-    .plugs-syntax-number { color: var(--accent-secondary); }
-    .plugs-syntax-bool { color: var(--warning); }
-    .plugs-syntax-null { color: var(--danger); }
-    .plugs-syntax-array { color: var(--text-secondary); opacity: 0.8; }
-    .plugs-syntax-object { color: var(--accent-secondary); font-weight: 600; }
+    .plugs-dbg-syntax-key { color: var(--accent-primary); font-weight: 500; cursor: help; }
+    .plugs-dbg-syntax-key:hover { text-decoration: underline; }
+    .plugs-dbg-syntax-string { color: var(--success); }
+    .plugs-dbg-syntax-number { color: var(--accent-secondary); }
+    .plugs-dbg-syntax-bool { color: var(--warning); }
+    .plugs-dbg-syntax-null { color: var(--danger); }
+    .plugs-dbg-syntax-array { color: var(--text-secondary); opacity: 0.8; }
+    .plugs-dbg-syntax-object { color: var(--accent-secondary); font-weight: 600; }
     
-    .plugs-copy-icon {
+    .plugs-dbg-copy-icon {
         position: absolute;
         right: 12px;
         top: 12px;
@@ -930,16 +930,16 @@ HTML;
         border-radius: 4px;
     }
 
-    .code-block:hover .copy-icon {
+    .plugs-dbg-code-block:hover .plugs-dbg-copy-icon {
         opacity: 1;
     }
 
-    .copy-icon:hover {
+    .plugs-dbg-copy-icon:hover {
         color: var(--text-primary);
         background: rgba(255, 255, 255, 0.05);
     }
 
-    .plugs-masked-secret {
+    .plugs-dbg-masked-secret {
         background: rgba(239, 68, 68, 0.1);
         color: var(--danger);
         padding: 2px 6px;
@@ -951,7 +951,7 @@ HTML;
         font-style: italic;
     }
 
-    .breadcrumbs {
+    .plugs-dbg-breadcrumbs {
         position: fixed;
         bottom: 24px;
         left: 50%;
@@ -968,12 +968,12 @@ HTML;
         box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5);
     }
     
-    .breadcrumb-item {
+    .plugs-dbg-breadcrumb-item {
         color: var(--accent-secondary);
         font-weight: 600;
     }
 
-    .plugs-alert {
+    .plugs-dbg-alert {
         padding: 16px 20px;
         margin-top: 20px;
         border-radius: 12px;
@@ -983,18 +983,18 @@ HTML;
         gap: 8px;
     }
     
-    .plugs-alert-warning { background: rgba(245, 158, 11, 0.1); border: 1px solid rgba(245, 158, 11, 0.2); color: #fbbf24; }
-    .plugs-alert-danger { background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.2); color: #f87171; }
-    .plugs-alert-success { background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.2); color: #34d399; }
+    .plugs-dbg-alert-warning { background: rgba(245, 158, 11, 0.1); border: 1px solid rgba(245, 158, 11, 0.2); color: #fbbf24; }
+    .plugs-dbg-alert-danger { background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.2); color: #f87171; }
+    .plugs-dbg-alert-success { background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.2); color: #34d399; }
     
-    .plugs-alert-title {
+    .plugs-dbg-alert-title {
         font-weight: 700;
         text-transform: uppercase;
         font-size: 12px;
         letter-spacing: 0.05em;
     }
     
-    .info-grid {
+    .plugs-dbg-info-grid {
         display: grid;
         grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
         gap: 16px;
@@ -1003,14 +1003,14 @@ HTML;
         border-top: 1px solid var(--border-color);
     }
     
-    .info-card {
+    .plugs-dbg-info-card {
         background: rgba(15, 23, 42, 0.2);
         border: 1px solid var(--border-color);
         border-radius: 10px;
         padding: 16px;
     }
     
-    .info-label {
+    .plugs-dbg-info-label {
         font-size: 10px;
         font-weight: 700;
         text-transform: uppercase;
@@ -1018,20 +1018,20 @@ HTML;
         letter-spacing: 0.05em;
     }
     
-    .info-value {
+    .plugs-dbg-info-value {
         font-size: 14px;
         font-weight: 500;
         color: var(--text-secondary);
         font-family: 'JetBrains Mono', monospace;
     }
 
-    @keyframes fadeIn {
+    @keyframes plugsDbgFadeIn {
         from { opacity: 0; transform: translateY(10px); }
         to { opacity: 1; transform: translateY(0); }
     }
     
     .plugs-debug-wrapper {
-        animation: fadeIn 0.4s ease-out;
+        animation: plugsDbgFadeIn 0.4s ease-out;
     }
     
     /* Responsive Styles */
@@ -1040,11 +1040,11 @@ HTML;
             padding: 24px 16px 80px 16px;
         }
         
-        .plugs-debug-header {
+        .plugs-dbg-header {
             padding: 24px;
         }
         
-        .plugs-stats-grid {
+        .plugs-dbg-stats-grid {
             grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
             gap: 12px;
         }
@@ -1055,12 +1055,12 @@ HTML;
             padding: 16px 12px 60px 12px;
         }
         
-        .plugs-debug-header {
+        .plugs-dbg-header {
             padding: 16px;
             border-radius: 12px;
         }
         
-        .plugs-header-top {
+        .plugs-dbg-header-top {
             flex-direction: column;
             gap: 16px;
             align-items: flex-start;
@@ -1068,40 +1068,40 @@ HTML;
             padding-bottom: 16px;
         }
         
-        .plugs-header-controls {
+        .plugs-dbg-header-controls {
             width: 100%;
             flex-wrap: wrap;
             gap: 8px;
         }
         
-        .search-input {
+        .plugs-dbg-search-input {
             width: 100%;
             order: -1;
         }
         
-        .plugs-brand {
+        .plugs-dbg-brand {
             font-size: 1.75rem;
         }
         
-        .plugs-stats-grid {
+        .plugs-dbg-stats-grid {
             grid-template-columns: repeat(2, 1fr);
             gap: 10px;
         }
         
-        .plugs-stat-card {
+        .plugs-dbg-stat-card {
             padding: 12px;
         }
         
-        .plugs-stat-value {
+        .plugs-dbg-stat-value {
             font-size: 14px;
         }
         
-        .plugs-stat-label {
+        .plugs-dbg-stat-label {
             font-size: 9px;
             margin-bottom: 8px;
         }
         
-        .tabs-nav, .plugs-tabs-nav {
+        .plugs-dbg-tabs-nav {
             overflow-x: auto;
             gap: 4px;
             padding: 4px;
@@ -1110,70 +1110,70 @@ HTML;
             -ms-overflow-style: none;
         }
         
-        .tabs-nav::-webkit-scrollbar, .plugs-tabs-nav::-webkit-scrollbar {
+        .plugs-dbg-tabs-nav::-webkit-scrollbar {
             display: none;
         }
         
-        .tab-btn, .plugs-tab-btn {
+        .plugs-dbg-tab-btn {
             padding: 8px 14px;
             font-size: 11px;
             white-space: nowrap;
             flex-shrink: 0;
         }
         
-        .variables-grid {
+        .plugs-dbg-variables-grid {
             padding: 16px;
             gap: 16px;
         }
         
-        .var-header {
+        .plugs-dbg-var-header {
             padding: 12px 16px;
         }
         
-        .var-body {
+        .plugs-dbg-var-body {
             padding: 16px;
         }
         
-        .plugs-code-block {
+        .plugs-dbg-code-block {
             padding: 16px;
             font-size: 12px;
             border-radius: 8px;
         }
         
-        .info-grid {
+        .plugs-dbg-info-grid {
             grid-template-columns: repeat(2, 1fr);
             gap: 8px;
             margin-top: 16px;
             padding-top: 16px;
         }
         
-        .info-card {
+        .plugs-dbg-info-card {
             padding: 10px;
         }
         
-        .info-label {
+        .plugs-dbg-info-label {
             font-size: 8px;
         }
         
-        .info-value {
+        .plugs-dbg-info-value {
             font-size: 12px;
         }
         
-        .plugs-global-actions {
+        .plugs-dbg-global-actions {
             flex: 1;
             justify-content: flex-end;
         }
         
-        .plugs-action-btn {
+        .plugs-dbg-action-btn {
             padding: 6px 10px;
             font-size: 11px;
         }
         
-        .plugs-action-btn span {
+        .plugs-dbg-action-btn span {
             display: none;
         }
         
-        .plugs-status-badge {
+        .plugs-dbg-status-badge {
             padding: 6px 12px;
             font-size: 10px;
         }
@@ -1184,67 +1184,67 @@ HTML;
             padding: 12px 8px 50px 8px;
         }
         
-        .plugs-debug-header {
+        .plugs-dbg-header {
             padding: 12px;
             border-radius: 8px;
         }
         
-        .plugs-brand {
+        .plugs-dbg-brand {
             font-size: 1.5rem;
         }
         
-        .plugs-stats-grid {
+        .plugs-dbg-stats-grid {
             grid-template-columns: 1fr 1fr;
             gap: 8px;
         }
         
-        .plugs-stat-card {
+        .plugs-dbg-stat-card {
             padding: 10px;
         }
         
-        .plugs-stat-value {
+        .plugs-dbg-stat-value {
             font-size: 12px;
         }
         
-        .var-title span:first-child {
+        .plugs-dbg-var-title span:first-child {
             display: none;
         }
         
-        .var-badges {
+        .plugs-dbg-var-badges {
             gap: 4px;
         }
         
-        .plugs-badge {
+        .plugs-dbg-badge {
             padding: 2px 8px;
             font-size: 10px;
         }
         
-        .plugs-code-block {
+        .plugs-dbg-code-block {
             padding: 12px;
             font-size: 11px;
         }
         
-        .info-grid {
+        .plugs-dbg-info-grid {
             grid-template-columns: 1fr;
         }
         
-        .breadcrumbs {
+        .plugs-dbg-breadcrumbs {
             bottom: 44px;
             padding: 8px 16px;
             font-size: 11px;
             max-width: calc(100% - 24px);
         }
         
-        .plugs-alert {
+        .plugs-dbg-alert {
             padding: 12px;
             font-size: 12px;
         }
         
-        .plugs-header-top {
+        .plugs-dbg-header-top {
             gap: 12px;
         }
         
-        .search-input {
+        .plugs-dbg-search-input {
             padding: 6px 12px;
             font-size: 12px;
         }
@@ -1263,31 +1263,31 @@ function plugs_render_header(string $file, $line, int $memoryUsage, int $peakMem
     $queryCount = $queryStats['count'] ?? 0;
     $queryTime = $queryStats['time'] ?? 0;
 
-    $html = '<div class="plugs-debug-header">';
-    $html .= '<div class="plugs-header-top">';
-    $html .= '<div class="plugs-logo-section">';
-    $html .= '<div class="plugs-brand">Plugs</div>';
-    $html .= '<div class="plugs-logo-text"><p>Debug Console</p></div>';
+    $html = '<div class="plugs-dbg-header">';
+    $html .= '<div class="plugs-dbg-header-top">';
+    $html .= '<div class="plugs-dbg-logo-section">';
+    $html .= '<div class="plugs-dbg-brand">Plugs</div>';
+    $html .= '<div class="plugs-dbg-logo-text"><p>Debug Console</p></div>';
     $html .= '</div>';
 
-    $html .= '<div class="plugs-header-controls">';
-    $html .= '<input type="text" class="search-input" id="debug-search" placeholder="Search variables, keys, values...">';
-    $html .= '<div class="plugs-global-actions">';
-    $html .= '<button class="plugs-action-btn" data-action="expand"><span>Expand</span> ⊞</button>';
-    $html .= '<button class="plugs-action-btn" data-action="collapse"><span>Collapse</span> ⊟</button>';
+    $html .= '<div class="plugs-dbg-header-controls">';
+    $html .= '<input type="text" class="plugs-dbg-search-input" id="debug-search" placeholder="Search variables, keys, values...">';
+    $html .= '<div class="plugs-dbg-global-actions">';
+    $html .= '<button class="plugs-dbg-action-btn" data-action="expand"><span>Expand</span> ⊞</button>';
+    $html .= '<button class="plugs-dbg-action-btn" data-action="collapse"><span>Collapse</span> ⊟</button>';
     $html .= '</div>';
-    $html .= '<div class="plugs-status-badge">Live Debugging</div>';
+    $html .= '<div class="plugs-dbg-status-badge">Live Debugging</div>';
     $html .= '</div>';
     $html .= '</div>';
 
-    $html .= '<div class="plugs-stats-grid">';
-    $html .= '<div class="plugs-stat-card"><div class="plugs-stat-label">Location</div><div class="plugs-stat-value" style="font-size: 13px; color: var(--accent-secondary);">' . htmlspecialchars(basename($file)) . ':' . $line . '</div></div>';
-    $html .= '<div class="plugs-stat-card"><div class="plugs-stat-label">Memory</div><div class="plugs-stat-value" style="color: var(--accent-primary);">' . plugs_format_bytes($memoryUsage) . '</div></div>';
-    $html .= '<div class="plugs-stat-card"><div class="plugs-stat-label">Execution</div><div class="plugs-stat-value" style="color: var(--success);">' . number_format($executionTime * 1000, 2) . ' ms</div></div>';
+    $html .= '<div class="plugs-dbg-stats-grid">';
+    $html .= '<div class="plugs-dbg-stat-card"><div class="plugs-dbg-stat-label">Location</div><div class="plugs-dbg-stat-value" style="font-size: 13px; color: var(--accent-secondary);">' . htmlspecialchars(basename($file)) . ':' . $line . '</div></div>';
+    $html .= '<div class="plugs-dbg-stat-card"><div class="plugs-dbg-stat-label">Memory</div><div class="plugs-dbg-stat-value" style="color: var(--accent-primary);">' . plugs_format_bytes($memoryUsage) . '</div></div>';
+    $html .= '<div class="plugs-dbg-stat-card"><div class="plugs-dbg-stat-label">Execution</div><div class="plugs-dbg-stat-value" style="color: var(--success);">' . number_format($executionTime * 1000, 2) . ' ms</div></div>';
     if ($queryCount > 0) {
-        $html .= '<div class="plugs-stat-card"><div class="plugs-stat-label">Queries</div><div class="plugs-stat-value" style="color: var(--danger);">' . $queryCount . ' (' . number_format($queryTime * 1000, 1) . 'ms)</div></div>';
+        $html .= '<div class="plugs-dbg-stat-card"><div class="plugs-dbg-stat-label">Queries</div><div class="plugs-dbg-stat-value" style="color: var(--danger);">' . $queryCount . ' (' . number_format($queryTime * 1000, 1) . 'ms)</div></div>';
     }
-    $html .= '<div class="plugs-stat-card"><div class="plugs-stat-label">Time</div><div class="plugs-stat-value">' . date('H:i:s') . '</div></div>';
+    $html .= '<div class="plugs-dbg-stat-card"><div class="plugs-dbg-stat-label">Time</div><div class="plugs-dbg-stat-value">' . date('H:i:s') . '</div></div>';
     $html .= '</div>';
     $html .= '</div>';
 
@@ -1299,7 +1299,7 @@ function plugs_render_header(string $file, $line, int $memoryUsage, int $peakMem
  */
 function plugs_render_variables(array $vars): string
 {
-    $html = '<div class="variables-grid" id="vars-container">';
+    $html = '<div class="plugs-dbg-variables-grid" id="vars-container">';
 
     if (empty($vars)) {
         $html .= '<div style="text-align: center; padding: 60px; color: #64748b;">';
@@ -1313,7 +1313,7 @@ function plugs_render_variables(array $vars): string
         }
     }
 
-    $html .= '</div><div id="breadcrumb-bar" class="breadcrumbs"></div>';
+    $html .= '</div><div id="breadcrumb-bar" class="plugs-dbg-breadcrumbs"></div>';
 
     return $html;
 }
@@ -1326,49 +1326,49 @@ function plugs_render_variable($var, int $index): string
     $type = gettype($var);
     $size = plugs_get_variable_size($var);
 
-    $html = '<div class="var-item">';
-    $html .= '<div class="var-header">';
-    $html .= '<div class="var-title">';
+    $html = '<div class="plugs-dbg-var-item">';
+    $html .= '<div class="plugs-dbg-var-header">';
+    $html .= '<div class="plugs-dbg-var-title">';
     $html .= '<span>📦</span>';
     $html .= '<span>Variable #' . ($index + 1) . '</span>';
     $html .= '</div>';
-    $html .= '<div class="var-badges">';
-    $html .= '<span class="plugs-badge">' . $type . '</span>';
-    $html .= '<span class="plugs-badge">' . plugs_format_bytes($size) . '</span>';
+    $html .= '<div class="plugs-dbg-var-badges">';
+    $html .= '<span class="plugs-dbg-badge">' . $type . '</span>';
+    $html .= '<span class="plugs-dbg-badge">' . plugs_format_bytes($size) . '</span>';
     $html .= '</div>';
     $html .= '</div>';
 
-    $html .= '<div class="var-body">';
-    $html .= '<div class="section-title">📄 Value</div>';
-    $html .= '<div class="plugs-code-block">';
-    $html .= '<div class="plugs-copy-icon" title="Copy to clipboard">📋</div>';
+    $html .= '<div class="plugs-dbg-var-body">';
+    $html .= '<div class="plugs-dbg-section-title">📄 Value</div>';
+    $html .= '<div class="plugs-dbg-code-block">';
+    $html .= '<div class="plugs-dbg-copy-icon" title="Copy to clipboard">📋</div>';
     $html .= plugs_format_value($var, 0);
     $html .= '</div>';
 
     // Info grid
-    $html .= '<div class="info-grid">';
+    $html .= '<div class="plugs-dbg-info-grid">';
 
-    $html .= '<div class="info-card">';
-    $html .= '<div class="info-label">Type</div>';
-    $html .= '<div class="info-value">' . ucfirst($type) . '</div>';
+    $html .= '<div class="plugs-dbg-info-card">';
+    $html .= '<div class="plugs-dbg-info-label">Type</div>';
+    $html .= '<div class="plugs-dbg-info-value">' . ucfirst($type) . '</div>';
     $html .= '</div>';
 
-    $html .= '<div class="info-card">';
-    $html .= '<div class="info-label">Size</div>';
-    $html .= '<div class="info-value">' . plugs_format_bytes($size) . '</div>';
+    $html .= '<div class="plugs-dbg-info-card">';
+    $html .= '<div class="plugs-dbg-info-label">Size</div>';
+    $html .= '<div class="plugs-dbg-info-value">' . plugs_format_bytes($size) . '</div>';
     $html .= '</div>';
 
     if (is_countable($var)) {
-        $html .= '<div class="info-card">';
-        $html .= '<div class="info-label">Count</div>';
-        $html .= '<div class="info-value">' . count($var) . '</div>';
+        $html .= '<div class="plugs-dbg-info-card">';
+        $html .= '<div class="plugs-dbg-info-label">Count</div>';
+        $html .= '<div class="plugs-dbg-info-value">' . count($var) . '</div>';
         $html .= '</div>';
     }
 
     if (is_string($var)) {
-        $html .= '<div class="info-card">';
-        $html .= '<div class="info-label">Length</div>';
-        $html .= '<div class="info-value">' . strlen($var) . '</div>';
+        $html .= '<div class="plugs-dbg-info-card">';
+        $html .= '<div class="plugs-dbg-info-label">Length</div>';
+        $html .= '<div class="plugs-dbg-info-value">' . strlen($var) . '</div>';
         $html .= '</div>';
     }
 
@@ -1376,13 +1376,13 @@ function plugs_render_variable($var, int $index): string
 
     // Warnings
     if ($size > 5 * 1024 * 1024) {
-        $html .= '<div class="plugs-alert plugs-alert-danger">';
-        $html .= '<div class="plugs-alert-title">❌ Critical Memory Warning</div>';
+        $html .= '<div class="plugs-dbg-alert plugs-dbg-alert-danger">';
+        $html .= '<div class="plugs-dbg-alert-title">❌ Critical Memory Warning</div>';
         $html .= 'Variable size is extremely large (' . plugs_format_bytes($size) . '). Consider pagination or chunking.';
         $html .= '</div>';
     } elseif ($size > 1 * 1024 * 1024) {
-        $html .= '<div class="plugs-alert plugs-alert-warning">';
-        $html .= '<div class="plugs-alert-title">⚠️ Large Variable</div>';
+        $html .= '<div class="plugs-dbg-alert plugs-dbg-alert-warning">';
+        $html .= '<div class="plugs-dbg-alert-title">⚠️ Large Variable</div>';
         $html .= 'Variable size is significant (' . plugs_format_bytes($size) . '). Monitor memory usage.';
         $html .= '</div>';
     }
@@ -1402,24 +1402,24 @@ function plugs_render_queries(array $data): string
     $stats = $data['stats'] ?? [];
 
     $html = '<div style="padding: 32px;">';
-    $html .= '<div class="section-title" style="margin-bottom: 24px; font-size: 18px; color: var(--text-primary);">📊 Query Insights</div>';
+    $html .= '<div class="plugs-dbg-section-title" style="margin-bottom: 24px; font-size: 18px; color: var(--text-primary);">📊 Query Insights</div>';
 
     // Stats cards
-    $html .= '<div class="plugs-stats-grid" style="margin-bottom: 32px;">';
+    $html .= '<div class="plugs-dbg-stats-grid" style="margin-bottom: 32px;">';
 
-    $html .= '<div class="plugs-stat-card" style="background: linear-gradient(145deg, rgba(168, 85, 247, 0.1), transparent);">';
-    $html .= '<div class="plugs-stat-label">✨ Total Queries</div>';
-    $html .= '<div class="plugs-stat-value">' . ($stats['total_queries'] ?? 0) . '</div>';
+    $html .= '<div class="plugs-dbg-stat-card" style="background: linear-gradient(145deg, rgba(168, 85, 247, 0.1), transparent);">';
+    $html .= '<div class="plugs-dbg-stat-label">✨ Total Queries</div>';
+    $html .= '<div class="plugs-dbg-stat-value">' . ($stats['total_queries'] ?? 0) . '</div>';
     $html .= '</div>';
 
-    $html .= '<div class="plugs-stat-card" style="background: linear-gradient(145deg, rgba(99, 102, 241, 0.1), transparent);">';
-    $html .= '<div class="plugs-stat-label">⏱️ Total Time</div>';
-    $html .= '<div class="plugs-stat-value">' . number_format(($stats['total_time'] ?? 0) * 1000, 2) . ' ms</div>';
+    $html .= '<div class="plugs-dbg-stat-card" style="background: linear-gradient(145deg, rgba(99, 102, 241, 0.1), transparent);">';
+    $html .= '<div class="plugs-dbg-stat-label">⏱️ Total Time</div>';
+    $html .= '<div class="plugs-dbg-stat-value">' . number_format(($stats['total_time'] ?? 0) * 1000, 2) . ' ms</div>';
     $html .= '</div>';
 
-    $html .= '<div class="plugs-stat-card">';
-    $html .= '<div class="plugs-stat-label">🧠 Memory Peak</div>';
-    $html .= '<div class="plugs-stat-value">' . plugs_format_bytes($stats['peak_memory'] ?? memory_get_peak_usage(true)) . '</div>';
+    $html .= '<div class="plugs-dbg-stat-card">';
+    $html .= '<div class="plugs-dbg-stat-label">🧠 Memory Peak</div>';
+    $html .= '<div class="plugs-dbg-stat-value">' . plugs_format_bytes($stats['peak_memory'] ?? memory_get_peak_usage(true)) . '</div>';
     $html .= '</div>';
 
     $html .= '</div>';
@@ -1427,30 +1427,30 @@ function plugs_render_queries(array $data): string
     // Performance assessment
     $totalQueries = $stats['total_queries'] ?? 0;
     if ($totalQueries > 20) {
-        $html .= '<div class="plugs-alert plugs-alert-danger" style="animation: pulse 2s infinite;">';
-        $html .= '<div class="plugs-alert-title">🔥 Critical Warning</div>';
+        $html .= '<div class="plugs-dbg-alert plugs-dbg-alert-danger" style="animation: pulse 2s infinite;">';
+        $html .= '<div class="plugs-dbg-alert-title">🔥 Critical Warning</div>';
         $html .= "High query volume ({$totalQueries}). This will significantly slow down production response times.";
         $html .= '</div>';
     } elseif ($totalQueries > 10) {
-        $html .= '<div class="plugs-alert plugs-alert-warning">';
-        $html .= '<div class="plugs-alert-title">⚡ Optimization Recommended</div>';
+        $html .= '<div class="plugs-dbg-alert plugs-dbg-alert-warning">';
+        $html .= '<div class="plugs-dbg-alert-title">⚡ Optimization Recommended</div>';
         $html .= "Multiple queries detected. Use eager loading (with()) to reduce database roundtrips.";
         $html .= '</div>';
     }
 
     // Query List
     $html .= '<div style="margin-top: 40px;">';
-    $html .= '<div class="section-title">🔮 Execution Log</div>';
+    $html .= '<div class="plugs-dbg-section-title">🔮 Execution Log</div>';
 
     foreach ($queries as $index => $query) {
         $time = $query['time'] ?? 0;
         $ms = number_format($time * 1000, 2);
         $isSlow = $time > 0.05;
 
-        $html .= '<div class="var-item" style="margin-bottom: 16px;">';
-        $html .= '<div class="var-header">';
-        $html .= '<div class="var-title"><span>#' . ($index + 1) . '</span> <code style="color: var(--accent-secondary);">' . substr(htmlspecialchars($query['query']), 0, 60) . (strlen($query['query']) > 60 ? '...' : '') . '</code></div>';
-        $html .= '<div class="var-badges">';
+        $html .= '<div class="plugs-dbg-var-item" style="margin-bottom: 16px;">';
+        $html .= '<div class="plugs-dbg-var-header">';
+        $html .= '<div class="plugs-dbg-var-title"><span>#' . ($index + 1) . '</span> <code style="color: var(--accent-secondary);">' . substr(htmlspecialchars($query['query']), 0, 60) . (strlen($query['query']) > 60 ? '...' : '') . '</code></div>';
+        $html .= '<div class="plugs-dbg-var-badges">';
 
         // AI Integration: Explain Query
         if (config('security.ai_profiler.enabled', true)) {
@@ -1458,14 +1458,14 @@ function plugs_render_queries(array $data): string
         }
 
         if ($isSlow) {
-            $html .= '<span class="plugs-badge" style="background: rgba(239, 68, 68, 0.1); color: var(--danger);">SLOW</span>';
+            $html .= '<span class="plugs-dbg-badge" style="background: rgba(239, 68, 68, 0.1); color: var(--danger);">SLOW</span>';
         }
-        $html .= '<span class="plugs-badge">' . $ms . ' ms</span>';
+        $html .= '<span class="plugs-dbg-badge">' . $ms . ' ms</span>';
         $html .= '</div>';
         $html .= '</div>';
-        $html .= '<div class="var-body" style="display: none;">';
-        $html .= '<div class="plugs-code-block">';
-        $html .= '<code class="syntax-string">' . htmlspecialchars($query['query']) . '</code>';
+        $html .= '<div class="plugs-dbg-var-body" style="display: none;">';
+        $html .= '<div class="plugs-dbg-code-block">';
+        $html .= '<code class="plugs-dbg-syntax-string">' . htmlspecialchars($query['query']) . '</code>';
         $html .= '</div>';
         if (!empty($query['bindings'])) {
             $html .= '<div style="margin-top: 12px; font-size: 13px; color: var(--text-muted);">Bindings: <code>' . json_encode($query['bindings']) . '</code></div>';
@@ -1505,31 +1505,31 @@ function plugs_render_model(array $data): string
     $html = '<div style="padding: 24px;">';
 
     if ($model) {
-        $html .= '<div class="section-title">📦 Model Data</div>';
-        $html .= '<div class="plugs-code-block">';
+        $html .= '<div class="plugs-dbg-section-title">📦 Model Data</div>';
+        $html .= '<div class="plugs-dbg-code-block">';
         $html .= plugs_format_value($model, 0);
         $html .= '</div>';
 
         // Model info
         if (is_object($model)) {
-            $html .= '<div class="info-grid">';
+            $html .= '<div class="plugs-dbg-info-grid">';
 
-            $html .= '<div class="info-card">';
-            $html .= '<div class="info-label">Class</div>';
-            $html .= '<div class="info-value" style="font-size: 13px;">' . get_class($model) . '</div>';
+            $html .= '<div class="plugs-dbg-info-card">';
+            $html .= '<div class="plugs-dbg-info-label">Class</div>';
+            $html .= '<div class="plugs-dbg-info-value" style="font-size: 13px;">' . get_class($model) . '</div>';
             $html .= '</div>';
 
             if (method_exists($model, 'getTable')) {
-                $html .= '<div class="info-card">';
-                $html .= '<div class="info-label">Table</div>';
-                $html .= '<div class="info-value">' . $model->getTable() . '</div>';
+                $html .= '<div class="plugs-dbg-info-card">';
+                $html .= '<div class="plugs-dbg-info-label">Table</div>';
+                $html .= '<div class="plugs-dbg-info-value">' . $model->getTable() . '</div>';
                 $html .= '</div>';
             }
 
             if (method_exists($model, 'getKey')) {
-                $html .= '<div class="info-card">';
-                $html .= '<div class="info-label">Primary Key</div>';
-                $html .= '<div class="info-value">' . ($model->getKey() ?? 'null') . '</div>';
+                $html .= '<div class="plugs-dbg-info-card">';
+                $html .= '<div class="plugs-dbg-info-label">Primary Key</div>';
+                $html .= '<div class="plugs-dbg-info-value">' . ($model->getKey() ?? 'null') . '</div>';
                 $html .= '</div>';
             }
 
@@ -1540,9 +1540,9 @@ function plugs_render_model(array $data): string
     // Show queries if available
     if (!empty($queries)) {
         $html .= '<div style="margin-top: 24px;">';
-        $html .= '<div class="section-title">🔍 Related Queries</div>';
-        $html .= '<div class="plugs-alert plugs-alert-info">';
-        $html .= '<div class="plugs-alert-title">ℹ️ Query Count</div>';
+        $html .= '<div class="plugs-dbg-section-title">🔍 Related Queries</div>';
+        $html .= '<div class="plugs-dbg-alert plugs-dbg-alert-info">';
+        $html .= '<div class="plugs-dbg-alert-title">ℹ️ Query Count</div>';
         $html .= 'This model executed ' . count($queries) . ' database queries.';
         $html .= '</div>';
         $html .= '</div>';
@@ -1570,8 +1570,8 @@ function plugs_render_exception(array $data): string
     $html = '<div style="padding: 32px;">';
 
     // Exception header
-    $html .= '<div class="plugs-alert plugs-alert-danger" style="margin-bottom: 24px;">';
-    $html .= '<div class="plugs-alert-title">💥 ' . htmlspecialchars($class) . '</div>';
+    $html .= '<div class="plugs-dbg-alert plugs-dbg-alert-danger" style="margin-bottom: 24px;">';
+    $html .= '<div class="plugs-dbg-alert-title">💥 ' . htmlspecialchars($class) . '</div>';
     $html .= '<div style="font-size: 18px; margin-top: 8px;">' . htmlspecialchars($message) . '</div>';
     if ($code) {
         $html .= '<div style="margin-top: 8px; opacity: 0.8;">Code: ' . $code . '</div>';
@@ -1579,16 +1579,16 @@ function plugs_render_exception(array $data): string
     $html .= '</div>';
 
     // Location
-    $html .= '<div class="stats-grid" style="margin-bottom: 24px;">';
-    $html .= '<div class="stat-card"><div class="stat-label">📍 File</div><div class="stat-value" style="font-size: 13px;">' . htmlspecialchars(basename($file)) . '</div></div>';
-    $html .= '<div class="stat-card"><div class="stat-label">📍 Line</div><div class="stat-value">' . $line . '</div></div>';
-    $html .= '<div class="stat-card"><div class="stat-label">📍 Full Path</div><div class="stat-value" style="font-size: 11px; word-break: break-all;">' . htmlspecialchars($file) . '</div></div>';
+    $html .= '<div class="plugs-dbg-stats-grid" style="margin-bottom: 24px;">';
+    $html .= '<div class="plugs-dbg-stat-card"><div class="plugs-dbg-stat-label">📍 File</div><div class="plugs-dbg-stat-value" style="font-size: 13px;">' . htmlspecialchars(basename($file)) . '</div></div>';
+    $html .= '<div class="plugs-dbg-stat-card"><div class="plugs-dbg-stat-label">📍 Line</div><div class="plugs-dbg-stat-value">' . $line . '</div></div>';
+    $html .= '<div class="plugs-dbg-stat-card"><div class="plugs-dbg-stat-label">📍 Full Path</div><div class="plugs-dbg-stat-value" style="font-size: 11px; word-break: break-all;">' . htmlspecialchars($file) . '</div></div>';
     $html .= '</div>';
 
     // Code snippet
     if (file_exists($file)) {
-        $html .= '<div class="section-title">📄 Code Context</div>';
-        $html .= '<div class="code-block" style="margin-bottom: 24px;">';
+        $html .= '<div class="plugs-dbg-section-title">📄 Code Context</div>';
+        $html .= '<div class="plugs-dbg-code-block" style="margin-bottom: 24px;">';
         $lines = file($file);
         $start = max(0, $line - 6);
         $end = min(count($lines), $line + 5);
@@ -1605,7 +1605,7 @@ function plugs_render_exception(array $data): string
 
     // Stack trace
     if (!empty($trace)) {
-        $html .= '<div class="section-title">📚 Stack Trace</div>';
+        $html .= '<div class="plugs-dbg-section-title">📚 Stack Trace</div>';
         foreach ($trace as $index => $frame) {
             $frameFile = $frame['file'] ?? 'unknown';
             $frameLine = $frame['line'] ?? 0;
@@ -1614,12 +1614,12 @@ function plugs_render_exception(array $data): string
             $frameFunction = $frame['function'] ?? '';
             $call = $frameClass . $frameType . $frameFunction . '()';
 
-            $html .= '<div class="var-item" style="margin-bottom: 8px;">';
-            $html .= '<div class="var-header">';
-            $html .= '<div class="var-title"><span>#' . $index . '</span> <code style="color: var(--accent-secondary);">' . htmlspecialchars($call) . '</code></div>';
-            $html .= '<div class="var-badges"><span class="plugs-badge">' . htmlspecialchars(basename($frameFile)) . ':' . $frameLine . '</span></div>';
+            $html .= '<div class="plugs-dbg-var-item" style="margin-bottom: 8px;">';
+            $html .= '<div class="plugs-dbg-var-header">';
+            $html .= '<div class="plugs-dbg-var-title"><span>#' . $index . '</span> <code style="color: var(--accent-secondary);">' . htmlspecialchars($call) . '</code></div>';
+            $html .= '<div class="plugs-dbg-var-badges"><span class="plugs-dbg-badge">' . htmlspecialchars(basename($frameFile)) . ':' . $frameLine . '</span></div>';
             $html .= '</div>';
-            $html .= '<div class="var-body" style="display: none; padding: 16px; font-size: 12px; color: var(--text-muted);">';
+            $html .= '<div class="plugs-dbg-var-body" style="display: none; padding: 16px; font-size: 12px; color: var(--text-muted);">';
             $html .= htmlspecialchars($frameFile);
             $html .= '</div>';
             $html .= '</div>';
@@ -1629,9 +1629,9 @@ function plugs_render_exception(array $data): string
     // Previous exception
     if ($previous) {
         $html .= '<div style="margin-top: 24px;">';
-        $html .= '<div class="section-title">🔗 Previous Exception</div>';
-        $html .= '<div class="plugs-alert plugs-alert-warning">';
-        $html .= '<div class="plugs-alert-title">' . get_class($previous) . '</div>';
+        $html .= '<div class="plugs-dbg-section-title">🔗 Previous Exception</div>';
+        $html .= '<div class="plugs-dbg-alert plugs-dbg-alert-warning">';
+        $html .= '<div class="plugs-dbg-alert-title">' . get_class($previous) . '</div>';
         $html .= htmlspecialchars($previous->getMessage());
         $html .= '</div>';
         $html .= '</div>';
@@ -1648,51 +1648,51 @@ function plugs_render_exception(array $data): string
 function plugs_render_http(array $data): string
 {
     $html = '<div style="padding: 32px;">';
-    $html .= '<div class="section-title" style="margin-bottom: 24px; font-size: 18px; color: var(--text-primary);">🌐 HTTP Response</div>';
+    $html .= '<div class="plugs-dbg-section-title" style="margin-bottom: 24px; font-size: 18px; color: var(--text-primary);">🌐 HTTP Response</div>';
 
     // Status
     $statusCode = $data['status_code'] ?? 0;
-    $statusClass = $statusCode >= 200 && $statusCode < 300 ? 'plugs-alert-success' : ($statusCode >= 400 ? 'plugs-alert-danger' : 'plugs-alert-warning');
+    $statusClass = $statusCode >= 200 && $statusCode < 300 ? 'plugs-dbg-alert-success' : ($statusCode >= 400 ? 'plugs-dbg-alert-danger' : 'plugs-dbg-alert-warning');
 
-    $html .= '<div class="plugs-alert ' . $statusClass . '" style="margin-bottom: 24px;">';
-    $html .= '<div class="plugs-alert-title">Status: ' . $statusCode . ' ' . ($data['reason'] ?? '') . '</div>';
+    $html .= '<div class="plugs-dbg-alert ' . $statusClass . '" style="margin-bottom: 24px;">';
+    $html .= '<div class="plugs-dbg-alert-title">Status: ' . $statusCode . ' ' . ($data['reason'] ?? '') . '</div>';
     if (isset($data['url'])) {
         $html .= '<div style="margin-top: 8px;">' . htmlspecialchars($data['url']) . '</div>';
     }
     $html .= '</div>';
 
     // Stats
-    $html .= '<div class="stats-grid" style="margin-bottom: 24px;">';
+    $html .= '<div class="plugs-dbg-stats-grid" style="margin-bottom: 24px;">';
     if (isset($data['status_code'])) {
-        $html .= '<div class="plugs-stat-card"><div class="plugs-stat-label">Status</div><div class="plugs-stat-value">' . $data['status_code'] . '</div></div>';
+        $html .= '<div class="plugs-dbg-stat-card"><div class="plugs-dbg-stat-label">Status</div><div class="plugs-dbg-stat-value">' . $data['status_code'] . '</div></div>';
     }
     if (isset($data['request_time'])) {
-        $html .= '<div class="plugs-stat-card"><div class="plugs-stat-label">⏱️ Time</div><div class="plugs-stat-value">' . number_format($data['request_time'] * 1000, 2) . ' ms</div></div>';
+        $html .= '<div class="plugs-dbg-stat-card"><div class="plugs-dbg-stat-label">⏱️ Time</div><div class="plugs-dbg-stat-value">' . number_format($data['request_time'] * 1000, 2) . ' ms</div></div>';
     }
     if (isset($data['response_class'])) {
-        $html .= '<div class="plugs-stat-card"><div class="plugs-stat-label">Class</div><div class="plugs-stat-value" style="font-size: 12px;">' . $data['response_class'] . '</div></div>';
+        $html .= '<div class="plugs-dbg-stat-card"><div class="plugs-dbg-stat-label">Class</div><div class="plugs-dbg-stat-value" style="font-size: 12px;">' . $data['response_class'] . '</div></div>';
     }
     $html .= '</div>';
 
     // Headers
     if (isset($data['headers']) && !empty($data['headers'])) {
-        $html .= '<div class="section-title">📋 Headers</div>';
-        $html .= '<div class="code-block" style="margin-bottom: 24px;">';
+        $html .= '<div class="plugs-dbg-section-title">📋 Headers</div>';
+        $html .= '<div class="plugs-dbg-code-block" style="margin-bottom: 24px;">';
         foreach ($data['headers'] as $name => $value) {
             $val = is_array($value) ? implode(', ', $value) : $value;
-            $html .= '<span class="syntax-key">' . htmlspecialchars($name) . '</span>: <span class="syntax-string">' . htmlspecialchars($val) . '</span><br>';
+            $html .= '<span class="plugs-dbg-syntax-key">' . htmlspecialchars($name) . '</span>: <span class="plugs-dbg-syntax-string">' . htmlspecialchars($val) . '</span><br>';
         }
         $html .= '</div>';
     }
 
     // Body
     if (isset($data['body_parsed'])) {
-        $html .= '<div class="section-title">📄 Body (JSON)</div>';
-        $html .= '<div class="plugs-code-block">';
+        $html .= '<div class="plugs-dbg-section-title">📄 Body (JSON)</div>';
+        $html .= '<div class="plugs-dbg-code-block">';
         $html .= plugs_format_value($data['body_parsed'], 0);
         $html .= '</div>';
     } elseif (isset($data['body'])) {
-        $html .= '<div class="section-title">📄 Body</div>';
+        $html .= '<div class="plugs-dbg-section-title">📄 Body</div>';
         $html .= '<div class="plugs-code-block">';
         $body = $data['body'];
         if (is_string($body) && strlen($body) > 2000) {
@@ -1714,31 +1714,31 @@ function plugs_render_http(array $data): string
 function plugs_render_profile(array $data): string
 {
     $html = '<div style="padding: 32px;">';
-    $html .= '<div class="section-title" style="margin-bottom: 24px; font-size: 18px; color: var(--text-primary);">⚡ Performance Profile</div>';
+    $html .= '<div class="plugs-dbg-section-title" style="margin-bottom: 24px; font-size: 18px; color: var(--text-primary);">⚡ Performance Profile</div>';
 
     // Stats cards
-    $html .= '<div class="plugs-stats-grid" style="margin-bottom: 32px; display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px;">';
+    $html .= '<div class="plugs-dbg-stats-grid" style="margin-bottom: 32px; display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px;">';
 
-    $html .= '<div class="plugs-stat-card" style="background: rgba(16, 185, 129, 0.05); border-left: 4px solid #10b981;">';
-    $html .= '<div class="plugs-stat-label">⏱️ Total Execution</div>';
-    $html .= '<div class="plugs-stat-value" style="color: #10b981;">' . number_format(($data['execution_time_ms'] ?? ($data['execution_time'] ?? 0) * 1000), 2) . ' ms</div>';
+    $html .= '<div class="plugs-dbg-stat-card" style="background: rgba(16, 185, 129, 0.05); border-left: 4px solid #10b981;">';
+    $html .= '<div class="plugs-dbg-stat-label">⏱️ Total Execution</div>';
+    $html .= '<div class="plugs-dbg-stat-value" style="color: #10b981;">' . number_format(($data['execution_time_ms'] ?? ($data['execution_time'] ?? 0) * 1000), 2) . ' ms</div>';
     $html .= '</div>';
 
-    $html .= '<div class="plugs-stat-card" style="background: rgba(99, 102, 241, 0.05); border-left: 4px solid #6366f1;">';
-    $html .= '<div class="plugs-stat-label">🧠 Peak Memory</div>';
-    $html .= '<div class="plugs-stat-value" style="color: #6366f1;">' . ($data['memory_formatted'] ?? plugs_format_bytes($data['memory_used'] ?? 0)) . '</div>';
+    $html .= '<div class="plugs-dbg-stat-card" style="background: rgba(99, 102, 241, 0.05); border-left: 4px solid #6366f1;">';
+    $html .= '<div class="plugs-dbg-stat-label">🧠 Peak Memory</div>';
+    $html .= '<div class="plugs-dbg-stat-value" style="color: #6366f1;">' . ($data['memory_formatted'] ?? plugs_format_bytes($data['memory_used'] ?? 0)) . '</div>';
     $html .= '</div>';
 
     if (isset($data['middleware_time_ms'])) {
-        $html .= '<div class="plugs-stat-card" style="background: rgba(245, 158, 11, 0.05); border-left: 4px solid #f59e0b;">';
-        $html .= '<div class="plugs-stat-label">🛡️ Middleware</div>';
-        $html .= '<div class="plugs-stat-value" style="color: #f59e0b;">' . number_format($data['middleware_time_ms'], 2) . ' ms</div>';
+        $html .= '<div class="plugs-dbg-stat-card" style="background: rgba(245, 158, 11, 0.05); border-left: 4px solid #f59e0b;">';
+        $html .= '<div class="plugs-dbg-stat-label">🛡️ Middleware</div>';
+        $html .= '<div class="plugs-dbg-stat-value" style="color: #f59e0b;">' . number_format($data['middleware_time_ms'], 2) . ' ms</div>';
         $html .= '</div>';
     }
 
-    $html .= '<div class="plugs-stat-card" style="background: rgba(168, 85, 247, 0.05); border-left: 4px solid #a855f7;">';
-    $html .= '<div class="plugs-stat-label">🔍 Database Queries</div>';
-    $html .= '<div class="plugs-stat-value" style="color: #a855f7;">' . ($data['query_count'] ?? 0) . '</div>';
+    $html .= '<div class="plugs-dbg-stat-card" style="background: rgba(168, 85, 247, 0.05); border-left: 4px solid #a855f7;">';
+    $html .= '<div class="plugs-dbg-stat-label">🔍 Database Queries</div>';
+    $html .= '<div class="plugs-dbg-stat-value" style="color: #a855f7;">' . ($data['query_count'] ?? 0) . '</div>';
     $html .= '<div style="font-size: 11px; color: var(--text-muted);">' . number_format(($data['query_time_ms'] ?? ($data['query_time'] ?? 0) * 1000), 2) . ' ms</div>';
     $html .= '</div>';
 
@@ -1772,8 +1772,8 @@ function plugs_render_profile(array $data): string
     if (!empty($healthItems)) {
         $html .= '<div style="margin-bottom: 32px; display: flex; flex-direction: column; gap: 12px;">';
         foreach ($healthItems as $item) {
-            $class = 'plugs-alert-' . $item[2];
-            $html .= '<div class="plugs-alert ' . $class . '" style="margin:0; padding: 12px 16px;">';
+            $class = 'plugs-dbg-alert-' . $item[2];
+            $html .= '<div class="plugs-dbg-alert ' . $class . '" style="margin:0; padding: 12px 16px;">';
             $html .= '<div style="display:flex; justify-content:space-between; align-items:center;">';
             $html .= '<strong>' . $item[0] . '</strong>';
             $html .= '<span style="font-size: 11px; opacity:0.8;">' . $item[1] . '</span>';
@@ -1781,7 +1781,7 @@ function plugs_render_profile(array $data): string
         }
         $html .= '</div>';
     } else {
-        $html .= '<div class="plugs-alert plugs-alert-success" style="margin-bottom: 32px; padding: 12px 16px;">';
+        $html .= '<div class="plugs-dbg-alert plugs-dbg-alert-success" style="margin-bottom: 32px; padding: 12px 16px;">';
         $html .= '<strong>✨ Performance is optimal</strong> - No significant bottlenecks detected in this request.';
         $html .= '</div>';
     }
@@ -1789,24 +1789,24 @@ function plugs_render_profile(array $data): string
     // Queries
     $queries = $data['queries'] ?? [];
     if (!empty($queries)) {
-        $html .= '<div class="section-title">🔮 Queries Executed</div>';
+        $html .= '<div class="plugs-dbg-section-title">🔮 Queries Executed</div>';
         foreach ($queries as $index => $query) {
             $time = $query['time'] ?? 0;
             $ms = number_format($time * 1000, 2);
             $isSlow = $time > 0.05;
 
-            $html .= '<div class="var-item" style="margin-bottom: 8px;">';
-            $html .= '<div class="var-header">';
-            $html .= '<div class="var-title"><span>#' . ($index + 1) . '</span> <code style="color: var(--accent-secondary);">' . substr(htmlspecialchars($query['query'] ?? ''), 0, 60) . (strlen($query['query'] ?? '') > 60 ? '...' : '') . '</code></div>';
-            $html .= '<div class="var-badges">';
+            $html .= '<div class="plugs-dbg-var-item" style="margin-bottom: 8px;">';
+            $html .= '<div class="plugs-dbg-var-header">';
+            $html .= '<div class="plugs-dbg-var-title"><span>#' . ($index + 1) . '</span> <code style="color: var(--accent-secondary);">' . substr(htmlspecialchars($query['query'] ?? ''), 0, 60) . (strlen($query['query'] ?? '') > 60 ? '...' : '') . '</code></div>';
+            $html .= '<div class="plugs-dbg-var-badges">';
             if ($isSlow) {
-                $html .= '<span class="plugs-badge" style="background: rgba(239, 68, 68, 0.1); color: var(--danger);">SLOW</span>';
+                $html .= '<span class="plugs-dbg-badge" style="background: rgba(239, 68, 68, 0.1); color: var(--danger);">SLOW</span>';
             }
-            $html .= '<span class="plugs-badge">' . $ms . ' ms</span>';
+            $html .= '<span class="plugs-dbg-badge">' . $ms . ' ms</span>';
             $html .= '</div>';
             $html .= '</div>';
-            $html .= '<div class="var-body" style="display: none;">';
-            $html .= '<div class="code-block"><code class="syntax-string">' . htmlspecialchars($query['query'] ?? '') . '</code></div>';
+            $html .= '<div class="plugs-dbg-var-body" style="display: none;">';
+            $html .= '<div class="plugs-dbg-code-block"><code class="plugs-dbg-syntax-string">' . htmlspecialchars($query['query'] ?? '') . '</code></div>';
             if (!empty($query['bindings'])) {
                 $html .= '<div style="margin-top: 12px; font-size: 13px; color: var(--text-muted);">Bindings: <code>' . json_encode($query['bindings']) . '</code></div>';
             }
@@ -1818,8 +1818,8 @@ function plugs_render_profile(array $data): string
     // Result
     if (isset($data['result'])) {
         $html .= '<div style="margin-top: 24px;">';
-        $html .= '<div class="section-title">📦 Result</div>';
-        $html .= '<div class="plugs-code-block">';
+        $html .= '<div class="plugs-dbg-section-title">📦 Result</div>';
+        $html .= '<div class="plugs-dbg-code-block">';
         $html .= plugs_format_value($data['result'], 0);
         $html .= '</div>';
         $html .= '</div>';
@@ -1836,32 +1836,32 @@ function plugs_render_profile(array $data): string
 function plugs_format_value($value, int $depth = 0, array $path = []): string
 {
     if ($depth > 12) {
-        return '<span class="plugs-syntax-null">... (depth limit)</span>';
+        return '<span class="plugs-dbg-syntax-null">... (depth limit)</span>';
     }
     $indent = str_repeat('  ', $depth);
 
-    if (is_null($value)) {
-        return '<span class="plugs-syntax-null">null</span>';
+    if ($value === null) {
+        return '<span class="plugs-dbg-syntax-null">null</span>';
     }
     if (is_bool($value)) {
-        return '<span class="plugs-syntax-bool">' . ($value ? 'true' : 'false') . '</span>';
+        return '<span class="plugs-dbg-syntax-bool">' . ($value ? 'true' : 'false') . '</span>';
     }
     if (is_int($value) || is_float($value)) {
-        return '<span class="plugs-syntax-number">' . $value . '</span>';
+        return '<span class="plugs-dbg-syntax-number">' . $value . '</span>';
     }
     if (is_string($value)) {
         $escaped = htmlspecialchars($value);
         $isTruncated = strlen($value) > 200;
         $truncatedAttr = $isTruncated ? ' data-truncated="true" style="cursor:pointer" title="Click to expand"' : '';
 
-        return '<span class="plugs-syntax-string" data-full-value="' . $escaped . '"' . $truncatedAttr . '>"' . ($isTruncated ? substr($escaped, 0, 200) . '...' : $escaped) . '"</span>';
+        return '<span class="plugs-dbg-syntax-string" data-full-value="' . $escaped . '"' . $truncatedAttr . '>"' . ($isTruncated ? substr($escaped, 0, 200) . '...' : $escaped) . '"</span>';
     }
 
     if (is_array($value)) {
         if (empty($value)) {
-            return '<span class="plugs-syntax-array">[]</span>';
+            return '<span class="plugs-dbg-syntax-array">[]</span>';
         }
-        $html = '<span class="plugs-syntax-array">Array(' . count($value) . ')</span> [<br>';
+        $html = '<span class="plugs-dbg-syntax-array">Array(' . count($value) . ')</span> [<br>';
         $isAssoc = array_keys($value) !== range(0, count($value) - 1);
 
         foreach ($value as $key => $val) {
@@ -1870,11 +1870,11 @@ function plugs_format_value($value, int $depth = 0, array $path = []): string
 
             $html .= $indent . '  ';
             if ($isAssoc) {
-                $html .= '<span class="plugs-syntax-key" data-path="' . implode(' → ', $currentPath) . '">' . (is_string($key) ? '"' . htmlspecialchars($key) . '"' : $key) . '</span> => ';
+                $html .= '<span class="plugs-dbg-syntax-key" data-path="' . implode(' → ', $currentPath) . '">' . (is_string($key) ? '"' . htmlspecialchars($key) . '"' : $key) . '</span> => ';
             }
 
             if ($isSecret && !empty($val)) {
-                $html .= '<span class="plugs-masked-secret" data-secret="' . htmlspecialchars(is_string($val) ? (string) $val : json_encode($val)) . '">🔒 [masked secret]</span>';
+                $html .= '<span class="plugs-dbg-masked-secret" data-secret="' . htmlspecialchars(is_string($val) ? (string) $val : json_encode($val)) . '">🔒 [masked secret]</span>';
             } else {
                 $html .= plugs_format_value($val, $depth + 1, $currentPath);
             }
@@ -1887,7 +1887,7 @@ function plugs_format_value($value, int $depth = 0, array $path = []): string
 
     if (is_object($value)) {
         $className = get_class($value);
-        $html = '<span class="plugs-syntax-object">Object(' . $className . ')</span> {<br>';
+        $html = '<span class="plugs-dbg-syntax-object">Object(' . $className . ')</span> {<br>';
 
         try {
             // Check if object has __debugInfo() method - use it for cleaner output
@@ -1897,10 +1897,10 @@ function plugs_format_value($value, int $depth = 0, array $path = []): string
                     $currentPath = array_merge($path, [$name]);
                     $isSecret = is_string($name) && preg_match('/(password|secret|key|token|auth|pass|cred)/i', $name);
 
-                    $html .= $indent . '  <span class="plugs-syntax-key" data-path="' . implode(' → ', $currentPath) . '">' . htmlspecialchars($name) . '</span> => ';
+                    $html .= $indent . '  <span class="plugs-dbg-syntax-key" data-path="' . implode(' → ', $currentPath) . '">' . htmlspecialchars($name) . '</span> => ';
 
                     if ($isSecret && !empty($val)) {
-                        $html .= '<span class="plugs-masked-secret" data-secret="' . htmlspecialchars(is_string($val) ? (string) $val : json_encode($val)) . '">🔒 [masked secret]</span>';
+                        $html .= '<span class="plugs-dbg-masked-secret" data-secret="' . htmlspecialchars(is_string($val) ? (string) $val : json_encode($val)) . '">🔒 [masked secret]</span>';
                     } else {
                         $html .= plugs_format_value($val, $depth + 1, $currentPath);
                     }
@@ -1915,18 +1915,18 @@ function plugs_format_value($value, int $depth = 0, array $path = []): string
                     $name = $property->getName();
                     $val = $property->getValue($value);
                     $currentPath = array_merge($path, [$name]);
-                    $html .= $indent . '  <span class="plugs-syntax-key" data-path="' . implode(' → ', $currentPath) . '">' . htmlspecialchars($name) . '</span> => ' . plugs_format_value($val, $depth + 1, $currentPath) . '<br>';
+                    $html .= $indent . '  <span class="plugs-dbg-syntax-key" data-path="' . implode(' → ', $currentPath) . '">' . htmlspecialchars($name) . '</span> => ' . plugs_format_value($val, $depth + 1, $currentPath) . '<br>';
                 }
             }
         } catch (\Exception $e) {
-            $html .= $indent . '  <span class="plugs-syntax-null">Unable to reflect</span><br>';
+            $html .= $indent . '  <span class="plugs-dbg-syntax-null">Unable to reflect</span><br>';
         }
         $html .= $indent . '}';
 
         return $html;
     }
 
-    return '<span class="plugs-syntax-null">' . htmlspecialchars(print_r($value, true)) . '</span>';
+    return '<span class="plugs-dbg-syntax-null">' . htmlspecialchars(print_r($value, true)) . '</span>';
 }
 
 /**
@@ -2009,8 +2009,8 @@ function plugs_render_fallback_error(string $message, bool $die = true): void
     $theme = $plugs_debug_theme ?? 'dark';
 
     echo '<div class="plugs-debug-wrapper" data-theme="' . $theme . '">';
-    echo '<div class="plugs-alert plugs-alert-danger" style="margin: 20px;">';
-    echo '<div class="plugs-alert-title">❌ Error</div>';
+    echo '<div class="plugs-dbg-alert plugs-dbg-alert-danger" style="margin: 20px;">';
+    echo '<div class="plugs-dbg-alert-title">❌ Error</div>';
     echo '<div>' . htmlspecialchars($message) . '</div>';
     echo '</div>';
     echo '</div>';
