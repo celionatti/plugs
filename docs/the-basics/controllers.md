@@ -60,11 +60,13 @@ class UserController extends Controller
 The `Plugs\Base\Controller\Controller` class provides several helpful methods:
 
 ### Rendering Views
+
 ```php
 return $this->view('home.index', ['data' => $data]);
 ```
 
 ### Fluent Redirects
+
 ```php
 // Redirect to URL
 return $this->redirect('/home');
@@ -75,9 +77,13 @@ return $this->back()->withInput()->withErrors($errors);
 // Success/Error shortcuts with optional titles
 return $this->redirectWithSuccess('/posts', 'Post saved!', 'System');
 return $this->redirectWithError('/login', 'Invalid password', 'Auth');
+
+// Standard with() method now supports flash types
+return $this->redirect('/posts')->with('success', 'Post saved!');
 ```
 
 ### Validation
+
 Pass a `FormRequest` class name or an array of rules:
 
 ```php
@@ -91,6 +97,7 @@ $data = $this->validate($request, [
 ```
 
 ### Response Helpers
+
 ```php
 return $this->json(['status' => 'ok']);
 return $this->file($path);

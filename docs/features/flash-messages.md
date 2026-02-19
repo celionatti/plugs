@@ -13,6 +13,7 @@ Flash messages are stored in the user's session for exactly one request. When th
 There are two primary ways to set flash messages in your controllers.
 
 ### 1. Fluent Redirects (Recommended)
+
 You can chain flash messages directly onto your redirect responses.
 
 ```php
@@ -29,6 +30,7 @@ return back()->withInfo('New version available.', 'Update');
 ```
 
 ### 2. The `flash()` Helper
+
 For situations where you aren't performing a redirect immediately (e.g., rendering a view directly), use the global helper.
 
 ```php
@@ -42,6 +44,7 @@ flash('success', 'Your message here', 'Optional Title');
 The system is designed to be "plug-and-play" with a single component.
 
 ### 1. The Easy Way: `<x-flash />`
+
 Simply add this tag to your main layout file (usually `resources/views/layouts/app.plug.php`), preferably just before the closing `</body>` tag.
 
 ```html
@@ -54,13 +57,12 @@ Simply add this tag to your main layout file (usually `resources/views/layouts/a
 This will automatically render all pending messages using the premium **OKLCH-powered** design with glassmorphism and animations.
 
 ### 2. View Directives
+
 For custom logic, you can use the `@session` and `@flash` blade-style directives.
 
 ```html
 @session('success')
-    <div class="custom-alert">
-        <strong>Yay!</strong> @flash('success')
-    </div>
+<div class="custom-alert"><strong>Yay!</strong> @flash('success')</div>
 @endsession
 ```
 
@@ -72,14 +74,18 @@ For custom logic, you can use the `@session` and `@flash` blade-style directives
 ## ✨ Features
 
 ### Modern Color System
+
 The system uses **OKLCH** color values (`oklch()`). This ensures that colors look consistent and vibrant across all monitors and automatically provides high-contrast results in both Light and Dark mode.
 
 ### Automatic Cleanup
+
 You never have to worry about cleaning up old messages.
+
 - The framework clears old form input automatically after a GET request.
 - The flash component handles DOM removal via JavaScript after 8 seconds.
 
 ### Animations
+
 Messages use a staggered "Bounce-In" effect from the side and a "Gravity-Out" effect when dismissed. If multiple messages are present, they will dismiss one by one with a small delay for a smooth experience.
 
 ---
@@ -88,11 +94,11 @@ Messages use a staggered "Bounce-In" effect from the side and a "Gravity-Out" ef
 
 You can customize the behavior globally by modifying the `$renderOptions` in `src/Utils/FlashMessage.php`:
 
-| Option | Default | Description |
-|--------|---------|-------------|
-| `auto_dismiss` | `true` | Automatically hide messages after a delay. |
-| `dismiss_delay`| `8000` | Milliseconds before auto-dismissing. |
-| `animation` | `'plugs-bounce'` | Entrance animation class. |
-| `show_icon` | `true` | Toggle the display of type icons. |
-| `position` | `'fixed'` | `'fixed'` for overlays, `'static'` for inline. |
-| `include_styles`| `true` | Whether to inject the embedded CSS. |
+| Option           | Default          | Description                                    |
+| ---------------- | ---------------- | ---------------------------------------------- |
+| `auto_dismiss`   | `true`           | Automatically hide messages after a delay.     |
+| `dismiss_delay`  | `8000`           | Milliseconds before auto-dismissing.           |
+| `animation`      | `'plugs-bounce'` | Entrance animation class.                      |
+| `show_icon`      | `true`           | Toggle the display of type icons.              |
+| `position`       | `'fixed'`        | `'fixed'` for overlays, `'static'` for inline. |
+| `include_styles` | `true`           | Whether to inject the embedded CSS.            |

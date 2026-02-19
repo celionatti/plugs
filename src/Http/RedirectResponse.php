@@ -40,10 +40,19 @@ class RedirectResponse implements ResponseInterface
     public function with(string|array $key, mixed $value = null): self
     {
         if (is_array($key)) {
-            $this->flashData = array_merge($this->flashData, $key);
-        } else {
-            $this->flashData[$key] = $value;
+            foreach ($key as $k => $v) {
+                $this->with($k, $v);
+            }
+            return $this;
         }
+
+        // Keep compatibility with standard flash types
+        // If the user does ->with('success', 'Message'), we treat it as a flash message
+        if (in_array($key, ['success', 'error', 'warning', 'info'], true) && is_string($value)) {
+            return $this->withFlash($key, $value);
+        }
+
+        $this->flashData[$key] = $value;
 
         return $this;
     }
