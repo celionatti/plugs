@@ -1,117 +1,101 @@
-# Service Layer
+# Services
 
-The Service Layer is where your application's **Business Logic** lives. It sits between the Controller and the Repository (or Model), ensuring that controllers remain thin and logic is reusable across different entry points (Web, API, CLI).
+Services are the layer where your business logic should reside. They act as a bridge between your controllers and your repositories (or models). By moving logic into services, you keep your controllers thin and your code reusable.
 
-## Why Use Services?
-- **Thin Controllers**: Controllers only handle requests and responses.
-- **Reusable Logic**: Logic can be shared between different controllers.
-- **Transaction Management**: Services are the perfect place to handle database transactions.
-- **External API Interaction**: Logic for calling 3rd party services (Stripe, Twilio, etc.) belongs here.
+## Generating Services
 
----
-
-## 🏗️ Creating a Service
-
-You can generate a service using the `theplugs` CLI:
+Use the `make:service` command to generate a new service class.
 
 ```bash
-php theplugs make:service UserService --repository
+php theplugs make:service UserService
 ```
 
-This command creates a service that is automatically configured to use a repository.
+### Options
 
----
+- `--model=User`: Associate the service with a model.
+- `--repository`: Inject a repository for the associated model.
+- `--interface`: Generate an interface alongside the service.
+- `--strict`: Add strict type declarations.
 
-## 🛠️ Service Implementation
+Example:
 
-A typical service handles orchestrating data operations and applying business rules.
+```bash
+php theplugs make:service OrderService --model=Order --repository --interface
+```
+
+This will create:
+
+- `app/Services/OrderService.php`
+- `app/Services/OrderServiceInterface.php` (if using interface)
+
+## Structure
+
+A service class typically contains methods that perform specific business operations. It often depends on a repository for data access.
 
 ```php
+<?php
+
 namespace App\Services;
 
-use App\Repositories\UserRepositoryInterface;
-use Plugs\Support\Facades\DB;
-use Exception;
+use App\Repositories\Interfaces\OrderRepositoryInterface;
+use App\Models\Order;
+use Illuminate\Support\Facades\DB;
+use App\Events\OrderCreated;
 
-class UserService
+class OrderService
 {
-    protected $repository;
+    protected $orders;
 
-    public function __construct(UserRepositoryInterface $repository)
+    public function __construct(OrderRepositoryInterface $orders)
     {
-        $this->repository = $repository;
+        $this->orders = $orders;
     }
 
     /**
-     * Create a new user with business logic validation.
+     * Create a new order and handle related business logic.
      */
-    public function registerUser(array $data): User
+    public function createOrder(array $data): Order
     {
         return DB::transaction(function () use ($data) {
-            // 1. Business Logic: Check if registration is open
-            if (!config('app.registration_open')) {
-                throw new Exception("Registration is currently closed.");
-            }
+            // Calculate totals, apply discounts, etc.
+            $data['total'] = $this->calculateTotal($data);
 
-            // 2. Data Persistence via Repository
-            $user = $this->repository->create($data);
+            // Create the order via repository
+            $order = $this->orders->create($data);
 
-            // 3. Post-creation logic: Send Welcome Email
-            // Mail::to($user->email)->send(new WelcomeMail($user));
+            // Dispatch event
+            OrderCreated::dispatch($order);
 
-            return $user;
+            return $order;
         });
     }
 
-    public function getUserProfile(int $id): ?User
+    protected function calculateTotal(array $data): float
     {
-        return $this->repository->find($id);
+        // ... implementation
+        return 100.00;
     }
 }
 ```
 
----
+## Usage
 
-## 🔗 Using Services in Controllers
-
-Simply type-hint the service in your controller constructor to have the Plugs Dependency Injection container inject it for you.
+Inject the service into your controller.
 
 ```php
-namespace App\Http\Controllers;
+use App\Services\OrderService;
 
-use App\Services\UserService;
-use App\Http\Requests\RegisterUserRequest;
-
-class AuthController extends Controller
+public function store(StoreOrderRequest $request, OrderService $orderService)
 {
-    protected $userService;
+    $order = $orderService->createOrder($request->validated());
 
-    public function __construct(UserService $userService)
-    {
-        $this->userService = $userService;
-    }
-
-    public function register(RegisterUserRequest $request)
-    {
-        // 1. Request is already validated by StoreUserRequest
-        $data = $request->validated();
-
-        try {
-            // 2. Delegate logic to the Service
-            $user = $this->userService->registerUser($data);
-
-            return redirect('/dashboard')->with('success', 'Welcome!');
-        } catch (\Exception $e) {
-            return back()->with('error', $e->getMessage());
-        }
-    }
+    return response()->json($order, 201);
 }
 ```
 
----
+## Service vs Action
 
-## 💡 Best Practices
+- **Actions** are great for single, specific tasks (e.g., `CreateUserAction`, `GenerateInvoiceAction`).
+- **Services** are better for grouping related business logic for a domain entity (e.g., `UserService` handling creation, updating, profile management, etc.).
 
-1. **Keep it focused**: A service should handle logic for a single domain or entity.
-2. **Avoid Global State**: Do not rely on `session()` or `auth()` inside a service; pass required data as method arguments.
-3. **Return Data, Not Responses**: A service should return models, arrays, or throw exceptions. It should never return a `Response` or `Redirect`.
+You can use both! A Service might actually coordinate multiple Actions to complete a complex process.

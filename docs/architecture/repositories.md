@@ -1,135 +1,106 @@
-# Repository Pattern
+# Repositories
 
-Repositories are used to abstract the data access layer from the business logic. They provide a clean API for your services or controllers to interact with the database without being concerned with the underlying ORM or query builder implementation.
+The Repository Pattern separates the data access logic from the business logic. It allows you to keep your controllers and services clean and makes your application easier to test and maintain.
 
-In the Plugs framework, repositories typically interact with **Models** and are injected into **Services**.
+## Generating Repositories
 
-## Benefits
-- **Separation of Concerns**: Decouples data access from business logic.
-- **Testability**: Easier to mock data access in unit tests.
-- **Maintainability**: Centralizes query logic for a specific entity.
-
----
-
-## 🏗️ Creating a Repository
-
-You can generate a repository using the `theplugs` CLI:
+Generate a repository class using the `make:repository` command.
 
 ```bash
-php theplugs make:repository UserRepository --model=User --interface
+php theplugs make:repository UserRepository
 ```
 
-This command creates three files if they don't exist:
-1. `app/Repositories/BaseRepository.php`
-2. `app/Repositories/Interfaces/UserRepositoryInterface.php`
-3. `app/Repositories/UserRepository/UserRepository.php`
+### Options
 
----
+- `--model=User`: Associate with a specific model.
+- `--interface`: Generate an interface alongside the repository.
+- `--strict`: Add strict type declarations.
 
-## 🛠️ Repository Interface
+Example:
 
-The interface defines the contract that the repository must follow. All interfaces are located in the `Interfaces` subfolder.
+```bash
+php theplugs make:repository ProductRepository --model=Product --interface
+```
+
+This will create:
+
+- `app/Repositories/ProductRepository/ProductRepository.php`
+- `app/Repositories/Interfaces/ProductRepositoryInterface.php`
+
+## Structure
+
+### Interface
+
+The interface defines the contract for your repository.
 
 ```php
+<?php
+
 namespace App\Repositories\Interfaces;
 
-interface UserRepositoryInterface
+use App\Models\Product;
+use Plugs\Database\Collection;
+
+interface ProductRepositoryInterface
 {
-    public function all(): \Plugs\Database\Collection;
-    public function find(int $id): ?User;
-    public function create(array $data): ?User;
-    public function update(int $id, array $data): bool;
-    public function delete(int $id): bool;
+    public function all(): Collection;
+    public function find(int $id): ?Product;
+    public function create(array $data): ?Product;
 }
 ```
 
----
+### Implementation
 
-## 📦 Repository Implementation
-
-The implementation interacts with the Plugs ORM or Query Builder. Each repository implementation is stored in its own subfolder and extends `BaseRepository`.
+The repository implements the interface and extends `BaseRepository`.
 
 ```php
-namespace App\Repositories\UserRepository;
+<?php
 
-use App\Models\User;
+namespace App\Repositories\ProductRepository;
+
+use App\Models\Product;
 use App\Repositories\BaseRepository;
-use App\Repositories\Interfaces\UserRepositoryInterface;
+use App\Repositories\Interfaces\ProductRepositoryInterface;
 
-class UserRepository extends BaseRepository implements UserRepositoryInterface
+class ProductRepository extends BaseRepository implements ProductRepositoryInterface
 {
-    public function all(): \Plugs\Database\Collection
+    public function all(): Collection
     {
-        return User::all();
+        return Product::all();
     }
 
-    public function find(int $id): ?User
+    public function find(int $id): ?Product
     {
-        return User::find($id);
+        return Product::find($id);
     }
 
-    public function create(array $data): ?User
+    public function create(array $data): ?Product
     {
-        return User::create($data);
-    }
-
-    public function update(int $id, array $data): bool
-    {
-        return User::where('id', $id)->update($data) > 0;
-    }
-
-    public function delete(int $id): bool
-    {
-        return User::destroy($id) > 0;
+        return Product::create($data);
     }
 }
 ```
 
----
+## Usage
 
-## 🔗 Binding the Repository
-
-In your application's `AppServiceProvider` (usually in `app/Providers`), you should bind the interface to the implementation:
+Inject the repository interface into your controllers or services.
 
 ```php
-namespace App\Providers;
+use App\Repositories\Interfaces\ProductRepositoryInterface;
 
-use Plugs\Support\ServiceProvider;
-use App\Repositories\Interfaces\UserRepositoryInterface;
-use App\Repositories\UserRepository\UserRepository;
-
-class AppServiceProvider extends ServiceProvider
+public function __construct(ProductRepositoryInterface $products)
 {
-    public function register(): void
-    {
-        $this->app->bind(UserRepositoryInterface::class, UserRepository::class);
-    }
+    $this->products = $products;
 }
 ```
 
----
+### Binding
 
-## 💡 Usage Example
-
-Once bound, you can inject the repository into your services:
+Don't forget to bind the interface to the implementation in your ServiceProvider.
 
 ```php
-namespace App\Services;
-
-use App\Repositories\UserRepositoryInterface;
-
-class UserService
-{
-    protected $repository;
-
-    public function __construct(UserRepositoryInterface $repository)
-    {
-        $this->repository = $repository;
-    }
-
-    public function getActiveUsers()
-    {
-        return $this->repository->all();
-    }
-}
+$this->app->bind(
+    ProductRepositoryInterface::class,
+    ProductRepository::class
+);
 ```

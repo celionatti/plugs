@@ -1,130 +1,135 @@
 # Controllers
 
-Instead of defining all of your request handling logic as closures in your route files, you may wish to organize this behavior using "controller" classes.
+Controllers are the entry points for your application's HTTP requests. They handle incoming requests, interact with your domain logic (Services, Actions, Repositories), and return responses.
 
-## Basic Controllers
+## Generating Controllers
 
-Controllers live in the `app/Http/Controllers` directory. A basic controller should extend the `Plugs\Base\Controller\Controller` class.
+The framework provides a powerful `make:controller` command to generate various types of controllers:
+
+```bash
+php theplugs make:controller UserController
+```
+
+### Options
+
+- `--resource` (`-r`): Generate a resource controller with standard CRUD methods (index, create, store, show, edit, update, destroy).
+- `--api`: Generate an API controller (excludes create/edit methods).
+- `--invokable` (`-i`): Generate a single-action controller (`__invoke` method).
+- `--model=ModelName`: Associate the controller with a model.
+- `--requests`: Generate FormRequest classes for validation.
+- `--test`: Generate a test class for the controller.
+
+## Resource Controllers
+
+Resource controllers provide a standardized way to handle CRUD operations.
+
+```bash
+php theplugs make:controller ProductController --resource --model=Product
+```
+
+Generated structure:
 
 ```php
 <?php
 
 namespace App\Http\Controllers;
 
+use App\Models\Product;
+use Illuminate\Http\Request;
 use Plugs\Base\Controller\Controller;
-use Psr\Http\Message\ResponseInterface;
 
-class UserController extends Controller
+class ProductController extends Controller
 {
-    /**
-     * Show the profile for a given user.
-     */
-    public function show(string $id): ResponseInterface
+    public function index()
     {
-        $user = User::find($id);
+        // List products
+    }
 
-        return $this->view('user.profile', ['user' => $user]);
+    public function store(Request $request)
+    {
+        // Create product
+    }
+
+    public function show($id)
+    {
+        // Show product
+    }
+
+    public function update(Request $request, $id)
+    {
+        // Update product
+    }
+
+    public function destroy($id)
+    {
+        // Delete product
     }
 }
 ```
 
-### Attribute-Based Routing
+## API Controllers
 
-You may also define routes directly on your controller methods using PHP 8 attributes. This is often cleaner than defining them in separate route files.
+API controllers are streamlined for API development, omitting methods for returning HTML views (create, edit).
+
+```bash
+php theplugs make:controller Api/V1/UserController --api --model=User
+```
+
+## Dependency Injection
+
+You can inject services, repositories, or actions directly into your controller's constructor or methods.
 
 ```php
+<?php
+
 namespace App\Http\Controllers;
 
-use Plugs\Router\Attributes\Route;
-use Plugs\Http\Attributes\Middleware;
-use Plugs\Base\Controller\Controller;
+use App\Services\UserService;
+use App\Repositories\Interfaces\ProductRepositoryInterface;
 
-#[Middleware('web')]
-class UserController extends Controller
+class OrderController extends Controller
 {
-    #[Route('/user/{id}', name: 'user.show')]
-    public function show(string $id)
+    protected $userService;
+    protected $products;
+
+    public function __construct(
+        UserService $userService,
+        ProductRepositoryInterface $products
+    ) {
+        $this->userService = $userService;
+        $this->products = $products;
+    }
+
+    public function index()
     {
+        $products = $this->products->all();
         // ...
     }
 }
 ```
 
-> [!NOTE]
-> Don't forget to register your controller directory in your route files using `$router->registerAttributes()`.
+## Single Action Controllers
 
----
+For complex actions that don't fit into the standard CRUD verbs, you can use invokable controllers.
 
-## 🛠️ Base Controller Features
-
-The `Plugs\Base\Controller\Controller` class provides several helpful methods:
-
-### Rendering Views
-
-```php
-return $this->view('home.index', ['data' => $data]);
+```bash
+php theplugs make:controller ProvisionServerController --invokable
 ```
 
-### Fluent Redirects
+Usage:
 
 ```php
-// Redirect to URL
-return $this->redirect('/home');
-
-// Redirect back with old input and errors
-return $this->back()->withInput()->withErrors($errors);
-
-// Success/Error shortcuts with optional titles
-return $this->redirectWithSuccess('/posts', 'Post saved!', 'System');
-return $this->redirectWithError('/login', 'Invalid password', 'Auth');
-
-// Standard with() method now supports flash types
-return $this->redirect('/posts')->with('success', 'Post saved!');
-```
-
-### Validation
-
-Pass a `FormRequest` class name or an array of rules:
-
-```php
-// Using FormRequest class (Returns sanitized data)
-$data = $this->validate(CreatePostRequest::class);
-
-// Using rules array
-$data = $this->validate($request, [
-    'title' => 'required|max:255',
-]);
-```
-
-### Response Helpers
-
-```php
-return $this->json(['status' => 'ok']);
-return $this->file($path);
-return $this->download($path, 'report.pdf');
-```
-
----
-
-## 🏗️ Dependency Injection
-
-The Plugs container is used to resolve all controllers. As a result, you may type-hint any dependencies your controller may need in its constructor.
-
-```php
-namespace App\Http\Controllers;
-
-use App\Services\UserRepository;
-use Plugs\Base\Controller\Controller;
-
-class UserController extends Controller
+class ProvisionServerController extends Controller
 {
-    public function __construct(
-        protected UserRepository $users
-    ) {}
-
-    public function index()
+    public function __invoke(Request $request)
     {
-        return $this->users->all();
+        // Provisioning logic...
     }
 }
+```
+
+Route registration:
+
+```php
+Route::post('/server/provision', ProvisionServerController::class);
 ```

@@ -1,709 +1,98 @@
-# Database: Models (ORM)
+# Models
 
-The Plugs ORM provides a beautiful, simple ActiveRecord implementation for working with your database. Each database table has a corresponding "Model" that is used to interact with that table.
+Models are the heart of your application, representing your data and business logic. They interact with your database tables and provide an intuitive API for querying and manipulating data.
 
-## Defining Models
+## Generating Models
 
-All models extend the `Plugs\Base\Model\PlugModel` class. Models are typically stored in the `app/Models` directory.
+The `make:model` command is a powerful tool for generating models and their related files.
+
+```bash
+php theplugs make:model Product
+```
+
+### Options
+
+- `--migration` (`-m`): Create a migration file.
+- `--controller` (`-c`): Create a controller.
+- `--resource` (`-r`): Create a resource controller.
+- `--factory` (`-f`): Create a factory.
+- `--seed` (`-s`): Create a seeder.
+- `--all` (`-a`): Create migration, factory, seeder, and controller.
+- `--pivot`: Generate a pivot model (inherits from `Pivot`).
+- `--soft-deletes`: Add `SoftDeletes` trait.
+- `--fillable=name,price`: Define fillable attributes.
+- `--hidden=password`: Define hidden attributes.
+- `--casts=is_active:boolean`: Define attribute casting.
+
+Example:
+
+```bash
+php theplugs make:model Product --all --fillable=name,price,description --casts=is_active:boolean
+```
+
+## Model Features
+
+### Inheritance
+
+All models extend the `Plugs\Base\Model\PlugModel` class, which provides Eloquent-like functionality.
 
 ```php
+<?php
+
 namespace App\Models;
 
 use Plugs\Base\Model\PlugModel;
+use Plugs\Database\Traits\SoftDeletes;
 
-class User extends PlugModel
+class Product extends PlugModel
 {
-    //
-}
-```
+    use SoftDeletes;
 
-### Table Names
+    protected $table = 'products';
 
-By default, the plural name of the class will be used as the table name unless another name is explicitly specified:
-
-```php
-class User extends PlugModel
-{
-    protected $table = 'my_users';
-}
-```
-
-### Primary Keys
-
-Plugs will also assume that each table has a primary key column named `id`. You may define a protected `$primaryKey` property to override this convention:
-
-```php
-class User extends PlugModel
-{
-    protected $primaryKey = 'user_id';
-}
-```
-
-## Retrieving Models
-
-Once you have created a model and its associated database table, you are ready to start retrieving data from your database.
-
-```php
-use App\Models\User;
-
-foreach (User::all() as $user) {
-    echo $user->name;
-}
-```
-
-### Adding Additional Constraints
-
-```php
-$users = User::where('active', 1)
-               ->latest()
-               ->take(10)
-               ->get();
-
-$user = User::oldest()->first();
-```
-
-## Inserting & Updating Models
-
-### Inserts
-
-To create a new record in the database, instantiate a new model instance and set attributes on the model. Then, call the `save` method:
-
-```php
-$user = new User;
-$user->name = 'George';
-$user->save();
-```
-
-### Updates
-
-The `save` method may also be used to update models that already exist in the database:
-
-```php
-$user = User::find(1);
-$user->name = 'John';
-$user->save();
-```
-
-### Mass Assignment
-
-You may also use the `create` method to save a new model in a single line. The inserted model instance will be returned to you by the method:
-
-```php
-$user = User::create(['name' => 'John']);
-```
-
-> [!IMPORTANT]
-> To use mass assignment, you must specify either a `fillable` or `guarded` property on your model class.
-
-## Deleting Models
-
-To delete a model, call the `delete` method on a model instance:
-
-```php
-$user = User::find(1);
-$user->delete();
-```
-
-### Soft Deleting
-
-If you wish to provide "soft delete" functionality, set the `$softDelete` property to `true` on your model:
-
-```php
-class User extends PlugModel
-{
-    protected $softDelete = true;
-}
-```
-
-When you call the `delete` method on a model, the `deleted_at` column will be set to the current date and time. You may use `restore()` to un-delete a model.
-
-## Attribute Casting
-
-Attribute casting provides a convenient way to transform attributes to common data types. You may define a `$casts` property or a `casts()` method on your model:
-
-```php
-class User extends PlugModel
-{
-    /**
-     * The attributes that should be cast.
-     *
-     * @var array
-     */
-    protected $casts = [
-        'is_admin' => 'boolean',
-        'options' => 'array',
+    protected $fillable = [
+        'name',
+        'price',
+        'description',
+        'is_active',
     ];
 
-    /**
-     * Or use the modern casts() method for dynamic casting:
-     */
-    protected function casts(): array
-    {
-        return [
-            'email_verified_at' => 'datetime',
-        ];
-    }
+    protected $casts = [
+        'is_active' => 'boolean',
+        'price' => 'decimal:2',
+    ];
 }
 ```
 
-Supported cast types include: `integer`, `float`, `string`, `boolean`, `object`, `array`, `json`, `collection`, `date`, `datetime`, and `timestamp`.
+### Relationships
 
-## Accessors & Mutators
-
-### Accessors
-
-An accessor transforms a model attribute value when it is accessed. To define an accessor, create a `get{Attribute}Attribute` method on your model where `{Attribute}` is the "studly" case name of the column you wish to access.
-
-In this example, we'll define an accessor for the `first_name` attribute. The accessor will automatically be called by the ORM when attempting to retrieve the value of the `first_name` attribute:
+Define relationships methods to link models.
 
 ```php
-class User extends PlugModel
+public function category()
 {
-    public function getFirstNameAttribute($value)
-    {
-        return ucfirst($value);
-    }
+    return $this->belongsTo(Category::class);
 }
-```
 
-```php
-class User extends PlugModel
+public function reviews()
 {
-    public function setFirstNameAttribute($value)
-    {
-        $this->attributes['first_name'] = strtolower($value);
-    }
+    return $this->hasMany(Review::class);
 }
 ```
 
-### Modern Attributes (Recommended)
+## Scopes
 
-You may also define accessors and mutators using a single method that returns a `Plugs\Database\Eloquent\Attribute` object. This is the recommended approach for modern applications:
+Query scopes allow you to define common sets of constraints that you may easily reuse throughout your application.
 
 ```php
-use Plugs\Database\Eloquent\Attribute;
-
-class User extends PlugModel
+public function scopeActive($query)
 {
-    protected function firstName(): Attribute
-    {
-        return Attribute::make(
-            get: fn ($value) => ucfirst($value),
-            set: fn ($value) => strtolower($value),
-        );
-    }
+    return $query->where('is_active', true);
 }
 ```
 
-For more details on modern attributes, see the [Modern Model Features](modern-features.md) documentation.
-
-## Eager Loading
-
-When accessing relationships as properties, the relationship data is "lazy loaded". This means the relationship data is not actually loaded until you first access the property. However, Plugs can "eager load" relationships at the time you query the parent model. Eager loading alleviates the N+1 query problem.
-
-To eager load a relationship, use the `with` method:
+Usage:
 
 ```php
-$books = Book::with('author')->get();
-
-foreach ($books as $book) {
-    echo $book->author->name;
-}
+$activeProducts = Product::active()->get();
 ```
-
-### Eager Loading Multiple Relationships
-
-```php
-$books = Book::with('author', 'publisher')->get();
-```
-
-### Nested Eager Loading
-
-To eager load nested relationships, you may use "dot" syntax. For example, let's eager load all of the book's authors and all of the author's contacts:
-
-```php
-$books = Book::with('author.contacts')->get();
-```
-
-### Lazy Eager Loading
-
-Sometimes you may need to eager load a relationship after the parent model has already been retrieved. For example, this may be useful if you need to dynamically decide whether to load related models:
-
-```php
-$books = Book::all();
-
-if ($someCondition) {
-    $books->load('author', 'publisher');
-}
-```
-
-#### Load Missing Relationships
-
-If you want to load a relationship only when it has not already been loaded, use the `loadMissing` method. This handles multiple keys and nested relationships efficiently:
-
-```php
-public function format(Collection $users)
-{
-    $users->loadMissing('posts.comments');
-
-    return $users;
-}
-```
-
-## Relationships
-
-Relationships are defined as methods on your model classes.
-
-### One To One
-
-```php
-public function profile()
-{
-    return $this->hasOne(Profile::class);
-}
-```
-
-### One To Many
-
-```php
-public function posts()
-{
-    return $this->hasMany(Post::class);
-}
-```
-
-### Belongs To (Inverse)
-
-```php
-public function user()
-{
-    return $this->belongsTo(User::class);
-}
-```
-
-### Many To Many
-
-```php
-public function roles()
-{
-    return $this->belongsToMany(Role::class);
-}
-```
-
-### Has Many Through
-
-```php
-public function posts()
-{
-    return $this->hasManyThrough(Post::class, User::class);
-}
-```
-
-### Has One Through
-
-```php
-public function owner()
-{
-    return $this->hasOneThrough(User::class, Account::class);
-}
-```
-
-### Polymorphic Relationships
-
-#### One To Many (Polymorphic)
-
-```php
-class Post extends PlugModel
-{
-    public function comments()
-    {
-        return $this->morphMany(Comment::class, 'commentable');
-    }
-}
-
-class Comment extends PlugModel
-{
-    public function commentable()
-    {
-        return $this->morphTo();
-    }
-}
-```
-
-## Relationship Proxies & Chaining
-
-Relationship methods in Plugs models return **Relationship Proxies** (e.g., `HasManyProxy`, `HasOneProxy`). These proxies act as a wrapper around the Query Builder, allowing you to chain additional constraints before executing the query.
-
-### Fluent Chaining
-
-You can chain any Query Builder method onto a relationship:
-
-```php
-// Get only published posts for a user
-$publishedPosts = $user->posts()->where('status', 'published')->latest()->get();
-
-// Find a specific comment on a post
-$comment = $post->comments()->find(5);
-```
-
-### Relationship Persistence
-
-Proxies also provide convenient methods for creating and saving related models:
-
-```php
-// Create a new post for a user
-$post = $user->posts()->create([
-    'title' => 'My New Post',
-    'content' => '...'
-]);
-
-// Associate a profile with a user
-$profile->user()->associate($user)->save();
-
-// Dissociate a relationship
-$profile->user()->dissociate()->save();
-```
-
-### Many-to-Many Syncing
-
-The `BelongsToManyProxy` provides powerful methods for managing pivot table records:
-
-```php
-// Sync roles: only these IDs will remain in the pivot table
-$user->roles()->sync([1, 2, 3]);
-
-// Attach a role without removing existing ones
-$user->roles()->attach(4);
-
-// Detach a specific role
-$user->roles()->detach(2);
-
-// Toggle a role: attach if missing, detach if present
-$user->roles()->toggle(5);
-```
-
-### Static vs Fluent Calling
-
-All query methods are available both as static calls on the model class and fluently on a query builder instance. This ensures maximum flexibility in your code:
-
-```php
-// Static call (starts a new query)
-$user = User::findOrFail(1);
-
-// Fluent call (chains on existing query)
-$user = User::where('status', 'active')->findOrFail(1);
-```
-
-## Serialization
-
-When building APIs, you often need to convert your models and relationships to arrays or JSON.
-
-### Converting To Arrays
-
-To convert a model and its loaded relationships to an array, you should use the `toArray` method. This method is recursive, so all attributes and all relations (including the relations of relations) will be converted to arrays:
-
-```php
-$user = User::with('posts')->find(1);
-return $user->toArray();
-```
-
-### Serialization Visibility
-
-Sometimes you may wish to limit the attributes, such as passwords, that are included in your model's array or JSON representation. To do so, add a `$hidden` property to your model:
-
-```php
-class User extends PlugModel
-{
-    protected $hidden = ['password'];
-}
-```
-
-Alternatively, you may use the `visible` property to define a "white list" of attributes that should be included in your model's array and JSON representation:
-
-```php
-class User extends PlugModel
-{
-    protected $visible = ['first_name', 'last_name'];
-}
-```
-
-### Appending Values To JSON
-
-Occasionally, when converting models to an array or JSON, you may wish to add attributes that do not have a corresponding column in your database. To do so, first define an [accessor](#accessors) for the value:
-
-```php
-public function getIsAdminAttribute()
-{
-    return $this->attributes['admin'] === 'yes';
-}
-```
-
-After creating the accessor, add the attribute name to the `appends` property on the model:
-
-```php
-class User extends PlugModel
-{
-    protected $appends = ['is_admin'];
-}
-```
-
-## Advanced Retrieval Methods
-
-### Finding a Single Record
-
-Use the `sole` method when you expect exactly one result. It throws an exception if zero or more than one record is found:
-
-```php
-// Get the only active admin user
-$admin = User::where('role', 'admin')
-             ->where('status', 'active')
-             ->sole();
-```
-
-> [!WARNING]
-> `sole()` will throw an exception if no records or multiple records are found. Use `first()` if you expect potentially zero results.
-
-### First Or Fail
-
-Get the first result or throw an exception if none found:
-
-```php
-$user = User::where('email', 'john@example.com')->firstOrFail();
-```
-
-Retrieve multiple models by their primary keys:
-
-```php
-$users = User::findMany([1, 2, 3]);
-```
-
-### Logical Grouping (nestedWhere)
-
-You may use `nestedWhere` directly on your model for complex query grouping:
-
-```php
-$users = User::nestedWhere(function ($query) {
-    $query->where('votes', '>', 100)
-          ->orWhere('title', 'Admin');
-})->get();
-```
-
-### Conditional Queries (when / unless)
-
-Models support the `when` and `unless` methods for building queries conditionally:
-
-```php
-$role = $request->input('role');
-
-$users = User::when($role, function ($query, $role) {
-    $query->where('role_id', $role);
-})->get();
-
-$users = User::unless($user->isAdmin(), function ($query) {
-    $query->where('active', 1);
-})->get();
-```
-
-### Relationship Existence (whereHas / whereDoesntHave)
-
-Static shortcuts for relationship filters are also available:
-
-```php
-// Users with posts
-$users = User::whereHas('posts')->get();
-
-// Users with NO posts
-$users = User::whereDoesntHave('posts')->get();
-```
-
-## Chunking Results
-
-When you need to process a large number of records, use the `chunk` method to work with a small batch at a time:
-
-```php
-User::chunk(100, function ($users) {
-    foreach ($users as $user) {
-        // Process each user
-        $user->sendNotification();
-    }
-});
-```
-
-You can stop chunking by returning `false` from the callback:
-
-```php
-User::chunk(100, function ($users) {
-    foreach ($users as $user) {
-        if ($user->shouldStop()) {
-            return false; // Stop processing
-        }
-    }
-});
-```
-
-> [!TIP]
-> Chunking is memory-efficient for processing thousands of records without loading them all into memory at once.
-
-### Chunking By ID
-
-If you are updating database records while chunking results, your chunk results could change in unexpected ways. So, when updating records while chunking, it is always best to use the `chunkById` method. This method will automatically paginate the results based on the record's primary key:
-
-```php
-User::chunkById(100, function ($users) {
-    foreach ($users as $user) {
-        $user->update(['processed' => true]);
-    }
-});
-```
-
-## API Responses
-
-### Model to Response
-
-Convert a single model to a standardized API response:
-
-```php
-$user = User::find(1);
-return $user->toResponse(200, 'User retrieved successfully');
-```
-
-### Collection to Response
-
-Convert a collection of models to an API response:
-
-```php
-$users = User::all();
-return $users->toResponse(200, 'Users retrieved successfully');
-```
-
-### Paginated Response
-
-Get paginated results as a standardized API response with metadata:
-
-```php
-return User::paginateResponse(15);
-// Returns: { success, status, data, meta: { total, per_page, current_page, ... }, links: { first, last, next, prev } }
-```
-
-For more details on pagination, see the [Pagination documentation](pagination.md).
-
-### Search Response
-
-Combine filtering, sorting, and pagination:
-
-```php
-return User::searchResponse($_GET);
-// Supports: ?search=john&status=active&sort=name&direction=asc&page=1&per_page=10
-```
-
-## Collections
-
-Model query results are returned as `Collection` instances, providing many helpful methods:
-
-```php
-$users = User::all();
-
-// Filter
-$activeUsers = $users->where('status', 'active');
-
-// Pluck values
-$emails = $users->pluck('email');
-
-// First matching
-$admin = $users->firstWhere('role', 'admin');
-
-// Sort
-$sorted = $users->sortBy('name');
-
-// Group
-$byRole = $users->groupBy('role');
-
-// Convert to response
-return $users->toResponse();
-```
-
-## Debugging Models
-
-When using `dd()` on a model, you'll see a clean, focused output:
-
-```php
-dd(User::first());
-
-// Output shows only essential data:
-// - attributes: The model's current data
-// - original: Original values from database
-// - relations: Loaded relationships
-// - exists: Whether model exists in DB
-// - table: The database table name
-```
-
-> [!TIP]
-> The `dd()` function respects the model's `__debugInfo()` method, ensuring you only see relevant information without internal framework noise.
-
-### Query Debugging
-
-Enable query logging to see all database queries:
-
-```php
-User::enableQueryLog();
-
-$users = User::where('status', 'active')->get();
-$posts = Post::with('author')->get();
-
-// Dump all executed queries
-dq();
-```
-
-### Lifecycle Events
-
-Plugs models fire several events throughout their lifecycle, allowing you to hook into various points in a model's existence.
-
-### Available Events
-
-- `retrieved`: After a model has been retrieved from the database.
-- `creating` / `created`: Before and after a record is created.
-- `updating` / `updated`: Before and after a record is updated.
-- `saving` / `saved`: Before and after a record is created or updated.
-- `deleting` / `deleted`: Before and after a record is deleted.
-- `restoring` / `restored`: Before and after a soft-deleted record is restored.
-
-### Registering Listeners
-
-You may use the `observe` method or static event hooks in your model's `boot` method:
-
-```php
-class User extends PlugModel
-{
-    protected static function boot()
-    {
-        parent::boot();
-
-        static::retrieved(function ($user) {
-            // Logic after model is loaded
-        });
-    }
-}
-```
-
----
-
-## ⚡ Performance Profiling
-
-Profile a block of code:
-
-```php
-$result = User::profile(function() {
-    return User::with('posts', 'comments')->get();
-});
-
-// Returns: execution_time, memory_used, query_count, query_time, queries
-```
-
-## Advanced Features
-
-Plugs models are equipped with high-end features for enterprise applications:
-
-- **[Attribute-Based Metadata](model-attributes.md)**: Immutability, Versioning, and Serialization Profiles.
-- **[Model Health](diagnostics.md)**: Automated orphaned record and index detection.
-- **[Observability](observability.md)**: Built-in query timing and performance tracking.
-- **[Domain Events](domain-events.md)**: Explicit event recording and replayability.

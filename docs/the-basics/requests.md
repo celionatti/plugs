@@ -1,14 +1,30 @@
-# Request Validation & Sanitization
+# Form Requests
 
-The Plugs framework provides a powerful way to validate and sanitize user input using Form Requests. This is especially useful for maintaining clean controllers and ensuring security.
+Form Requests are custom request classes that encapsulate validation and authorization logic. They help keep your controllers clean by moving complex validation rules out of the controller methods.
 
-## Creating a Form Request
+## Generating Requests
 
-You can create a form request by extending the `Plugs\Http\Requests\FormRequest` class. 
+Use the `make:request` command to generate a new form request class.
 
-### Modern Example: Blog Post Request
+```bash
+php theplugs make:request StoreUserRequest
+```
 
-Here is how you can handle both regular text fields and rich HTML content (from a text editor) safely in a single request.
+### Options
+
+- `--rules=name,email`: Pre-define validation rules for fields.
+- `--auth`: Include an authorization method with a template.
+- `--subDir=Api/V1`: Organize requests into subdirectories.
+
+Example:
+
+```bash
+php theplugs make:request StoreProductRequest --rules=name,price,category_id --auth
+```
+
+## Structure
+
+A Form Request class contains two main methods: `authorize` and `rules`.
 
 ```php
 <?php
@@ -17,132 +33,66 @@ namespace App\Http\Requests;
 
 use Plugs\Http\Requests\FormRequest;
 
-class CreateBlogPostRequest extends FormRequest
+class StoreProductRequest extends FormRequest
 {
     /**
-     * Define validation rules.
+     * Determine if the user is authorized to make this request.
+     */
+    public function authorize(): bool
+    {
+        return $this->user()->can('create', Product::class);
+    }
+
+    /**
+     * Get the validation rules that apply to the request.
      */
     public function rules(): array
     {
         return [
-            'title'   => 'required|string|max:255',
-            'content' => 'required|safe_html', // Strict check for dangerous tags
-            'excerpt' => 'nullable|string|max:500',
-            'status'  => 'required|in:draft,published',
+            'name' => 'required|string|max:255',
+            'price' => 'required|numeric|min:0',
+            'category_id' => 'required|exists:categories,id',
+            'description' => 'nullable|string',
         ];
     }
 
     /**
-     * Define sanitization rules.
-     * These correspond to methods in the Sanitizer class.
+     * Custom error messages.
      */
-    public function sanitizers(): array
+    public function messages(): array
     {
         return [
-            'title'   => 'string',   // Escapes ALL HTML
-            'content' => 'safeHtml', // Allows formatting but strips scripts/XSS
-            'excerpt' => 'string',   // Escapes ALL HTML
+            'category_id.exists' => 'The selected category is invalid.',
         ];
     }
 }
 ```
 
----
+## Usage
 
-## Validation Rules
-
-The `rules()` method defines how fields should be validated before any processing occurs.
-
-| Rule | Description |
-|------|-------------|
-| `required` | Field must be present and not empty. |
-| `string` | Field must be a string. |
-| `numeric` | Field must be a number. |
-| `safe_html` | **(Security)** Blocks content containing `<script>`, `<iframe>`, or event handlers (like `onclick`). |
-| `email` | Field must be a valid email address. |
-| `max:N` | Maximum length or value. |
-| `in:a,b` | Value must be one of the specified options. |
-
----
-
-## Sanitization Rules
-
-The `sanitizers()` method defines how data should be cleaned **after** validation passes. This ensures that even if validation is loose, your database remains clean.
-
-### Available Sanitizers
-
-- **`string`**: The most common. It uses `htmlspecialchars` to escape all HTML, making it safe for display.
-- **`safeHtml`**: Specifically designed for Blog Content/Rich Text Editors.
-    - **Allows**: `<p>`, `<a>`, `<b>`, `<strong>`, `<ul>`, `<li>`, `<img>`, `<table>`, etc.
-    - **Strips**: `<script>`, `<style>`, `<iframe>`, `<object>`, and dangerous attributes like `onclick` or `javascript:` links.
-- **`email`**: Sanitizes email addresses.
-- **`int` / `float`**: Casts values to the correct numeric type.
-- **`url`**: Sanitizes URLs.
-
----
-
-## Usage in Controllers
-
-To use a Form Request, simply type-hint it in your controller method.
+Type-hint the request class in your controller method. The framework will automatically validate the incoming request before the controller method is called. If validation fails, a redirect or JSON error response will be generated automatically.
 
 ```php
-public function store(CreateBlogPostRequest $request)
+public function store(StoreProductRequest $request)
 {
-    // 1. Run validation
-    if (!$request->validate()) {
-        return back()->withErrors($request->errors());
-    }
+    // The incoming request is valid...
 
-    // 2. Get the CLEANED data
-    // This applies all rules from the sanitizers() method automatically.
-    $data = $request->sanitized();
+    $validated = $request->validated();
 
-    // Now $data['title'] is fully escaped
-    // And $data['content'] has safe HTML tags for front-end display.
-    
-    Post::create($data);
-
-    return redirect('/blog')->with('success', 'Post created safely!');
+    // Create product...
 }
 ```
 
-## Handling Validation Errors
+## Sanitization
 
-When a request fails validation, you typically want to redirect back to the form with the error messages and the user's previously entered data (so they don't have to type it again).
-
-### The Fluent Pattern
-You can now chain your response in the controller:
+You can also define sanitizers to clean input data before validation.
 
 ```php
-if (!$request->validate()) {
-    return back()
-        ->withErrors($request->errors())
-        ->withInput(); // Flashes current input to session
+public function sanitizers(): array
+{
+    return [
+        'name' => 'trim|capitalize',
+        'email' => 'trim|lowercase',
+    ];
 }
 ```
-
-### In Your View
-Use the `@error` and `@old` directives to handle this gracefully:
-
-```html
-<form method="POST" action="/blog">
-    <div class="form-group">
-        <label>Title</label>
-        <input type="text" name="title" value="@old('title')">
-        
-        @error('title')
-            <span class="text-danger">{{ $errors->first('title') }}</span>
-        @enderror
-    </div>
-</form>
-```
-
----
-
-## Flash Messages
-
-Flash messages are one-time alerts stored in the session for the next request. They are perfect for "Success" or "Info" notifications.
-
-The Plugs framework features a dedicated, premium flash system that supports titles, modern OKLCH colors, and animations.
-
-👉 **[Read the Full Flash Messages Guide](file:///docs/features/flash-messages.md)**
