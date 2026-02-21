@@ -51,7 +51,7 @@ interface ProductRepositoryInterface
 
 ### Implementation
 
-The repository implements the interface and extends `BaseRepository`.
+The repository implements the interface.
 
 ```php
 <?php
@@ -59,10 +59,7 @@ The repository implements the interface and extends `BaseRepository`.
 namespace App\Repositories\ProductRepository;
 
 use App\Models\Product;
-use App\Repositories\BaseRepository;
-use App\Repositories\Interfaces\ProductRepositoryInterface;
-
-class ProductRepository extends BaseRepository implements ProductRepositoryInterface
+class ProductRepository implements ProductRepositoryInterface
 {
     public function all(): Collection
     {
