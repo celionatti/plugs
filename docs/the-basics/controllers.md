@@ -47,7 +47,16 @@ class ProductController extends Controller
 
     public function store(Request $request)
     {
+        // Manual validation using the Validator
+        $validated = \Plugs\Security\Validator::make($request->all(), [
+            'name' => 'required|string',
+            'price' => 'required|numeric',
+        ])->validateOrFail();
+
         // Create product
+        $product = Product::create($validated);
+
+        return response()->json($product, 201);
     }
 
     public function show($id)

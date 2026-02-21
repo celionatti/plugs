@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Plugs\Security;
 
 use Plugs\View\ErrorMessage;
+use Plugs\Exceptions\ValidationException;
 
 /*
 |--------------------------------------------------------------------------
@@ -23,6 +24,8 @@ class Validator
     private $customMessages = [];
     private $customAttributes = [];
     private $hasValidated = false;
+    private static array $extensions = [];
+    private array $instanceExtensions = [];
 
     public function __construct(array $data, array $rules, array $messages = [], array $attributes = [])
     {
@@ -31,6 +34,14 @@ class Validator
         $this->errors = new ErrorMessage();
         $this->customMessages = $messages;
         $this->customAttributes = $attributes;
+    }
+
+    /**
+     * Create a new validator instance
+     */
+    public static function make(array $data, array $rules, array $messages = [], array $attributes = []): self
+    {
+        return new static($data, $rules, $messages, $attributes);
     }
 
     /**
@@ -74,24 +85,81 @@ class Validator
         return !$this->errors->any();
     }
 
+    /**
+     * Run the validator and throw a ValidationException on failure
+     *
+     * @return array The validated data
+     * @throws ValidationException
+     */
+    public function validateOrFail(): array
+    {
+        if ($this->fails()) {
+            throw new ValidationException($this->errors->toArray());
+        }
+
+        return $this->validated();
+    }
+
     // ...
 
-    /**
-     * Validate single rule
-     */
-    private function validateRule(string $field, $value, string $rule): void
+    private function validateRule(string $field, $value, $rule): void
     {
-        if (strpos($rule, ':') !== false) {
+        $params = [];
+
+        // Support closures in rules
+        if ($rule instanceof \Closure) {
+            $fail = function (string $message) use ($field) {
+                $this->errors->add($field, $message);
+            };
+
+            $rule($field, $value, $fail, $this);
+
+            return;
+        }
+
+        // Handle regex rule separately as it can contain colons
+        if (str_starts_with($rule, 'regex:')) {
+            $params = [substr($rule, 6)];
+            $rule = 'regex';
+        } elseif (strpos($rule, ':') !== false) {
             [$rule, $params] = explode(':', $rule, 2);
             $params = $this->parseParameters($params);
-        } else {
-            $params = [];
         }
 
         $method = 'validate' . str_replace('_', '', ucwords($rule, '_'));
 
         if (method_exists($this, $method)) {
             $this->$method($field, $value, $params);
+
+            return;
+        }
+
+        // Check custom rules
+        $extension = $this->instanceExtensions[$rule] ?? self::$extensions[$rule] ?? null;
+        if ($extension) {
+            if (!$extension($field, $value, $params, $this)) {
+                $this->addError($field, $rule);
+            }
+        }
+    }
+
+    /**
+     * Register a custom validation rule globally
+     */
+    public static function extend(string $rule, callable $extension, ?string $message = null): void
+    {
+        self::$extensions[$rule] = $extension;
+    }
+
+    /**
+     * Add a custom validation rule to this validator instance
+     */
+    public function addCustomRule(string $rule, callable $extension, ?string $message = null): void
+    {
+        $this->instanceExtensions[$rule] = $extension;
+
+        if ($message) {
+            $this->customMessages[$rule] = $message;
         }
     }
 
@@ -361,6 +429,7 @@ class Validator
             'lowercase' => 'The :attribute must be lowercase.',
             'uppercase' => 'The :attribute must be uppercase.',
             'ai_fail' => 'The :attribute failed AI validation: :reason',
+            'custom_rule' => 'The :attribute failed validation.',
         ];
 
         return $messages[$rule] ?? "The :attribute is invalid.";
@@ -1258,6 +1327,313 @@ class Validator
 
         if (!preg_match('/^[0-7][0-9A-HJKMNP-TV-Z]{25}$/i', (string) $value)) {
             $this->addError($field, 'ulid');
+        }
+    }
+
+    /**
+     * Unique validation (checks database)
+     * Usage: unique:table,column,except,id_column
+     */
+    private function validateUnique(string $field, $value, array $params): void
+    {
+        if (empty($value) || empty($params)) {
+            return;
+        }
+
+        $table = $params[0];
+        $column = $params[1] ?? $field;
+        $except = $params[2] ?? null;
+        $idColumn = $params[3] ?? 'id';
+
+        $query = db($table)->where($column, '=', $value);
+
+        if ($except !== null && $except !== 'NULL') {
+            $query->where($idColumn, '!=', $except);
+        }
+
+        if ($query->exists()) {
+            $this->addError($field, 'unique');
+        }
+    }
+
+    /**
+     * Exists validation (checks database)
+     * Usage: exists:table,column
+     */
+    private function validateExists(string $field, $value, array $params): void
+    {
+        if (empty($value) || empty($params)) {
+            return;
+        }
+
+        $table = $params[0];
+        $column = $params[1] ?? $field;
+
+        if (!db($table)->where($column, '=', $value)->exists()) {
+            $this->addError($field, 'exists');
+        }
+    }
+
+    /**
+     * URL validation
+     */
+    private function validateUrl(string $field, $value): void
+    {
+        if (empty($value)) {
+            return;
+        }
+
+        if (!filter_var($value, FILTER_VALIDATE_URL)) {
+            $this->addError($field, 'url');
+        }
+    }
+
+    /**
+     * Regex validation
+     */
+    private function validateRegex(string $field, $value, array $params): void
+    {
+        if (empty($value) || empty($params)) {
+            return;
+        }
+
+        if (!preg_match($params[0], (string) $value)) {
+            $this->addError($field, 'regex');
+        }
+    }
+
+    /**
+     * In validation
+     */
+    private function validateIn(string $field, $value, array $params): void
+    {
+        if ($value === null || $value === '') {
+            return;
+        }
+
+        if (!in_array((string) $value, $params)) {
+            $this->addError($field, 'in');
+        }
+    }
+
+    /**
+     * Not In validation
+     */
+    private function validateNotIn(string $field, $value, array $params): void
+    {
+        if ($value === null || $value === '') {
+            return;
+        }
+
+        if (in_array((string) $value, $params)) {
+            $this->addError($field, 'not_in');
+        }
+    }
+
+    /**
+     * Alpha validation
+     */
+    private function validateAlpha(string $field, $value): void
+    {
+        if (empty($value)) {
+            return;
+        }
+
+        if (!is_string($value) || !preg_match('/^\pL+$/u', $value)) {
+            $this->addError($field, 'alpha');
+        }
+    }
+
+    /**
+     * Alpha Numeric validation
+     */
+    private function validateAlphaNum(string $field, $value): void
+    {
+        if (empty($value)) {
+            return;
+        }
+
+        if (!is_string($value) || !preg_match('/^[\pL\pN]+$/u', $value)) {
+            $this->addError($field, 'alpha_num');
+        }
+    }
+
+    /**
+     * Alpha Dash validation
+     */
+    private function validateAlphaDash(string $field, $value): void
+    {
+        if (empty($value)) {
+            return;
+        }
+
+        if (!is_string($value) || !preg_match('/^[\pL\pN_-]+$/u', $value)) {
+            $this->addError($field, 'alpha_dash');
+        }
+    }
+
+    /**
+     * Date validation
+     */
+    private function validateDate(string $field, $value): void
+    {
+        if (empty($value)) {
+            return;
+        }
+
+        if (!strtotime((string) $value)) {
+            $this->addError($field, 'date');
+        }
+    }
+
+    /**
+     * Date Format validation
+     */
+    private function validateDateFormat(string $field, $value, array $params): void
+    {
+        if (empty($value) || empty($params)) {
+            return;
+        }
+
+        $format = $params[0];
+        $date = \DateTime::createFromFormat($format, (string) $value);
+
+        if (!$date || $date->format($format) !== (string) $value) {
+            $this->addError($field, 'date_format', ['format' => $format]);
+        }
+    }
+
+    /**
+     * Before date validation
+     */
+    private function validateBefore(string $field, $value, array $params): void
+    {
+        if (empty($value) || empty($params)) {
+            return;
+        }
+
+        $compareDate = strtotime($params[0]);
+        $valueDate = strtotime((string) $value);
+
+        if (!$valueDate || $valueDate >= $compareDate) {
+            $this->addError($field, 'before', ['date' => $params[0]]);
+        }
+    }
+
+    /**
+     * After date validation
+     */
+    private function validateAfter(string $field, $value, array $params): void
+    {
+        if (empty($value) || empty($params)) {
+            return;
+        }
+
+        $compareDate = strtotime($params[0]);
+        $valueDate = strtotime((string) $value);
+
+        if (!$valueDate || $valueDate <= $compareDate) {
+            $this->addError($field, 'after', ['date' => $params[0]]);
+        }
+    }
+
+    /**
+     * IP validation
+     */
+    private function validateIp(string $field, $value): void
+    {
+        if (empty($value)) {
+            return;
+        }
+
+        if (!filter_var($value, FILTER_VALIDATE_IP)) {
+            $this->addError($field, 'ip');
+        }
+    }
+
+    /**
+     * IPv4 validation
+     */
+    private function validateIpv4(string $field, $value): void
+    {
+        if (empty($value)) {
+            return;
+        }
+
+        if (!filter_var($value, FILTER_VALIDATE_IP, FILTER_FLAG_IPV4)) {
+            $this->addError($field, 'ipv4');
+        }
+    }
+
+    /**
+     * IPv6 validation
+     */
+    private function validateIpv6(string $field, $value): void
+    {
+        if (empty($value)) {
+            return;
+        }
+
+        if (!filter_var($value, FILTER_VALIDATE_IP, FILTER_FLAG_IPV6)) {
+            $this->addError($field, 'ipv6');
+        }
+    }
+
+    /**
+     * JSON validation
+     */
+    private function validateJson(string $field, $value): void
+    {
+        if ($value === null || $value === '') {
+            return;
+        }
+
+        if (!is_string($value) || !\Plugs\Utils\Str::isJson($value)) {
+            $this->addError($field, 'json');
+        }
+    }
+
+    /**
+     * Array validation
+     */
+    private function validateArray(string $field, $value): void
+    {
+        if ($value === null) {
+            return;
+        }
+
+        if (!is_array($value)) {
+            $this->addError($field, 'array');
+        }
+    }
+
+    /**
+     * String validation
+     */
+    private function validateString(string $field, $value): void
+    {
+        if ($value === null) {
+            return;
+        }
+
+        if (!is_string($value)) {
+            $this->addError($field, 'string');
+        }
+    }
+
+    /**
+     * Boolean validation
+     */
+    private function validateBoolean(string $field, $value): void
+    {
+        if ($value === null || $value === '') {
+            return;
+        }
+
+        $acceptable = [true, false, 1, 0, '1', '0', 'true', 'false'];
+
+        if (!in_array($value, $acceptable, true)) {
+            $this->addError($field, 'boolean');
         }
     }
 }
