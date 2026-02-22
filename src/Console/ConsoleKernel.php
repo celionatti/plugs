@@ -17,6 +17,7 @@ use Plugs\Console\Commands\MakeComponentCommand;
 use Plugs\Console\Commands\MakeConnectorCommand;
 use Plugs\Console\Commands\MakeControllerCommand;
 use Plugs\Console\Commands\MakeDTOCommand;
+use Plugs\Console\Commands\MakeEnumCommand;
 use Plugs\Console\Commands\MakeEventCommand;
 use Plugs\Console\Commands\MakeFactoryCommand;
 use Plugs\Console\Commands\MakeListenerCommand;
@@ -86,6 +87,7 @@ class ConsoleKernel
         'make:request' => MakeRequestCommand::class,
         'make:service' => MakeServiceCommand::class,
         'make:action' => MakeActionCommand::class,
+        'make:enum' => MakeEnumCommand::class,
         'make:dto' => MakeDTOCommand::class,
         'make:resource' => MakeResourceCommand::class,
         'make:repository' => MakeRepositoryCommand::class,
@@ -154,6 +156,7 @@ class ConsoleKernel
         'g:req' => 'make:request',
         'g:srv' => 'make:service',
         'g:act' => 'make:action',
+        'g:enum' => 'make:enum',
         'g:dto' => 'make:dto',
         'g:res' => 'make:resource',
         'g:repo' => 'make:repository',
@@ -193,6 +196,7 @@ class ConsoleKernel
             'make:request',
             'make:service',
             'make:action',
+            'make:enum',
             'make:dto',
             'make:resource',
             'make:repository',
