@@ -22,6 +22,12 @@ class AuthenticateMiddleware implements MiddlewareInterface
                 return ResponseFactory::json(['message' => 'Unauthenticated.'], 401);
             }
 
+            // Store the intended URL so we can redirect back after login
+            if (session_status() === PHP_SESSION_NONE) {
+                session_start();
+            }
+            $_SESSION['url.intended'] = (string) $request->getUri();
+
             return ResponseFactory::redirect($this->redirectTo);
         }
 

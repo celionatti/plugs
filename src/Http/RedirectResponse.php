@@ -35,6 +35,26 @@ class RedirectResponse implements ResponseInterface
     }
 
     /**
+     * Create a redirect to the previously intended URL.
+     *
+     * This is typically used after authentication to send the user
+     * back to the page they originally tried to access.
+     *
+     * Usage: return RedirectResponse::intended('/dashboard');
+     */
+    public static function intended(string $default = '/', int $status = 302): self
+    {
+        if (session_status() === PHP_SESSION_NONE) {
+            session_start();
+        }
+
+        $url = $_SESSION['url.intended'] ?? $default;
+        unset($_SESSION['url.intended']);
+
+        return new self($url, $status);
+    }
+
+    /**
      * Add flash data to the session
      */
     public function with(string|array $key, mixed $value = null): self
