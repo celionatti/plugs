@@ -42,6 +42,8 @@ use Plugs\Console\Commands\MigrateRollbackCommand;
 use Plugs\Console\Commands\MigrateStatusCommand;
 use Plugs\Console\Commands\MigrateValidateCommand;
 use Plugs\Console\Commands\QueueWorkCommand;
+use Plugs\Console\Commands\QueueFailedCommand;
+use Plugs\Console\Commands\QueueRetryCommand;
 use Plugs\Console\Commands\RouteCacheCommand;
 use Plugs\Console\Commands\RouteClearCommand;
 use Plugs\Console\Commands\RouteListCommand;
@@ -128,6 +130,8 @@ class ConsoleKernel
         'migrate:validate' => MigrateValidateCommand::class,
         'migrate:reset' => MigrateResetCommand::class,
         'queue:work' => QueueWorkCommand::class,
+        'queue:failed' => QueueFailedCommand::class,
+        'queue:retry' => QueueRetryCommand::class,
         'health' => HealthCommand::class,
         'storage:link' => StorageLinkCommand::class,
         'up' => \Plugs\Console\Commands\UpCommand::class,
@@ -216,7 +220,7 @@ class ConsoleKernel
             'make:ai-migration',
         ],
         'Routes' => ['route:list', 'route:cache', 'route:clear', 'route:test'],
-        'Utility' => ['serve', 'cache:clear', 'config:cache', 'optimize', 'opcache:clear', 'opcache:status', 'queue:work', 'health', 'storage:link', 'type:gen', 'ai:chat', 'ai:fix', 'ai:audit', 'make:ai-test', 'ai:agent', 'ai:think', 'framework:scan-security'],
+        'Utility' => ['serve', 'cache:clear', 'config:cache', 'optimize', 'opcache:clear', 'opcache:status', 'queue:work', 'queue:failed', 'queue:retry', 'health', 'storage:link', 'type:gen', 'ai:chat', 'ai:fix', 'ai:audit', 'make:ai-test', 'ai:agent', 'ai:think', 'framework:scan-security'],
 
         'Scheduling' => ['schedule:run', 'schedule:list'],
         'Database' => ['migrate', 'migrate:rollback', 'migrate:status', 'migrate:fresh', 'migrate:validate', 'migrate:reset', 'make:migration', 'db:seed', 'db:analyze', 'tenant:migrate'],

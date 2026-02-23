@@ -143,6 +143,9 @@ class Plugs
                 return $this->{$method}();
             });
         }
+
+        // Add common aliases for deferred services
+        $this->container->alias('database', 'db');
     }
 
     /**
@@ -183,8 +186,15 @@ class Plugs
 
         $container->singleton('log', function () {
             $config = config('logging');
-            $channel = $config['default'];
-            $path = $config['channels'][$channel]['path'] ?? storage_path('logs/plugs.log');
+            $channel = $config['default'] ?? 'file';
+            $channelConfig = $config['channels'][$channel] ?? [];
+            $driver = $channelConfig['driver'] ?? 'single';
+            $path = $channelConfig['path'] ?? storage_path('logs/plugs.log');
+
+            if ($driver === 'daily') {
+                $maxFiles = $channelConfig['max_files'] ?? 14;
+                return new \Plugs\Log\RotatingFileLogger($path, $maxFiles);
+            }
 
             return new \Plugs\Log\Logger($path);
         });
@@ -381,12 +391,25 @@ class Plugs
             $response = $this->dispatcher->handle($request);
             $this->emitResponse($response);
         } catch (\Throwable $e) {
-            if (config('app.debug', false)) {
-                throw $e;
+            // Always route through the exception handler — it already
+            // renders a detailed debug page when app.debug is true.
+            // Never re-throw raw exceptions from the top-level run().
+            try {
+                $handler = $this->container->make(\Plugs\Exceptions\Handler::class);
+                $response = $handler->handle($e, $request);
+                $this->emitResponse($response);
+            } catch (\Throwable $fallback) {
+                // Last resort: if the handler itself fails, render minimal safe output
+                http_response_code(500);
+                if (config('app.debug', false)) {
+                    echo '<h1>Fatal Error</h1>';
+                    echo '<pre>' . htmlspecialchars($e->getMessage() . "\n" . $e->getTraceAsString()) . '</pre>';
+                    echo '<h2>Handler Error</h2>';
+                    echo '<pre>' . htmlspecialchars($fallback->getMessage() . "\n" . $fallback->getTraceAsString()) . '</pre>';
+                } else {
+                    echo '<h1>500 — Internal Server Error</h1>';
+                }
             }
-            $handler = $this->container->make(\Plugs\Exceptions\Handler::class);
-            $response = $handler->handle($e, $request);
-            $this->emitResponse($response);
         }
     }
 

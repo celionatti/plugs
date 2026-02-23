@@ -24,7 +24,8 @@ class SessionManager
             'lifetime' => 120,
             'path' => '/',
             'domain' => '',
-            'secure' => false,
+            'secure' => (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off')
+                || (isset($_SERVER['HTTP_X_FORWARDED_PROTO']) && $_SERVER['HTTP_X_FORWARDED_PROTO'] === 'https'),
             'httponly' => true,
             'samesite' => 'Lax',
             'save_path' => null,

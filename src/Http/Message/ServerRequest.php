@@ -914,6 +914,47 @@ class ServerRequest implements ServerRequestInterface
         return false;
     }
 
+    /**
+     * Validate request input against the given rules.
+     *
+     * On success, returns the validated data array.
+     * On failure for web requests: redirects back with errors and old input.
+     * On failure for JSON requests: throws ValidationException (caught by Handler → 422 JSON).
+     *
+     * @param array  $rules    Validation rules (e.g. ['email' => 'required|email'])
+     * @param array  $messages Custom error messages (optional)
+     * @return array Validated data
+     * @throws \Plugs\Exceptions\ValidationException
+     */
+    public function validate(array $rules, array $messages = []): array
+    {
+        $data = $this->all();
+        $validator = new \Plugs\Security\Validator($data, $rules, $messages);
+        $passed = $validator->validate();
+
+        if (!$passed) {
+            // For JSON / AJAX requests, throw so the exception handler returns 422 JSON
+            if ($this->expectsJson()) {
+                throw new \Plugs\Exceptions\ValidationException(
+                    $validator->errors()->toArray()
+                );
+            }
+
+            // For web requests, flash errors and old input, then redirect back
+            if (function_exists('flash')) {
+                flash('errors', $validator->errors()->toArray());
+                flash('_old_input', $data);
+            }
+
+            $backUrl = $this->getReferer() ?? '/';
+            $redirect = new \Plugs\Http\RedirectResponse($backUrl);
+            $redirect->send();
+            exit; // Halt execution after redirect
+        }
+
+        return $validator->validated();
+    }
+
     // ============================================
     // PSR-7 ServerRequestInterface Implementation
     // ============================================

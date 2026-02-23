@@ -13,7 +13,12 @@ use Psr\Http\Server\RequestHandlerInterface;
 
 class AuthenticateMiddleware implements MiddlewareInterface
 {
-    protected string $redirectTo = '/login';
+    protected string $redirectTo;
+
+    public function __construct(?string $redirectTo = null)
+    {
+        $this->redirectTo = $redirectTo ?? config('auth.login_route', '/login');
+    }
 
     public function process(ServerRequestInterface $request, RequestHandlerInterface $handler): ResponseInterface
     {

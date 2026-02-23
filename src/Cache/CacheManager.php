@@ -97,6 +97,38 @@ class CacheManager
         return $this->driver()->has($key);
     }
 
+    /**
+     * Get an item from the cache, or execute the given Closure and store the result.
+     *
+     * @param string   $key      Cache key
+     * @param int|null $ttl      Time-to-live in seconds
+     * @param callable $callback Called on cache miss — its return value is cached
+     * @return mixed
+     */
+    public function remember(string $key, ?int $ttl, callable $callback): mixed
+    {
+        if ($this->has($key)) {
+            return $this->get($key);
+        }
+
+        $value = $callback();
+        $this->set($key, $value, $ttl);
+
+        return $value;
+    }
+
+    /**
+     * Get an item from the cache, or execute the given Closure and store the result forever.
+     *
+     * @param string   $key      Cache key
+     * @param callable $callback Called on cache miss — its return value is cached
+     * @return mixed
+     */
+    public function rememberForever(string $key, callable $callback): mixed
+    {
+        return $this->remember($key, null, $callback);
+    }
+
     public function getMultiple(iterable $keys, $default = null): iterable
     {
         return $this->driver()->getMultiple($keys, $default);

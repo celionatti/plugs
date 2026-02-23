@@ -10,7 +10,8 @@ namespace Plugs\Http\Middleware;
 |--------------------------------------------------------------------------
 |
 | This middleware handles rate limiting for incoming requests.
-| Now includes behavior-based throttling using ThreatDetector.
+| Uses the Cache system for persistent storage across requests.
+| Includes behavior-based throttling using ThreatDetector.
 */
 
 use Plugs\Exceptions\RateLimitException;
@@ -24,7 +25,11 @@ class RateLimitMiddleware implements MiddlewareInterface
 {
     private int $maxRequests;
     private int $perMinutes;
-    private static array $storage = [];
+
+    /**
+     * In-memory fallback when the cache system is unavailable.
+     */
+    private static array $memoryStorage = [];
 
     public function __construct(int $maxRequests = 60, int $perMinutes = 1)
     {
@@ -34,27 +39,28 @@ class RateLimitMiddleware implements MiddlewareInterface
 
     public function process(ServerRequestInterface $request, RequestHandlerInterface $handler): ResponseInterface
     {
-        $key = $this->resolveRequestIdentifier($request);
+        $key = 'rate_limit:' . $this->resolveRequestIdentifier($request);
+        $windowSeconds = $this->perMinutes * 60;
         $currentTime = time();
 
         // Dynamic limit based on threat score
         $effectiveLimit = $this->calculateEffectiveLimit($request);
 
-        if (!isset(self::$storage[$key])) {
-            self::$storage[$key] = [
+        // Try to get existing data from cache
+        $data = $this->getData($key);
+
+        if ($data === null || $currentTime > $data['reset_at']) {
+            $data = [
                 'count' => 0,
-                'reset_at' => $currentTime + ($this->perMinutes * 60),
+                'reset_at' => $currentTime + $windowSeconds,
             ];
         }
 
-        $data = &self::$storage[$key];
-
-        if ($currentTime > $data['reset_at']) {
-            $data['count'] = 0;
-            $data['reset_at'] = $currentTime + ($this->perMinutes * 60);
-        }
-
         $data['count']++;
+
+        // Persist to cache for the remaining window duration
+        $ttl = max(1, $data['reset_at'] - $currentTime);
+        $this->setData($key, $data, $ttl);
 
         if ($data['count'] > $effectiveLimit) {
             throw new RateLimitException('Too many requests', $data['reset_at'] - $currentTime);
@@ -93,5 +99,46 @@ class RateLimitMiddleware implements MiddlewareInterface
         }
 
         return $this->maxRequests;
+    }
+
+    /**
+     * Get rate limit data from cache, falling back to in-memory storage.
+     */
+    private function getData(string $key): ?array
+    {
+        // Try the cache system first
+        if (function_exists('cache')) {
+            try {
+                $cache = cache();
+                if ($cache !== null) {
+                    $data = $cache->get($key);
+                    return is_array($data) ? $data : null;
+                }
+            } catch (\Throwable) {
+                // Cache unavailable, fall through to memory
+            }
+        }
+
+        return self::$memoryStorage[$key] ?? null;
+    }
+
+    /**
+     * Persist rate limit data to cache, falling back to in-memory storage.
+     */
+    private function setData(string $key, array $data, int $ttl): void
+    {
+        if (function_exists('cache')) {
+            try {
+                $cache = cache();
+                if ($cache !== null) {
+                    $cache->set($key, $data, $ttl);
+                    return;
+                }
+            } catch (\Throwable) {
+                // Cache unavailable, fall through to memory
+            }
+        }
+
+        self::$memoryStorage[$key] = $data;
     }
 }

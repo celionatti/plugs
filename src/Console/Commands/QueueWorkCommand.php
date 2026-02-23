@@ -43,6 +43,8 @@ class QueueWorkCommand extends Command
         $payload = unserialize($jobData->payload);
         $this->info("Processing job: {$payload['job']} (ID: {$jobData->id})");
 
+        $maxTries = (int) ($this->option('tries') ?? 3);
+
         try {
             if ($payload['instance']) {
                 $job = unserialize($payload['instance']);
@@ -63,7 +65,42 @@ class QueueWorkCommand extends Command
             $this->success("Successfully processed job: (ID: {$jobData->id})");
         } catch (\Throwable $e) {
             $this->error("Failed to process job (ID: {$jobData->id}): " . $e->getMessage());
-            // In a real system, you'd handle retries or move to failed_jobs table here
+
+            if ($jobData->attempts >= $maxTries) {
+                $this->failJob($jobData, $e);
+            } else {
+                $this->warning("Job (ID: {$jobData->id}) failed, will retry (Attempt {$jobData->attempts}/{$maxTries})");
+            }
+        }
+    }
+
+    protected function failJob($jobData, \Throwable $e): void
+    {
+        $this->error("Job (ID: {$jobData->id}) has failed after max attempts.");
+
+        try {
+            $container = Container::getInstance();
+            $connection = $container->make(\Plugs\Database\Connection::class);
+
+            $failedJobProvider = new \Plugs\Queue\DatabaseFailedJobProvider($connection);
+
+            $failedJobProvider->log(
+                config('queue.default', 'database'),
+                $jobData->queue,
+                $jobData->payload,
+                $e
+            );
+
+            // Delete from queue
+            $queueManager = $container->make('queue');
+            $driver = $queueManager->driver();
+            if (method_exists($driver, 'delete')) {
+                $driver->delete((int) $jobData->id);
+            }
+
+            $this->error("Job (ID: {$jobData->id}) has been moved to the failed_jobs table.");
+        } catch (\Throwable $failError) {
+            $this->error("Crucial failure: Could not log failed job! " . $failError->getMessage());
         }
     }
 }

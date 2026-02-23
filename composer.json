@@ -15,7 +15,8 @@
       "src/functions/route.php",
       "src/functions/redirect.php",
       "src/functions/http.php",
-      "src/functions/dump.php"
+      "src/functions/dump.php",
+      "src/functions/abort.php"
     ]
   },
   "autoload-dev": {

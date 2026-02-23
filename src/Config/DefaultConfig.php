@@ -292,6 +292,7 @@ class DefaultConfig
             'profiler' => [
                 'enabled' => env('PROFILER_ENABLED', false),
             ],
+            'trusted_proxies' => array_filter(explode(',', env('TRUSTED_PROXIES', '')), fn($v) => $v !== ''),
         ];
     }
 
@@ -385,6 +386,12 @@ class DefaultConfig
                     'path' => storage_path('logs/plugs.log'),
                     'level' => 'debug',
                 ],
+                'daily' => [
+                    'driver' => 'daily',
+                    'path' => storage_path('logs/plugs.log'),
+                    'level' => 'debug',
+                    'max_files' => 14,
+                ],
             ],
         ];
     }
@@ -413,6 +420,7 @@ class DefaultConfig
                 'guest' => \App\Http\Middleware\GuestMiddleware::class,
                 'auth' => \Plugs\Http\Middleware\AuthenticateMiddleware::class,
                 'ai.optimize' => \Plugs\Http\Middleware\AIOptimizeMiddleware::class,
+                'trusted_proxy' => \Plugs\Http\Middleware\TrustedProxyMiddleware::class,
             ],
 
             'groups' => [
