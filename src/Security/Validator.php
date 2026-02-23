@@ -6,6 +6,7 @@ namespace Plugs\Security;
 
 use Plugs\View\ErrorMessage;
 use Plugs\Exceptions\ValidationException;
+use Plugs\Security\Rules\RuleInterface;
 
 /*
 |--------------------------------------------------------------------------
@@ -56,10 +57,10 @@ class Validator
             if (strpos($field, '*') !== false) {
                 $this->validateWildcard($field, $rules);
             } else {
-                $ruleList = is_string($rules) ? explode('|', $rules) : $rules;
+                $ruleList = is_array($rules) ? $rules : explode('|', $rules);
 
                 // Handle 'sometimes' rule: if field is not present in data, skip all validation for it
-                if (in_array('sometimes', $ruleList) && !$this->hasValue($field)) {
+                if (in_array('sometimes', $ruleList, true) && !$this->hasValue($field)) {
                     continue;
                 }
 
@@ -67,7 +68,7 @@ class Validator
 
                 // Handle 'nullable' rule: if value is null, skip all subsequent validation
                 // except if other rules specify otherwise (Laravel behavior)
-                if (in_array('nullable', $ruleList) && $value === null) {
+                if (in_array('nullable', $ruleList, true) && $value === null) {
                     continue;
                 }
 
@@ -104,6 +105,18 @@ class Validator
 
     private function validateRule(string $field, $value, $rule): void
     {
+        // Support Rule objects
+        if ($rule instanceof RuleInterface) {
+            $isValid = $rule->validate($field, $value, $this->data);
+
+            if ($isValid !== true) {
+                $message = is_string($isValid) ? $isValid : $rule->message();
+                $this->addError($field, 'custom_rule_obj', ['message' => $message]);
+            }
+
+            return;
+        }
+
         $params = [];
 
         // Support closures in rules
@@ -117,16 +130,21 @@ class Validator
             return;
         }
 
+        // Handle string rules
+        $ruleString = (string) $rule;
+
         // Handle regex rule separately as it can contain colons
-        if (str_starts_with($rule, 'regex:')) {
-            $params = [substr($rule, 6)];
-            $rule = 'regex';
-        } elseif (strpos($rule, ':') !== false) {
-            [$rule, $params] = explode(':', $rule, 2);
+        if (str_starts_with($ruleString, 'regex:')) {
+            $params = [substr($ruleString, 6)];
+            $ruleName = 'regex';
+        } elseif (strpos($ruleString, ':') !== false) {
+            [$ruleName, $params] = explode(':', $ruleString, 2);
             $params = $this->parseParameters($params);
+        } else {
+            $ruleName = $ruleString;
         }
 
-        $method = 'validate' . str_replace('_', '', ucwords($rule, '_'));
+        $method = 'validate' . str_replace('_', '', ucwords($ruleName, '_'));
 
         if (method_exists($this, $method)) {
             $this->$method($field, $value, $params);
@@ -135,10 +153,10 @@ class Validator
         }
 
         // Check custom rules
-        $extension = $this->instanceExtensions[$rule] ?? self::$extensions[$rule] ?? null;
+        $extension = $this->instanceExtensions[$ruleName] ?? self::$extensions[$ruleName] ?? null;
         if ($extension) {
             if (!$extension($field, $value, $params, $this)) {
-                $this->addError($field, $rule);
+                $this->addError($field, $ruleName);
             }
         }
     }
@@ -319,7 +337,11 @@ class Validator
      */
     private function addError(string $field, string $rule, array $replacements = []): void
     {
-        $message = $this->getMessage($field, $rule);
+        if ($rule === 'custom_rule_obj' && isset($replacements['message'])) {
+            $message = $replacements['message'];
+        } else {
+            $message = $this->getMessage($field, $rule);
+        }
 
         // Replace placeholders
         foreach ($replacements as $key => $value) {

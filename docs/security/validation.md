@@ -151,6 +151,36 @@ If your table uses a primary key name other than `id`, specify it as the fourth 
 'email' => 'unique:users,email,' . $user->id . ',user_id'
 ```
 
+#### Fluent Unique Rule
+
+For a more readable and powerful syntax, you can use the `Rule::unique` fluent interface:
+
+```php
+use Plugs\Security\Rule;
+
+$rules = [
+    'email' => [
+        'required',
+        'email',
+        Rule::unique('users', 'email')->ignore($user->id)
+    ],
+];
+```
+
+If your table uses a different primary key column, you can specify it:
+
+```php
+Rule::unique('users', 'email')->ignore($user->id, 'user_id')
+```
+
+You can also add additional `where` constraints:
+
+```php
+Rule::unique('users', 'email')
+    ->ignore($user->id)
+    ->where('account_id', $account->id)
+```
+
 ### Acceptance Rules
 
 | Rule       | Description                                              |
@@ -283,6 +313,32 @@ You may also add rules to a specific validator instance:
 $validator->addCustomRule('is_odd', function ($field, $value) {
     return (int) $value % 2 !== 0;
 }, 'The :attribute must be odd.');
+```
+
+### Rule Objects
+
+You can also use custom rule objects that implement `Plugs\Security\Rules\RuleInterface`. This is the same interface used by the built-in fluent rules like `Rule::unique`.
+
+```php
+use Plugs\Security\Rules\RuleInterface;
+
+class MyCustomRule implements RuleInterface
+{
+    public function validate(string $attribute, $value, array $data)
+    {
+        return $value === 'secret';
+    }
+
+    public function message(): string
+    {
+        return 'The :attribute is not the secret.';
+    }
+}
+
+// Usage
+$rules = [
+    'field' => [new MyCustomRule()]
+];
 ```
 
 ## Working with Errors
