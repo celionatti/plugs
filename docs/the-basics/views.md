@@ -187,6 +187,8 @@ $viewEngine->setCspNonce($nonce);
 | `@asset('path')`                   | Link to an asset with automatic cache busting. |
 | `@style([...])`                    | Dynamically bind inline styles.                |
 | `@json($data)`                     | Output data as a JSON string.                  |
+| `@vite([...])`                     | Standard Vite asset loader.                    |
+| `<vite />`                         | HTML tag-based Vite asset loader.              |
 | `@production` ... `@endproduction` | Render content only in production.             |
 
 ---

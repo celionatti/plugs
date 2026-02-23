@@ -347,8 +347,12 @@ Plugs uses a context-aware escaping engine to prevent XSS. The `{{ $var }}` dire
 {{-- URL --}}
 <a href="@url('/about')">About</a>
 
-{{-- Vite assets --}}
-@vite('resources/js/app.js')
+{{-- Vite assets (Standard) --}}
+@vite(['resources/css/app.css', 'resources/js/app.js'])
+
+{{-- Vite assets (Tag-based) --}}
+<vite entry="resources/js/app.js" />
+<vite :entries="['resources/js/app.js']" />
 ```
 
 ### Environment

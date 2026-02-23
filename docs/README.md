@@ -35,6 +35,7 @@ Welcome to the official documentation for the **Plugs** framework. Plugs is a li
 - [Views & Components](file:///docs/views/README.md)
 - [Debugging & Performance](file:///docs/the-basics/debugging.md)
 - [Filesystem Storage](file:///docs/the-basics/storage.md)
+- [Asset Management (Vite)](file:///docs/the-basics/assets.md) (New)
 
 ### 🗄️ Database
 

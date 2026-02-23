@@ -1165,6 +1165,14 @@ class ViewCompiler
         }, $content);
         $content = preg_replace('/<\/hasallroles\s*>/s', '@endhasallroles', $content);
 
+        // 21. <vite entry="..." /> or <vite :entries="..." />
+        $content = preg_replace_callback('/<vite\s+:entries=["\'](.+?)["\']\s*\/>/s', function ($m) {
+            return "@vite({$m[1]})";
+        }, $content);
+        $content = preg_replace_callback('/<vite\s+entry=["\'](.+?)["\']\s*\/>/s', function ($m) {
+            return "@vite('{$m[1]}')";
+        }, $content);
+
         return $content;
     }
 

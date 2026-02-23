@@ -8,6 +8,11 @@ node_modules/
 /phpunit.xml
 composer.lock
 
+/package-lock.json
+/package.json
+/vite.config.mjs
+/vite.config.js
+
 /app/
 /config/
 /public/
