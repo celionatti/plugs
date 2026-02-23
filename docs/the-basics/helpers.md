@@ -165,6 +165,22 @@ Throw an HTTP exception.
 abort(403, 'Unauthorized action.');
 ```
 
+### `abort_if()`
+
+Throw an HTTP exception if a given condition is true.
+
+```php
+abort_if($user->isBanned(), 403, 'Your account is suspended.');
+```
+
+### `abort_unless()`
+
+Throw an HTTP exception unless a given condition is true.
+
+```php
+abort_unless($user->isAdmin(), 403);
+```
+
 ## View & Security Helpers
 
 ### `e()`

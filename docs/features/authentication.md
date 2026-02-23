@@ -2,9 +2,12 @@
 
 PLUGS provides a robust authentication system out of the box, supporting traditional login, registration, and Social Login (OAuth).
 
-## Configuration
+### Configuration
 
 The authentication configuration is located at `config/auth.php`. By default, it uses the `web` guard with a session driver and the `users` provider.
+
+> [!TIP]
+> You can configure where unauthenticated users are redirected by changing the `redirect` key in `config/auth.php`.
 
 ### Database Migration
 
@@ -120,12 +123,12 @@ $router->get('/auth/{driver}', function ($driver) {
 $router->get('/auth/{driver}/callback', function ($driver) {
     try {
         $socialUser = Socialite::driver($driver)->user();
-        
+
         // $socialUser->getId()
         // $socialUser->getName()
         // $socialUser->getEmail()
         // $socialUser->getAvatar()
-        
+
         // Find or Create User
         $user = User::firstOrCreate([
             'email' => $socialUser->getEmail()
@@ -136,11 +139,11 @@ $router->get('/auth/{driver}/callback', function ($driver) {
             'provider_id' => $socialUser->getId(),
             'avatar' => $socialUser->getAvatar(),
         ]);
-        
+
         Auth::login($user);
-        
+
         return redirect('/dashboard');
-        
+
     } catch (\Exception $e) {
         return redirect('/login')->withError('Login failed: ' . $e->getMessage());
     }
@@ -150,6 +153,7 @@ $router->get('/auth/{driver}/callback', function ($driver) {
 ### Supported Drivers
 
 Currently supported drivers:
+
 - `github`
 - `google`
 

@@ -2,19 +2,28 @@
 
 Plugs ensures that your application data is clean and valid with a robust, declarative validation system.
 
-## 1. Using the Validator
+## 1. Validating Requests
 
-The `Validator` service allows you to define rules and check data directly in your controllers.
+The most common way to validate data is using the `validate` method directly on the `Request` object.
 
 ```php
-use Plugs\Support\Facades\Validator;
+public function store(Request $request)
+{
+    $validated = $request->validate([
+        'email' => 'required|email|unique:users',
+        'password' => 'required|min:8|confirmed',
+    ]);
 
-$data = $request->all();
-$rules = [
-    'email' => 'required|email|unique:users',
-    'password' => 'required|min:8|confirmed',
-    'age' => 'numeric|min:18'
-];
+    // The data is valid. $validated contains ONLY email and password.
+}
+```
+
+### Manual Validator
+
+If you need more control, you can use the `Validator` facade:
+
+```php
+use Plugs\Facades\Validator;
 
 $validator = Validator::make($data, $rules);
 

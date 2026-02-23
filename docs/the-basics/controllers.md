@@ -1,144 +1,90 @@
 # Controllers
 
-Controllers are the entry points for your application's HTTP requests. They handle incoming requests, interact with your domain logic (Services, Actions, Repositories), and return responses.
+Controllers are the core of your application's logic. They handle requests, interact with services or models, and return responses.
 
 ## Generating Controllers
 
-The framework provides a powerful `make:controller` command to generate various types of controllers:
+Use the `make:controller` command to generate controllers quickly:
 
 ```bash
 php theplugs make:controller UserController
 ```
 
-### Options
+### Key Options
 
-- `--resource` (`-r`): Generate a resource controller with standard CRUD methods (index, create, store, show, edit, update, destroy).
-- `--api`: Generate an API controller (excludes create/edit methods).
-- `--invokable` (`-i`): Generate a single-action controller (`__invoke` method).
-- `--model=ModelName`: Associate the controller with a model.
-- `--requests`: Generate FormRequest classes for validation.
-- `--test`: Generate a test class for the controller.
+- `--resource` (`-r`): Generate a controller with all standard CRUD methods.
+- `--api`: Generate an API-friendly controller (omits create/edit views).
+- `--invokable` (`-i`): Create a single-action class with an `__invoke` method.
+- `--model=Model`: Associate the controller with a specific model.
 
 ## Resource Controllers
 
-Resource controllers provide a standardized way to handle CRUD operations.
-
-```bash
-php theplugs make:controller ProductController --resource --model=Product
-```
-
-Generated structure:
+A resource controller provides a standardized structure for managing data.
 
 ```php
-<?php
-
 namespace App\Http\Controllers;
 
 use App\Models\Product;
-use Illuminate\Http\Request;
+use Plugs\Http\Message\Request;
 use Plugs\Base\Controller\Controller;
 
 class ProductController extends Controller
 {
     public function index()
     {
-        // List products
+        return view('products.index', [
+            'products' => Product::all()
+        ]);
     }
 
     public function store(Request $request)
     {
-        // Manual validation using the Validator
-        $validated = \Plugs\Security\Validator::make($request->all(), [
-            'name' => 'required|string',
-            'price' => 'required|numeric',
-        ])->validateOrFail();
+        // Convenient inline validation
+        $validated = $request->validate([
+            'name' => 'required|string|max:255',
+            'price' => 'required|numeric|min:0',
+        ]);
 
-        // Create product
-        $product = Product::create($validated);
+        Product::create($validated);
 
-        return response()->json($product, 201);
-    }
-
-    public function show($id)
-    {
-        // Show product
-    }
-
-    public function update(Request $request, $id)
-    {
-        // Update product
-    }
-
-    public function destroy($id)
-    {
-        // Delete product
+        return redirect()->route('products.index');
     }
 }
 ```
 
-## API Controllers
-
-API controllers are streamlined for API development, omitting methods for returning HTML views (create, edit).
-
-```bash
-php theplugs make:controller Api/V1/UserController --api --model=User
-```
-
 ## Dependency Injection
 
-You can inject services, repositories, or actions directly into your controller's constructor or methods.
+The framework automatically injects classes into your controller's constructor or methods via the Service Container.
 
 ```php
-<?php
-
-namespace App\Http\Controllers;
-
-use App\Services\UserService;
-use App\Repositories\Interfaces\ProductRepositoryInterface;
-
 class OrderController extends Controller
 {
-    protected $userService;
-    protected $products;
-
     public function __construct(
-        UserService $userService,
-        ProductRepositoryInterface $products
-    ) {
-        $this->userService = $userService;
-        $this->products = $products;
-    }
+        protected ProductRepository $products
+    ) {}
 
-    public function index()
+    public function show(Request $request, $id)
     {
-        $products = $this->products->all();
+        $product = $this->products->find($id);
         // ...
     }
 }
 ```
 
-## Single Action Controllers
+## Invokable Controllers
 
-For complex actions that don't fit into the standard CRUD verbs, you can use invokable controllers.
-
-```bash
-php theplugs make:controller ProvisionServerController --invokable
-```
-
-Usage:
+If a controller only performs one complex action, you can use the `__invoke` method.
 
 ```php
-class ProvisionServerController extends Controller
+// Route
+Route::post('/server/provision', ProvisionController::class);
+
+// Controller
+class ProvisionController extends Controller
 {
     public function __invoke(Request $request)
     {
-        // Provisioning logic...
+        // Logical flow...
     }
 }
-```
-
-Route registration:
-
-```php
-Route::post('/server/provision', ProvisionServerController::class);
 ```

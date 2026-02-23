@@ -28,60 +28,33 @@ Welcome to the official documentation for the **Plugs** framework. Plugs is a li
 ### 🧩 The Basics
 
 - [Routing](file:///docs/the-basics/routing.md)
-- [Route Model Binding](file:///docs/the-basics/route-model-binding.md) (New)
 - [Controllers](file:///docs/the-basics/controllers.md)
-- [Requests & Responses](file:///docs/the-basics/requests.md)
-- [API Responses](file:///docs/the-basics/api-responses.md)
-- [API Resources](file:///docs/the-basics/api-resources.md)
-- [**Views & Components**](file:///docs/views/README.md)
-- [Navigation](file:///docs/the-basics/navigation.md)
-- [Validation](file:///docs/security/validation.md)
-- [Localization](file:///docs/the-basics/localization.md) (New)
-- [Logging](file:///docs/the-basics/logging.md)
+- [Requests](file:///docs/the-basics/requests.md) (Updated)
+- [Logging](file:///docs/the-basics/logging.md) (Updated)
+- [Helper Functions](file:///docs/the-basics/helpers.md) (Updated)
+- [Views & Components](file:///docs/views/README.md)
 - [Debugging & Performance](file:///docs/the-basics/debugging.md)
 - [Filesystem Storage](file:///docs/the-basics/storage.md)
-- [Image Manipulation](file:///docs/features/image-manipulation.md) (New)
-- [Flash Messages](file:///docs/features/flash-messages.md)
-- [Health Checks](file:///docs/features/health-checks.md) (New)
-- [**Testing**](file:///docs/testing/basics.md)
-- [Factories & Seeders](file:///docs/database/factories-seeders.md)
 
 ### 🗄️ Database
 
-- [Getting Started](file:///docs/database/getting-started.md)
+- [Introduction](file:///docs/database/getting-started.md)
 - [Query Builder](file:///docs/database/query-builder.md)
-- [Query Filtering](file:///docs/database/query-filtering.md) (New)
 - [Migrations](file:///docs/database/migrations.md)
 - [Models](file:///docs/database/models.md)
 - [Pagination](file:///docs/database/pagination.md)
-- [Factories & Seeders](file:///docs/database/factories-seeders.md)
 
-### 🛡️ Security
+### 🛡️ Security & Features
 
-- [Authentication](file:///docs/security/authentication.md)
-- [Validation](file:///docs/security/validation.md) (New)
+- [Authentication](file:///docs/features/authentication.md) (Updated)
+- [Validation](file:///docs/features/validation.md) (Updated)
+- [Caching](file:///docs/features/caching.md) (Updated)
 - [CSRF Protection](file:///docs/security/csrf-protection.md)
-- [Security Headers](file:///docs/security/security-headers.md)
 - [Security Shield](file:///docs/security/security-shield.md)
-
-### 🏛️ Architecture & Clean Code (New)
-
-- [Repositories](file:///docs/architecture/repositories.md)
-- [Service Layer](file:///docs/architecture/services.md)
-- [Form Requests](file:///docs/architecture/form-requests.md)
-- [API Resources](file:///docs/architecture/api-resources.md)
-- [Complete CRUD Example](file:///docs/architecture/crud-example.md)
 
 ### ⚡ Advanced Features
 
-- [Cache System](file:///docs/advanced/cache.md)
-- [Queues](file:///docs/advanced/queues.md)
-- [Form Builder](file:///docs/advanced/form-builder.md)
-- [Rich Text Editor](file:///docs/features/rich-text-editor.md) (New)
-- [Payments & Transactions](file:///docs/features/payments.md)
-- [Inertia / SPA Mode](file:///docs/advanced/inertia-spa.md)
+- [Queues & Background Jobs](file:///docs/advanced/queues.md) (Updated)
 - [Task Scheduling](file:///docs/advanced/scheduling.md)
-- [Events](file:///docs/advanced/events.md) (New)
-- [Notifications](file:///docs/advanced/notifications.md) (New)
-- [Asset Management](file:///docs/advanced/asset-management.md) (New)
+- [Asset Management](file:///docs/advanced/asset-management.md)
 - [CLI Tool (theplugs)](file:///docs/advanced/cli-commands.md)

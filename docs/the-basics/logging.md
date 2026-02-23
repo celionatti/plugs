@@ -1,6 +1,6 @@
 # Logging
 
-Plugs provides a robust, PSR-3 compliant logging system that allows you to record information about your application's behavior.
+Plugs provides a robust, PSR-3 compliant logging system that allows you to record information about your application's behavior. It features a multi-channel manager that can route logs to various destinations.
 
 ## Usage
 
@@ -27,6 +27,24 @@ logger('An error occurred.', 'error', ['context' => 'data']);
 $logger = logger();
 ```
 
+## Multi-Channel Logging
+
+By default, Plugs uses the `stack` channel which can log to multiple destinations simultaneously. You can log to specific channels using the `channel` method:
+
+```php
+Log::channel('daily')->info('Something happened today.');
+Log::channel('stderr')->error('This goes to the error log.');
+```
+
+### Available Drivers
+
+| Driver   | Description                                                  |
+| -------- | ------------------------------------------------------------ |
+| `single` | A single file-based logger.                                  |
+| `daily`  | A daily rotating log file with automatic pruning.            |
+| `stderr` | Logs output directly to the PHP `stderr` stream.             |
+| `stack`  | A special channel that delegates to multiple other channels. |
+
 ## Context Interpolation
 
 The logger automatically replaces placeholders in the message with values from the context array:
@@ -38,19 +56,37 @@ Log::info('Hello {name}', ['name' => 'John']);
 
 ## Configuration
 
-The logger stores files in `storage/logs/plugs.log`. You can configure the log format in your `.env` file or environment:
+Logging is configured in `config/logging.php`. You can set the default channel and define multiple channels:
 
-```env
-LOG_FORMAT=json
+```php
+'default' => env('LOG_CHANNEL', 'stack'),
+
+'channels' => [
+    'stack' => [
+        'driver' => 'stack',
+        'channels' => ['daily'],
+    ],
+    'daily' => [
+        'driver' => 'daily',
+        'path' => storage_path('logs/plugs.log'),
+        'max_files' => 14,
+    ],
+],
 ```
+
+### Daily Rotation
+
+The `daily` driver creates a new log file for each day (e.g., `plugs-2026-02-23.log`) and automatically deletes files older than the `max_files` setting.
 
 ### Structured JSON Logging
 
-When the log format is set to `json`, the framework will output logs as single-line JSON objects, which are ideal for centralized logging systems like ELK, Datadog, or AWS CloudWatch.
+When the log format is set to `json` (if supported by the driver), the framework will output logs as single-line JSON objects, ideal for centralized logging systems.
 
-**Example Output:**
 ```json
-{"timestamp":"2026-01-29 12:00:00","level":"INFO","message":"User 123 logged in","context":{"user_id":123}}
+{
+  "timestamp": "2026-01-29 12:00:00",
+  "level": "INFO",
+  "message": "User 123 logged in",
+  "context": { "user_id": 123 }
+}
 ```
-
-This format makes it much easier to query and aggregate logs across multiple distributed servers.

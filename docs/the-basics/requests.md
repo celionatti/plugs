@@ -1,91 +1,109 @@
-# Form Requests
+# Requests
 
-Form Requests are custom request classes that encapsulate validation and authorization logic. They help keep your controllers clean by moving complex validation rules out of the controller methods.
+Plugs provides a powerful `ServerRequest` object that extends the standard PSR-7 interface with many convenient methods for accessing input and validating data.
 
-## Generating Requests
+## Accessing Input
 
-Use the `make:request` command to generate a new form request class.
+You can access all input data (query parameters and post body) using the following methods:
+
+```php
+// Get all input
+$data = $request->all();
+
+// Get specific field
+$email = $request->input('email');
+
+// Get only specific fields
+$data = $request->only(['username', 'password']);
+
+// Get all except specific fields
+$data = $request->except(['_token']);
+```
+
+### Input Casting
+
+The request object provides helpers to automatically cast input to specific types:
+
+- `$request->boolean('subscribed')` - Returns `true` for `"1"`, `"true"`, `"on"`, or `"yes"`.
+- `$request->integer('age')` - Casts input to an integer.
+- `$request->string('bio')` - Casts input to a string.
+- `$request->clamp('rating', 1, 5)` - Casts to integer and restricts the value between min and max.
+
+## Validation
+
+### Inline Validation
+
+The most convenient way to validate a request is using the `validate()` method directly in your controller.
+
+> [!IMPORTANT]
+> The `validate()` method returns **only** the data that was validated. This protects your application against mass assignment vulnerabilities from extra, unvalidated fields.
+
+```php
+public function store(Request $request)
+{
+    $validated = $request->validate([
+        'title' => 'required|string|max:255',
+        'body' => 'required',
+    ]);
+
+    // $validated contains ONLY 'title' and 'body'
+    Post::create($validated);
+}
+```
+
+If validation fails:
+
+- For **Web requests**, it automatically redirects back with flash errors and old input.
+- For **API requests**, it throws a `ValidationException` which the framework renders as a 422 JSON response.
+
+## Form Requests
+
+For more complex validation logic, you can use Form Request classes. Use the `make:request` command to generate one:
 
 ```bash
 php theplugs make:request StoreUserRequest
 ```
 
-### Options
+### Structure
 
-- `--rules=name,email`: Pre-define validation rules for fields.
-- `--auth`: Include an authorization method with a template.
-- `--subDir=Api/V1`: Organize requests into subdirectories.
-
-Example:
-
-```bash
-php theplugs make:request StoreProductRequest --rules=name,price,category_id --auth
-```
-
-## Structure
-
-A Form Request class contains two main methods: `authorize` and `rules`.
+A Form Request class contains `authorize` and `rules` methods:
 
 ```php
-<?php
-
 namespace App\Http\Requests;
 
 use Plugs\Http\Requests\FormRequest;
 
 class StoreProductRequest extends FormRequest
 {
-    /**
-     * Determine if the user is authorized to make this request.
-     */
     public function authorize(): bool
     {
         return $this->user()->can('create', Product::class);
     }
 
-    /**
-     * Get the validation rules that apply to the request.
-     */
     public function rules(): array
     {
         return [
             'name' => 'required|string|max:255',
             'price' => ['required', 'numeric', 'min:0'],
-            'category_id' => 'required|exists:categories,id',
-            'description' => 'nullable|string',
-        ];
-    }
-
-    /**
-     * Custom error messages.
-     */
-    public function messages(): array
-    {
-        return [
-            'category_id.exists' => 'The selected category is invalid.',
         ];
     }
 }
 ```
 
-## Usage
+### Usage
 
-Type-hint the request class in your controller method. The framework will automatically validate the incoming request before the controller method is called. If validation fails, a redirect or JSON error response will be generated automatically.
+Type-hint the request in your controller. Plugs handles validation before your code even runs:
 
 ```php
 public function store(StoreProductRequest $request)
 {
-    // The incoming request is valid...
-
     $validated = $request->validated();
-
-    // Create product...
 }
 ```
 
 ## Sanitization
 
-You can also define sanitizers to clean input data before validation.
+You can define sanitizers in Form Requests to clean data before validation:
 
 ```php
 public function sanitizers(): array

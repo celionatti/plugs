@@ -1,10 +1,8 @@
 # Models
 
-Models are the heart of your application, representing your data and business logic. They interact with your database tables and provide an intuitive API for querying and manipulating data.
+Models represent your data and business logic. They provide an intuitive, Eloquent-inspired API for interacting with your database.
 
 ## Generating Models
-
-The `make:model` command is a powerful tool for generating models and their related files.
 
 ```bash
 php theplugs make:model Product
@@ -12,33 +10,15 @@ php theplugs make:model Product
 
 ### Options
 
-- `--migration` (`-m`): Create a migration file.
-- `--controller` (`-c`): Create a controller.
-- `--resource` (`-r`): Create a resource controller.
-- `--factory` (`-f`): Create a factory.
-- `--seed` (`-s`): Create a seeder.
-- `--all` (`-a`): Create migration, factory, seeder, and controller.
-- `--pivot`: Generate a pivot model (inherits from `Pivot`).
-- `--soft-deletes`: Add `SoftDeletes` trait.
-- `--fillable=name,price`: Define fillable attributes.
-- `--hidden=password`: Define hidden attributes.
-- `--casts=is_active:boolean`: Define attribute casting.
+- `--migration` (`-m`): Generate a table migration.
+- `--controller` (`-c`): Generate a controller.
+- `--all` (`-a`): Generate migration, controller, factory, and seeder.
 
-Example:
+## Model Structure
 
-```bash
-php theplugs make:model Product --all --fillable=name,price,description --casts=is_active:boolean
-```
-
-## Model Features
-
-### Inheritance
-
-All models extend the `Plugs\Base\Model\PlugModel` class, which provides Eloquent-like functionality.
+All models extend `Plugs\Base\Model\PlugModel`.
 
 ```php
-<?php
-
 namespace App\Models;
 
 use Plugs\Base\Model\PlugModel;
@@ -48,15 +28,13 @@ class Product extends PlugModel
 {
     use SoftDeletes;
 
+    // Table name (defaults to snake_case plural of class)
     protected $table = 'products';
 
-    protected $fillable = [
-        'name',
-        'price',
-        'description',
-        'is_active',
-    ];
+    // Mass-assignment protection
+    protected $fillable = ['name', 'price', 'is_active'];
 
+    // Automatic type casting
     protected $casts = [
         'is_active' => 'boolean',
         'price' => 'decimal:2',
@@ -64,35 +42,51 @@ class Product extends PlugModel
 }
 ```
 
-### Relationships
-
-Define relationships methods to link models.
+## Basic Operations
 
 ```php
-public function category()
-{
-    return $this->belongsTo(Category::class);
-}
+// Creating
+$user = User::create(['name' => 'Emma']);
 
+// Querying
+$users = User::where('active', 1)->get();
+$user = User::find(1);
+
+// Updating
+$user->update(['name' => 'John']);
+
+// Deleting
+$user->delete();
+```
+
+## Relationships
+
+Define relationships to link models together.
+
+```php
+// One-to-Many
 public function reviews()
 {
     return $this->hasMany(Review::class);
 }
-```
 
-## Scopes
-
-Query scopes allow you to define common sets of constraints that you may easily reuse throughout your application.
-
-```php
-public function scopeActive($query)
+// Inverse
+public function user()
 {
-    return $query->where('is_active', true);
+    return $this->belongsTo(User::class);
 }
 ```
 
-Usage:
+## Query Scopes
+
+Scopes allow you to reuse common query constraints:
 
 ```php
-$activeProducts = Product::active()->get();
+public function scopePopular($query)
+{
+    return $query->where('votes', '>', 100);
+}
+
+// Usage
+$popular = Post::popular()->get();
 ```

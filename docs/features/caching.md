@@ -12,6 +12,9 @@ The framework can use multiple cache layers simultaneously:
 ```php
 // Automatically handles tiered lookups
 $data = Cache::remember('users.count', 3600, fn() => User::count());
+
+// Store indefinitely
+Cache::rememberForever('settings', fn() => Setting::all());
 ```
 
 ## 2. Tagged Caching
