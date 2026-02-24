@@ -27,6 +27,23 @@ abstract class AIBaseDriver implements AIDriverInterface
     }
 
     /**
+     * @inheritDoc
+     */
+    public function promptAsync(string $prompt, array $options = [])
+    {
+        return fn() => $this->prompt($prompt, $options);
+    }
+
+    /**
+     * @inheritDoc
+     */
+    public function chatAsync(array $messages, array $options = [])
+    {
+        return fn() => $this->chat($messages, $options);
+    }
+
+
+    /**
      * Get a config value.
      */
     protected function getConfig(string $key, $default = null)

@@ -16,6 +16,15 @@ interface AIDriverInterface
     public function prompt(string $prompt, array $options = []): string;
 
     /**
+     * Send a prompt to the AI model asynchronously.
+     * Returns a promise-like object or a resolution callback.
+     *
+     * @param string $prompt
+     * @param array $options
+     */
+    public function promptAsync(string $prompt, array $options = []);
+
+    /**
      * Send a chat-style message history to the AI model.
      *
      * @param array $messages
@@ -23,6 +32,15 @@ interface AIDriverInterface
      * @return string
      */
     public function chat(array $messages, array $options = []): string;
+
+    /**
+     * Send a chat history to the AI model asynchronously.
+     *
+     * @param array $messages
+     * @param array $options
+     */
+    public function chatAsync(array $messages, array $options = []);
+
 
     /**
      * Set the model to be used.

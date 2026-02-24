@@ -52,6 +52,14 @@ class Container implements ContainerInterface
         return self::$instance;
     }
 
+    /**
+     * Set the container instance.
+     */
+    public static function setInstance(?self $instance): void
+    {
+        self::$instance = $instance;
+    }
+
     public function setInspector(Inspector $inspector): void
     {
         $this->inspector = $inspector;

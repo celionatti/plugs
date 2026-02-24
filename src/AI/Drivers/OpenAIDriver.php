@@ -40,21 +40,27 @@ class OpenAIDriver extends AIBaseDriver
      */
     public function chat(array $messages, array $options = []): string
     {
-        try {
-            $response = $this->client->post('chat/completions', [
-                'json' => array_merge([
-                    'model' => $this->model,
-                    'messages' => $messages,
-                ], $options),
-            ]);
-
-            $data = json_decode($response->getBody()->getContents(), true);
-
-            return $data['choices'][0]['message']['content'] ?? '';
-        } catch (\Exception $e) {
-            throw new RuntimeException("OpenAI API Error: " . $e->getMessage(), (int) $e->getCode(), $e);
-        }
+        return $this->chatAsync($messages, $options)->wait();
     }
+
+    /**
+     * @inheritDoc
+     */
+    public function chatAsync(array $messages, array $options = [])
+    {
+        $promise = $this->client->postAsync('chat/completions', [
+            'json' => array_merge([
+                'model' => $this->model,
+                'messages' => $messages,
+            ], $options),
+        ]);
+
+        return $promise->then(function ($response) {
+            $data = json_decode($response->getBody()->getContents(), true);
+            return $data['choices'][0]['message']['content'] ?? '';
+        });
+    }
+
 
     /**
      * @inheritDoc

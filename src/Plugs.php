@@ -55,6 +55,7 @@ class Plugs
     private $dispatcher;
     private $fallbackHandler;
     private $container;
+    private array $terminatingCallbacks = [];
 
     /**
      * Essential bootstrappers — always run on every request.
@@ -104,6 +105,7 @@ class Plugs
     {
         $this->container = \Plugs\Container\Container::getInstance();
         $this->container->instance('app', $this->container);
+        $this->container->instance(self::class, $this);
 
         $this->bootstrap();
         $this->registerDeferredServices();
@@ -319,7 +321,7 @@ class Plugs
     private function bootstrapAi(): object
     {
         $this->container->alias('ai', \Plugs\AI\AIManager::class);
-        return new \Plugs\AI\AIManager(config('ai'));
+        return new \Plugs\AI\AIManager(config('ai'), $this->container->make('cache'));
     }
 
     private function bootstrapConcurrency(): void
@@ -371,6 +373,16 @@ class Plugs
         return $this;
     }
 
+    /**
+     * Register a callback to be executed after the response has been sent.
+     */
+    public function terminating(callable $callback): self
+    {
+        $this->terminatingCallbacks[] = $callback;
+
+        return $this;
+    }
+
     public function run(?ServerRequestInterface $request = null): void
     {
         // Reuse the request from the container if available (Fix 3: avoid duplicate fromGlobals)
@@ -389,6 +401,9 @@ class Plugs
 
             $response = $this->dispatcher->handle($request);
             $this->emitResponse($response);
+
+            // Execute post-response logic
+            $this->terminate($request, $response);
         } catch (\Throwable $e) {
             // Always route through the exception handler — it already
             // renders a detailed debug page when app.debug is true.
@@ -397,6 +412,9 @@ class Plugs
                 $handler = $this->container->make(\Plugs\Exceptions\Handler::class);
                 $response = $handler->handle($e, $request);
                 $this->emitResponse($response);
+
+                // Still terminate even on error
+                $this->terminate($request, $response);
             } catch (\Throwable $fallback) {
                 // Last resort: if the handler itself fails, render minimal safe output
                 http_response_code(500);
@@ -409,6 +427,27 @@ class Plugs
                     echo '<h1>500 — Internal Server Error</h1>';
                 }
             }
+        }
+    }
+
+    /**
+     * Terminate the request lifecycle.
+     */
+    public function terminate(ServerRequestInterface $request, ResponseInterface $response): void
+    {
+        // Close the connection if possible so the user doesn't wait for background tasks
+        if (function_exists('fastcgi_finish_request')) {
+            fastcgi_finish_request();
+        }
+
+        // Stop the profiler BEFORE running background tasks 
+        // to accurately measure user-perceived latency.
+        if (class_exists(\Plugs\Debug\Profiler::class)) {
+            \Plugs\Debug\Profiler::getInstance()->stop();
+        }
+
+        foreach ($this->terminatingCallbacks as $callback) {
+            $callback($request, $response);
         }
     }
 

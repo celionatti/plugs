@@ -16,10 +16,12 @@ class AIManager
 {
     protected array $drivers = [];
     protected array $config;
+    protected ?\Plugs\Cache\CacheManager $cache;
 
-    public function __construct(array $config)
+    public function __construct(array $config, ?\Plugs\Cache\CacheManager $cache = null)
     {
         $this->config = $config;
+        $this->cache = $cache;
     }
 
     /**
@@ -119,9 +121,50 @@ class AIManager
 
     /**
      * Render a prompt template and send it to the driver.
+     * 
+     * Options:
+     * - cache: bool|int (seconds) Enable caching for this prompt
      */
     public function prompt(string $template, array $data = [], array $options = []): string
     {
+        $useCache = $options['cache'] ?? false;
+        $useSwr = $options['swr'] ?? false;
+
+        if (($useCache || $useSwr) && $this->cache) {
+            $ttl = is_int($useCache) ? $useCache : 3600;
+            $key = 'ai_prompt_' . md5($template . serialize($data) . serialize($options));
+
+            // SWR: If hit, return cached value and refresh in background
+            if ($useSwr && $this->cache->has($key)) {
+                $cached = $this->cache->get($key);
+
+                // Refresh in background
+                if (function_exists('app') && app()->bound(\Plugs\Plugs::class)) {
+                    app(\Plugs\Plugs::class)->terminating(function () use ($key, $ttl, $template, $data, $options) {
+                        $fresh = $this->executePrompt($template, $data, $options);
+                        $this->cache->set($key, $fresh, $ttl);
+                    });
+                }
+
+                return $cached;
+            }
+
+            return $this->cache->remember($key, $ttl, function () use ($template, $data, $options) {
+                return $this->executePrompt($template, $data, $options);
+            });
+        }
+
+        return $this->executePrompt($template, $data, $options);
+    }
+
+    /**
+     * Internal execution of prompt logic.
+     */
+    protected function executePrompt(string $template, array $data = [], array $options = []): string
+    {
+        // Strip internal framework options so they don't leak into API calls
+        unset($options['swr'], $options['cache']);
+
         // Simple prompt if it doesn't look like a template file
         if (!preg_match('/^[a-zA-Z0-9._-]+$/', $template) || !file_exists(resource_path("prompts/{$template}.prompt"))) {
             return $this->driver()->prompt($template, $options);
@@ -141,10 +184,79 @@ class AIManager
      */
     public function classify(string $text, array $categories = [], array $options = []): string
     {
+        $useCache = $options['cache'] ?? false;
+        $useSwr = $options['swr'] ?? false;
+
+        if (($useCache || $useSwr) && $this->cache) {
+            $ttl = is_int($useCache) ? $useCache : 3600;
+            $key = 'ai_classify_' . md5($text . serialize($categories) . serialize($options));
+
+            if ($useSwr && $this->cache->has($key)) {
+                $cached = $this->cache->get($key);
+
+                if (function_exists('app') && app()->bound(\Plugs\Plugs::class)) {
+                    app(\Plugs\Plugs::class)->terminating(function () use ($key, $ttl, $text, $categories, $options) {
+                        $fresh = $this->executeClassify($text, $categories, $options);
+                        $this->cache->set($key, $fresh, $ttl);
+                    });
+                }
+
+                return $cached;
+            }
+
+            return $this->cache->remember($key, $ttl, function () use ($text, $categories, $options) {
+                return $this->executeClassify($text, $categories, $options);
+            });
+        }
+
+        return $this->executeClassify($text, $categories, $options);
+    }
+
+    /**
+     * Internal execution of classify logic.
+     */
+    protected function executeClassify(string $text, array $categories = [], array $options = []): string
+    {
+        // Strip internal framework options so they don't leak into API calls
+        unset($options['swr'], $options['cache']);
+
         $categoryList = implode(', ', $categories);
         $prompt = "Classify the following text into one of these categories: {$categoryList}.\n\nText: \"{$text}\"\n\nCategory:";
 
         return trim($this->driver()->prompt($prompt, array_merge(['max_tokens' => 10], $options)));
+    }
+
+    /**
+     * Explicitly cache an AI operation.
+     */
+    public function remember(string $key, \Closure $callback, int $ttl = 3600)
+    {
+        if (!$this->cache) {
+            return $callback();
+        }
+
+        return $this->cache->remember('ai_custom_' . $key, $ttl, $callback);
+    }
+
+    /**
+     * Dispatch an AI task to the queue for background processing.
+     */
+    public function queue(string $method, array $params = []): void
+    {
+        if (function_exists('dispatch')) {
+            dispatch(\Plugs\AI\Jobs\AIJob::class, [
+                'method' => $method,
+                'params' => $params
+            ]);
+        }
+    }
+
+    /**
+     * Get a deferred version of the AI manager.
+     */
+    public function defer(): DeferredAIManager
+    {
+        return new DeferredAIManager($this);
     }
 
     /**
@@ -154,4 +266,5 @@ class AIManager
     {
         return app(VectorManager::class);
     }
+
 }
