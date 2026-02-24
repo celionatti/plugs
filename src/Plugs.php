@@ -209,6 +209,10 @@ class Plugs
         $container->singleton('cache', function () {
             return new \Plugs\Cache\CacheManager();
         });
+
+        $container->singleton('ratelimiter', function ($container) {
+            return new \Plugs\Security\RateLimiter();
+        });
     }
 
     private function bootstrapAuth(): object
