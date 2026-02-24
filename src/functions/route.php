@@ -12,6 +12,8 @@ declare(strict_types=1);
 */
 
 use Plugs\Http\RedirectResponse;
+use Plugs\Http\Redirector;
+use Plugs\Router\Route;
 use Plugs\Router\Router;
 use Psr\Http\Message\ServerRequestInterface;
 
@@ -97,7 +99,7 @@ if (!function_exists('setCurrentRequest')) {
 }
 
 if (!function_exists('currentRoute')) {
-    function currentRoute(?ServerRequestInterface $request = null): ?\Plugs\Router\Route
+    function currentRoute(?ServerRequestInterface $request = null): ?Route
     {
         $request = $request ?? request();
 
@@ -345,11 +347,15 @@ if (!function_exists('redirect')) {
     /**
      * Create a redirect response (chainable)
      */
-    function redirect(?string $url = null, int $status = 302): RedirectResponse
+    function redirect(?string $url = null, int $status = 302): RedirectResponse|Redirector
     {
-        $redirectResponse = new RedirectResponse($url ?? '/', $status);
+        $redirector = new Redirector();
 
-        return $redirectResponse;
+        if (is_null($url)) {
+            return $redirector;
+        }
+
+        return $redirector->to($url, $status);
     }
 }
 
