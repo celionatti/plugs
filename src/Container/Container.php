@@ -36,6 +36,7 @@ class Container implements ContainerInterface
     private $scopedInstances = [];
     private $aliases = [];
     private $contextual = [];
+    private array $reflectionCache = [];
 
     private ?Inspector $inspector = null;
 
@@ -201,18 +202,25 @@ class Container implements ContainerInterface
             return $concrete($this, $parameters);
         }
 
-        try {
-            $reflector = new ReflectionClass($concrete);
-        } catch (ReflectionException $e) {
-            throw BindingResolutionException::targetNotFound($concrete, $e);
-        }
+        if (isset($this->reflectionCache[$concrete])) {
+            [$reflector, $constructor, $constructorParams] = $this->reflectionCache[$concrete];
+        } else {
+            try {
+                $reflector = new ReflectionClass($concrete);
+            } catch (ReflectionException $e) {
+                throw BindingResolutionException::targetNotFound($concrete, $e);
+            }
 
-        // Check if class is instantiable
-        if (!$reflector->isInstantiable()) {
-            throw BindingResolutionException::notInstantiable($concrete);
-        }
+            // Check if class is instantiable
+            if (!$reflector->isInstantiable()) {
+                throw BindingResolutionException::notInstantiable($concrete);
+            }
 
-        $constructor = $reflector->getConstructor();
+            $constructor = $reflector->getConstructor();
+            $constructorParams = $constructor ? $constructor->getParameters() : null;
+
+            $this->reflectionCache[$concrete] = [$reflector, $constructor, $constructorParams];
+        }
 
         // If no constructor, just instantiate
         if ($constructor === null) {
@@ -221,12 +229,13 @@ class Container implements ContainerInterface
 
         // Resolve constructor dependencies
         $dependencies = $this->resolveDependencies(
-            $constructor->getParameters(),
+            $constructorParams,
             $parameters
         );
 
         return $reflector->newInstanceArgs($dependencies);
     }
+
 
     /**
      * Cache for resolved dependencies.

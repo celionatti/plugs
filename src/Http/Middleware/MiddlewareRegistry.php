@@ -93,10 +93,33 @@ class MiddlewareRegistry
     }
 
     /**
+     * Add a middleware alias dynamically.
+     */
+    public function addAlias(string $name, string $class): void
+    {
+        $this->aliases[$name] = $class;
+    }
+
+    /**
+     * Add a middleware group dynamically.
+     */
+    public function addGroup(string $name, array $middleware): void
+    {
+        $this->groups[$name] = $middleware;
+    }
+
+    /**
      * Resolve a middleware alias or group name into actual class strings.
      * 
      * @param string|array $middleware The alias, group name, or class string
      * @return array Array of resolved class names
+     */
+    /**
+     * Resolve a middleware alias or group name into actual class strings.
+     * Supports parameters: "alias:param1,param2"
+     * 
+     * @param string|array $middleware The alias, group name, or class string
+     * @return array Array of resolved class names (optionally with parameters)
      */
     public function resolve(string|array $middleware): array
     {
@@ -108,29 +131,45 @@ class MiddlewareRegistry
             return array_unique($resolved);
         }
 
-        // Check if it's a group
+        $params = '';
+        if (strpos($middleware, ':') !== false) {
+            [$middleware, $params] = explode(':', $middleware, 2);
+            $params = ':' . $params;
+        }
+
+        // Check if it's a group (groups don't support direct params on the group name itself usually, 
+        // but we apply them to members if it ever makes sense. For now, just expand.)
         if (isset($this->groups[$middleware])) {
             return $this->resolve($this->groups[$middleware]);
         }
 
         // Check if it's an alias
         if (isset($this->aliases[$middleware])) {
-            return [$this->aliases[$middleware]];
+            $resolvedClass = $this->aliases[$middleware];
+            return [$resolvedClass . $params];
         }
 
         // Fallback: assume it's a class string
-        return [$middleware];
+        return [$middleware . $params];
     }
+
 
     /**
      * Get the global kernel middleware stack.
-     * 
-     * @return array
      */
     public function getKernel(): array
     {
         return $this->kernel;
     }
+
+    /**
+     * Set the global kernel middleware stack.
+     */
+    public function setKernel(array $kernel): void
+    {
+        $this->kernel = $kernel;
+    }
+
 
     /**
      * Get the priority of a middleware class.
@@ -156,6 +195,14 @@ class MiddlewareRegistry
             $classA = is_string($a) ? $a : get_class($a);
             $classB = is_string($b) ? $b : get_class($b);
 
+            // Strip parameters for priority lookup
+            if (strpos($classA, ':') !== false) {
+                $classA = explode(':', $classA, 2)[0];
+            }
+            if (strpos($classB, ':') !== false) {
+                $classB = explode(':', $classB, 2)[0];
+            }
+
             $pA = $this->getPriority($classA);
             $pB = $this->getPriority($classB);
 
@@ -168,4 +215,5 @@ class MiddlewareRegistry
 
         return $middleware;
     }
+
 }

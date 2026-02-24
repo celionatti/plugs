@@ -62,7 +62,6 @@ class Router
     private ?string $groupDomain = null;
     private array $groupWhere = [];
     private array $namedRoutes = [];
-    private ?array $middlewareAliases = null;
     private array $routeCache = [];
     private bool $cacheEnabled = true;
     private array $reflectionCache = [];
@@ -75,6 +74,8 @@ class Router
     private bool $pagesRoutingEnabled = false;
     private string $cachePath = '';
     private array $staticRoutes = [];
+    private ?\Plugs\Http\Middleware\MiddlewareRegistry $registry = null;
+
 
     /**
      * Get the route cache path.
@@ -90,11 +91,28 @@ class Router
      */
     private ?Route $fallbackRoute = null;
 
+    public function __construct()
+    {
+        $this->resolveRegistry();
+    }
+
+    private function resolveRegistry(): void
+    {
+        if (function_exists('app') && app()->has(\Plugs\Http\Middleware\MiddlewareRegistry::class)) {
+            $this->registry = app(\Plugs\Http\Middleware\MiddlewareRegistry::class);
+        } else {
+            $this->registry = new \Plugs\Http\Middleware\MiddlewareRegistry();
+        }
+    }
+
     /**
-     * Middleware groups (e.g., 'web', 'api').
-     * @var array<string, array>
+     * Set the middleware registry.
      */
-    private array $middlewareGroups = [];
+    public function setRegistry(\Plugs\Http\Middleware\MiddlewareRegistry $registry): void
+    {
+        $this->registry = $registry;
+    }
+
 
     /**
      * Register route methods
@@ -277,25 +295,18 @@ class Router
 
     /**
      * Register a middleware group.
-     *
-     * @param string $name
-     * @param array $middleware
-     * @return void
      */
     public function middlewareGroup(string $name, array $middleware): void
     {
-        $this->middlewareGroups[$name] = $middleware;
+        $this->registry?->addGroup($name, $middleware);
     }
 
     /**
      * Get middleware from a group.
-     *
-     * @param string $name
-     * @return array
      */
     public function getMiddlewareGroup(string $name): array
     {
-        return $this->middlewareGroups[$name] ?? [];
+        return $this->registry?->resolve($name) ?? [];
     }
 
     /**
@@ -710,15 +721,7 @@ class Router
     {
         $handler = $route->getHandler();
 
-        $stack = new MiddlewareDispatcher();
-        $expandedMiddleware = $this->expandMiddleware($middleware);
-
-        foreach ($expandedMiddleware as $mw) {
-            if (is_string($mw)) {
-                $mw = $this->resolveMiddleware($mw);
-            }
-            $stack->add($mw);
-        }
+        $stack = new MiddlewareDispatcher($middleware, null, $this->registry);
 
         $stack->setFallbackHandler(function ($request) use ($handler) {
             return $this->executeHandler($handler, $request);
@@ -729,20 +732,11 @@ class Router
 
     /**
      * Expand middleware groups recursively
+     * Now delegated to the MiddlewareRegistry.
      */
     private function expandMiddleware(array $middleware): array
     {
-        $results = [];
-
-        foreach ($middleware as $mw) {
-            if (is_string($mw) && isset($this->middlewareGroups[$mw])) {
-                $results = array_merge($results, $this->expandMiddleware($this->middlewareGroups[$mw]));
-            } else {
-                $results[] = $mw;
-            }
-        }
-
-        return $results;
+        return $this->registry?->resolve($middleware) ?? $middleware;
     }
 
     /**
@@ -750,10 +744,9 @@ class Router
      */
     private function resolveMiddleware(string $middleware): object
     {
-        if ($this->middlewareAliases === null) {
-            $config = function_exists('config') ? config('middleware') : [];
-            $this->middlewareAliases = is_array($config) ? ($config['aliases'] ?? []) : [];
-        }
+        // This method is now largely redundant for modern stack 
+        // as Dispatcher handles resolving, but we keep it for 
+        // older parts if they still call it directly.
 
         $params = [];
         if (strpos($middleware, ':') !== false) {
@@ -762,12 +755,10 @@ class Router
             $params = explode(',', $paramString);
         }
 
-        if (isset($this->middlewareAliases[$middleware])) {
-            $middleware = $this->middlewareAliases[$middleware];
-        }
+        $resolved = $this->registry?->resolve($middleware)[0] ?? $middleware;
 
         $container = Container::getInstance();
-        $instance = $container->make($middleware);
+        $instance = $container->make($resolved);
 
         if (!empty($params) && method_exists($instance, 'setParameters')) {
             $instance->setParameters($params);

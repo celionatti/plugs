@@ -28,14 +28,18 @@ class MiddlewareDispatcher implements RequestHandlerInterface
     private $fallbackHandler;
     private ?\Plugs\Debug\Profiler $profiler;
 
-    public function __construct(array $middleware = [], ?callable $fallbackHandler = null)
+    public function __construct(array $middleware = [], ?callable $fallbackHandler = null, ?MiddlewareRegistry $registry = null)
     {
         $this->middlewareStack = $middleware;
         $this->fallbackHandler = $fallbackHandler;
         $this->profiler = \Plugs\Debug\Profiler::getInstance();
+        $this->registry = $registry;
 
-        $this->resolveRegistry();
+        if ($this->registry === null) {
+            $this->resolveRegistry();
+        }
     }
+
 
     private function resolveRegistry(): void
     {
@@ -131,11 +135,25 @@ class MiddlewareDispatcher implements RequestHandlerInterface
     private function wrapMiddleware($mw, \Closure $next, \Closure $handlerFactory): \Closure
     {
         return function (ServerRequestInterface $request) use ($mw, $next, $handlerFactory) {
+            $params = [];
+            $middleware = $mw;
+
+            // Parse parameters if it's a string like "Class:param1,param2"
+            if (is_string($middleware) && strpos($middleware, ':') !== false) {
+                [$middleware, $paramString] = explode(':', $middleware, 2);
+                $params = explode(',', $paramString);
+            }
+
             // Lazy load string-based middleware
-            $instance = is_string($mw) ? app($mw) : $mw;
+            $instance = is_string($middleware) ? app($middleware) : $middleware;
+
+            // Inject parameters if supported
+            if (!empty($params) && method_exists($instance, 'setParameters')) {
+                $instance->setParameters($params);
+            }
 
             if ($this->profiler && $this->profiler->isEnabled()) {
-                $name = is_string($mw) ? $mw : get_class($mw);
+                $name = is_string($middleware) ? $middleware : get_class($middleware);
                 $label = 'MW: ' . basename(str_replace('\\', '/', $name));
 
                 $this->profiler->startSegment('mw_' . $name, $label);
@@ -149,6 +167,7 @@ class MiddlewareDispatcher implements RequestHandlerInterface
             return $this->execute($instance, $request, $next, $handlerFactory);
         };
     }
+
 
     /**
      * Executes a single middleware instance.
