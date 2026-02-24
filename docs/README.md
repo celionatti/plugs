@@ -47,6 +47,8 @@ Welcome to the official documentation for the **Plugs** framework. Plugs is a li
 
 ### 🛡️ Security & Features
 
+- [AI Overview](file:///docs/ai/overview.md) (New)
+  - [AI Performance & SWR](file:///docs/ai/performance.md) (New)
 - [Authentication](file:///docs/features/authentication.md) (Updated)
 - [Validation](file:///docs/features/validation.md) (Updated)
 - [Caching](file:///docs/features/caching.md) (Updated)

@@ -26,6 +26,17 @@ $response = ai()->prompt("Summarize this: " . $content);
 - **Models**: Use the `HasAI` trait for automated content generation, summarization, and data prediction.
 - **Form Requests**: Analyze incoming data before it even reaches your controller.
 - **Validation**: Pass data through an AI check using the new `ai` validation rule.
+- **Performance**: High-speed AI execution with Caching, SWR, and Async support.
+
+## Performance Highlights
+
+Plugs is built for performance. AI operations can be optimized using:
+
+- **AI Caching**: Automatically cache prompt results to eliminate API round-trips.
+- **SWR (Stale-While-Revalidate)**: Serve cached AI content instantly while refreshing it in the background.
+- **Async Execution**: Run AI calls in parallel with other request logic to reduce total blocking time.
+
+[Learn more about AI Performance & Optimization](file:///docs/ai/performance.md)
 
 ## Getting Started
 

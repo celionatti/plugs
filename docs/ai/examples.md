@@ -79,3 +79,38 @@ public function handleSupport(Request $request)
     return response()->json(['message' => 'Ticket assigned to ' . $department]);
 }
 ```
+
+## 5. Zero-Latency Admin Dashboard
+
+Use SWR to ensure your dashboard stays fast even with heavy AI content.
+
+```php
+public function index()
+{
+    // These calls return instantly from cache (0ms)
+    // Refreshes happen in the background after page load
+    $headlines = ai()->prompt('news_headlines', [], ['swr' => true]);
+    $marketAnalysis = ai()->prompt('market_summary', [], ['swr' => true]);
+
+    return view('admin.dashboard', compact('headlines', 'marketAnalysis'));
+}
+```
+
+## 6. Non-Blocking Page Processing
+
+Use `defer()` to run AI calls in parallel with expensive database operations.
+
+```php
+public function show($id)
+{
+    // Start AI request (non-blocking)
+    $recommendations = ai()->defer()->prompt("Recommend similar products to ID: {$id}");
+
+    // AI is running in the background while we fetch data from DB
+    $product = Product::findOrFail($id);
+    $related = Product::where('category', $product->category)->limit(5)->get();
+
+    // AI request is only "awaited" when the view renders $recommendations
+    return view('products.show', compact('product', 'related', 'recommendations'));
+}
+```
