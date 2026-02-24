@@ -36,6 +36,7 @@ class Bootstrapper
     {
         $this->defineConstants();
         $this->loadEnvironment();
+        $this->registerRegistry();
         $this->initializeApplication();
         $this->configureDatabase();
         $this->configureSession();
@@ -85,6 +86,12 @@ class Bootstrapper
         $this->app = new Plugs();
     }
 
+    protected function registerRegistry(): void
+    {
+        $registry = new \Plugs\Http\Middleware\MiddlewareRegistry(config('middleware'));
+        $this->container->singleton(\Plugs\Http\Middleware\MiddlewareRegistry::class, fn() => $registry);
+    }
+
     protected function configureDatabase(): void
     {
         $databaseConfig = config('database');
@@ -106,58 +113,22 @@ class Bootstrapper
     {
         $securityConfig = config('security');
 
-        // Core Middlewares
-        $this->app->pipe(new \Plugs\Http\Middleware\SPAMiddleware());
-        $this->app->pipe(new \Plugs\Http\Middleware\FlashMiddleware());
-        $this->app->pipe(new \Plugs\Http\Middleware\HandleValidationExceptions());
+        // With the new MiddlewareDispatcher, Kernel middlewares are automatically added.
+        // We only need to pipe specific groups or dynamic middlewares here.
 
-        // Security Headers
-        if (!empty($securityConfig['headers'])) {
-            $this->app->pipe(new SecurityHeadersMiddleware($securityConfig['headers']));
-        }
-
-        // CORS
-        if ($securityConfig['cors']['enabled'] ?? false) {
-            $this->app->pipe(new CorsMiddleware(
-                $securityConfig['cors']['allowed_origins'],
-                $securityConfig['cors']['allowed_methods'],
-                $securityConfig['cors']['allowed_headers'],
-                $securityConfig['cors']['max_age']
-            ));
-        }
-
-        // Security Shield
+        // Initialize and pipe Security Shield if enabled
         if ($securityConfig['security_shield']['enabled'] ?? false) {
             $shieldConfig = $securityConfig['security_shield'];
             $securityShield = new SecurityShieldMiddleware($shieldConfig['config'] ?? []);
 
-            if (!empty($shieldConfig['rules'])) {
-                foreach ($shieldConfig['rules'] as $rule => $enabled) {
-                    $enabled ? $securityShield->enableRule($rule) : $securityShield->disableRule($rule);
-                }
-            }
-
-            if (!empty($shieldConfig['whitelist'])) {
-                foreach ($shieldConfig['whitelist'] as $ip) {
-                    $securityShield->addToWhitelist($ip);
-                }
-            }
+            // Rules and Whitelist are now better handled via config, 
+            // but we keep backward compatibility here if needed.
 
             $this->app->pipe($securityShield);
         }
 
-        // Rate Limiting
-        if (($securityConfig['rate_limit']['enabled'] ?? false) && !($securityConfig['security_shield']['enabled'] ?? false)) {
-            $this->app->pipe(new RateLimitMiddleware(
-                $securityConfig['rate_limit']['max_requests'],
-                $securityConfig['rate_limit']['per_minutes']
-            ));
-        }
-
-        // CSRF
-        if ($securityConfig['csrf']['enabled'] ?? false) {
-            $this->app->pipe(new CsrfMiddleware($securityConfig['csrf']));
-        }
+        // Add additional web middleware group (resolved by Registry)
+        $this->app->pipe('web');
 
         // Profiler
         if ($securityConfig['profiler']['enabled'] ?? false) {

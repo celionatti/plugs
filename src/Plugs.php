@@ -109,8 +109,7 @@ class Plugs
         $this->registerDeferredServices();
 
         $this->dispatcher = new MiddlewareDispatcher();
-        $this->dispatcher->add(new \Plugs\Http\Middleware\PreventRequestsDuringMaintenance()); // Global middleware
-        $this->dispatcher->add(new \Plugs\Http\Middleware\ShareErrorsFromSession()); // Errors middleware
+
 
         $this->fallbackHandler = function (ServerRequestInterface $request) {
             throw new \Plugs\Exceptions\RouteNotFoundException();
@@ -358,7 +357,7 @@ class Plugs
         return new \Plugs\Tenancy\TenantManager();
     }
 
-    public function pipe(MiddlewareInterface $middleware): self
+    public function pipe(string|MiddlewareInterface $middleware): self
     {
         $this->dispatcher->add($middleware);
 

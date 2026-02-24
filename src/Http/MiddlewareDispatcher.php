@@ -9,11 +9,12 @@ namespace Plugs\Http;
 | MiddlewareDispatcher Class
 |--------------------------------------------------------------------------
 |
-| This class is responsible for dispatching middleware in the HTTP request
-| handling process. It manages the execution of middleware components and
-| ensures that each middleware is called in the correct order.
+| This class manages and executes the middleware stack.
+| It features a "Compiled Pipeline" for maximum speed and a 
+| "Priority Registry" for guaranteed security middleware execution order.
 */
 
+use Plugs\Http\Middleware\MiddlewareRegistry;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Server\MiddlewareInterface;
@@ -22,115 +23,151 @@ use Psr\Http\Server\RequestHandlerInterface;
 class MiddlewareDispatcher implements RequestHandlerInterface
 {
     private array $middlewareStack = [];
-    private array $resolvedStack = [];
-    private bool $resolved = false;
+    private ?MiddlewareRegistry $registry = null;
+    private ?\Closure $compiledPipeline = null;
     private $fallbackHandler;
+    private ?\Plugs\Debug\Profiler $profiler;
 
     public function __construct(array $middleware = [], ?callable $fallbackHandler = null)
     {
         $this->middlewareStack = $middleware;
         $this->fallbackHandler = $fallbackHandler;
+        $this->profiler = \Plugs\Debug\Profiler::getInstance();
+
+        $this->resolveRegistry();
+    }
+
+    private function resolveRegistry(): void
+    {
+        if (function_exists('app') && app()->has(MiddlewareRegistry::class)) {
+            $this->registry = app(MiddlewareRegistry::class);
+        } else {
+            $this->registry = new MiddlewareRegistry();
+        }
     }
 
     public function add($middleware): void
     {
         $this->middlewareStack[] = $middleware;
-        $this->resolved = false; // Invalidate cache
+        $this->compiledPipeline = null; // Invalidate compiled cache
     }
 
     public function setFallbackHandler(callable $handler): void
     {
         $this->fallbackHandler = $handler;
+        $this->compiledPipeline = null;
     }
 
     public function handle(ServerRequestInterface $request): ResponseInterface
     {
-        if (!$this->resolved) {
-            $this->resolveStack();
+        if ($this->compiledPipeline === null) {
+            $this->compile();
         }
 
-        return (new MiddlewareRunner($this->resolvedStack, $this->fallbackHandler))->handle($request);
+        return ($this->compiledPipeline)($request);
     }
 
-    private function resolveStack(): void
+    /**
+     * Compiles the middleware stack into a single nested closure chain.
+     * This "Fast Path" avoids array iteration and index tracking on every request.
+     */
+    private function compile(): void
     {
-        $this->resolvedStack = [];
-
-        foreach ($this->middlewareStack as $i => $middleware) {
-            // lazy resolution of string classes
-            if (is_string($middleware)) {
-                $middleware = app($middleware);
+        // 1. Resolve aliases and groups through registry
+        $resolvedRows = [];
+        foreach ($this->middlewareStack as $mw) {
+            if (is_string($mw)) {
+                foreach ($this->registry->resolve($mw) as $resolvedClass) {
+                    $resolvedRows[] = $resolvedClass;
+                }
+            } else {
+                $resolvedRows[] = $mw;
             }
-
-            if (!$middleware instanceof MiddlewareInterface) {
-                // If it's a closure or callable, wrap it? For now assume strict typing or fail.
-                // But let's throw friendly error
-                $type = is_object($middleware) ? get_class($middleware) : gettype($middleware);
-                throw new \RuntimeException(sprintf('Middleware at index %d (%s) must implement %s', $i, $type, MiddlewareInterface::class));
-            }
-
-            // Pre-calculate display name for profiler
-            $mwName = get_class($middleware);
-            $displayName = basename(str_replace('\\', '/', $mwName));
-
-            $this->resolvedStack[] = [
-                'instance' => $middleware,
-                'name' => 'mw_' . $mwName,
-                'label' => 'MW: ' . $displayName
-            ];
         }
 
-        $this->resolved = true;
-    }
-}
+        // 2. Add Kernel (Global) middlewares if they aren't already present
+        $kernel = $this->registry->getKernel();
+        foreach ($kernel as $kmw) {
+            if (!in_array($kmw, $resolvedRows, true)) {
+                array_unshift($resolvedRows, $kmw);
+            }
+        }
 
-/**
- * Lightweight PSR-15 runner for the middleware stack.
- * 
- * @internal
- */
-class MiddlewareRunner implements RequestHandlerInterface
-{
-    private array $stack;
-    private int $index = 0;
-    private $fallback;
-    private ?\Plugs\Debug\Profiler $profiler;
+        // 3. Sort by priority (Security-First)
+        $sorted = $this->registry->sort(array_unique($resolvedRows, SORT_REGULAR));
 
-    public function __construct(array $stack, $fallback)
-    {
-        $this->stack = $stack;
-        $this->fallback = $fallback;
-
-        $this->profiler = \Plugs\Debug\Profiler::getInstance();
-    }
-
-    public function handle(ServerRequestInterface $request): ResponseInterface
-    {
-        if (!isset($this->stack[$this->index])) {
-            if ($this->fallback === null) {
+        // 4. Build the closure chain from bottom (fallback) to top
+        $next = function (ServerRequestInterface $req) {
+            if ($this->fallbackHandler === null) {
                 throw new \RuntimeException('No middleware returned response and no fallback handler set');
             }
+            return ($this->fallbackHandler)($req);
+        };
 
-            return ($this->fallback)($request);
+        // Reuse a single Handler wrapper for all PSR-15 middlewares
+        $handlerFactory = function ($nextCallable) {
+            return new class ($nextCallable) implements RequestHandlerInterface {
+                private $cb;
+                public function __construct($cb)
+                {
+                    $this->cb = $cb; }
+                public function handle(ServerRequestInterface $request): ResponseInterface
+                {
+                    return ($this->cb)($request);
+                }
+            };
+        };
+
+        foreach (array_reverse($sorted) as $mw) {
+            $next = $this->wrapMiddleware($mw, $next, $handlerFactory);
         }
 
-        // Get pre-resolved middleware data
-        $entry = $this->stack[$this->index];
-        $middleware = $entry['instance'];
-        $this->index++;
+        $this->compiledPipeline = $next;
+    }
 
-        // Fast path if profiler is disabled
-        if (!$this->profiler->isEnabled()) {
-            return $middleware->process($request, $this);
+    /**
+     * Wraps a middleware in a closure with optional profiling.
+     */
+    private function wrapMiddleware($mw, \Closure $next, \Closure $handlerFactory): \Closure
+    {
+        return function (ServerRequestInterface $request) use ($mw, $next, $handlerFactory) {
+            // Lazy load string-based middleware
+            $instance = is_string($mw) ? app($mw) : $mw;
+
+            if ($this->profiler && $this->profiler->isEnabled()) {
+                $name = is_string($mw) ? $mw : get_class($mw);
+                $label = 'MW: ' . basename(str_replace('\\', '/', $name));
+
+                $this->profiler->startSegment('mw_' . $name, $label);
+                try {
+                    return $this->execute($instance, $request, $next, $handlerFactory);
+                } finally {
+                    $this->profiler->stopSegment('mw_' . $name);
+                }
+            }
+
+            return $this->execute($instance, $request, $next, $handlerFactory);
+        };
+    }
+
+    /**
+     * Executes a single middleware instance.
+     */
+    private function execute($mw, ServerRequestInterface $request, \Closure $next, \Closure $handlerFactory): ResponseInterface
+    {
+        if ($mw instanceof MiddlewareInterface) {
+            return $mw->process($request, $handlerFactory($next));
         }
 
-        // Profiler path
-        $this->profiler->startSegment($entry['name'], $entry['label']);
-
-        try {
-            return $middleware->process($request, $this);
-        } finally {
-            $this->profiler->stopSegment($entry['name']);
+        if (is_callable($mw)) {
+            return $mw($request, $next);
         }
+
+        if (is_object($mw) && method_exists($mw, 'handle')) {
+            return $mw->handle($request, $next);
+        }
+
+        throw new \RuntimeException(sprintf('Middleware must implement %s or be callable', MiddlewareInterface::class));
     }
 }
+
