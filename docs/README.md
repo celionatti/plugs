@@ -54,6 +54,7 @@ Welcome to the official documentation for the **Plugs** framework. Plugs is a li
 - [Caching](file:///docs/features/caching.md) (Updated)
 - [CSRF Protection](file:///docs/security/csrf-protection.md)
 - [Security Shield](file:///docs/security/security-shield.md)
+- [Rate Limiting](file:///docs/security/rate-limiting.md) (New)
 
 ### ⚡ Advanced Features
 

@@ -20,7 +20,13 @@ SECURITY_SHIELD=true
 
 Logs and tracks potential attackers. If a client hits too many security rules, they can be automatically rate-limited or blocked.
 
-## 3. Mass Assignment Guard
+## 3. Rate Limiting
+
+Plugs includes a built-in rate limiting system to protect your application from brute-force attacks and API abuse. You can define custom limits for routes using the `throttle` middleware.
+
+Learn more in the [Rate Limiting guide](rate-limiting.md).
+
+## 4. Mass Assignment Guard
 
 Standard in all Models to prevent illicit data modification.
 
