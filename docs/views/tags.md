@@ -51,6 +51,8 @@ Clean HTML tags for security tokens and method spoofing.
 | :-------------------------- | :------------------------------------------------------------- |
 | **`<csrf />`**              | Renders the hidden CSRF input field.                           |
 | **`<method type="..." />`** | Renders the hidden `_method` field (`PUT`, `PATCH`, `DELETE`). |
+| **`<csp />`**               | Renders a Content Security Policy meta tag.                    |
+| **`<id :value="..." />`**   | Renders a sanitized, safe HTML element ID.                     |
 
 ---
 
@@ -95,13 +97,16 @@ The `<loop>` tag provides a `$loop` variable just like `@foreach`.
 
 ### 📦 Directives & Stacks
 
-| Tag                          | Attribute       | Description                               |
-| :--------------------------- | :-------------- | :---------------------------------------- |
-| **`<include view="..." />`** | `view`, `:data` | Include a partial view.                   |
-| **`<push:name>`**            | -               | Push content to a stack (scripts/styles). |
-| **`<stack:name />`**         | -               | Render a stack.                           |
-| **`<fragment name="...">`**  | `name`          | Define a renderable HTMX/Turbo fragment.  |
-| **`<teleport to="...">`**    | `to`            | Move content to a different DOM element.  |
+| Tag                           | Attribute       | Description                                   |
+| :---------------------------- | :-------------- | :-------------------------------------------- |
+| **`<include view="..." />`**  | `view`, `:data` | Include a partial view.                       |
+| **`<push:name>`**             | -               | Push content to a stack (scripts/styles).     |
+| **`<stack:name />`**          | -               | Render a stack.                               |
+| **`<fragment name="...">`**   | `name`          | Define a renderable HTMX/Turbo fragment.      |
+| **`<teleport to="...">`**     | `to`            | Move content to a different DOM element.      |
+| **`<once [key="..."]>`**      | `key`           | Render content once per request (keyed).      |
+| **`<stream view="..." />`**   | `view`, `:data` | Render a view in chunks (streaming).          |
+| **`<skeleton type="..." />`** | `type`, `width` | Render a skeleton loader (text, avatar, etc). |
 
 ---
 

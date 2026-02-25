@@ -126,6 +126,8 @@ Plugs uses a context-aware escaping engine to prevent XSS. The `{{ $var }}` dire
 | `safeUrl($var)`    | Links/Assets    | Sanitizes protocols (e.g. `javascript:`) for URLs.    |
 | `u($var)`          | URL Query       | Escapes values for query parameters (e.g. `?q=...`).  |
 | `js($var)`         | Script Tags     | Safe JSON encoding with script tag protection.        |
+| `css($var)`        | CSS Styles      | Sanitizes values for style attributes and inline CSS. |
+| `id($var)`         | Element IDs     | Sanitizes values for safe HTML element IDs.           |
 | `{{{ $var }}}`     | Raw             | Disables escaping (use with extreme caution).         |
 
 **Examples:**
@@ -280,6 +282,34 @@ Plugs uses a context-aware escaping engine to prevent XSS. The `{{ $var }}` dire
 | `default` | `<p><br><strong><em><b><i><ul><ol><li><a>` |
 | `rich`    | Above + `<h1-h6><blockquote><code><pre>`   |
 
+### Content Security Policy (CSP)
+
+The `@csp` directive automatically generates a meta tag with a secure default policy. It also supports nonces if configured in your application.
+
+```blade
+@csp
+```
+
+### Element ID Sanitization
+
+The `@id` directive ensures a value is safe to use as an HTML `id` attribute by removing non-alphanumeric characters.
+
+```blade
+<div id="@id($username)">...</div>
+```
+
+---
+
+## Performance & Streaming
+
+### View Streaming
+
+For large views or long-running processes, use `@stream` to send the response in chunks to the browser, improving perceived performance.
+
+```blade
+@stream('views.large-report', ['data' => $data])
+```
+
 ---
 
 ## Data Binding
@@ -324,11 +354,42 @@ Plugs uses a context-aware escaping engine to prevent XSS. The `{{ $var }}` dire
 
 ### Once (Render Once)
 
+The `@once` directive ensures a block of code is only rendered once per request cycle. You can provide an optional key for scoped deduplication.
+
 ```blade
+{{-- Basic usage --}}
 @once
-    {{-- Only rendered once, even if included multiple times --}}
     <script src="/js/library.js"></script>
 @endonce
+
+{{-- Scoped usage with a key --}}
+@once('alpine-init')
+    <script>
+        document.addEventListener('alpine:init', () => { ... })
+    </script>
+@endonce
+```
+
+---
+
+## UI Components
+
+### Skeleton Loaders
+
+Generate CSS-based skeleton loaders for loading states. Presets include `text`, `avatar`, `image`, and `button`.
+
+```blade
+{{-- Default (text) --}}
+@skeleton('text')
+
+{{-- Avatar circle --}}
+@skeleton('avatar', '48px')
+
+{{-- Professional Image placeholder --}}
+@skeleton('image', '100%', '200px')
+
+{{-- Dark mode variants --}}
+@skeleton('text-dark')
 ```
 
 ---

@@ -9,6 +9,7 @@ If you're new to Plugs, start with the basics of rendering and data binding.
 - **[View Basics](basics.md)**: Files, rendering, and sharing data.
 - **[Modern Tag Syntax (V5)](tags.md)**: **Recommended.** Clean HTML-style syntax for layouts, loops, and forms.
 - **[Directives Reference](directives.md)**: Traditional `@` syntax reference.
+- **[New Features Reference](reference.md)**: Quick reference for `@csp`, `@id`, `@stream`, `@once`, and `@skeleton`.
 
 ---
 
