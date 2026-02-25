@@ -169,6 +169,13 @@ Plugs uses a context-aware escaping engine to prevent XSS. The `{{ $var }}` dire
 @prepend('scripts')
     <script src="/js/priority.js"></script>
 @endprepend
+
+@pushOnce('scripts', 'custom-modal-logic')
+    <script>
+        // This will only be pushed to the 'scripts' stack once,
+        // even if the component is included multiple times.
+    </script>
+@endpushOnce
 ```
 
 ---
@@ -343,14 +350,31 @@ For large views or long-running processes, use `@stream` to send the response in
 
 ### PHP Code
 
-```blade
+````blade
 @php
     $now = new DateTime();
     $formatted = $now->format('Y-m-d');
 @endphp
 
 @php($counter = 0)
-```
+
+### Flush (Buffering)
+
+The `@flush` directive forces a PHP `flush()` call, sending the current output buffer to the browser. This is extremely useful for large data processing or slow views.
+
+```blade
+@foreach($largeData as $item)
+    {{-- Process item --}}
+    @if($loop->iteration % 100 === 0)
+        @flush
+    @endif
+@endforeach
+````
+
+> [!TIP]
+> Loops now support **Automatic Flushing** when streaming is enabled globally. See [Advanced Documentation](advanced.md) for details.
+
+````
 
 ### Once (Render Once)
 
@@ -368,7 +392,7 @@ The `@once` directive ensures a block of code is only rendered once per request 
         document.addEventListener('alpine:init', () => { ... })
     </script>
 @endonce
-```
+````
 
 ---
 

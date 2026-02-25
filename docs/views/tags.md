@@ -54,6 +54,18 @@ Clean HTML tags for security tokens and method spoofing.
 | **`<csp />`**               | Renders a Content Security Policy meta tag.                    |
 | **`<id :value="..." />`**   | Renders a sanitized, safe HTML element ID.                     |
 
+#### Conditional Attributes & CSS
+
+```html
+<class :map="['p-4', 'active' => $isActive]" />
+<style :map="['color' => 'red', 'font-weight' => 'bold']" />
+```
+
+| Tag                        | Attribute | Description                                    |
+| :------------------------- | :-------- | :--------------------------------------------- |
+| **`<class :map="..." />`** | `:map`    | Renders a `class` attribute from an array/map. |
+| **`<style :map="..." />`** | `:map`    | Renders a `style` attribute from an array/map. |
+
 ---
 
 ### 🚦 Control Structures
@@ -97,16 +109,18 @@ The `<loop>` tag provides a `$loop` variable just like `@foreach`.
 
 ### 📦 Directives & Stacks
 
-| Tag                           | Attribute       | Description                                   |
-| :---------------------------- | :-------------- | :-------------------------------------------- |
-| **`<include view="..." />`**  | `view`, `:data` | Include a partial view.                       |
-| **`<push:name>`**             | -               | Push content to a stack (scripts/styles).     |
-| **`<stack:name />`**          | -               | Render a stack.                               |
-| **`<fragment name="...">`**   | `name`          | Define a renderable HTMX/Turbo fragment.      |
-| **`<teleport to="...">`**     | `to`            | Move content to a different DOM element.      |
-| **`<once [key="..."]>`**      | `key`           | Render content once per request (keyed).      |
-| **`<stream view="..." />`**   | `view`, `:data` | Render a view in chunks (streaming).          |
-| **`<skeleton type="..." />`** | `type`, `width` | Render a skeleton loader (text, avatar, etc). |
+| Tag                             | Attribute       | Description                                   |
+| :------------------------------ | :-------------- | :-------------------------------------------- |
+| **`<include view="..." />`**    | `view`, `:data` | Include a partial view.                       |
+| **`<push:name>`**               | -               | Push content to a stack (scripts/styles).     |
+| **`<pushOnce:name key="...">`** | `key`           | Push content to a stack only once (keyed).    |
+| **`<stack:name />`**            | -               | Render a stack.                               |
+| **`<fragment name="...">`**     | `name`          | Define a renderable HTMX/Turbo fragment.      |
+| **`<teleport to="...">`**       | `to`            | Move content to a different DOM element.      |
+| **`<once [key="..."]>`**        | `key`           | Render content once per request (keyed).      |
+| **`<stream view="..." />`**     | `view`, `:data` | Render a view in chunks (streaming).          |
+| **`<flush />`**                 | -               | Forces a browser buffer flush.                |
+| **`<skeleton type="..." />`**   | `type`, `width` | Render a skeleton loader (text, avatar, etc). |
 
 ---
 

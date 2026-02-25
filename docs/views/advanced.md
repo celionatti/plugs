@@ -4,29 +4,72 @@ Advanced features for complex applications including streaming, debugging, and p
 
 ## Streaming Rendering
 
-For large views, stream content to the browser incrementally:
+For large views or long-running processes, Plugs supports various streaming modes to improve Time To First Byte (TTFB) and memory efficiency.
+
+### True Unbuffered Streaming
+
+You can enable true unbuffered streaming, where content is echoed directly to the browser as it is processed. This is ideal for extremely large datasets or dashboards with many components.
+
+**Enabling Globally via `.env`:**
+
+```bash
+VIEW_STREAMING=true
+VIEW_AUTO_FLUSH=50
+```
+
+**Enabling Programmatically:**
+
+```php
+$viewEngine->enableStreaming(true);
+$viewEngine->enableAutoFlush(50); // Optional: auto-flush every N loop iterations
+```
+
+> [!WARNING]
+> When `VIEW_STREAMING` is enabled, headers are sent immediately. You cannot use `header()` redirects or set cookies inside your view logic.
+
+### Automatic Loop Flushing
+
+When streaming is enabled, Plugs automatically flushes the output buffer during `@foreach` and `@forelse` loops. This prevents the buffer from becoming too large and ensures the user sees data as it's processed.
+
+```blade
+@foreach($largeDataset as $item)
+    {{-- Every 50 items, the buffer flushes automatically --}}
+    <div>...</div>
+@endforeach
+```
 
 ### Generator-Based Streaming
 
+If you need manual control over chunks, use the `stream` method:
+
 ```php
-// Get a generator that yields chunks
 foreach ($viewEngine->stream('large-report', $data) as $chunk) {
     echo $chunk;
     flush();
 }
 ```
 
-### Direct Stream to Browser
+---
+
+## Performance & Memory Optimization
+
+### Support for Generators
+
+Loop directives (`@foreach`, `@forelse`) now support non-countable iterables like PHP Generators. This allows you to iterate over millions of rows with virtually zero memory overhead.
 
 ```php
-// Automatically handles buffering and headers
-$viewEngine->renderToStream('large-report', $data);
-```
+// In Controller
+$data['users'] = function() {
+    foreach (DB::cursor('SELECT * FROM users') as $user) {
+        yield $user;
+    }
+};
 
-This is useful for:
-- Large data exports
-- Long-running report generation
-- Improving Time To First Byte (TTFB)
+// In View
+@foreach($users() as $user)
+    {{ $user->name }}
+@endforeach
+```
 
 ---
 
@@ -109,10 +152,11 @@ return response(view('partials.card', $data)->toJson())
 ```
 
 Returns:
+
 ```json
 {
-    "html": "<div class=\"card\">...</div>",
-    "view": "partials.card"
+  "html": "<div class=\"card\">...</div>",
+  "view": "partials.card"
 }
 ```
 
@@ -123,6 +167,7 @@ return view('dashboard', $data)->htmxResponse();
 ```
 
 This automatically:
+
 - Sends appropriate headers
 - Handles teleport content
 - Sends the rendered view
@@ -195,6 +240,7 @@ return view('page', $data)->without(['ads', 'newsletter']);
 ```
 
 In template:
+
 ```blade
 @unless(in_array('ads', $__excludedSections ?? []))
     <div class="ads">...</div>
@@ -223,6 +269,7 @@ When `APP_DEBUG=true`, detailed errors are shown:
 ### Production Mode
 
 When `APP_DEBUG=false`:
+
 - Errors are logged
 - Generic error message shown
 - No stack traces exposed

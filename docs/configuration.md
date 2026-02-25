@@ -10,13 +10,15 @@ The framework maintains internal defaults for all core components (Mail, Cache, 
 
 Most common settings are mapped directly to environment variables:
 
-| Feature | Key | Default |
-|---------|-----|---------|
-| **Cache** | `CACHE_DEFAULT` | `file` |
-| **Session** | `SESSION_DRIVER` | `file` |
-| **Queue** | `QUEUE_CONNECTION` | `sync` |
-| **Event Bus**| `EVENT_BUS_DRIVER` | `sync` |
-| **Security** | `SECURITY_SHIELD` | `true` |
+| Feature         | Key                | Default |
+| --------------- | ------------------ | ------- |
+| **Cache**       | `CACHE_DEFAULT`    | `file`  |
+| **Session**     | `SESSION_DRIVER`   | `file`  |
+| **Queue**       | `QUEUE_CONNECTION` | `sync`  |
+| **Event Bus**   | `EVENT_BUS_DRIVER` | `sync`  |
+| **Security**    | `SECURITY_SHIELD`  | `true`  |
+| **Views**       | `VIEW_STREAMING`   | `false` |
+| **Views Flush** | `VIEW_AUTO_FLUSH`  | `50`    |
 
 ## 2. Auto-Discovery
 
@@ -39,6 +41,7 @@ php theplugs optimize
 To override a default that isn't in `.env`, create a corresponding file in `config/`. The framework will **recursively merge** your settings into the defaults.
 
 **Example: `config/mail.php`**
+
 ```php
 <?php
 return [
@@ -48,4 +51,5 @@ return [
     ]
 ];
 ```
-*Note: You only need to return the keys you wish to change.*
+
+_Note: You only need to return the keys you wish to change._
