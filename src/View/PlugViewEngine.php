@@ -258,12 +258,15 @@ class PlugViewEngine implements ViewEngineInterface
 
         $count = 0;
         $now = time();
+        $maxAge = $hours * 3600;
+
+        // Clean both regular compiled files and inline cache files
         $files = glob($this->cachePath . DIRECTORY_SEPARATOR . '*.php');
 
         foreach ($files as $file) {
             if (is_file($file)) {
                 $mtime = filemtime($file);
-                if ($now - $mtime > ($hours * 3600)) {
+                if ($now - $mtime > $maxAge) {
                     @unlink($file);
                     $count++;
                 }
@@ -504,7 +507,7 @@ class PlugViewEngine implements ViewEngineInterface
             ? $this->getComponentPath($view)
             : $this->getViewPath($view);
 
-        if (!file_exists($viewFile)) {
+        if (!$this->fileExistsCached($viewFile)) {
             throw new ViewException(
                 sprintf('View [%s] not found at %s', $view, $viewFile),
                 0,
@@ -535,7 +538,7 @@ class PlugViewEngine implements ViewEngineInterface
         try {
             $componentFile = $this->getComponentPath($componentName);
 
-            if (!file_exists($componentFile)) {
+            if (!$this->fileExistsCached($componentFile)) {
                 throw new ViewException(
                     sprintf('Component [%s] not found at %s', $componentName, $componentFile),
                     0,
@@ -680,7 +683,7 @@ class PlugViewEngine implements ViewEngineInterface
 
     public function componentExists(string $componentName): bool
     {
-        return file_exists($this->getComponentPath($componentName));
+        return $this->fileExistsCached($this->getComponentPath($componentName));
     }
 
     public function getAvailableComponents(): array
@@ -708,7 +711,7 @@ class PlugViewEngine implements ViewEngineInterface
     {
         $this->getCompiler()->clearCache();
 
-        if ($this->cacheEnabled && is_dir($this->cachePath)) {
+        if (is_dir($this->cachePath)) {
             $pattern = $this->cachePath . DIRECTORY_SEPARATOR . '*.php';
             $files = glob($pattern);
 
@@ -718,6 +721,10 @@ class PlugViewEngine implements ViewEngineInterface
                 }
             }
         }
+
+        // Clear in-memory caches
+        $this->fileExistsCache = [];
+        $this->pathCache = [];
     }
 
     private function executeCompiledContent(string $compiledContent, array $data): string
@@ -749,7 +756,7 @@ class PlugViewEngine implements ViewEngineInterface
         $compiled = $this->getCompiledPath($cacheKey);
 
         // Optimization: In production, we can skip the filemtime check if fastCache is enabled
-        $needsRecompile = !file_exists($compiled);
+        $needsRecompile = !$this->fileExistsCached($compiled);
 
         if (!$needsRecompile && !($this->fastCache && \Plugs\Plugs::isProduction())) {
             if (filemtime($viewFile) > filemtime($compiled)) {
@@ -861,7 +868,7 @@ class PlugViewEngine implements ViewEngineInterface
     {
         $parentFile = $this->getViewPath($parentView);
 
-        if (!file_exists($parentFile)) {
+        if (!$this->fileExistsCached($parentFile)) {
             throw new ViewException(
                 sprintf('Parent view [%s] not found at %s', $parentView, $parentFile),
                 0,
@@ -893,7 +900,7 @@ class PlugViewEngine implements ViewEngineInterface
     {
         $parentFile = $this->getViewPath($parentView);
 
-        if (!file_exists($parentFile)) {
+        if (!$this->fileExistsCached($parentFile)) {
             throw new ViewException(
                 sprintf('Parent view [%s] not found', $parentView),
                 0,
@@ -958,7 +965,7 @@ class PlugViewEngine implements ViewEngineInterface
             foreach (self::VIEW_EXTENSIONS as $extension) {
                 $themeViewPath = $this->viewPath . DIRECTORY_SEPARATOR . 'themes' . DIRECTORY_SEPARATOR . $this->theme . DIRECTORY_SEPARATOR . $view . $extension;
 
-                if (file_exists($themeViewPath)) {
+                if ($this->fileExistsCached($themeViewPath)) {
                     return $themeViewPath;
                 }
             }
@@ -967,7 +974,7 @@ class PlugViewEngine implements ViewEngineInterface
         foreach (self::VIEW_EXTENSIONS as $extension) {
             $viewPath = $this->viewPath . DIRECTORY_SEPARATOR . $view . $extension;
 
-            if (file_exists($viewPath)) {
+            if ($this->fileExistsCached($viewPath)) {
                 $realViewPath = realpath(dirname($viewPath));
                 $realBasePath = realpath($this->viewPath);
 
@@ -1031,14 +1038,14 @@ class PlugViewEngine implements ViewEngineInterface
                 if ($this->theme && $this->theme !== 'default') {
                     $themeComponentPath = $this->viewPath . DIRECTORY_SEPARATOR . 'themes' . DIRECTORY_SEPARATOR . $this->theme . DIRECTORY_SEPARATOR . 'components' . DIRECTORY_SEPARATOR . $filename . $extension;
 
-                    if (file_exists($themeComponentPath)) {
+                    if ($this->fileExistsCached($themeComponentPath)) {
                         return $themeComponentPath;
                     }
                 }
 
                 $componentPath = $this->componentPath . DIRECTORY_SEPARATOR . $filename . $extension;
 
-                if (file_exists($componentPath)) {
+                if ($this->fileExistsCached($componentPath)) {
                     // Additional security check - verify real path is within component directory
                     $realComponentPath = realpath($componentPath);
                     $realBaseComponentPath = realpath($this->componentPath);

@@ -1263,6 +1263,36 @@ class ViewCompiler
             return "@js('{$src}')";
         }, $content);
 
+        // 28. <checked :when="$condition" />
+        $content = preg_replace_callback('/<checked\s+(?::when)=["\'](.+?)["\']\s*\/?>/i', function ($m) {
+            return "@checked({$m[1]})";
+        }, $content);
+
+        // 29. <selected :when="$condition" />
+        $content = preg_replace_callback('/<selected\s+(?::when)=["\'](.+?)["\']\s*\/?>/i', function ($m) {
+            return "@selected({$m[1]})";
+        }, $content);
+
+        // 30. <disabled :when="$condition" />
+        $content = preg_replace_callback('/<disabled\s+(?::when)=["\'](.+?)["\']\s*\/?>/i', function ($m) {
+            return "@disabled({$m[1]})";
+        }, $content);
+
+        // 31. <readonly :when="$condition" />
+        $content = preg_replace_callback('/<readonly\s+(?::when)=["\'](.+?)["\']\s*\/?>/i', function ($m) {
+            return "@readonly({$m[1]})";
+        }, $content);
+
+        // 32. <env :is="'production'">...</env>
+        $content = preg_replace_callback('/<env\s+(?::is)=["\'](.+?)["\']>(.*?)<\/env>/si', function ($m) {
+            return "@env({$m[1]}){$m[2]}@endenv";
+        }, $content);
+
+        // 33. <production>...</production>
+        $content = preg_replace_callback('/<production>(.*?)<\/production>/si', function ($m) {
+            return "@production{$m[1]}@endproduction";
+        }, $content);
+
         return $content;
     }
 
