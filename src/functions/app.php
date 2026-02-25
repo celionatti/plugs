@@ -448,6 +448,16 @@ if (!function_exists('js')) {
     }
 }
 
+if (!function_exists('css')) {
+    /**
+     * Escape for CSS context (style attributes)
+     */
+    function css($value): string
+    {
+        return \Plugs\View\Escaper::css($value);
+    }
+}
+
 if (!function_exists('u')) {
     /**
      * Escape for URL query parameter context

@@ -128,6 +128,45 @@ class PlugViewEngine implements ViewEngineInterface
         $this->viewCache = new ViewCache($this->cachePath);
     }
 
+    /**
+     * Blocked variable names that should never be injected via extract().
+     * Prevents overwriting PHP superglobals and internal engine variables.
+     */
+    private const EXTRACT_BLOCKED_KEYS = [
+        'this',
+        '__DIR__',
+        '__FILE__',
+        '__LINE__',
+        '__FUNCTION__',
+        '__CLASS__',
+        '_GET',
+        '_POST',
+        '_SERVER',
+        '_SESSION',
+        '_COOKIE',
+        '_FILES',
+        '_ENV',
+        '_REQUEST',
+        'GLOBALS',
+        'php_errormsg',
+        'http_response_header',
+        'argc',
+        'argv',
+    ];
+
+    /**
+     * Sanitize data array before extract() to prevent variable injection.
+     * Removes keys that could overwrite PHP superglobals or dangerous internals.
+     */
+    private function sanitizeDataForExtract(array $data): array
+    {
+        foreach (self::EXTRACT_BLOCKED_KEYS as $blocked) {
+            unset($data[$blocked]);
+        }
+
+        return $data;
+    }
+
     public function setTheme(?string $theme): self
     {
         $this->theme = $theme;
@@ -679,7 +718,7 @@ class PlugViewEngine implements ViewEngineInterface
     {
         $compiledContent = $this->stripStrictTypesDeclaration($compiledContent);
 
-        extract(array_merge($this->sharedData, $data), EXTR_SKIP);
+        extract($this->sanitizeDataForExtract(array_merge($this->sharedData, $data)), EXTR_SKIP);
 
         // FIX: Don't overwrite if already present from extract
         $view = $view ?? $this;
@@ -727,7 +766,7 @@ class PlugViewEngine implements ViewEngineInterface
 
     private function renderCompiled(string $compiled, array $data): string
     {
-        extract($data, EXTR_SKIP);
+        extract($this->sanitizeDataForExtract($data), EXTR_SKIP);
 
         // FIX: Don't reinitialize if already set by extract
         // This preserves stacks from child views
@@ -802,7 +841,7 @@ class PlugViewEngine implements ViewEngineInterface
         $compiledContent = $this->getCompiler()->compile($content);
         $compiledContent = $this->stripStrictTypesDeclaration($compiledContent);
 
-        extract($data, EXTR_SKIP);
+        extract($this->sanitizeDataForExtract($data), EXTR_SKIP);
 
         // FIX: Don't reinitialize if already set by extract
         // This preserves stacks from child views
@@ -922,10 +961,10 @@ class PlugViewEngine implements ViewEngineInterface
         $compiledParent = $this->stripStrictTypesDeclaration($compiledParent);
 
         // FIX: Pass both sections and stacks to parent
-        extract(array_merge($data, [
+        extract($this->sanitizeDataForExtract(array_merge($data, [
             '__sections' => $sections,
             '__stacks' => $stacks,
-        ]), EXTR_SKIP);
+        ])), EXTR_SKIP);
 
         // Don't reinitialize $__stacks - it was just extracted!
         $__stacks = $__stacks ?? [];

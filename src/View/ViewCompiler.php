@@ -30,6 +30,11 @@ class ViewCompiler
     private const MAX_CACHE_SIZE = 1000;
 
     /**
+     * Whether xxh128 hashing is available (PHP 8.1+)
+     */
+    private static ?bool $xxhashAvailable = null;
+
+    /**
      * Pre-compiled regex patterns for performance
      */
     private static array $patterns = [];
@@ -177,6 +182,10 @@ class ViewCompiler
             'hasrole' => '/@hasrole\s*\(([^()]*+(?:\((?1)\)[^()]*+)*+)\)/s',
             'hasanyrole' => '/@hasanyrole\s*\(([^()]*+(?:\((?1)\)[^()]*+)*+)\)/s',
             'hasallroles' => '/@hasallroles\s*\(([^()]*+(?:\((?1)\)[^()]*+)*+)\)/s',
+            'csp' => '/@csp\s*/',
+            'id' => '/@id\s*\((.+?)\)/s',
+            'stream' => '/@stream\s*\((.+?)\)/s',
+            'error' => '/@error\s*\((.+?)\)/s',
         ];
     }
 
@@ -253,9 +262,23 @@ class ViewCompiler
         return array_keys($this->customDirectives);
     }
 
+    /**
+     * Fast hash using xxh128 when available, falling back to md5
+     */
+    public static function fastHash(string $content): string
+    {
+        if (self::$xxhashAvailable === null) {
+            self::$xxhashAvailable = function_exists('hash') && in_array('xxh128', hash_algos(), true);
+        }
+
+        return self::$xxhashAvailable
+            ? hash('xxh128', $content)
+            : md5($content);
+    }
+
     public function compile(string $content): string
     {
-        $cacheKey = md5($content);
+        $cacheKey = self::fastHash($content);
 
         if (isset($this->compilationCache[$cacheKey])) {
             return $this->compilationCache[$cacheKey];
@@ -282,6 +305,10 @@ class ViewCompiler
 
         // Phase 2: Compile all other directives in correct order
         $content = $this->compileNonComponentContent($content);
+
+        // Phase 3: Embed compiled fingerprint for cache validation
+        $fingerprint = self::fastHash($content);
+        $content = "<?php /* @compiled:" . $fingerprint . " */ ?>\n" . $content;
 
         $this->cacheCompilation($cacheKey, $content);
 
@@ -505,6 +532,8 @@ class ViewCompiler
         // 8b. Security directives
         $content = $safeCompile([$this, 'compileNonce'], $content);
         $content = $safeCompile([$this, 'compileHoneypot'], $content);
+        $content = $safeCompile([$this, 'compileCsp'], $content);
+        $content = $safeCompile([$this, 'compileId'], $content);
 
         // 8c. RBAC directives
         $content = $safeCompile([$this, 'compileCan'], $content);
@@ -520,6 +549,7 @@ class ViewCompiler
         $content = $safeCompile([$this, 'compileSanitize'], $content);
         $content = $safeCompile([$this, 'compileEntangle'], $content);
         $content = $safeCompile([$this, 'compileRawDirective'], $content);
+        $content = $safeCompile([$this, 'compileStream'], $content);
 
         // 10. Utilities
         $content = $safeCompile([$this, 'compileInject'], $content);
@@ -528,6 +558,8 @@ class ViewCompiler
         $content = $safeCompile([$this, 'compileOld'], $content);
         $content = $safeCompile([$this, 'compileFlashMessages'], $content);
         $content = $safeCompile([$this, 'compileErrorDirectives'], $content);
+        $content = $safeCompile([$this, 'compileError'], $content);
+        $content = $safeCompile([$this, 'compileEndError'], $content);
         $content = $safeCompile([$this, 'compileReadTime'], $content);
         $content = $safeCompile([$this, 'compileWordCount'], $content);
         $content = $safeCompile([$this, 'compileAutofocus'], $content);
@@ -1173,6 +1205,28 @@ class ViewCompiler
             return "@vite('{$m[1]}')";
         }, $content);
 
+        // 22. <once [key="..."]> ... </once>
+        $content = preg_replace_callback('/<once(?:\s+key=["\'](.+?)["\'])?\s*>(.*?)<\/once>/s', function ($m) {
+            $key = !empty($m[1]) ? $m[1] : md5($m[2]);
+            $id = preg_replace('/[^a-zA-Z0-9_]/', '_', $key);
+            return "<?php if (!isset(\$__once_{$id})): \$__once_{$id} = true; ?>{$m[2]}<?php endif; ?>";
+        }, $content);
+
+        // 23. <csp />
+        $content = preg_replace('/<csp\s*\/?>/i', '<?php echo \'<meta http-equiv="Content-Security-Policy" content="default-src \\\'self\\\'; script-src \\\'self\\\' \\\'nonce-\' . ($__cspNonce ?? "") . \'\\\'; style-src \\\'self\\\' \\\'unsafe-inline\\\'; img-src \\\'self\\\' data:;">\'; ?>', $content);
+
+        // 24. <id value="..." /> or <id :value="..." />
+        $content = preg_replace_callback('/<id\s+(?::?value)=["\'](.+?)["\']\s*\/?>/i', function ($m) {
+            return "<?php echo \Plugs\View\Escaper::id({$m[1]}); ?>";
+        }, $content);
+
+        // 25. <stream view="..." [:data="..."] />
+        $content = preg_replace_callback('/<stream\s+view=["\'](.+?)["\'](?:\s+(?::?data)=["\'](.+?)["\'])?\s*\/?>/i', function ($m) {
+            $view = $m[1];
+            $data = $m[2] ?? '$__data ?? []';
+            return "<?php \$view->renderToStream('{$view}', {$data}); ?>";
+        }, $content);
+
         return $content;
     }
 
@@ -1561,19 +1615,63 @@ class ViewCompiler
     private function compileOnce(string $content): string
     {
         return preg_replace_callback(
-            '/@once\s*\n?(.*?)\n?\s*@endonce/s',
+            '/@once(?:\s*\(\s*[\'"](.+?)[\'"]\s*\))?\s*\n?(.*?)\n?\s*@endonce/s',
             function ($matches) {
-                $id = md5($matches[1]);
+                // If a key is provided in @once('key'), use it. Otherwise hash the content.
+                $key = !empty($matches[1]) ? $matches[1] : md5($matches[2]);
+                $id = preg_replace('/[^a-zA-Z0-9_]/', '_', $key);
 
                 return sprintf(
                     '<?php if (!isset($__once_%s)): $__once_%s = true; ?>%s<?php endif; ?>',
                     $id,
                     $id,
-                    $matches[1]
+                    $matches[2]
                 );
             },
             $content
         );
+    }
+
+    /**
+     * Compile @stream directive for chunked/streamed rendering
+     */
+    private function compileStream(string $content): string
+    {
+        return preg_replace_callback(
+            self::$patterns['stream'] ?? '/@stream\s*\((.+?)\)/s',
+            function ($matches) {
+                return sprintf('<?php $view->renderToStream(%s, $__data ?? []); ?>', $matches[1]);
+            },
+            $content
+        ) ?? $content;
+    }
+
+    /**
+     * Compile @error directive for validation error messaging
+     */
+    private function compileError(string $content): string
+    {
+        return preg_replace_callback(
+            self::$patterns['error'] ?? '/@error\s*\((.+?)\)/s',
+            function ($matches) {
+                $field = $matches[1];
+                return sprintf(
+                    '<?php if ($errors->has(%s)): ?>
+                    <?php $message = $errors->first(%s); ?>',
+                    $field,
+                    $field
+                );
+            },
+            $content
+        ) ?? $content;
+    }
+
+    /**
+     * Compile @enderror directive
+     */
+    private function compileEndError(string $content): string
+    {
+        return str_replace('@enderror', '<?php unset($message); endif; ?>', $content);
     }
 
     private function compileErrorDirectives(string $content): string
@@ -2744,10 +2842,45 @@ class ViewCompiler
                 };
 
                 return sprintf(
-                    '<?php echo strip_tags(%s, \'%s\'); ?>',
+                    '<?php 
+                    $__sanitized = strip_tags(%s, \'%s\'); 
+                    // Remove potentially dangerous event handlers and javascript: links
+                    $__sanitized = preg_replace(\'/\s+on\w+\s*=\s*(["\\\'])(?:(?!\1).)*\1/i\', \'\', $__sanitized);
+                    $__sanitized = preg_replace(\'/(href|src|style)\s*=\s*(["\\\'])\s*(javascript|data|vbscript):(?:(?!\2).)*\2/i\', \'\', $__sanitized);
+                    echo $__sanitized;
+                    unset($__sanitized);
+                    ?>',
                     $input,
                     $allowedTags
                 );
+            },
+            $content
+        ) ?? $content;
+    }
+
+    /**
+     * Compile @csp directive for automatic Content-Security-Policy meta tag
+     */
+    private function compileCsp(string $content): string
+    {
+        return preg_replace_callback(
+            self::$patterns['csp'] ?? '/@csp\s*/',
+            function ($matches) {
+                return '<?php echo \'<meta http-equiv="Content-Security-Policy" content="default-src \\\'self\\\'; script-src \\\'self\\\' \\\'nonce-\' . ($__cspNonce ?? "") . \'\\\'; style-src \\\'self\\\' \\\'unsafe-inline\\\'; img-src \\\'self\\\' data:;">\'; ?>';
+            },
+            $content
+        ) ?? $content;
+    }
+
+    /**
+     * Compile @id directive for safe element IDs
+     */
+    private function compileId(string $content): string
+    {
+        return preg_replace_callback(
+            self::$patterns['id'] ?? '/@id\s*\((.+?)\)/s',
+            function ($matches) {
+                return sprintf('<?php echo \Plugs\View\Escaper::id(%s); ?>', $matches[1]);
             },
             $content
         ) ?? $content;
@@ -2883,8 +3016,6 @@ class ViewCompiler
             $content
         ) ?? $content;
 
-        $content = str_replace('@endauth', '<?php endif; ?>', $content);
-
         // @guest('guard') or @guest
         $content = preg_replace_callback(
             '/@guest\s*(?:\(\s*[\'"](.+?)[\'"]\s*\))?/',
@@ -2898,8 +3029,6 @@ class ViewCompiler
             $content
         ) ?? $content;
 
-        $content = str_replace('@endguest', '<?php endif; ?>', $content);
-
         // @role('admin')
         $content = preg_replace_callback(
             '/@role\s*\(\s*[\'"](.+?)[\'"]\s*\)/',
@@ -2909,8 +3038,6 @@ class ViewCompiler
             },
             $content
         ) ?? $content;
-
-        $content = str_replace('@endrole', '<?php endif; ?>', $content);
 
         // @can('ability')
         $content = preg_replace_callback(
@@ -2922,8 +3049,6 @@ class ViewCompiler
             $content
         ) ?? $content;
 
-        $content = str_replace('@endcan', '<?php endif; ?>', $content);
-
         // @cannot('ability')
         $content = preg_replace_callback(
             '/@cannot\s*\(\s*[\'"](.+?)[\'"]\s*\)/',
@@ -2934,7 +3059,14 @@ class ViewCompiler
             $content
         ) ?? $content;
 
-        $content = str_replace('@endcannot', '<?php endif; ?>', $content);
+        // Batch all end-tag replacements in a single pass (order: longest match first)
+        $content = strtr($content, [
+            '@endcannot' => '<?php endif; ?>',
+            '@endguest' => '<?php endif; ?>',
+            '@endrole' => '<?php endif; ?>',
+            '@endauth' => '<?php endif; ?>',
+            '@endcan' => '<?php endif; ?>',
+        ]);
 
         return $content;
     }
@@ -2955,7 +3087,7 @@ class ViewCompiler
             "<?php if((getenv('APP_ENV') ?: (\$_ENV['APP_ENV'] ?? 'production')) === 'production'): ?>",
             $content
         );
-        $content = str_replace('@endproduction', '<?php endif; ?>', $content);
+
 
         // @local ... @endlocal
         $content = str_replace(
@@ -2963,7 +3095,6 @@ class ViewCompiler
             "<?php if(in_array(getenv('APP_ENV') ?: (\$_ENV['APP_ENV'] ?? 'production'), ['local', 'development'])): ?>",
             $content
         );
-        $content = str_replace('@endlocal', '<?php endif; ?>', $content);
 
         // @envIs('staging') ... @endenvIs
         $content = preg_replace_callback(
@@ -2975,15 +3106,20 @@ class ViewCompiler
             $content
         ) ?? $content;
 
-        $content = str_replace('@endenvIs', '<?php endif; ?>', $content);
-
         // @debug ... @enddebug (shows only when APP_DEBUG is true)
         $content = str_replace(
             '@debug',
             "<?php if(function_exists('config') ? config('app.debug', false) : (filter_var(getenv('APP_DEBUG') ?: (\$_ENV['APP_DEBUG'] ?? false), FILTER_VALIDATE_BOOLEAN))): ?>",
             $content
         );
-        $content = str_replace('@enddebug', '<?php endif; ?>', $content);
+
+        // Batch all end-tag replacements in a single pass
+        $content = strtr($content, [
+            '@endproduction' => '<?php endif; ?>',
+            '@endlocal' => '<?php endif; ?>',
+            '@endenvIs' => '<?php endif; ?>',
+            '@enddebug' => '<?php endif; ?>',
+        ]);
 
         return $content;
     }
@@ -3086,24 +3222,17 @@ class ViewCompiler
 
     /**
      * Compile @skeleton directive — outputs a CSS skeleton loader placeholder
-     * Usage: @skeleton('100%%', '20px')
-     * Usage: @skeleton('200px', '16px', 'rounded')
+     * Usage: @skeleton('text')
+     * Usage: @skeleton('avatar', '48px')
+     * Usage: @skeleton('image', '100%', '200px')
+     * Usage: @skeleton('text-dark')
      */
     private function compileSkeleton(string $content): string
     {
         return preg_replace_callback(
-            '/@skeleton\s*\(\s*[\'"](.+?)[\'"]\s*,\s*[\'"](.+?)[\'"]\s*(?:,\s*[\'"](.+?)[\'"]\s*)?\)/',
+            '/@skeleton\s*\(\s*[\'"](.+?)[\'"]\s*(?:,\s*[\'"](.+?)[\'"]\s*)?(?:,\s*[\'"](.+?)[\'"]\s*)?\)/s',
             function ($matches) {
-                $width = htmlspecialchars($matches[1], ENT_QUOTES);
-                $height = htmlspecialchars($matches[2], ENT_QUOTES);
-                $extra = $matches[3] ?? '';
-
-                $borderRadius = ($extra === 'rounded') ? 'border-radius:9999px;' :
-                    (($extra === 'circle') ? 'border-radius:50%;' : 'border-radius:4px;');
-
-                return '<div class="skeleton-loader" style="width:' . $width . ';height:' . $height . ';'
-                    . $borderRadius . 'background:linear-gradient(90deg,#e0e0e0 25%,#f0f0f0 50%,#e0e0e0 75%);'
-                    . 'background-size:200% 100%;animation:skeleton-pulse 1.5s ease-in-out infinite;"></div>';
+                return $this->getSkeletonHtml($matches[1], $matches[2] ?? '100%', $matches[3] ?? '20px');
             },
             $content
         ) ?? $content;
@@ -3247,6 +3376,52 @@ class ViewCompiler
                 return $md;
             })(\'%s\'); ?>',
             $md
+        );
+    }
+
+    /**
+     * Internal helper for generating skeleton HTML
+     */
+    private function getSkeletonHtml(string $type, string $width = '100%', string $height = '20px'): string
+    {
+        $style = 'background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%); background-size: 200% 100%; animation: skeleton-pulse 1.5s ease-in-out infinite;';
+        $border = 'border-radius: 4px;';
+
+        switch ($type) {
+            case 'avatar':
+            case 'avatar-dark':
+                $width = $height = ($width !== '100%' && $width !== '') ? $width : '48px';
+                $border = 'border-radius: 50%;';
+                break;
+            case 'text':
+            case 'text-dark':
+                $height = ($height !== '20px' && $height !== '') ? $height : '16px';
+                break;
+            case 'image':
+            case 'image-dark':
+                $height = ($height !== '20px' && $height !== '') ? $height : '200px';
+                break;
+            case 'button':
+            case 'button-dark':
+                $height = ($height !== '20px' && $height !== '') ? $height : '40px';
+                $width = ($width !== '100%' && $width !== '') ? $width : '120px';
+                $border = 'border-radius: 8px;';
+                break;
+        }
+
+        // Support for dark mode
+        if (str_contains($type, 'dark')) {
+            $style = 'background: linear-gradient(90deg, #333 25%, #444 50%, #333 75%); background-size: 200% 100%; animation: skeleton-pulse 1.5s ease-in-out infinite;';
+        }
+
+        return sprintf(
+            '<style>@keyframes skeleton-pulse{0%%{background-position:200%% 0}100%%{background-position:-200%% 0}}</style>' .
+            '<div class="skeleton-loader %s" style="display:inline-block;width:%s;height:%s;%s%s"></div>',
+            htmlspecialchars($type, ENT_QUOTES),
+            htmlspecialchars($width, ENT_QUOTES),
+            htmlspecialchars($height, ENT_QUOTES),
+            $border,
+            $style
         );
     }
 }

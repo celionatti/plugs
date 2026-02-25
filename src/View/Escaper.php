@@ -100,6 +100,53 @@ class Escaper
      * @param mixed $value
      * @return string
      */
+    /**
+     * Escape for CSS context (style attributes).
+     * Blocks dangerous CSS values that could enable CSS injection.
+     * 
+     * @param mixed $value
+     * @return string
+     */
+    public static function css(mixed $value): string
+    {
+        $value = (string) $value;
+
+        if ($value === '') {
+            return '';
+        }
+
+        // Check for dangerous CSS keywords (case-insensitive)
+        $dangerous = ['expression', 'javascript', 'vbscript', 'url(', 'import', 'behavior', 'binding', '-moz-binding'];
+        $clean = strtolower(trim($value));
+
+        foreach ($dangerous as $keyword) {
+            if (str_contains($clean, $keyword)) {
+                return ''; // Neutralize dangerous CSS
+            }
+        }
+
+        // Strip characters that could break out of CSS context
+        return preg_replace('/[^a-zA-Z0-9\s#.,;:%()\-_\/\'"!+*>~\[\]=]/', '', $value);
+    }
+
+    /**
+     * Escape a value for use as an HTML element ID.
+     * Strips all characters except alphanumeric, hyphens, and underscores.
+     * 
+     * @param mixed $value
+     * @return string
+     */
+    public static function id(mixed $value): string
+    {
+        return preg_replace('/[^a-zA-Z0-9_-]/', '', (string) $value);
+    }
+
+    /**
+     * Escape for JSON context.
+     * 
+     * @param mixed $value
+     * @return string
+     */
     public static function json(mixed $value): string
     {
         return self::js($value);
