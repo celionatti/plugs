@@ -29,23 +29,33 @@ class Loop
     public int $depth;
 
     /**
-     * The parent loop variable.
-     */
-    public ?Loop $parent;
-
-    /**
      * Create a new Loop instance.
      *
-     * @param int|Countable|array<mixed> $count The total count of items or the iterable itself
+     * @param mixed $items The total count of items or the iterable itself
      * @param Loop|null $parent The parent loop
      * @param int $depth The nesting depth
      */
-    public function __construct(int|Countable|array $count, ?Loop $parent = null, int $depth = 1)
+    public function __construct(mixed $items, ?Loop $parent = null, int $depth = 1)
     {
-        $this->count = is_int($count) ? $count : count($count);
+        if (is_array($items)) {
+            $this->count = count($items);
+        } elseif ($items instanceof Countable) {
+            $this->count = count($items);
+        } elseif (is_int($items)) {
+            $this->count = $items;
+        } else {
+            // For Generators or other iterables where count isn't immediately known
+            $this->count = -1;
+        }
+
         $this->parent = $parent;
         $this->depth = $depth;
     }
+
+    /**
+     * The parent loop variable.
+     */
+    public ?Loop $parent;
 
     /**
      * Tick the loop forward one iteration.
@@ -69,6 +79,10 @@ class Loop
      */
     public function last(): bool
     {
+        if ($this->count === -1) {
+            return false;
+        }
+
         return $this->index === $this->count - 1;
     }
 
@@ -91,8 +105,20 @@ class Loop
     /**
      * Get the remaining number of iterations.
      */
-    public function remaining(): int
+    public function remaining(): ?int
     {
+        if ($this->count === -1) {
+            return null;
+        }
+
         return $this->count - $this->iteration;
+    }
+
+    /**
+     * Get the total number of items in the loop.
+     */
+    public function total(): int
+    {
+        return $this->count;
     }
 }

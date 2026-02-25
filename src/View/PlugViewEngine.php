@@ -112,6 +112,11 @@ class PlugViewEngine implements ViewEngineInterface
     private array $lazyComponents = [];
 
     /**
+     * Internal flag for streaming mode
+     */
+    private bool $isStreaming = false;
+
+    /**
      * Component definition cache
      */
     private array $componentDefinitionCache = [];
@@ -784,6 +789,19 @@ class PlugViewEngine implements ViewEngineInterface
 
         $previousErrorLevel = $this->suppressNonCriticalErrors();
 
+        if ($this->isStreaming) {
+            // Enable implicit flushing to send content directly to browser
+            ob_implicit_flush(true);
+            try {
+                include $compiled;
+                error_reporting($previousErrorLevel);
+                return ''; // Content already echoed
+            } catch (Throwable $e) {
+                error_reporting($previousErrorLevel);
+                throw $this->wrapViewException($e, 'Error rendering compiled view (streaming)', $compiled);
+            }
+        }
+
         ob_start();
 
         try {
@@ -1180,6 +1198,12 @@ class PlugViewEngine implements ViewEngineInterface
         // Extract variables into the current scope for the include
         extract($__localVars, EXTR_SKIP);
 
+        if ($this->isStreaming) {
+            ob_implicit_flush(true);
+            include $__tmpFile;
+            return ''; // Content already echoed
+        }
+
         ob_start();
 
         try {
@@ -1456,14 +1480,31 @@ class PlugViewEngine implements ViewEngineInterface
      */
     public function stream(string $view, array $data = []): \Generator
     {
-        $content = $this->render($view, $data);
+        $previousStreaming = $this->isStreaming;
+        $this->isStreaming = true;
 
-        // Stream in 8KB chunks
-        $chunkSize = 8192;
-        $length = strlen($content);
+        try {
+            // In streaming mode, the content is echoed directly.
+            // We capture it here so we can yield it if needed, OR just let it echo.
+            // For renderToStream, echoing is preferred.
+            ob_start();
+            $this->render($view, $data);
+            $content = ob_get_clean() ?: '';
 
-        for ($i = 0; $i < $length; $i += $chunkSize) {
-            yield substr($content, $i, $chunkSize);
+            if (empty($content)) {
+                yield ''; // Already flushed/echoed
+                return;
+            }
+
+            // Stream in 8KB chunks if any content was buffered
+            $chunkSize = 8192;
+            $length = strlen($content);
+
+            for ($i = 0; $i < $length; $i += $chunkSize) {
+                yield substr($content, $i, $chunkSize);
+            }
+        } finally {
+            $this->isStreaming = $previousStreaming;
         }
     }
 

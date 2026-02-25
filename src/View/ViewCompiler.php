@@ -1352,7 +1352,7 @@ class ViewCompiler
 
     private function compileLoops(string $content): string
     {
-        // @forelse
+        // @forelse (Optimized for memory: avoids count() and array casting)
         $content = preg_replace_callback(
             '/@forelse\s*\((.+?)\s+as\s+(.+?)\)(.*?)@empty(.*?)@endforelse/s',
             function ($matches) {
@@ -1363,16 +1363,14 @@ class ViewCompiler
                 $emptyVar = '__empty_' . md5($array . uniqid());
 
                 $checkIsset = preg_match('/^\$[\w]+$/', $array) ? "isset($array) && " : '';
-                $varName = $array;
 
                 $initLoop = '$__loop_parent = $loop ?? null; $loop = new \Plugs\View\Loop(' . $array . ', $__loop_parent, ($__loop_parent->depth ?? 0) + 1);';
                 $endLoop = '$loop = $__loop_parent;';
 
                 return sprintf(
-                    '<?php $%s = true; if(%sis_iterable(%s) && count((array)%s) > 0): %s foreach (%s as %s): $%s = false; ?>%s<?php $loop->tick(); endforeach; %s endif; if($%s): ?>%s<?php endif; ?>',
+                    '<?php $%s = true; if(%sis_iterable(%s)): %s foreach (%s as %s): $%s = false; ?>%s<?php $loop->tick(); endforeach; %s endif; if($%s): ?>%s<?php endif; ?>',
                     $emptyVar,
                     $checkIsset,
-                    $array,
                     $array,
                     $initLoop,
                     $array,
@@ -1979,8 +1977,17 @@ class ViewCompiler
         $content = $this->compileClass($content);
         $content = $this->compileStyle($content);
         $content = $this->compileVite($content);
+        $content = $this->compileFlush($content);
 
         return $content;
+    }
+
+    /**
+     * Compile @flush directive to flush the output buffer.
+     */
+    private function compileFlush(string $content): string
+    {
+        return preg_replace('/@flush\s*/', '<?php flush(); ?>', $content);
     }
 
     // ============================================
