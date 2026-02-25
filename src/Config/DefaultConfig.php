@@ -25,6 +25,7 @@ class DefaultConfig
             'ai' => self::ai(),
             'seo' => self::seo(),
             'opcache' => self::opcache(),
+            'view' => self::view(),
             default => [],
         };
     }
@@ -518,6 +519,21 @@ class DefaultConfig
             'memory_consumption' => env('OPCACHE_MEMORY_CONSUMPTION', 128),
             'interned_strings_buffer' => env('OPCACHE_INTERNED_STRINGS_BUFFER', 8),
             'fast_shutdown' => env('OPCACHE_FAST_SHUTDOWN', true),
+        ];
+    }
+    private static function view(): array
+    {
+        return [
+            'driver' => env('VIEW_DRIVER', 'plug'),
+            'streaming' => [
+                'enabled' => filter_var(env('VIEW_STREAMING', false), FILTER_VALIDATE_BOOLEAN),
+                'auto_flush' => (int) env('VIEW_AUTO_FLUSH', 50),
+            ],
+            'theme' => env('APP_THEME', 'default'),
+            'paths' => [
+                'views' => env('VIEW_PATH', resource_path('views')),
+                'cache' => storage_path('framework/views'),
+            ],
         ];
     }
 }

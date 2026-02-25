@@ -110,6 +110,10 @@ class ViewManager
         $engine->setOpcacheEnabled(config('opcache.enabled', true));
         $engine->setTheme(config('app.theme'));
 
+        // Apply streaming settings from configuration
+        $engine->enableStreaming(config('view.streaming.enabled', false));
+        $engine->enableAutoFlush(config('view.streaming.auto_flush', 50));
+
         return $engine;
     }
 
