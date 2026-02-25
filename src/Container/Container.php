@@ -279,7 +279,14 @@ class Container implements ContainerInterface
             // Get parameter type
             $type = $parameter->getType();
 
-            if ($type === null || $type->isBuiltin()) {
+            // Union/intersection types (e.g. int|string) don't have isBuiltin()
+            // Treat them as primitives — use default value if available
+            $isBuiltin = $type === null
+                || $type instanceof \ReflectionUnionType
+                || $type instanceof \ReflectionIntersectionType
+                || $type->isBuiltin();
+
+            if ($isBuiltin) {
                 // Handle primitive types
                 if ($parameter->isDefaultValueAvailable()) {
                     $dependencies[] = $parameter->getDefaultValue();

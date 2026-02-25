@@ -956,6 +956,143 @@ class ServerRequest implements ServerRequestInterface
     }
 
     // ============================================
+    // SHORTHAND PROPERTY ACCESS
+    // ============================================
+
+    /**
+     * Get the client IP address.
+     *
+     * @return string
+     */
+    public function ip(): string
+    {
+        return $this->getClientIp() ?? 'unknown';
+    }
+
+    /**
+     * Get the full URL of the request.
+     *
+     * @return string
+     */
+    public function url(): string
+    {
+        return $this->getFullUrl();
+    }
+
+    /**
+     * Get the bearer token from the Authorization header.
+     *
+     * @return string|null
+     */
+    public function bearerToken(): ?string
+    {
+        $header = $this->getHeaderLine('Authorization');
+
+        if (str_starts_with($header, 'Bearer ')) {
+            return substr($header, 7);
+        }
+
+        return null;
+    }
+
+    /**
+     * Check if the request expects a JSON response.
+     * Checks both Accept header and X-Requested-With (AJAX).
+     *
+     * @return bool
+     */
+    public function wantsJson(): bool
+    {
+        $accept = $this->getHeaderLine('Accept');
+
+        return str_contains($accept, '/json') || str_contains($accept, '+json') || $this->isAjax();
+    }
+
+    /**
+     * Generate a unique fingerprint for the request.
+     * Useful for rate limiting with a composite key.
+     *
+     * @return string
+     */
+    public function fingerprint(): string
+    {
+        return sha1(implode('|', [
+            $this->getMethod(),
+            $this->getPath(),
+            $this->ip(),
+        ]));
+    }
+
+    /**
+     * Get the host name.
+     *
+     * @return string
+     */
+    public function host(): string
+    {
+        return $this->uri->getHost();
+    }
+
+    /**
+     * Get the scheme (http/https).
+     *
+     * @return string
+     */
+    public function scheme(): string
+    {
+        return $this->uri->getScheme();
+    }
+
+    /**
+     * Get the port.
+     *
+     * @return int|null
+     */
+    public function port(): ?int
+    {
+        return $this->uri->getPort();
+    }
+
+    /**
+     * Magic property access for common request data.
+     *
+     * Supported properties:
+     *   $request->ip          — Client IP address
+     *   $request->url         — Full URL
+     *   $request->path        — URL path
+     *   $request->method      — HTTP method (GET, POST, etc.)
+     *   $request->host        — Host name
+     *   $request->scheme      — http or https
+     *   $request->port        — Port number
+     *   $request->query       — Query string
+     *   $request->userAgent   — User-Agent header
+     *   $request->referer     — Referer header
+     *   $request->bearerToken — Bearer token from Authorization header
+     *   $request->fingerprint — Unique request fingerprint
+     *
+     * @param string $name
+     * @return mixed
+     */
+    public function __get(string $name): mixed
+    {
+        return match ($name) {
+            'ip' => $this->ip(),
+            'url' => $this->url(),
+            'path' => $this->getPath(),
+            'method' => $this->getMethod(),
+            'host' => $this->host(),
+            'scheme' => $this->scheme(),
+            'port' => $this->port(),
+            'query' => $this->uri->getQuery(),
+            'userAgent' => $this->getUserAgent(),
+            'referer' => $this->getReferer(),
+            'bearerToken' => $this->bearerToken(),
+            'fingerprint' => $this->fingerprint(),
+            default => $this->getAttribute($name),
+        };
+    }
+
+    // ============================================
     // PSR-7 ServerRequestInterface Implementation
     // ============================================
 

@@ -9,6 +9,75 @@ use Plugs\Facades\Cache;
 class RateLimiter
 {
     /**
+     * Registered named rate limiters.
+     * Each is a Closure that receives the request and returns a RateLimitConfig|array.
+     *
+     * @var array<string, \Closure>
+     */
+    protected static array $limiters = [];
+
+    /**
+     * Register a named rate limiter.
+     *
+     * Usage in AppServiceProvider::boot():
+     *   RateLimiter::for('login', function ($request) {
+     *       return RateLimiter::perMinute(5)->by($request->ip);
+     *   });
+     *
+     * @param  string   $name
+     * @param  \Closure $callback
+     * @return void
+     */
+    public static function for(string $name, \Closure $callback): void
+    {
+        static::$limiters[$name] = $callback;
+    }
+
+    /**
+     * Get a named rate limiter callback.
+     *
+     * @param  string $name
+     * @return \Closure|null
+     */
+    public static function limiter(string $name): ?\Closure
+    {
+        return static::$limiters[$name] ?? null;
+    }
+
+    /**
+     * Create a rate limit config: X attempts per minute.
+     *
+     * @param  int $maxAttempts
+     * @return RateLimitConfig
+     */
+    public static function perMinute(int $maxAttempts): RateLimitConfig
+    {
+        return new RateLimitConfig($maxAttempts, 60);
+    }
+
+    /**
+     * Create a rate limit config: X attempts per hour.
+     *
+     * @param  int $maxAttempts
+     * @return RateLimitConfig
+     */
+    public static function perHour(int $maxAttempts): RateLimitConfig
+    {
+        return new RateLimitConfig($maxAttempts, 3600);
+    }
+
+    /**
+     * Create a rate limit config: X attempts per day.
+     *
+     * @param  int $maxAttempts
+     * @return RateLimitConfig
+     */
+    public static function perDay(int $maxAttempts): RateLimitConfig
+    {
+        return new RateLimitConfig($maxAttempts, 86400);
+    }
+
+    /**
      * Determine if the given key has too many attempts.
      *
      * @param  string  $key
@@ -78,11 +147,6 @@ class RateLimiter
      */
     public function availableIn(string $key): int
     {
-        // Plugs Cache driver might not support TTL retrieval directly if it's PSR-16 based.
-        // For now, we'll store the expiration timestamp separately if needed, 
-        // but let's assume standard behavior or implement a simple check.
-        // Since we don't have a direct TTL getter in the Cache facade, we'll store it.
-
         $resetAt = Cache::get($key . ':reset_at');
 
         if (!$resetAt) {

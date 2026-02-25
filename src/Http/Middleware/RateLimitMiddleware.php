@@ -10,12 +10,18 @@ namespace Plugs\Http\Middleware;
 |--------------------------------------------------------------------------
 |
 | This middleware handles rate limiting for incoming requests.
-| Uses the Cache system for persistent storage across requests.
-| Includes behavior-based throttling using ThreatDetector.
+| Supports named limiters configured via RateLimiter::for() in
+| a service provider, as well as simple numeric throttling.
+|
+| Usage in routes:
+|   ->middleware('throttle:login')      // Named limiter
+|   ->middleware('throttle:60,1')       // 60 requests per 1 minute
+|   ->middleware('throttle')            // Default: 60 requests per minute
 */
 
 use Plugs\Exceptions\RateLimitException;
-use Plugs\Security\ThreatDetector;
+use Plugs\Security\RateLimitConfig;
+use Plugs\Security\RateLimiter;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Server\MiddlewareInterface;
@@ -25,120 +31,139 @@ class RateLimitMiddleware implements MiddlewareInterface
 {
     private int $maxRequests;
     private int $perMinutes;
+    private ?string $limiterName = null;
+
+    public function __construct(int|string $maxRequestsOrName = 60, int $perMinutes = 1)
+    {
+        // If the first param is non-numeric, it's a named limiter
+        if (is_string($maxRequestsOrName) && !is_numeric($maxRequestsOrName)) {
+            $this->limiterName = $maxRequestsOrName;
+            $this->maxRequests = 60; // Fallback defaults
+            $this->perMinutes = 1;
+        } else {
+            $this->maxRequests = (int) $maxRequestsOrName;
+            $this->perMinutes = $perMinutes;
+        }
+    }
 
     /**
-     * In-memory fallback when the cache system is unavailable.
+     * Set parameters from route middleware definition.
+     * Called by the Router when resolving middleware like 'throttle:login' or 'throttle:60,1'.
+     *
+     * @param array $params
+     * @return void
      */
-    private static array $memoryStorage = [];
-
-    public function __construct(int $maxRequests = 60, int $perMinutes = 1)
+    public function setParameters(array $params): void
     {
-        $this->maxRequests = $maxRequests;
-        $this->perMinutes = $perMinutes;
+        if (empty($params)) {
+            return;
+        }
+
+        $first = $params[0];
+
+        if (is_numeric($first)) {
+            // Numeric: throttle:60,1
+            $this->maxRequests = (int) $first;
+            $this->perMinutes = isset($params[1]) ? (int) $params[1] : 1;
+            $this->limiterName = null;
+        } else {
+            // Named: throttle:login
+            $this->limiterName = $first;
+        }
     }
 
     public function process(ServerRequestInterface $request, RequestHandlerInterface $handler): ResponseInterface
     {
-        $key = 'rate_limit:' . $this->resolveRequestIdentifier($request);
-        $windowSeconds = $this->perMinutes * 60;
-        $currentTime = time();
-
-        // Dynamic limit based on threat score
-        $effectiveLimit = $this->calculateEffectiveLimit($request);
-
-        // Try to get existing data from cache
-        $data = $this->getData($key);
-
-        if ($data === null || $currentTime > $data['reset_at']) {
-            $data = [
-                'count' => 0,
-                'reset_at' => $currentTime + $windowSeconds,
-            ];
+        // If a named limiter is configured, use it
+        if ($this->limiterName !== null) {
+            return $this->handleNamedLimiter($request, $handler);
         }
 
-        $data['count']++;
+        // Otherwise fall back to simple IP-based throttling
+        return $this->handleSimpleLimiter($request, $handler);
+    }
 
-        // Persist to cache for the remaining window duration
-        $ttl = max(1, $data['reset_at'] - $currentTime);
-        $this->setData($key, $data, $ttl);
+    /**
+     * Handle rate limiting using a named limiter from RateLimiter::for().
+     */
+    private function handleNamedLimiter(ServerRequestInterface $request, RequestHandlerInterface $handler): ResponseInterface
+    {
+        $callback = RateLimiter::limiter($this->limiterName);
 
-        if ($data['count'] > $effectiveLimit) {
-            throw new RateLimitException('Too many requests', $data['reset_at'] - $currentTime);
+        if ($callback === null) {
+            // No limiter registered with this name — pass through
+            return $handler->handle($request);
+        }
+
+        $result = $callback($request);
+
+        // Normalize to array of RateLimitConfig
+        $configs = $result instanceof RateLimitConfig ? [$result] : (array) $result;
+
+        $rateLimiter = $this->getRateLimiterInstance();
+
+        foreach ($configs as $config) {
+            if (!$config instanceof RateLimitConfig) {
+                continue;
+            }
+
+            $key = 'throttle:' . ($config->key ?: $this->limiterName);
+
+            if ($rateLimiter->tooManyAttempts($key, $config->maxAttempts)) {
+                $retryAfter = $rateLimiter->availableIn($key);
+                throw new RateLimitException(
+                    'Too many requests. Please try again in ' . $retryAfter . ' seconds.',
+                    $retryAfter
+                );
+            }
+
+            // Increment the counter immediately
+            $rateLimiter->hit($key, $config->decaySeconds);
+        }
+
+        return $handler->handle($request);
+    }
+
+    /**
+     * Handle simple IP-based rate limiting (legacy / default behavior).
+     */
+    private function handleSimpleLimiter(ServerRequestInterface $request, RequestHandlerInterface $handler): ResponseInterface
+    {
+        $rateLimiter = $this->getRateLimiterInstance();
+        $key = 'throttle:' . $this->resolveRequestIdentifier($request);
+        $windowSeconds = $this->perMinutes * 60;
+
+        if ($rateLimiter->tooManyAttempts($key, $this->maxRequests)) {
+            $retryAfter = $rateLimiter->availableIn($key);
+            throw new RateLimitException('Too many requests', $retryAfter);
         }
 
         $response = $handler->handle($request);
 
+        $rateLimiter->hit($key, $windowSeconds);
+
+        $remaining = max(0, $this->maxRequests - $rateLimiter->attempts($key));
+
         return $response
-            ->withHeader('X-RateLimit-Limit', (string) $effectiveLimit)
-            ->withHeader('X-RateLimit-Remaining', (string) max(0, $effectiveLimit - $data['count']))
-            ->withHeader('X-RateLimit-Reset', (string) $data['reset_at']);
+            ->withHeader('X-RateLimit-Limit', (string) $this->maxRequests)
+            ->withHeader('X-RateLimit-Remaining', (string) $remaining);
     }
 
     private function resolveRequestIdentifier(ServerRequestInterface $request): string
     {
+        if (method_exists($request, 'ip')) {
+            return $request->ip();
+        }
+
         $serverParams = $request->getServerParams();
         return $serverParams['REMOTE_ADDR'] ?? 'unknown';
     }
 
     /**
-     * Calculate effective rate limit based on threat score.
-     * Suspicious clients get lower limits.
+     * Get the RateLimiter service instance from the container.
      */
-    private function calculateEffectiveLimit(ServerRequestInterface $request): int
+    private function getRateLimiterInstance(): RateLimiter
     {
-        $threatScore = ThreatDetector::analyze($request);
-
-        if ($threatScore >= 15) {
-            return max(5, (int) ($this->maxRequests * 0.1)); // 10% of normal
-        }
-        if ($threatScore >= 10) {
-            return max(10, (int) ($this->maxRequests * 0.25)); // 25% of normal
-        }
-        if ($threatScore >= 5) {
-            return max(20, (int) ($this->maxRequests * 0.5)); // 50% of normal
-        }
-
-        return $this->maxRequests;
-    }
-
-    /**
-     * Get rate limit data from cache, falling back to in-memory storage.
-     */
-    private function getData(string $key): ?array
-    {
-        // Try the cache system first
-        if (function_exists('cache')) {
-            try {
-                $cache = cache();
-                if ($cache !== null) {
-                    $data = $cache->get($key);
-                    return is_array($data) ? $data : null;
-                }
-            } catch (\Throwable) {
-                // Cache unavailable, fall through to memory
-            }
-        }
-
-        return self::$memoryStorage[$key] ?? null;
-    }
-
-    /**
-     * Persist rate limit data to cache, falling back to in-memory storage.
-     */
-    private function setData(string $key, array $data, int $ttl): void
-    {
-        if (function_exists('cache')) {
-            try {
-                $cache = cache();
-                if ($cache !== null) {
-                    $cache->set($key, $data, $ttl);
-                    return;
-                }
-            } catch (\Throwable) {
-                // Cache unavailable, fall through to memory
-            }
-        }
-
-        self::$memoryStorage[$key] = $data;
+        return \Plugs\Container\Container::getInstance()->make('ratelimiter');
     }
 }

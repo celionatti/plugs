@@ -70,6 +70,7 @@ class Plugs
         'events' => 'bootstrapEvents',
         'encryption' => 'bootstrapEncryption',
         'concurrency' => 'bootstrapConcurrency',
+        'providers' => 'bootstrapProviders',
     ];
 
     /**
@@ -86,7 +87,6 @@ class Plugs
         'pdf' => 'bootstrapPdf',
         'translator' => 'bootstrapTranslator',
         'notifications' => 'bootstrapNotifications',
-        'providers' => 'bootstrapProviders',
         'ai' => 'bootstrapAi',
         'seo' => 'bootstrapSeo',
         'mail' => 'bootstrapMail',
