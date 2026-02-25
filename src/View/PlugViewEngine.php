@@ -140,6 +140,37 @@ class PlugViewEngine implements ViewEngineInterface
     }
 
     /**
+     * Frequency of automatic flushing during loops (0 to disable)
+     */
+    private int $autoFlushFrequency = 50;
+
+    /**
+     * Enable automatic flushing during loops
+     */
+    public function enableAutoFlush(int $frequency = 50): self
+    {
+        $this->autoFlushFrequency = $frequency;
+        return $this;
+    }
+
+    /**
+     * Get auto-flush frequency
+     */
+    public function getAutoFlushFrequency(): int
+    {
+        return $this->autoFlushFrequency;
+    }
+
+    /**
+     * Check if auto-flush is enabled
+     */
+    public function isAutoFlushEnabled(): bool
+    {
+        return $this->autoFlushFrequency > 0 && $this->isStreamingEnabled();
+    }
+
+
+    /**
      * Blocked variable names that should never be injected via extract().
      * Prevents overwriting PHP superglobals and internal engine variables.
      */

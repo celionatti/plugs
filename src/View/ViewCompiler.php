@@ -505,6 +505,9 @@ class ViewCompiler
         // 3. PHP blocks (before template syntax to avoid conflicts)
         $content = $safeCompile([$this, 'compilePhp'], $content);
 
+        // 3b. HTML Tag equivalents for directives
+        $content = $safeCompile([$this, 'compileTagDirectives'], $content);
+
         // 4. Control structures (conditionals and loops)
         $content = $safeCompile([$this, 'compileConditionals'], $content);
         $content = $safeCompile([$this, 'compileLoops'], $content);
@@ -522,6 +525,7 @@ class ViewCompiler
 
         // 7. Stacks and assets
         $content = $safeCompile([$this, 'compileStacks'], $content);
+        $content = $safeCompile([$this, 'compilePushOnce'], $content);
         $content = $safeCompile([$this, 'compileAssets'], $content);
         $content = $safeCompile([$this, 'compileOnce'], $content);
 
@@ -1040,6 +1044,15 @@ class ViewCompiler
         }, $content);
         $content = preg_replace('/<\/push:[\w-]+\s*>/s', '@endpush', $content);
 
+        // 1b. <pushOnce:stack key="..."> ... </pushOnce:stack>
+        $content = preg_replace_callback('/<pushOnce:([\w-]+)\s+key=["\'](.+?)["\']\s*>(.*?)<\/pushOnce:[\w-]+\s*>/si', function ($m) {
+            $stack = $m[1];
+            $key = $m[2];
+            $inner = $m[3];
+            return "@pushOnce('{$key}', '{$stack}'){$inner}@endPushOnce";
+        }, $content);
+
+
         // 2. <prepend:name> ... </prepend:name>
         $content = preg_replace_callback('/<prepend:([\w-]+)\s*>/s', function ($m) {
             return "@prepend('{$m[1]}')";
@@ -1293,6 +1306,16 @@ class ViewCompiler
             return "@production{$m[1]}@endproduction";
         }, $content);
 
+        // 34. <class :map="..." />
+        $content = preg_replace_callback('/<class\s+(?::map)=["\'](.+?)[\"\\\']\s*\/?>/i', function ($m) {
+            return "@class({$m[1]})";
+        }, $content);
+
+        // 35. <style :map="..." />
+        $content = preg_replace_callback('/<style\s+(?::map)=["\'](.+?)[\"\\\']\s*\/?>/i', function ($m) {
+            return "@style({$m[1]})";
+        }, $content);
+
         return $content;
     }
 
@@ -1337,7 +1360,7 @@ class ViewCompiler
 
         // @switch
         $content = preg_replace_callback('/@switch\s*\(((?:[^()]|\([^()]*\))*)\)/s', function ($matches) {
-            return "<?php switch({$matches[1]}): ?>";
+            return "<?php switch ({$matches[1]}): ?>";
         }, $content);
 
         $content = preg_replace_callback('/@case\s*\(((?:[^()]|\([^()]*\))*)\)/s', function ($matches) {
@@ -1366,9 +1389,10 @@ class ViewCompiler
 
                 $initLoop = '$__loop_parent = $loop ?? null; $loop = new \Plugs\View\Loop(' . $array . ', $__loop_parent, ($__loop_parent->depth ?? 0) + 1);';
                 $endLoop = '$loop = $__loop_parent;';
+                $tick = '$loop->tick(); if (isset($this) && method_exists($this, "isAutoFlushEnabled") && $this->isAutoFlushEnabled() && $loop->shouldFlush($this->getAutoFlushFrequency())) flush();';
 
                 return sprintf(
-                    '<?php $%s = true; if(%sis_iterable(%s)): %s foreach (%s as %s): $%s = false; ?>%s<?php $loop->tick(); endforeach; %s endif; if($%s): ?>%s<?php endif; ?>',
+                    '<?php $%s = true; if(%sis_iterable(%s)): %s foreach (%s as %s): $%s = false; ?>%s<?php %s endforeach; %s endif; if($%s): ?>%s<?php endif; ?>',
                     $emptyVar,
                     $checkIsset,
                     $array,
@@ -1377,6 +1401,7 @@ class ViewCompiler
                     $iteration,
                     $emptyVar,
                     $loopContent,
+                    $tick,
                     $endLoop,
                     $emptyVar,
                     $emptyContent
@@ -1407,7 +1432,7 @@ class ViewCompiler
             $content
         );
 
-        $content = preg_replace('/@endforeach\s*(?:\r?\n)?/', '<?php $loop->tick(); endforeach; $loop = $__loop_parent; endif; ?>', $content);
+        $content = preg_replace('/@endforeach\s*(?:\r?\n)?/', '<?php $loop->tick(); if (isset($this) && method_exists($this, "isAutoFlushEnabled") && $this->isAutoFlushEnabled() && $loop->shouldFlush($this->getAutoFlushFrequency())) flush(); endforeach; $loop = $__loop_parent; endif; ?>', $content);
 
         // @for
         $content = preg_replace('/@for\s*\((.+?)\)/s', '<?php for ($1): ?>', $content);
@@ -1590,6 +1615,33 @@ class ViewCompiler
 
         return $content;
     }
+
+    /**
+     * Compile @pushOnce directive to push content to a stack only once.
+     * Usage: @pushOnce('uniqueKey', 'stackName') content @endPushOnce
+     */
+    private function compilePushOnce(string $content): string
+    {
+        return preg_replace_callback(
+            '/@pushOnce\s*\(\s*[\'"](.+?)[\'"]\s*,\s*[\'"](.+?)[\'"]\s*\)\s*\n?(.*?)\n?\s*@endPushOnce/s',
+            function ($matches) {
+                $key = $matches[1];
+                $stackName = addslashes($matches[2]);
+                $innerContent = $matches[3];
+                $id = preg_replace('/[^a-zA-Z0-9_]/', '_', $key);
+
+                return sprintf(
+                    '<?php if (!isset($__pushOnce_%s)): $__pushOnce_%s = true; $__currentStack = \'%s\'; ob_start(); ?>%s<?php if (isset($__currentStack)) { if (!isset($__stacks[$__currentStack])) { $__stacks[$__currentStack] = []; } $__stacks[$__currentStack][] = ob_get_clean(); unset($__currentStack); } endif; ?>',
+                    $id,
+                    $id,
+                    $stackName,
+                    $innerContent
+                );
+            },
+            $content
+        );
+    }
+
 
     /**
      * Compile @css and @js asset directives into HTML link/script tags.

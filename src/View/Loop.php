@@ -121,4 +121,16 @@ class Loop
     {
         return $this->count;
     }
+
+    /**
+     * Check if the loop should trigger an automatic buffer flush.
+     * Helpful for large datasets to keep memory low and TTFB fast.
+     *
+     * @param int $frequency
+     * @return bool
+     */
+    public function shouldFlush(int $frequency = 50): bool
+    {
+        return $this->index > 0 && $this->index % $frequency === 0;
+    }
 }
