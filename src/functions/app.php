@@ -178,9 +178,13 @@ if (!function_exists('csrf_field')) {
 
 if (!function_exists('db')) {
     /**
-     * Get the database manager instance or a table query builder
+     * Get the database manager instance or a table query builder.
+     *
+     * @param string|null $table
+     * @param string|null $connection
+     * @return \Plugs\Database\DatabaseManager|\Plugs\Database\QueryBuilder
      */
-    function db(?string $table = null)
+    function db(?string $table = null, ?string $connection = null): \Plugs\Database\DatabaseManager|\Plugs\Database\QueryBuilder
     {
         $db = app('db');
 
@@ -188,7 +192,7 @@ if (!function_exists('db')) {
             return $db;
         }
 
-        return $db->table($table);
+        return $db->table($table, $connection);
     }
 }
 
