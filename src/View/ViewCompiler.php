@@ -522,6 +522,7 @@ class ViewCompiler
 
         // 7. Stacks and assets
         $content = $safeCompile([$this, 'compileStacks'], $content);
+        $content = $safeCompile([$this, 'compileAssets'], $content);
         $content = $safeCompile([$this, 'compileOnce'], $content);
 
         // 8. Form helpers
@@ -1227,6 +1228,41 @@ class ViewCompiler
             return "<?php \$view->renderToStream('{$view}', {$data}); ?>";
         }, $content);
 
+        // 26. <css href="..." /> — self-closing, with optional attributes
+        $content = preg_replace_callback('/<css\s+href=["\'](.+?)["\']([^>]*?)\s*\/>/si', function ($m) {
+            $href = $m[1];
+            $extraAttrs = trim($m[2]);
+            if ($extraAttrs) {
+                // Build associative array from HTML attributes
+                $attrs = [];
+                preg_match_all('/([\w-]+)(?:=["\'](.+?)["\'])?/', $extraAttrs, $attrMatches, PREG_SET_ORDER);
+                foreach ($attrMatches as $attr) {
+                    $key = $attr[1];
+                    $val = $attr[2] ?? true;
+                    $attrs[] = "'" . addslashes($key) . "' => " . (is_bool($val) ? 'true' : "'" . addslashes($val) . "'");
+                }
+                return "@css('{$href}', [" . implode(', ', $attrs) . "])";
+            }
+            return "@css('{$href}')";
+        }, $content);
+
+        // 27. <js src="..." /> — self-closing, with optional attributes (defer, async, type)
+        $content = preg_replace_callback('/<js\s+src=["\'](.+?)["\']([^>]*?)\s*\/>/si', function ($m) {
+            $src = $m[1];
+            $extraAttrs = trim($m[2]);
+            if ($extraAttrs) {
+                $attrs = [];
+                preg_match_all('/([\w-]+)(?:=["\'](.+?)["\'])?/', $extraAttrs, $attrMatches, PREG_SET_ORDER);
+                foreach ($attrMatches as $attr) {
+                    $key = $attr[1];
+                    $val = $attr[2] ?? true;
+                    $attrs[] = "'" . addslashes($key) . "' => " . (is_bool($val) ? 'true' : "'" . addslashes($val) . "'");
+                }
+                return "@js('{$src}', [" . implode(', ', $attrs) . "])";
+            }
+            return "@js('{$src}')";
+        }, $content);
+
         return $content;
     }
 
@@ -1520,6 +1556,61 @@ class ViewCompiler
                 $stackName = addslashes($matches[1]);
 
                 return sprintf('<?php echo implode(\'\', $__stacks[\'%s\'] ?? []); ?>', $stackName);
+            },
+            $content
+        );
+
+        return $content;
+    }
+
+    /**
+     * Compile @css and @js asset directives into HTML link/script tags.
+     *
+     * Usage:
+     *   @css('path/to/file.css')                              → <link rel="stylesheet" href="...">
+     *   @css('file.css', ['media' => 'print'])                → <link rel="stylesheet" href="..." media="print">
+     *   @js('path/to/file.js')                                → <script src="..."></script>
+     *   @js('file.js', ['defer' => true])                     → <script src="..." defer></script>
+     *   @js('file.js', ['async' => true, 'type' => 'module']) → <script src="..." async type="module"></script>
+     */
+    private function compileAssets(string $content): string
+    {
+        // @css('path') or @css('path', ['attr' => 'val'])
+        $content = preg_replace_callback(
+            '/@css\s*\(\s*[\'\"](.+?)[\'\"](?:\s*,\s*(\[.+?\]))?\s*\)/',
+            function ($matches) {
+                $href = addslashes($matches[1]);
+                if (isset($matches[2])) {
+                    $attrsExpr = $matches[2];
+                    return '<?php $__cssAttrs = ' . $attrsExpr . '; '
+                        . '$__cssExtra = \'\'; '
+                        . 'foreach ($__cssAttrs as $__k => $__v) { '
+                        . '    if ($__v === true) { $__cssExtra .= \' \' . $__k; } '
+                        . '    elseif ($__v !== false && $__v !== null) { $__cssExtra .= \' \' . $__k . \'="\' . htmlspecialchars((string)$__v, ENT_QUOTES, \'UTF-8\') . \'"\'; } '
+                        . '} '
+                        . 'echo \'<link rel="stylesheet" href="' . $href . '"\' . $__cssExtra . \'>\'; ?>';
+                }
+                return '<link rel="stylesheet" href="' . $href . '">';
+            },
+            $content
+        );
+
+        // @js('path') or @js('path', ['attr' => val])
+        $content = preg_replace_callback(
+            '/@js\s*\(\s*[\'\"](.+?)[\'\"](?:\s*,\s*(\[.+?\]))?\s*\)/',
+            function ($matches) {
+                $src = addslashes($matches[1]);
+                if (isset($matches[2])) {
+                    $attrsExpr = $matches[2];
+                    return '<?php $__jsAttrs = ' . $attrsExpr . '; '
+                        . '$__jsExtra = \'\'; '
+                        . 'foreach ($__jsAttrs as $__k => $__v) { '
+                        . '    if ($__v === true) { $__jsExtra .= \' \' . $__k; } '
+                        . '    elseif ($__v !== false && $__v !== null) { $__jsExtra .= \' \' . $__k . \'="\' . htmlspecialchars((string)$__v, ENT_QUOTES, \'UTF-8\') . \'"\'; } '
+                        . '} '
+                        . 'echo \'<script src="' . $src . '"\' . $__jsExtra . \'></script>\'; ?>';
+                }
+                return '<script src="' . $src . '"></script>';
             },
             $content
         );

@@ -41,6 +41,12 @@ class PlugViewEngine implements ViewEngineInterface
     /** @var bool|null Cached result of class_exists(Profiler) */
     private static ?bool $profilerAvailable = null;
 
+    /** @var bool|null Cached debug mode result (resolved once per request) */
+    private static ?bool $debugModeCache = null;
+
+    /** @var bool|null Cached xxh128 availability for fastHash */
+    private static ?bool $xxhashAvailable = null;
+
     /**
      * Get the number of compilation attempts for each view.
      * @return array<string, int>
@@ -718,25 +724,19 @@ class PlugViewEngine implements ViewEngineInterface
     {
         $compiledContent = $this->stripStrictTypesDeclaration($compiledContent);
 
-        extract($this->sanitizeDataForExtract(array_merge($this->sharedData, $data)), EXTR_SKIP);
-
-        // FIX: Don't overwrite if already present from extract
-        $view = $view ?? $this;
-        $__sections = $__sections ?? [];
-        $__stacks = $__stacks ?? [];
+        $localVars = $this->sanitizeDataForExtract(array_merge($this->sharedData, $data));
+        $localVars['view'] = $localVars['view'] ?? $this;
+        $localVars['__sections'] = $localVars['__sections'] ?? [];
+        $localVars['__stacks'] = $localVars['__stacks'] ?? [];
 
         $previousErrorLevel = $this->suppressNonCriticalErrors();
 
-        ob_start();
-
         try {
-            eval ('?>' . $compiledContent);
-            $result = ob_get_clean();
+            $result = $this->includeCompiledString($compiledContent, $localVars);
             error_reporting($previousErrorLevel);
 
             return $result;
         } catch (Throwable $e) {
-            ob_end_clean();
             error_reporting($previousErrorLevel);
 
             throw $this->wrapViewException($e, 'Error executing compiled content');
@@ -796,32 +796,7 @@ class PlugViewEngine implements ViewEngineInterface
             }
 
             if ($this->suppressLayout) {
-                $output = $childContent;
-
-                if ($this->requestedSection && isset($__sections[$this->requestedSection])) {
-                    $output = $__sections[$this->requestedSection];
-                } elseif (isset($__sections['content'])) {
-                    $output = $__sections['content'];
-                }
-
-                if (isset($__sections['title'])) {
-                    $output = "<title>{$__sections['title']}</title>\n" . $output;
-                }
-
-                if (!empty($__stacks['styles'])) {
-                    $output .= implode("\n", $__stacks['styles']);
-                }
-                if (!empty($__stacks['scripts'])) {
-                    $output .= implode("\n", $__stacks['scripts']);
-                }
-
-                // Include layout information for SPA to detect if a full reload is needed
-                /** @var string|null $__extends */
-                if (isset($__extends) && $__extends) {
-                    $output = "<meta name=\"plugs-layout\" content=\"" . (string) $__extends . "\">\n" . $output;
-                }
-
-                return $output;
+                return $this->buildSuppressedOutput($childContent, $__sections, $__stacks, $__extends ?? null);
             }
 
             return $childContent;
@@ -841,27 +816,27 @@ class PlugViewEngine implements ViewEngineInterface
         $compiledContent = $this->getCompiler()->compile($content);
         $compiledContent = $this->stripStrictTypesDeclaration($compiledContent);
 
-        extract($this->sanitizeDataForExtract($data), EXTR_SKIP);
-
-        // FIX: Don't reinitialize if already set by extract
-        // This preserves stacks from child views
-        $__sections = $__sections ?? [];
-        $__stacks = $__stacks ?? [];
-        $__extends = null;
-        $__currentSection = null;
+        $localVars = $this->sanitizeDataForExtract($data);
+        $localVars['__sections'] = $localVars['__sections'] ?? [];
+        $localVars['__stacks'] = $localVars['__stacks'] ?? [];
+        $localVars['__extends'] = null;
+        $localVars['__currentSection'] = null;
 
         $previousErrorLevel = $this->suppressNonCriticalErrors();
 
-        ob_start();
-
         try {
-            eval ('?>' . $compiledContent);
-            $childContent = ob_get_clean() ?: '';
+            $childContent = $this->includeCompiledString($compiledContent, $localVars);
             error_reporting($previousErrorLevel);
+
+            // After include, we need to read back any variables set by the template
+            // The template may have set $__extends, $__sections, $__stacks via the included file
+            // We use a secondary include approach to capture these
+            $__extends = $localVars['__extends'] ?? null;
+            $__sections = $localVars['__sections'] ?? [];
+            $__stacks = $localVars['__stacks'] ?? [];
 
             /** @phpstan-ignore-next-line */
             if (isset($__extends) && $__extends && !$this->suppressLayout) {
-                // FIX: Pass stacks and childContent to parent layout
                 return (string) $this->renderParentDirect(
                     $__extends,
                     array_merge($data, ['childContent' => $childContent]),
@@ -871,39 +846,11 @@ class PlugViewEngine implements ViewEngineInterface
             }
 
             if ($this->suppressLayout) {
-                $output = $childContent;
-
-                if ($this->requestedSection && isset($__sections[$this->requestedSection])) {
-                    $output = $__sections[$this->requestedSection];
-                } elseif (isset($__sections['content'])) {
-                    $output = $__sections['content'];
-                }
-
-                if (isset($__sections['title'])) {
-                    $output = "<title>{$__sections['title']}</title>\n" . $output;
-                }
-
-                if (!empty($__stacks['styles'])) {
-                    $output .= implode("\n", $__stacks['styles']);
-                }
-                if (!empty($__stacks['scripts'])) {
-                    $output .= implode("\n", $__stacks['scripts']);
-                }
-
-                // Include layout information for SPA to detect if a full reload is needed
-                /** @var string|null $__extends */
-                if (isset($__extends) && $__extends) {
-                    $output = "<meta name=\"plugs-layout\" content=\"" . (string) $__extends . "\">\n" . $output;
-                }
-
-                return $output;
+                return $this->buildSuppressedOutput($childContent, $__sections, $__stacks, $__extends);
             }
 
             return $childContent;
         } catch (Throwable $e) {
-            if (ob_get_level() > 0) {
-                ob_end_clean();
-            }
             error_reporting($previousErrorLevel);
 
             throw $this->wrapViewException($e, 'Error rendering view', $viewFile);
@@ -960,27 +907,21 @@ class PlugViewEngine implements ViewEngineInterface
         $compiledParent = $this->getCompiler()->compile($parentContent);
         $compiledParent = $this->stripStrictTypesDeclaration($compiledParent);
 
-        // FIX: Pass both sections and stacks to parent
-        extract($this->sanitizeDataForExtract(array_merge($data, [
+        // Pass both sections and stacks to parent
+        $localVars = $this->sanitizeDataForExtract(array_merge($data, [
             '__sections' => $sections,
             '__stacks' => $stacks,
-        ])), EXTR_SKIP);
-
-        // Don't reinitialize $__stacks - it was just extracted!
-        $__stacks = $__stacks ?? [];
+        ]));
+        $localVars['__stacks'] = $localVars['__stacks'] ?? [];
 
         $previousErrorLevel = $this->suppressNonCriticalErrors();
 
-        ob_start();
-
         try {
-            eval ('?>' . $compiledParent);
-            $result = ob_get_clean();
+            $result = $this->includeCompiledString($compiledParent, $localVars);
             error_reporting($previousErrorLevel);
 
-            return (string) ($result ?: '');
+            return $result;
         } catch (Throwable $e) {
-            ob_end_clean();
             error_reporting($previousErrorLevel);
 
             throw $this->wrapViewException($e, sprintf('Error rendering parent view [%s]', $parentView), $parentView);
@@ -1165,20 +1106,24 @@ class PlugViewEngine implements ViewEngineInterface
 
     private function isDebugMode(): bool
     {
+        if (self::$debugModeCache !== null) {
+            return self::$debugModeCache;
+        }
+
         if (defined('APP_DEBUG')) {
-            return (bool) constant('APP_DEBUG');
+            return self::$debugModeCache = (bool) constant('APP_DEBUG');
         }
 
         if (isset($_ENV['APP_DEBUG'])) {
-            return filter_var($_ENV['APP_DEBUG'], FILTER_VALIDATE_BOOLEAN);
+            return self::$debugModeCache = filter_var($_ENV['APP_DEBUG'], FILTER_VALIDATE_BOOLEAN);
         }
 
         $envDebug = getenv('APP_DEBUG');
         if ($envDebug !== false) {
-            return filter_var($envDebug, FILTER_VALIDATE_BOOLEAN);
+            return self::$debugModeCache = filter_var($envDebug, FILTER_VALIDATE_BOOLEAN);
         }
 
-        return false;
+        return self::$debugModeCache = false;
     }
 
     private function suppressNonCriticalErrors(): int
@@ -1201,6 +1146,92 @@ class PlugViewEngine implements ViewEngineInterface
                 );
             }
         }
+    }
+
+    /**
+     * Execute compiled template content by writing to a cached file and including it.
+     * Uses content-hash filenames so the same compiled content reuses the cached file
+     * across requests. This replaces eval() for better OPcache support, security,
+     * and error traces.
+     *
+     * @param string $compiledContent The compiled PHP/HTML content
+     * @param array $__localVars Variables to extract into the template scope
+     * @return string The rendered output
+     */
+    private function includeCompiledString(string $compiledContent, array &$__localVars): string
+    {
+        // Use a deterministic hash so the same content reuses the same file
+        $__tmpFile = $this->cachePath . DIRECTORY_SEPARATOR
+            . '__inline_' . self::fastHash($compiledContent) . '.php';
+
+        // Only write if the file doesn't already exist (skip I/O on repeated renders)
+        if (!$this->fileExistsCached($__tmpFile)) {
+            file_put_contents($__tmpFile, $compiledContent, LOCK_EX);
+            $this->fileExistsCache[$__tmpFile] = true;
+        }
+
+        // Extract variables into the current scope for the include
+        extract($__localVars, EXTR_SKIP);
+
+        ob_start();
+
+        try {
+            include $__tmpFile;
+            $__result = ob_get_clean() ?: '';
+
+            // Write back any template-set variables so callers can read them
+            foreach (array_keys($__localVars) as $__key) {
+                if (isset($$__key)) {
+                    $__localVars[$__key] = $$__key;
+                }
+            }
+
+            return $__result;
+        } catch (Throwable $__e) {
+            if (ob_get_level() > 0) {
+                ob_end_clean();
+            }
+            throw $__e;
+        }
+    }
+
+    /**
+     * Build output for suppressed-layout mode (SPA partials).
+     * Consolidates the repeated logic from renderCompiled and renderDirect.
+     *
+     * @param string $childContent The rendered child content
+     * @param array $sections Template sections
+     * @param array $stacks Template stacks (styles, scripts)
+     * @param string|null $extends Parent layout name if any
+     * @return string The assembled output
+     */
+    private function buildSuppressedOutput(string $childContent, array $sections, array $stacks, ?string $extends = null): string
+    {
+        $output = $childContent;
+
+        if ($this->requestedSection && isset($sections[$this->requestedSection])) {
+            $output = $sections[$this->requestedSection];
+        } elseif (isset($sections['content'])) {
+            $output = $sections['content'];
+        }
+
+        if (isset($sections['title'])) {
+            $output = "<title>{$sections['title']}</title>\n" . $output;
+        }
+
+        if (!empty($stacks['styles'])) {
+            $output .= implode("\n", $stacks['styles']);
+        }
+        if (!empty($stacks['scripts'])) {
+            $output .= implode("\n", $stacks['scripts']);
+        }
+
+        // Include layout information for SPA to detect if a full reload is needed
+        if ($extends) {
+            $output = "<meta name=\"plugs-layout\" content=\"" . (string) $extends . "\">\n" . $output;
+        }
+
+        return $output;
     }
 
     // ============================================
@@ -1546,13 +1577,13 @@ class PlugViewEngine implements ViewEngineInterface
      */
     public static function fastHash(string $content): string
     {
-        // PHP 8.1+ has xxh128 which is significantly faster than md5
-        if (function_exists('hash') && in_array('xxh128', hash_algos(), true)) {
-            return hash('xxh128', $content);
+        if (self::$xxhashAvailable === null) {
+            self::$xxhashAvailable = function_exists('hash') && in_array('xxh128', hash_algos(), true);
         }
 
-        // Fallback to md5 for older PHP
-        return md5($content);
+        return self::$xxhashAvailable
+            ? hash('xxh128', $content)
+            : md5($content);
     }
 
     /**
