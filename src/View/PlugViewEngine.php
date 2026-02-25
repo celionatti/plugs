@@ -14,6 +14,7 @@ namespace Plugs\View;
 */
 
 use Plugs\Exceptions\ViewException;
+use Plugs\Debug\Profiler;
 use RuntimeException;
 use Throwable;
 
@@ -357,11 +358,27 @@ class PlugViewEngine implements ViewEngineInterface
         $this->directive('error', function ($expression) {
             $key = trim($expression ?? '', " '\"");
 
-            return "<?php if (isset(\$errors) && \$errors->has('$key')): ?>";
+            return "<?php if (isset(\$errors) && \$errors->has('$key')): \$errors_key = '$key'; ?>";
+        });
+
+        $this->directive('message', function () {
+            return "<?php echo isset(\$message) ? \$message : (isset(\$errors_key) ? \$errors->first(\$errors_key) : ''); ?>";
         });
 
         $this->directive('enderror', function () {
-            return "<?php endif; ?>";
+            return "<?php unset(\$errors_key); endif; ?>";
+        });
+
+        $this->directive('errors', function ($expression) {
+            $key = trim($expression ?? '', " '\"");
+            if (empty($key)) {
+                return "<?php if (isset(\$errors) && \$errors->any()): foreach (\$errors->getMessages() as \$message): ?>";
+            }
+            return "<?php if (isset(\$errors) && \$errors->has('$key')): foreach (\$errors->get('$key') as \$message): ?>";
+        });
+
+        $this->directive('enderrors', function () {
+            return "<?php endforeach; endif; ?>";
         });
 
         // RBAC Directives
@@ -458,11 +475,11 @@ class PlugViewEngine implements ViewEngineInterface
 
         // Record in Profiler (cached class_exists check)
         if (self::$profilerAvailable === null) {
-            self::$profilerAvailable = class_exists(\Plugs\Debug\Profiler::class);
+            self::$profilerAvailable = class_exists(Profiler::class);
         }
         if (self::$profilerAvailable) {
             $duration = (microtime(true) - $startTime) * 1000;
-            \Plugs\Debug\Profiler::getInstance()->addView($view, $duration);
+            Profiler::getInstance()->addView($view, $duration);
         }
 
         return $content;
@@ -598,6 +615,22 @@ class PlugViewEngine implements ViewEngineInterface
     public function share(string $key, $value): void
     {
         $this->sharedData[$key] = $value;
+    }
+
+    /**
+     * Get shared data.
+     *
+     * @param string|null $key
+     * @param mixed $default
+     * @return mixed
+     */
+    public function getShared(?string $key = null, $default = null): mixed
+    {
+        if ($key === null) {
+            return $this->sharedData;
+        }
+
+        return $this->sharedData[$key] ?? $default;
     }
 
     public function componentExists(string $componentName): bool

@@ -286,13 +286,35 @@ if (!function_exists('old')) {
     /**
      * Get old input value from previous request
      */
-    function old(string $key, $default = null)
+    function old(?string $key = null, mixed $default = null): mixed
     {
-        if (isset($_SESSION['_old_input'][$key])) {
-            return $_SESSION['_old_input'][$key];
+        if (session_status() === PHP_SESSION_NONE) {
+            session_start();
         }
 
-        return $default;
+        // Check both common locations for old input
+        $oldInput = $_SESSION['_old_input'] ?? $_SESSION['_flash']['_old_input'] ?? [];
+
+        if ($key === null) {
+            return $oldInput;
+        }
+
+        // Support dot notation for nested arrays
+        if (str_contains($key, '.')) {
+            $keys = explode('.', $key);
+            $value = $oldInput;
+
+            foreach ($keys as $segment) {
+                if (!is_array($value) || !array_key_exists($segment, $value)) {
+                    return $default;
+                }
+                $value = $value[$segment];
+            }
+
+            return $value;
+        }
+
+        return $oldInput[$key] ?? $default;
     }
 }
 

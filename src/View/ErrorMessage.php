@@ -16,7 +16,7 @@ namespace Plugs\View;
  *
  * return $viewEngine->render('form', ['errors' => $errors]);
  */
-class ErrorMessage
+class ErrorMessage implements \IteratorAggregate, \Countable, \JsonSerializable
 {
     private array $errors = [];
 
@@ -28,7 +28,7 @@ class ErrorMessage
     public function __construct(array $errors = [])
     {
         foreach ($errors as $field => $messages) {
-            $this->errors[$field] = is_array($messages) ? $messages : [$messages];
+            $this->errors[$field] = is_array($messages) ? array_values($messages) : [$messages];
         }
     }
 
@@ -91,6 +91,16 @@ class ErrorMessage
     }
 
     /**
+     * Check if there are any errors (alias for any)
+     *
+     * @return bool
+     */
+    public function hasAny(): bool
+    {
+        return $this->any();
+    }
+
+    /**
      * Get count of fields with errors
      *
      * @return int
@@ -140,6 +150,36 @@ class ErrorMessage
      * @return array
      */
     public function toArray(): array
+    {
+        return $this->errors;
+    }
+
+    /**
+     * Get all messages as a flat array
+     *
+     * @return array
+     */
+    public function getMessages(): array
+    {
+        return $this->all();
+    }
+
+    /**
+     * Get an iterator for the errors
+     *
+     * @return \ArrayIterator
+     */
+    public function getIterator(): \ArrayIterator
+    {
+        return new \ArrayIterator($this->errors);
+    }
+
+    /**
+     * Specify data which should be serialized to JSON
+     *
+     * @return array
+     */
+    public function jsonSerialize(): array
     {
         return $this->errors;
     }

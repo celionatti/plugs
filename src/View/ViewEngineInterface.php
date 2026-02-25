@@ -97,4 +97,13 @@ interface ViewEngineInterface
      * @return void
      */
     public function setCspNonce(string $nonce): void;
+
+    /**
+     * Get shared data.
+     *
+     * @param string|null $key
+     * @param mixed $default
+     * @return mixed
+     */
+    public function getShared(?string $key = null, $default = null): mixed;
 }

@@ -921,3 +921,45 @@ function getProductionErrorHtml(int $statusCode = 500, ?string $title = null, ?s
 </body>
 </html>';
 }
+/**
+ * Get the global ErrorMessage instance
+ */
+function errors(): \Plugs\View\ErrorMessage
+{
+    /** @var \Plugs\View\ViewEngineInterface $view */
+    $view = app(\Plugs\View\ViewEngineInterface::class);
+
+    // First try to get it from the view engine's shared data
+    $errorsData = $view->getShared('errors');
+    if ($errorsData instanceof \Plugs\View\ErrorMessage) {
+        return $errorsData;
+    }
+
+    // Then try to get it from the container itself if bound
+    if (app()->bound('errors')) {
+        return app('errors');
+    }
+
+    // Finally fallback to session if not yet cleared by Controller
+    if (isset($_SESSION['_errors']) && $_SESSION['_errors'] instanceof \Plugs\View\ErrorMessage) {
+        return $_SESSION['_errors'];
+    }
+
+    return new \Plugs\View\ErrorMessage();
+}
+
+/**
+ * Check if a specific field has an error
+ */
+function has_error(string $key): bool
+{
+    return errors()->has($key);
+}
+
+/**
+ * Get the first error message for a field
+ */
+function error_message(string $key): ?string
+{
+    return errors()->first($key);
+}
