@@ -83,7 +83,16 @@ class JwtGuard implements GuardInterface
         // This is a stateless guard, so validation is just checking coords.
         $user = $this->retrieveUserByCredentials($credentials);
 
-        return $user && $this->validateCredentials($user, $credentials);
+        if ($user && $this->validateCredentials($user, $credentials)) {
+            return true;
+        }
+
+        // Perform a dummy password check to prevent user enumeration via timing attacks if user is not found
+        if (!$user && isset($credentials['password'])) {
+            password_verify($credentials['password'], '$2y$10$fG6z.M5rUu2KqWnQ/G1u2O9wW3o3Y3.qR.z8/G1u2O9wW3o3Y3.qR.');
+        }
+
+        return false;
     }
 
     public function attempt(array $credentials = [], bool $remember = false): bool

@@ -72,6 +72,11 @@ class SessionGuard implements GuardInterface
             return true;
         }
 
+        // Perform a dummy hash check to prevent user enumeration via timing attacks if user is not found
+        if (!$user) {
+            Hash::verify($credentials['password'], '$2y$10$fG6z.M5rUu2KqWnQ/G1u2O9wW3o3Y3.qR.z8/G1u2O9wW3o3Y3.qR.');
+        }
+
         return false;
     }
 
@@ -83,6 +88,11 @@ class SessionGuard implements GuardInterface
             $this->login($user, $remember);
 
             return true;
+        }
+
+        // Perform a dummy hash check to prevent user enumeration via timing attacks if user is not found
+        if (!$user) {
+            Hash::verify($credentials['password'], '$2y$10$fG6z.M5rUu2KqWnQ/G1u2O9wW3o3Y3.qR.z8/G1u2O9wW3o3Y3.qR.');
         }
 
         return false;
