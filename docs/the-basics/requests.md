@@ -77,8 +77,15 @@ class StoreProductRequest extends FormRequest
 {
     public function authorize(): bool
     {
+        // Return true to allow, false to deny
         return $this->user()->can('create', Product::class);
     }
+
+    /**
+     * Understanding Authorization:
+     * - true: Continues to rules()
+     * - false: Throws AuthorizationException (403 Forbidden)
+     */
 
     public function rules(): array
     {

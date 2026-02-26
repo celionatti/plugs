@@ -73,7 +73,22 @@ $rules = [
 ];
 ```
 
-## 4. Error Messages
+## 4. Form Requests
+
+For more complex validation and authorization logic, you should use **Form Requests**. Form Requests are dedicated classes that contain their own validation rules and authorization logic, keeping your controllers clean.
+
+```php
+public function store(StoreUserRequest $request)
+{
+    // Execution only reaches here if authorization and validation pass
+    $validated = $request->validated();
+}
+```
+
+> [!NOTE]
+> Learn more about Form Requests, including how to handle **authorization**, in the [Requests Documentation](file:///c:/xampp/htdocs/plugs/docs/the-basics/requests.md#form-requests).
+
+## 5. Error Messages
 
 Plugs handles the localization and formatting of error messages for you, making it easy to display them in your views.
 
