@@ -57,7 +57,7 @@ class Validator
             if (strpos($field, '*') !== false) {
                 $this->validateWildcard($field, $rules);
             } else {
-                $ruleList = is_array($rules) ? $rules : explode('|', $rules);
+                $ruleList = $this->explodeRules($rules);
 
                 // Handle 'sometimes' rule: if field is not present in data, skip all validation for it
                 if (in_array('sometimes', $ruleList, true) && !$this->hasValue($field)) {
@@ -133,6 +133,13 @@ class Validator
         // Handle string rules
         $ruleString = (string) $rule;
 
+        // Support Password::defaults() syntax in strings
+        if ($ruleString === 'Password::defaults()') {
+            $rule = \Plugs\Security\Rules\Password::defaults();
+            $this->validateRule($field, $value, $rule);
+            return;
+        }
+
         // Handle regex rule separately as it can contain colons
         if (str_starts_with($ruleString, 'regex:')) {
             $params = [substr($ruleString, 6)];
@@ -144,6 +151,16 @@ class Validator
             $ruleName = $ruleString;
         }
 
+        // 1. Check RuleRegistry First (Architectural Refactor)
+        if (RuleRegistry::has($ruleName)) {
+            $ruleInstance = RuleRegistry::resolve($ruleName, $params);
+            if ($ruleInstance) {
+                $this->validateRule($field, $value, $ruleInstance);
+                return;
+            }
+        }
+
+        // 2. Fallback to instance methods (Legacy)
         $method = 'validate' . str_replace('_', '', ucwords($ruleName, '_'));
 
         if (method_exists($this, $method)) {
@@ -152,7 +169,7 @@ class Validator
             return;
         }
 
-        // Check custom rules
+        // 3. Check custom rules (Legacy)
         $extension = $this->instanceExtensions[$ruleName] ?? self::$extensions[$ruleName] ?? null;
         if ($extension) {
             if (!$extension($field, $value, $params, $this)) {
@@ -302,6 +319,24 @@ class Validator
     }
 
     /**
+     * Explode rules into an array, handling mixed types correctly.
+     */
+    private function explodeRules($rules): array
+    {
+        if (is_array($rules)) {
+            return $rules;
+        }
+
+        if (is_string($rules)) {
+            // We can't just explode by '|' if there are Rule objects or complex strings,
+            // but for now explode('|') is the standard way.
+            return explode('|', $rules);
+        }
+
+        return [$rules];
+    }
+
+    /**
      * Get value from data using dot notation
      */
     private function getValue(string $field)
@@ -349,11 +384,33 @@ class Validator
         }
 
         // Replace field name
-        $attribute = $this->customAttributes[$field] ?? $field;
+        $attribute = $this->customAttributes[$field] ?? $this->formatAttribute($field);
         $message = str_replace(':attribute', $attribute, $message);
         $message = str_replace(':field', $attribute, $message);
 
         $this->errors->add($field, $message);
+    }
+
+    /**
+     * Intelligently format the attribute name for error messages.
+     * e.g., 'first_name' -> 'First Name', 'userID' -> 'User ID'
+     */
+    protected function formatAttribute(string $attribute): string
+    {
+        // If it looks like a file path or URL, keep it
+        if (str_contains($attribute, '/') || str_contains($attribute, '.')) {
+            return $attribute;
+        }
+
+        // Convert snake_case and camelCase to Space Separated Words
+        // Handle camelCase/PascalCase: Insert space before capital letters, but not if preceded by space or start
+        $formatted = preg_replace('/(?<!^|[A-Z ])[A-Z]/', ' $0', $attribute);
+        // Handle abbreviations: Insert space between uppercase and lowercase (e.g., UserID -> User ID)
+        $formatted = preg_replace('/([A-Z])([A-Z][a-z])/', '$1 $2', $formatted);
+
+        $formatted = str_replace(['_', '-'], ' ', $formatted);
+
+        return ucwords(strtolower($formatted));
     }
 
     /**

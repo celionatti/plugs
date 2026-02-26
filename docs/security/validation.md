@@ -1,6 +1,14 @@
-# Validation
-
 Plugs provides a powerful validation system for validating incoming request data. The `Validator` class offers a comprehensive set of validation rules and supports conditional validation.
+
+### Automatic Attribute Formatting
+
+Error messages in Plugs look premium by default. The system automatically converts technical field names into readable titles for error messages.
+
+- `first_name` → **First Name**
+- `userID` → **User Id**
+- `terms_and_conditions` → **Terms And Conditions**
+
+If you need to override this, you can still provide custom attributes via the fourth argument of `Validator::make()`.
 
 ## Basic Usage
 
@@ -119,15 +127,45 @@ $validated = Validator::make($data, $rules)->validateOrFail();
 | `multiple_of:value`      | Field must be a multiple of the given value     |
 | `decimal:min,max`        | Field must have specified decimal places        |
 
-### Comparison Rules
+| `same:field` | Field must match another field |
+| `different:field` | Field must differ from another field |
+| `confirmed` | Field must have a matching `{field}_confirmation` field |
+| `in:foo,bar,baz` | Field must be one of the listed values |
+| `not_in:foo,bar,baz` | Field must not be one of the listed values |
+| `password` | Field must meet password complexity requirements |
 
-| Rule                 | Description                                             |
-| -------------------- | ------------------------------------------------------- |
-| `same:field`         | Field must match another field                          |
-| `different:field`    | Field must differ from another field                    |
-| `confirmed`          | Field must have a matching `{field}_confirmation` field |
-| `in:foo,bar,baz`     | Field must be one of the listed values                  |
-| `not_in:foo,bar,baz` | Field must not be one of the listed values              |
+#### Password Complexity
+
+The `password` rule ensures that passwords meet security standards. You can use it as a simple string rule or via the fluent builder:
+
+```php
+// Simple usage (min 8 characters by default)
+'password' => 'password'
+
+// Using default configuration
+// This includes: min 8 chars, at least one letter, one number, and one symbol.
+'password' => 'Password::defaults()'
+
+// Fluent configuration
+use Plugs\Security\Rule;
+
+'password' => Rule::password()
+    ->min(10)
+    ->letters()
+    ->mixedCase()
+    ->numbers()
+    ->symbols()
+```
+
+The `Password::defaults()` configuration can be globally set in your application's boot process:
+
+```php
+use Plugs\Security\Rules\Password;
+
+Password::setDefaults(
+    (new Password(12))->letters()->numbers()->symbols()
+);
+```
 
 ### Database Rules
 
@@ -199,13 +237,22 @@ Rule::unique('users', 'email')
 | `required_with:field1,field2`    | Required if any of the specified fields are present |
 | `required_without:field1,field2` | Required if any of the specified fields are absent  |
 
-### File Rules
+| `file` | Field must be a successfully uploaded file |
+| `image` | Field must be an image (jpg, png, gif, bmp, svg, webp) |
+| `mimes:jpeg,png,pdf` | Field must have one of the specified MIME types |
+| `mimetypes:video/mp4` | Field must match the specific MIME type |
+| `dimensions:width=100` | Field must match image dimensions |
 
-| Rule                 | Description                                            |
-| -------------------- | ------------------------------------------------------ |
-| `file`               | Field must be a successfully uploaded file             |
-| `image`              | Field must be an image (jpg, png, gif, bmp, svg, webp) |
-| `mimes:jpeg,png,pdf` | Field must have one of the specified MIME types        |
+#### Fluent Rule Builders
+
+For a more readable syntax, you can use fluent builders for complex rules:
+
+```php
+use Plugs\Security\Rule;
+
+'avatar' => Rule::dimensions(['min_width' => 100, 'min_height' => 100]),
+'document' => Rule::mimetypes(['application/pdf', 'application/msword']),
+```
 
 ## Conditional Validation
 
@@ -426,12 +473,12 @@ class RegistrationController extends Controller
         $rules = [
             'name' => 'required|string|min:2|max:100',
             'email' => 'required|email|unique:users,email',
-            'password' => 'required|string|min:8|confirmed',
+            'password' => 'required|confirmed|min:8|Password::defaults()',
             'age' => 'required|integer|gte:18|lte:120',
             'phone' => 'nullable|regex:/^[0-9]{10,15}$/',
             'terms' => 'accepted',
             'referral_code' => 'sometimes|string|exists:referrals,code',
-            'avatar' => 'nullable|image|max:2048'
+            'avatar' => 'nullable|image|max:2048|dimensions:min_width=100'
         ];
 
         $data = request()->all();

@@ -41,8 +41,10 @@ Plugs ships with 30+ built-in rules including:
 - `required`, `nullable`
 - `email`, `url`, `ip`, `json`
 - `unique`, `exists` (Database rules)
+- `password` (Strong security defaults)
 - `in`, `not_in`, `regex`
 - `min`, `max`, `between` (Numeric, string, or file size)
+- `dimensions`, `mimetypes` (Advanced file validation)
 
 ## 3. Custom Validation Rules
 
@@ -65,7 +67,9 @@ $rules = [
     'email' => [
         'required',
         Rule::unique('users', 'email')->ignore($user->id)
-    ]
+    ],
+    'password' => 'required|Password::defaults()',
+    'avatar' => Rule::dimensions(['width' => 200, 'height' => 200]),
 ];
 ```
 

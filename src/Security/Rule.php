@@ -21,6 +21,32 @@ class Rule
     }
 
     /**
+     * Get a password rule instance.
+     *
+     * @return \Plugs\Security\Rules\Password
+     */
+    public static function password(): \Plugs\Security\Rules\Password
+    {
+        return new \Plugs\Security\Rules\Password();
+    }
+
+    /**
+     * Get a dimensions constraint builder.
+     */
+    public static function dimensions(array $constraints = []): \Plugs\Security\Rules\Dimensions
+    {
+        return new \Plugs\Security\Rules\Dimensions($constraints);
+    }
+
+    /**
+     * Get a mimetypes constraint builder.
+     */
+    public static function mimetypes(array $mimes = []): \Plugs\Security\Rules\Mimetypes
+    {
+        return new \Plugs\Security\Rules\Mimetypes($mimes);
+    }
+
+    /**
      * Additional rules can be added here as static methods.
      */
 }
