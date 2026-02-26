@@ -19,6 +19,28 @@ class DatabaseQueueDriver implements QueueDriverInterface
         $this->connection = $connection;
         $this->table = $table;
         $this->defaultQueue = $defaultQueue;
+
+        $this->ensureTableExists();
+    }
+
+    /**
+     * Ensure the jobs table exists.
+     */
+    protected function ensureTableExists(): void
+    {
+        if (!\Plugs\Database\Schema::hasTable($this->table)) {
+            \Plugs\Database\Schema::create($this->table, function (\Plugs\Database\Blueprint $table) {
+                $table->id();
+                $table->string('queue')->index();
+                $table->longText('payload');
+                $table->tinyInteger('attempts')->unsigned();
+                $table->unsignedInteger('reserved_at')->nullable();
+                $table->unsignedInteger('available_at');
+                $table->unsignedInteger('created_at');
+
+                $table->index(['queue', 'reserved_at', 'available_at']);
+            });
+        }
     }
 
     public function push($job, $data = '', $queue = null)
@@ -34,22 +56,51 @@ class DatabaseQueueDriver implements QueueDriverInterface
     public function pop($queue = null)
     {
         $queue = $queue ?: $this->defaultQueue;
+        $currentTime = time();
 
-        $job = (new QueryBuilder($this->connection))
-            ->table($this->table)
-            ->where('queue', '=', $queue)
-            ->where('available_at', '<=', time())
-            ->where('reserved_at', '=', null)
-            ->orderBy('id', 'asc')
-            ->first();
+        try {
+            $this->connection->beginTransaction();
 
-        if ($job) {
-            $this->reserveJob($job['id']);
+            // Select and lock the next available job
+            // Using raw query because QueryBuilder doesn't support FOR UPDATE and LIMIT on UPDATE
+            $sql = "SELECT id FROM {$this->table} 
+                    WHERE queue = ? 
+                    AND available_at <= ? 
+                    AND reserved_at IS NULL 
+                    ORDER BY id ASC 
+                    LIMIT 1 
+                    FOR UPDATE";
 
-            return (object) $job;
+            $stmt = $this->connection->query($sql, [$queue, $currentTime]);
+            $jobId = $stmt->fetchColumn();
+
+            if (!$jobId) {
+                $this->connection->rollBack();
+                return null;
+            }
+
+            // Reserve the job and increment attempts
+            $updateSql = "UPDATE {$this->table} 
+                         SET reserved_at = ?, attempts = attempts + 1 
+                         WHERE id = ?";
+
+            $this->connection->execute($updateSql, [$currentTime, $jobId]);
+
+            // Fetch the full job data
+            $jobData = (new QueryBuilder($this->connection))
+                ->table($this->table)
+                ->where('id', '=', $jobId)
+                ->first();
+
+            $this->connection->commit();
+
+            return $jobData ? (object) $jobData : null;
+        } catch (\Throwable $e) {
+            if ($this->connection->inTransaction()) {
+                $this->connection->rollBack();
+            }
+            throw $e;
         }
-
-        return null;
     }
 
     public function size($queue = null): int
@@ -62,7 +113,7 @@ class DatabaseQueueDriver implements QueueDriverInterface
 
     public function delete(int $id): bool
     {
-        return (new QueryBuilder($this->connection))
+        return (bool) (new QueryBuilder($this->connection))
             ->table($this->table)
             ->where('id', '=', $id)
             ->delete();
@@ -90,19 +141,5 @@ class DatabaseQueueDriver implements QueueDriverInterface
             ]);
 
         return (int) $this->connection->lastInsertId();
-    }
-
-    protected function reserveJob(int $id): void
-    {
-        (new QueryBuilder($this->connection))
-            ->table($this->table)
-            ->where('id', '=', $id)
-            ->update([
-                'reserved_at' => time(),
-                'attempts' => (new QueryBuilder($this->connection))
-                    ->table($this->table)
-                    ->where('id', '=', $id)
-                    ->first()['attempts'] + 1,
-            ]);
     }
 }

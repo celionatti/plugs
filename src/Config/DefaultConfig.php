@@ -445,9 +445,20 @@ class DefaultConfig
                 ],
                 'database' => [
                     'driver' => 'database',
-                    'table' => 'jobs',
+                    'table' => env('QUEUE_TABLE', 'jobs'),
                     'queue' => 'default',
                 ],
+                'redis' => [
+                    'driver' => 'redis',
+                    'host' => env('REDIS_HOST', '127.0.0.1'),
+                    'port' => (int) env('REDIS_PORT', 6379),
+                    'password' => env('REDIS_PASSWORD', null),
+                    'queue' => env('REDIS_QUEUE', 'default'),
+                    'prefix' => env('REDIS_PREFIX', 'plugs:queue:'),
+                ],
+            ],
+            'failed' => [
+                'table' => env('FAILED_JOB_TABLE', 'failed_jobs'),
             ],
         ];
     }

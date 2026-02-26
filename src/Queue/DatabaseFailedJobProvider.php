@@ -17,6 +17,26 @@ class DatabaseFailedJobProvider
     {
         $this->connection = $connection;
         $this->table = $table;
+
+        $this->ensureTableExists();
+    }
+
+    /**
+     * Ensure the failed jobs table exists.
+     */
+    protected function ensureTableExists(): void
+    {
+        if (!\Plugs\Database\Schema::hasTable($this->table)) {
+            \Plugs\Database\Schema::create($this->table, function (\Plugs\Database\Blueprint $table) {
+                $table->id();
+                $table->string('uuid')->unique();
+                $table->text('connection');
+                $table->text('queue');
+                $table->longText('payload');
+                $table->longText('exception');
+                $table->timestamp('failed_at')->useCurrent();
+            });
+        }
     }
 
     public function log(string $connection, string $queue, string $payload, \Throwable $exception): void
