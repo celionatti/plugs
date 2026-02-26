@@ -1,69 +1,99 @@
-# Advanced Routing & API Versioning
+# Advanced Routing
 
-Plugs introduces enterprise-grade routing capabilities including API versioning, route macros, and declarative middleware pipelines.
+This guide explores the enterprise features of the Plugs routing system, designed for high-performance APIs and complex application architectures.
 
 ## API Versioning
 
-You can now version your API routes easily using route groups. The `ApiVersion` class handles version extraction from headers, query parameters, or prefixes.
+Plugs provides built-in support for API versioning, allowing you to manage multiple versions of your API simultaneously. Versions can be resolved from the URI prefix, request headers, or query parameters.
 
-### Usage
+### URI Versioning
+
+The simplest way to version your API is through the URI:
 
 ```php
-use Plugs\Router\Router;
+Route::prefix('v1')->group(function () {
+    Route::get('/users', [V1\UserController::class, 'index']);
+});
 
-$router->group(['prefix' => 'api', 'version' => 'v1'], function (Router $r) {
-    $r->get('/users', [UserController::class, 'index']);
+Route::prefix('v2')->group(function () {
+    Route::get('/users', [V2\UserController::class, 'index']);
 });
 ```
 
-This creates a route at `/api/v1/users`.
+### Header or Query Parameter Versioning
 
-### Version Resolution
+The framework can automatically detect versions from the `X-API-Version` header or an `api_version` query parameter. This allows you to serve different versions on the same URI:
 
-The `Plugs\Router\ApiVersion` class automatically resolves the requested version from:
+```php
+Route::version('v1')->group(function () {
+    Route::get('/users', [V1\UserController::class, 'index']);
+});
+```
+
+When a request comes in, the `Plugs\Router\ApiVersion` class resolves the version:
+
 1.  **Header**: `X-API-Version: v1`
 2.  **Query Parameter**: `?api_version=v1`
 
 ## Route Macros
 
-Extend the router with custom methods using macros.
+You may extend the `Router` class with custom methods using the "macro" pattern. Macros allow you to define reusable route registration logic.
+
+For example, to register a custom "admin" route helper:
 
 ```php
-use Plugs\Router\Router;
+use Plugs\Facades\Route;
 
-Router::macro('customRoute', function ($uri) {
-    return $this->get($uri, function () {
-        return 'Custom Logic';
-    });
+Route::macro('admin', function (string $uri, $handler) {
+    return $this->prefix('admin')->middleware('auth.admin')->get($uri, $handler);
 });
 
-$router->customRoute('/test');
+// Usage
+Route::admin('/settings', [SettingsController::class, 'index']);
 ```
 
-## OpenAPI Generation
+## Internal Pipeline Architecture
 
-Automatically generate an OpenAPI JSON specification from your defined routes.
+The Plugs router utilizes a "Pipeline" pattern for executing middleware and capturing the final response. When a route is dispatched, it follows this flow:
+
+1.  **Route Matching**: The `Router` finds the first route matching the URI and HTTP method.
+2.  **Middleware Collection**: All middleware (Global -> Group -> Route) are gathered into a flat list.
+3.  **Pipeline Execution**: The request is passed through the `Plugs\Http\Pipeline`.
+4.  **Handler Execution**: If all middleware pass, the final destination (closure or controller) is executed.
+5.  **Response Capture**: The handler's output is wrapped in a `ResponseInterface` and sent back through the middleware stack in reverse order.
+
+## Route Model Binding
+
+Plugs automatically resolves database models defined in your route signatures. If a parameter name matches a model class name, the framework will inject the model instance:
+
+```php
+use App\Models\User;
+
+Route::get('/api/users/{user}', function (User $user) {
+    return $user; // Autoresolved by ID
+});
+```
+
+### Custom Keys
+
+You may customize the key used for model resolution in the model class:
+
+```php
+class User extends Model
+{
+    public function getRouteKeyName()
+    {
+        return 'slug';
+    }
+}
+```
+
+## OpenAPI Specification
+
+The framework can reflect on your routes to generate a standard OpenAPI (Swagger) documentation file.
 
 ```bash
 php plg route:openapi
 ```
 
-This command scans your application's routes and outputs an `openapi.json` file in the root directory.
-
-## Declarative Middleware Pipelines
-
-The `Plugs\Http\Pipeline` class allows you to chain middleware declaratively, similar to the "Pipe and Filter" pattern.
-
-```php
-use Plugs\Http\Pipeline;
-
-$response = (new Pipeline())
-    ->send($request)
-    ->through([
-        EnsureTokenIsValid::class,
-        LogRequest::class,
-    ])
-    ->then(function ($request) {
-        return new Response('Core Logic');
-    });
-```
+This command parses your route definitions, attributes, and docblocks to build an `openapi.json` file, which can be used to power interactive API documentation or client generation tools.
