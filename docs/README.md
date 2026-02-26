@@ -44,6 +44,7 @@ Welcome to the official documentation for the **Plugs** framework. Plugs is a li
 - [Migrations](file:///docs/database/migrations.md)
 - [Models](file:///docs/database/models.md)
 - [Pagination](file:///docs/database/pagination.md)
+- [Backup & Restoration](file:///docs/database/backup-restoration.md) (New)
 
 ### 🛡️ Security & Features
 

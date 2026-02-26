@@ -94,6 +94,16 @@ class Connection
         // Connection deferred until first query (Lazy Loading)
     }
 
+    /**
+     * Get the configuration for the connection.
+     *
+     * @return array
+     */
+    public function getConfig(): array
+    {
+        return self::$config[$this->connectionName] ?? [];
+    }
+
     private function connect(array $config): void
     {
         if ($this->isConnecting) {

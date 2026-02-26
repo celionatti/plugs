@@ -59,6 +59,8 @@ use Plugs\Console\Commands\AiFixCommand;
 use Plugs\Console\Commands\AiAuditCommand;
 use Plugs\Console\Commands\AIAgentCommand;
 use Plugs\Console\Commands\AIThinkCommand;
+use Plugs\Console\Commands\DatabaseBackupCommand;
+use Plugs\Console\Commands\DatabaseRestoreCommand;
 use Plugs\Console\Commands\DatabaseAnalyzeCommand;
 use Plugs\Console\Commands\SecurityScanCommand;
 use Plugs\Tenancy\Console\TenantMigrateCommand;
@@ -108,6 +110,8 @@ class ConsoleKernel
         'make:notification' => MakeNotificationCommand::class,
         'make:ai-migration' => MakeAiMigrationCommand::class,
 
+        'db:backup' => DatabaseBackupCommand::class,
+        'db:restore' => DatabaseRestoreCommand::class,
         'db:seed' => SeedCommand::class,
 
         'route:list' => RouteListCommand::class,
@@ -186,6 +190,7 @@ class ConsoleKernel
         'm:r' => 'migrate:rollback',
         'm:s' => 'migrate:status',
         'dba' => 'db:analyze',
+        'dbb' => 'db:backup',
     ];
 
     protected array $commandGroups = [
@@ -223,7 +228,7 @@ class ConsoleKernel
         'Utility' => ['serve', 'cache:clear', 'config:cache', 'optimize', 'opcache:clear', 'opcache:status', 'queue:work', 'queue:failed', 'queue:retry', 'health', 'storage:link', 'type:gen', 'ai:chat', 'ai:fix', 'ai:audit', 'make:ai-test', 'ai:agent', 'ai:think', 'framework:scan-security'],
 
         'Scheduling' => ['schedule:run', 'schedule:list'],
-        'Database' => ['migrate', 'migrate:rollback', 'migrate:status', 'migrate:fresh', 'migrate:validate', 'migrate:reset', 'make:migration', 'db:seed', 'db:analyze', 'tenant:migrate'],
+        'Database' => ['migrate', 'migrate:rollback', 'migrate:status', 'migrate:fresh', 'migrate:validate', 'migrate:reset', 'make:migration', 'db:seed', 'db:analyze', 'db:backup', 'db:restore', 'tenant:migrate'],
     ];
 
     public function commands(): array

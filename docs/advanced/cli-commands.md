@@ -82,6 +82,22 @@ Validate migration integrity:
 php theplugs migrate:validate
 ```
 
+### Database Backup & Recovery (New)
+
+Back up your database:
+
+```bash
+php theplugs db:backup
+```
+
+Restore from a backup:
+
+```bash
+php theplugs db:restore [path]
+```
+
+**Alias:** `dbb` (backup)
+
 ### Generators
 
 Plugs includes several "make" commands to quickly scaffold components:
