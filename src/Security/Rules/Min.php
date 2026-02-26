@@ -9,9 +9,9 @@ class Min extends AbstractRule
     protected int $min;
     protected string $message = 'The :attribute must be at least :min.';
 
-    public function __construct(int $min)
+    public function __construct($min)
     {
-        $this->min = $min;
+        $this->min = (int) $min;
     }
 
     public function validate(string $attribute, $value, array $data): bool

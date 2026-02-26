@@ -9,9 +9,9 @@ class Max extends AbstractRule
     protected int $max;
     protected string $message = 'The :attribute must not exceed :max.';
 
-    public function __construct(int $max)
+    public function __construct($max)
     {
-        $this->max = $max;
+        $this->max = (int) $max;
     }
 
     public function validate(string $attribute, $value, array $data): bool

@@ -10,10 +10,10 @@ class Between extends AbstractRule
     protected int $max;
     protected string $message = 'The :attribute must be between :min and :max.';
 
-    public function __construct(int $min, int $max)
+    public function __construct($min, $max)
     {
-        $this->min = $min;
-        $this->max = $max;
+        $this->min = (int) $min;
+        $this->max = (int) $max;
     }
 
     public function validate(string $attribute, $value, array $data): bool
