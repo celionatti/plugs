@@ -23,7 +23,12 @@ class Validator
     private $rules;
     private $errors;
     private $customMessages = [];
-    private $customAttributes = [];
+    protected array $customAttributes = [];
+
+    /**
+     * Fields to be excluded from validated data.
+     */
+    protected array $excludedFields = [];
     private $hasValidated = false;
     private static array $extensions = [];
     private array $instanceExtensions = [];
@@ -155,6 +160,14 @@ class Validator
         if (RuleRegistry::has($ruleName)) {
             $ruleInstance = RuleRegistry::resolve($ruleName, $params);
             if ($ruleInstance) {
+                if ($ruleName === 'exclude') {
+                    $this->excludedFields[] = $field;
+                } elseif ($ruleName === 'exclude_if') {
+                    if (method_exists($ruleInstance, 'shouldExclude') && $ruleInstance->shouldExclude($this->data)) {
+                        $this->excludedFields[] = $field;
+                    }
+                }
+
                 $this->validateRule($field, $value, $ruleInstance);
                 return;
             }
@@ -252,13 +265,15 @@ class Validator
         }
 
         $validated = [];
-
         foreach (array_keys($this->rules) as $field) {
+            if (in_array($field, $this->excludedFields)) {
+                continue;
+            }
+
             if (isset($this->data[$field])) {
                 $validated[$field] = $this->data[$field];
             }
         }
-
         return $validated;
     }
 

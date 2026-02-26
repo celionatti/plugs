@@ -243,6 +243,22 @@ Rule::unique('users', 'email')
 | `mimetypes:video/mp4` | Field must match the specific MIME type |
 | `dimensions:width=100` | Field must match image dimensions |
 
+### Data Exclusion Rules
+
+Sometimes you want to validate a field but exclude it from your final validated data (e.g., a "terms and conditions" checkbox).
+
+| Rule                     | Description                                      |
+| ------------------------ | ------------------------------------------------ |
+| `exclude`                | Always exclude the field from `validated()` data |
+| `exclude_if:field,value` | Exclude if another field matches a value         |
+
+```php
+$rules = [
+    'terms' => 'accepted|exclude', // Validated but won't be in $validatedData
+    'reason' => 'exclude_if:newsletter,false|string'
+];
+```
+
 #### Fluent Rule Builders
 
 For a more readable syntax, you can use fluent builders for complex rules:

@@ -18,6 +18,11 @@ class RuleRegistry
         'unique' => \Plugs\Security\Rules\Unique::class,
         'dimensions' => \Plugs\Security\Rules\Dimensions::class,
         'mimetypes' => \Plugs\Security\Rules\Mimetypes::class,
+        'min' => \Plugs\Security\Rules\Min::class,
+        'max' => \Plugs\Security\Rules\Max::class,
+        'between' => \Plugs\Security\Rules\Between::class,
+        'exclude' => \Plugs\Security\Rules\Exclude::class,
+        'exclude_if' => \Plugs\Security\Rules\ExcludeIf::class,
     ];
 
     /**

@@ -47,6 +47,22 @@ class Rule
     }
 
     /**
+     * Get an exclude rule.
+     */
+    public static function exclude(): \Plugs\Security\Rules\Exclude
+    {
+        return new \Plugs\Security\Rules\Exclude();
+    }
+
+    /**
+     * Get an exclude_if rule.
+     */
+    public static function excludeIf(string $field, $value): \Plugs\Security\Rules\ExcludeIf
+    {
+        return new \Plugs\Security\Rules\ExcludeIf($field, $value);
+    }
+
+    /**
      * Additional rules can be added here as static methods.
      */
 }
