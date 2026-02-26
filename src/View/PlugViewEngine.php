@@ -801,7 +801,7 @@ class PlugViewEngine implements ViewEngineInterface
         }
 
         if ($needsRecompile) {
-            $this->compile($viewFile, $compiled);
+            $this->compileWithOpcache($viewFile, $compiled);
         }
 
         return $this->renderCompiled($compiled, $data);
@@ -1136,7 +1136,7 @@ class PlugViewEngine implements ViewEngineInterface
 
     private function getCompiledPath(string $view): string
     {
-        return $this->cachePath . DIRECTORY_SEPARATOR . md5($view) . '.php';
+        return $this->cachePath . DIRECTORY_SEPARATOR . self::fastHash($view) . '.php';
     }
 
     private function stripStrictTypesDeclaration(string $content): string
@@ -1224,6 +1224,9 @@ class PlugViewEngine implements ViewEngineInterface
         if (!$this->fileExistsCached($__tmpFile)) {
             file_put_contents($__tmpFile, $compiledContent, LOCK_EX);
             $this->fileExistsCache[$__tmpFile] = true;
+
+            // Proactively add to OPcache
+            $this->opcacheCompile($__tmpFile);
         }
 
         // Extract variables into the current scope for the include
@@ -1919,7 +1922,7 @@ class PlugViewEngine implements ViewEngineInterface
     /**
      * Wrap an exception in a ViewException with better context and cleaner messages.
      */
-    private function wrapViewException(\Throwable $e, string $context, ?string $view = null): ViewException
+    private function wrapViewException(Throwable $e, string $context, ?string $view = null): ViewException
     {
         $message = $e->getMessage();
         $code = (int) $e->getCode();
