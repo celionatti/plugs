@@ -81,9 +81,13 @@ public function updateAvatar(Request $request)
 
         // Store with public visibility (accessible via browser)
         $path = $file->storePublicly('avatars');
-        
+
         // Store with a custom name
         $path = $file->storeAs('avatars', 'user_123.jpg');
+
+        // Optional: Compress image before storing
+        // Quality range: 1-100 (default 75)
+        $path = $file->compress(60)->store('avatars');
 
         // Save $path to database...
         return "File stored at: " . $path;
@@ -109,9 +113,9 @@ public function uploadDocument(Request $request)
             ->documentsOnly()           // Restrict to PDF, DOC, etc.
             ->setMaxSize(5 * 1024 * 1024) // 5MB limit
             ->upload($file);
-            
+
         return json_encode($result);
-        
+
     } catch (\Exception $e) {
         return response($e->getMessage(), 400);
     }
@@ -137,7 +141,9 @@ $result = FileUploader::make()
 ```
 
 #### Security Features
+
 The `FileUploader` automatically:
+
 - Validates strict MIME types.
 - Blocks dangerous extensions (php, exe, sh, etc.).
 - Verifies image integrity (detects fake images).

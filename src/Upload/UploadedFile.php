@@ -31,6 +31,7 @@ class UploadedFile
     private int $size;
     private ?string $actualMimeType = null;
     private bool $moved = false;
+    private ?int $compressionQuality = null;
 
     private const DANGEROUS_EXTENSIONS = [
         'php',
@@ -346,12 +347,55 @@ class UploadedFile
             throw new RuntimeException('File has already been moved');
         }
 
+        // Apply compression if requested and file is an image
+        if ($this->compressionQuality !== null && $this->isActualImage()) {
+            return $this->getCompressedContents();
+        }
+
         $contents = @file_get_contents($this->tmpName);
         if ($contents === false) {
             throw new RuntimeException('Failed to read uploaded file');
         }
 
         return $contents;
+    }
+
+    /**
+     * Get the compressed contents of the image.
+     *
+     * @return string
+     */
+    private function getCompressedContents(): string
+    {
+        $tempFile = tempnam(sys_get_temp_dir(), 'plugs_comp_');
+
+        try {
+            $image = new \Plugs\Image\Image();
+            $image->load($this->tmpName);
+            $image->quality($this->compressionQuality);
+
+            // Determine type based on extension or mime
+            $extension = $this->getClientExtension();
+            $type = match ($extension) {
+                'png' => IMAGETYPE_PNG,
+                'gif' => IMAGETYPE_GIF,
+                'webp' => IMAGETYPE_WEBP,
+                default => IMAGETYPE_JPEG,
+            };
+
+            $image->save($tempFile, $type);
+
+            $contents = @file_get_contents($tempFile);
+            if ($contents === false) {
+                throw new RuntimeException('Failed to read compressed image data');
+            }
+
+            return $contents;
+        } finally {
+            if (file_exists($tempFile)) {
+                @unlink($tempFile);
+            }
+        }
     }
 
     public function moveTo(string $targetPath): bool
@@ -627,5 +671,18 @@ class UploadedFile
         }
 
         return $options;
+    }
+
+    /**
+     * Set the compression quality for the image (1-100).
+     *
+     * @param int $quality
+     * @return $this
+     */
+    public function compress(int $quality = 75): self
+    {
+        $this->compressionQuality = max(1, min(100, $quality));
+
+        return $this;
     }
 }
