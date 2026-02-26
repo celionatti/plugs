@@ -1157,11 +1157,14 @@ class ViewCompiler
 
         $content = preg_replace('/<\/loop\s*>/s', '@endforeach', $content);
 
-        // 18. <error field="..."> ... </error>
         $content = preg_replace_callback('/<error\s+field=["\'](.+?)["\']\s*>/s', function ($m) {
             return "@error('{$m[1]}')";
         }, $content);
         $content = preg_replace('/<\/error\s*>/s', '@enderror', $content);
+
+        // 18b. <errors> ... </errors>
+        $content = preg_replace('/<errors\s*>/s', '@errors', $content);
+        $content = preg_replace('/<\/errors\s*>/s', '@enderrors', $content);
 
         // 19. <class :map="..." />
         // Compiles to @class(...)

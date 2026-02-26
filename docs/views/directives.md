@@ -190,6 +190,15 @@ Plugs uses a context-aware escaping engine to prevent XSS. The `{{ $var }}` dire
 @method('PUT')
 @method('DELETE')
 
+{{-- Validation Errors --}}
+@error('email')
+    <span class="error">{{ $message }}</span>
+@enderror
+
+@errors
+    <div class="alert alert-danger">{{ $message }}</div>
+@enderrors
+
 {{-- Conditional attributes --}}
 <input type="checkbox" @checked($isActive)>
 <option @selected($isDefault)>Option</option>

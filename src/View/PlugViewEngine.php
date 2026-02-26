@@ -456,13 +456,13 @@ class PlugViewEngine implements ViewEngineInterface
         $this->directive('errors', function ($expression) {
             $key = trim($expression ?? '', " '\"");
             if (empty($key)) {
-                return "<?php if (isset(\$errors) && \$errors->any()): foreach (\$errors->getMessages() as \$message): ?>";
+                return "<?php if (isset(\$errors) && \$errors->any()): foreach (\$errors->all() as \$message): ?>";
             }
             return "<?php if (isset(\$errors) && \$errors->has('$key')): foreach (\$errors->get('$key') as \$message): ?>";
         });
 
         $this->directive('enderrors', function () {
-            return "<?php endforeach; endif; ?>";
+            return "<?php endforeach; unset(\$message); endif; ?>";
         });
 
         // RBAC Directives

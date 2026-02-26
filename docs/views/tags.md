@@ -134,5 +134,23 @@ Easily render validation errors.
   <error field="email">
     <span class="text-danger">{{ $message }}</span>
   </error>
+
+  <errors>
+    <div class="alert alert-danger">{{ $message }}</div>
+  </errors>
 </div>
+```
+
+To show all errors:
+
+```html
+<if :condition="$errors->any()">
+  <div class="alert alert-danger">
+    <ul>
+      <loop :items="$errors->all()" as="$message">
+        <li>{{ $message }}</li>
+      </loop>
+    </ul>
+  </div>
+</if>
 ```
