@@ -53,7 +53,11 @@ class RouteRegistrar
         'namespace',
         'domain',
         'where',
+        'version',
+        'as',
     ];
+
+
 
     public function __construct(Router $router)
     {
@@ -132,6 +136,33 @@ class RouteRegistrar
 
         return $this;
     }
+
+    /**
+     * Set the version for the route group.
+     *
+     * @param string $version
+     * @return self
+     */
+    public function version(string $version): self
+    {
+        $this->attributes['version'] = $version;
+
+        return $this;
+    }
+
+    /**
+     * Set the name prefix for the route group.
+     *
+     * @param string $name
+     * @return self
+     */
+    public function as(string $name): self
+    {
+        $this->attributes['as'] = $name;
+
+        return $this;
+    }
+
 
     /**
      * Create a route group with the accumulated attributes.

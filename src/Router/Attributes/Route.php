@@ -9,7 +9,7 @@ use Attribute;
 /**
  * Route Attribute
  */
-#[Attribute(Attribute::TARGET_METHOD | Attribute::IS_REPEATABLE)]
+#[Attribute(Attribute::TARGET_METHOD | Attribute::TARGET_CLASS | Attribute::IS_REPEATABLE)]
 class Route
 {
     public function __construct(
@@ -17,7 +17,8 @@ class Route
         public string|array $methods = 'GET',
         public ?string $name = null,
         public array $middleware = [],
-        public array $where = []
+        public array $where = [],
+        public ?string $domain = null
     ) {
     }
 }

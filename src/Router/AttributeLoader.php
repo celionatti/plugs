@@ -56,19 +56,20 @@ class AttributeLoader
     {
         $reflection = new ReflectionClass($className);
 
-        // Check for class-level Route attribute (prefix)
-        $classRoute = $reflection->getAttributes(RouteAttribute::class)[0] ?? null;
-        $prefix = '';
-        $middleware = [];
-        $domain = null;
+        // Check for class-level Route attribute (prefix, domain, middleware, where)
+        $classRouteAttr = $reflection->getAttributes(RouteAttribute::class)[0] ?? null;
+        $classPrefix = '';
+        $classMiddleware = [];
+        $classDomain = null;
+        $classWhere = [];
 
-        if ($classRoute) {
+        if ($classRouteAttr) {
             /** @var RouteAttribute $instance */
-            $instance = $classRoute->newInstance();
-            $prefix = trim($instance->path, '/');
-            $middleware = $instance->middleware;
-            // Class level route usually implies a group, but our Attribute might need extending for full group support
-            // For now, we'll just treat path as prefix if it exists on class
+            $instance = $classRouteAttr->newInstance();
+            $classPrefix = trim($instance->path, '/');
+            $classMiddleware = $instance->middleware;
+            $classDomain = $instance->domain;
+            $classWhere = $instance->where;
         }
 
         foreach ($reflection->getMethods(ReflectionMethod::IS_PUBLIC) as $method) {
@@ -81,21 +82,29 @@ class AttributeLoader
                 $methods = (array) $routeAttr->methods;
                 $path = '/' . trim($routeAttr->path, '/');
 
-                if ($prefix) {
-                    $path = '/' . $prefix . $path;
+                if ($classPrefix) {
+                    $path = '/' . $classPrefix . $path;
                 }
 
                 $handler = [$className, $method->getName()];
-                $routeMiddleware = array_merge($middleware, $routeAttr->middleware);
+                $routeMiddleware = array_merge($classMiddleware, $routeAttr->middleware);
 
                 $route = $this->router->match($methods, $path, $handler, $routeMiddleware);
+
+                // Apply domain (method level overrides class level if set)
+                $domain = $routeAttr->domain ?? $classDomain;
+                if ($domain) {
+                    $route->domain($domain);
+                }
 
                 if ($routeAttr->name) {
                     $route->name($routeAttr->name);
                 }
 
-                if (!empty($routeAttr->where)) {
-                    $route->where($routeAttr->where);
+                // Apply where constraints (merge method level into class level)
+                $where = array_merge($classWhere, $routeAttr->where);
+                if (!empty($where)) {
+                    $route->where($where);
                 }
             }
         }

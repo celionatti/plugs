@@ -32,6 +32,7 @@ class Route
     private ?Router $router = null;
     private array $defaults = [];
     private ?string $domain = null;
+    private ?string $domainPattern = null;
     private ?string $scheme = null;
     private array $metadata = [];
     private array $parameterKeys = [];
@@ -47,7 +48,11 @@ class Route
         'email' => '[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}',
     ];
 
+    /** @var string|null Route name prefix */
+    private ?string $namePrefix = null;
+
     /** @var array Valid HTTP methods */
+
     private const VALID_METHODS = [
         'GET',
         'POST',
@@ -73,8 +78,14 @@ class Route
         $this->handler = $handler;
         $this->middleware = $middleware;
         $this->router = $router;
+
+        if ($router) {
+            $this->namePrefix = $router->getGroupAs();
+        }
+
         $this->pattern = $this->compilePattern($path);
     }
+
 
     private function validateMethod(string $method): void
     {
@@ -108,14 +119,20 @@ class Route
 
     public function name(string $name): self
     {
+        if ($this->namePrefix) {
+            $name = $this->namePrefix . $name;
+        }
+
         $this->name = $name;
 
         if ($this->router !== null) {
             $this->router->registerNamedRoute($name, $this);
         }
 
+
         return $this;
     }
+
 
     public function getParameterKey(string $name): ?string
     {
@@ -137,20 +154,33 @@ class Route
         return $this;
     }
 
-    public function whereNumber(string $parameter): self
+    public function whereNumber(...$parameters): self
     {
-        return $this->where($parameter, '[0-9]+');
+        foreach ($parameters as $parameter) {
+            $this->where($parameter, '[0-9]+');
+        }
+
+        return $this;
     }
 
-    public function whereAlpha(string $parameter): self
+    public function whereAlpha(...$parameters): self
     {
-        return $this->where($parameter, '[a-zA-Z]+');
+        foreach ($parameters as $parameter) {
+            $this->where($parameter, '[a-zA-Z]+');
+        }
+
+        return $this;
     }
 
-    public function whereAlphaNumeric(string $parameter): self
+    public function whereAlphaNumeric(...$parameters): self
     {
-        return $this->where($parameter, '[a-zA-Z0-9]+');
+        foreach ($parameters as $parameter) {
+            $this->where($parameter, '[a-zA-Z0-9]+');
+        }
+
+        return $this;
     }
+
 
     public function whereUuid(string $parameter): self
     {
@@ -184,8 +214,63 @@ class Route
     public function domain(string $domain): self
     {
         $this->domain = $domain;
+        $this->domainPattern = $this->compileDomainPattern($domain);
 
         return $this;
+    }
+
+    /**
+     * Compile a domain string into a regex pattern.
+     * Supports {param} placeholders for dynamic subdomain extraction.
+     *
+     * Examples:
+     *   'admin.example.com'            → static match
+     *   '{tenant}.example.com'         → captures 'tenant'
+     *   '{sub}.{region}.example.com'   → captures 'sub' and 'region'
+     *   '*.example.com'                → wildcard match
+     */
+    private function compileDomainPattern(string $domain): string
+    {
+        $pattern = preg_quote($domain, '#');
+        // Restore escaped braces for parameter replacement
+        $pattern = str_replace(['\{', '\}'], ['{', '}'], $pattern);
+
+        // Replace {param} with named capture groups
+        $pattern = preg_replace(
+            '/\{([a-zA-Z_][a-zA-Z0-9_]*)\}/',
+            '(?P<$1>[a-zA-Z0-9_-]+)',
+            $pattern
+        );
+
+        // Support wildcard (*) domains
+        $pattern = str_replace('\*', '[a-zA-Z0-9_-]+', $pattern);
+
+        return '#^' . $pattern . '$#i';
+    }
+
+    /**
+     * Extract parameters from the domain/host.
+     * Returns an associative array of param => value.
+     */
+    public function extractDomainParameters(string $host): array
+    {
+        if ($this->domain === null || $this->domainPattern === null) {
+            return [];
+        }
+
+        if (!preg_match($this->domainPattern, $host, $matches)) {
+            return [];
+        }
+
+        return array_filter($matches, 'is_string', ARRAY_FILTER_USE_KEY);
+    }
+
+    /**
+     * Check if the domain string contains dynamic parameters.
+     */
+    public function hasDomainParameters(): bool
+    {
+        return $this->domain !== null && str_contains($this->domain, '{');
     }
 
     public function scheme(string $scheme): self
@@ -494,10 +579,9 @@ class Route
      */
     public function matchesPath(string $path): bool
     {
-        if ($this->domain !== null) {
+        if ($this->domain !== null && $this->domainPattern !== null) {
             $host = $_SERVER['HTTP_HOST'] ?? '';
-            $domainPattern = '#^' . str_replace('\*', '.*', preg_quote($this->domain, '#')) . '$#i';
-            if (!preg_match($domainPattern, $host)) {
+            if (!preg_match($this->domainPattern, $host)) {
                 return false;
             }
         }
@@ -543,7 +627,7 @@ class Route
             $path = str_replace('{' . $key . '?}', (string) $value, $path);
         }
 
-        $path = preg_replace('/\{[^}]+\?\}/', '', $path);
+        $path = preg_replace('/\/?\{[^}]+\?\}/', '', $path);
 
         preg_match_all('/\{([^}?]+)\}/', $path, $matches);
         if (!empty($matches[1])) {
@@ -561,14 +645,46 @@ class Route
             );
             $host = $this->domain ?? ($_SERVER['HTTP_HOST'] ?? 'localhost');
 
+            // Substitute domain parameters (e.g., {tenant} in {tenant}.example.com)
+            foreach ($parameters as $key => $value) {
+                if (str_contains($host, '{' . $key . '}')) {
+                    $host = str_replace('{' . $key . '}', (string) $value, $host);
+                    unset($parameters[$key]);
+                }
+            }
+
             $basePath = function_exists('get_base_path') ? get_base_path() : '/';
-            $path = $scheme . '://' . $host . rtrim($basePath, '/') . '/' . ltrim($path, '/');
+            $url = $scheme . '://' . $host . rtrim($basePath, '/') . '/' . ltrim($path, '/');
         } else {
             $basePath = function_exists('get_base_path') ? get_base_path() : '/';
-            $path = rtrim($basePath, '/') . '/' . ltrim($path, '/');
+            $url = rtrim($basePath, '/') . '/' . ltrim($path, '/');
         }
 
-        return $path;
+        // Append remaining parameters as query string
+        // We've already removed path and domain parameters from $parameters if we were careful
+        // Actually, I need to keep track of which ones were used.
+
+        // Let's re-identify used parameters.
+        $usedParams = [];
+        preg_match_all('/\{([^}?]+)\??\}/', $this->path, $matches);
+        if (!empty($matches[1])) {
+            foreach ($matches[1] as $m)
+                $usedParams[$m] = true;
+        }
+        if ($this->domain) {
+            preg_match_all('/\{([^}?]+)\??\}/', $this->domain, $matches);
+            if (!empty($matches[1])) {
+                foreach ($matches[1] as $m)
+                    $usedParams[$m] = true;
+            }
+        }
+
+        $extraParams = array_diff_key($parameters, $usedParams);
+        if (!empty($extraParams)) {
+            $url .= (str_contains($url, '?') ? '&' : '?') . http_build_query($extraParams);
+        }
+
+        return $url;
     }
 
     public function hasMiddleware(string $middleware): bool

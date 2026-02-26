@@ -65,6 +65,38 @@ class ResponseFactory
     }
 
     /**
+     * Create a streamed JSON response
+     * Useful for large datasets to avoid memory issues.
+     */
+    public static function streamJson(iterable $data, int $statusCode = 200, array $headers = []): ResponseInterface
+    {
+        $body = new Stream(fopen('php://temp', 'w+'));
+
+        // We write the opening bracket
+        $body->write('[');
+
+        $first = true;
+        foreach ($data as $item) {
+            if (!$first) {
+                $body->write(',');
+            }
+            $body->write(json_encode($item, JSON_UNESCAPED_SLASHES));
+            $first = false;
+        }
+
+        $body->write(']');
+        $body->rewind();
+
+        $headers = array_merge([
+            'Content-Type' => 'application/json; charset=utf-8',
+            'X-Streamed' => 'true',
+        ], $headers);
+
+        return new Response($statusCode, $body, $headers);
+    }
+
+
+    /**
      * Create a text response
      */
     public static function text(string $text, int $statusCode = 200, array $headers = []): ResponseInterface

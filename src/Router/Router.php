@@ -37,8 +37,9 @@ use ReflectionNamedType;
 use ReflectionParameter;
 use ReflectionType;
 use RuntimeException;
-use stdClass;
 use Throwable;
+
+
 
 class Router
 {
@@ -61,7 +62,16 @@ class Router
     private string $groupNamespace = '';
     private ?string $groupDomain = null;
     private array $groupWhere = [];
+    private string $groupAs = '';
+
+    public function getGroupAs(): string
+    {
+        return $this->groupAs;
+    }
+
     private array $namedRoutes = [];
+
+
     private array $routeCache = [];
     private bool $cacheEnabled = true;
     private array $reflectionCache = [];
@@ -75,6 +85,8 @@ class Router
     private string $cachePath = '';
     private array $staticRoutes = [];
     private ?\Plugs\Http\Middleware\MiddlewareRegistry $registry = null;
+    private array $compiledRoutes = [];
+
 
 
     /**
@@ -344,6 +356,7 @@ class Router
         $previousNamespace = $this->groupNamespace;
         $previousDomain = $this->groupDomain;
         $previousWhere = $this->groupWhere;
+        $previousAs = $this->groupAs;
 
         // Apply prefix
         if (isset($attributes['prefix'])) {
@@ -385,6 +398,11 @@ class Router
             $this->groupWhere = array_merge($previousWhere, $attributes['where']);
         }
 
+        // Apply name prefix
+        if (isset($attributes['as'])) {
+            $this->groupAs = $previousAs . $attributes['as'];
+        }
+
         // Execute callback
         $callback($this);
 
@@ -394,7 +412,9 @@ class Router
         $this->groupNamespace = $previousNamespace;
         $this->groupDomain = $previousDomain;
         $this->groupWhere = $previousWhere;
+        $this->groupAs = $previousAs;
     }
+
 
     /**
      * Add route to collection
@@ -475,6 +495,13 @@ class Router
     /**
      * Named routes
      */
+    public function hasRoute(string $name): bool
+    {
+        return isset($this->namedRoutes[$name]);
+    }
+
+
+
     public function getRouteByName(string $name): ?Route
     {
         return $this->namedRoutes[$name] ?? null;
@@ -488,6 +515,8 @@ class Router
 
         $this->namedRoutes[$name] = $route;
     }
+
+
 
     public function route(string $name, array $parameters = [], bool $absolute = false): string
     {
@@ -594,18 +623,23 @@ class Router
         // 2. Fallback to dynamic routes if no static match
         $routes = $this->routes[$method] ?? [];
 
-        foreach ($routes as $route) {
-            if (!$route->matchesPath($path)) {
-                continue;
-            }
+        // Check compiled regex for dynamic routes (O(1) pre-filter)
+        $compiled = $this->getCompiledRoutes($method);
+        $compiledMatched = $compiled && @preg_match($compiled['regex'], $path);
 
-            // Cache match
-            if ($this->cacheEnabled) {
-                $this->cacheRoute($method . ':' . $path, $route);
+        // If the compiled regex matched OR if it failed to compile (we need to fall through)
+        if ($compiledMatched || $compiled === null || preg_last_error() !== PREG_NO_ERROR) {
+            foreach ($routes as $route) {
+                if ($route->matchesPath($path)) {
+                    // Cache match
+                    if ($this->cacheEnabled) {
+                        $this->cacheRoute($method . ':' . $path, $route);
+                    }
+                    return $this->dispatchRoute($route, $request, $path);
+                }
             }
-
-            return $this->dispatchRoute($route, $request, $path);
         }
+
 
         // Check if the path matches any other method (Method Not Allowed)
         $allowedMethods = [];
@@ -688,8 +722,16 @@ class Router
     {
         $this->currentRoute = $route;
 
-        // Extract parameters once
+        // Extract path parameters
         $params = $route->extractParameters($path);
+
+        // Extract domain parameters (e.g., {tenant} from {tenant}.example.com)
+        $host = $request->getUri()->getHost();
+        if (empty($host)) {
+            $host = $_SERVER['HTTP_HOST'] ?? '';
+        }
+        $domainParams = $route->extractDomainParameters($host);
+        $params = array_merge($domainParams, $params);
 
         // Add to request attributes individually
         foreach ($params as $key => $value) {
@@ -903,8 +945,9 @@ class Router
 
         foreach ($reflection->getParameters() as $parameter) {
             // Use a sentinel value to distinguish "not resolved" from "resolved to null"
-            $sentinel = new stdClass();
+            $sentinel = new \stdClass();
             $resolved = $this->resolveParameter($parameter, $request, $routeParams, $container, $sentinel);
+
 
             if ($resolved !== $sentinel) {
                 // Store metadata for caching
@@ -959,7 +1002,8 @@ class Router
         $routeParams = $this->extractRouteParameters($request);
 
         foreach ($metadata as $paramMeta) {
-            $sentinel = new stdClass();
+            $sentinel = new \stdClass();
+
 
             // Simplified resolveParameter-like logic for cached meta
             // We still need to call resolveParameter essentially because it handles dynamic request data
@@ -1306,6 +1350,194 @@ class Router
         }
     }
 
+    /**
+     * Cache the current route registration.
+     * WARNING: Routes with Closures cannot be cached and will throw an error or be skipped.
+     */
+    public function cacheRoutes(): bool
+    {
+        $cachePath = $this->getPersistentCachePath();
+        $directory = dirname($cachePath);
+
+        if (!is_dir($directory)) {
+            mkdir($directory, 0755, true);
+        }
+
+        $data = [
+            'static' => [],
+            'dynamic' => [],
+        ];
+
+        // Process static routes
+        foreach ($this->staticRoutes as $method => $routes) {
+            foreach ($routes as $path => $route) {
+                $routeData = $route->toArray();
+                $handler = $route->getHandler();
+
+                if ($handler instanceof \Closure) {
+                    throw new \RuntimeException("Route [{$path}] uses a closure and cannot be cached. Use controller actions instead.");
+                }
+
+                $routeData['handler'] = $handler;
+                $data['static'][$method][$path] = $routeData;
+            }
+        }
+
+        // Process dynamic routes
+        foreach ($this->routes as $method => $routes) {
+            foreach ($routes as $route) {
+                $routeData = $route->toArray();
+                $handler = $route->getHandler();
+
+                if ($handler instanceof \Closure) {
+                    throw new \RuntimeException("Route [{$route->getPath()}] uses a closure and cannot be cached. Use controller actions instead.");
+                }
+
+                $routeData['handler'] = $handler;
+                $data['dynamic'][$method][] = $routeData;
+            }
+        }
+
+        try {
+            $content = "<?php\n\nreturn " . var_export($data, true) . ";\n";
+            return file_put_contents($cachePath, $content) !== false;
+        } catch (\Throwable $e) {
+            return false;
+        }
+    }
+
+    /**
+     * Load routes from persistent cache.
+     */
+    public function loadFromCache(): bool
+    {
+        $cachePath = $this->getPersistentCachePath();
+
+        if (!file_exists($cachePath)) {
+            return false;
+        }
+
+        $data = require $cachePath;
+
+        if (!is_array($data)) {
+            return false;
+        }
+
+        // Clear existing routes
+        $this->staticRoutes = [];
+        $this->routes = [
+            'GET' => [],
+            'POST' => [],
+            'PUT' => [],
+            'DELETE' => [],
+            'PATCH' => [],
+            'OPTIONS' => [],
+            'HEAD' => [],
+        ];
+
+        // Reconstruct static routes
+        foreach ($data['static'] ?? [] as $method => $routes) {
+            foreach ($routes as $path => $attr) {
+                $route = new Route($attr['method'], $attr['path'], $attr['handler'], $attr['middleware'], $this);
+                if ($attr['name'])
+                    $route->name($attr['name']);
+                if ($attr['where'])
+                    $route->where($attr['where']);
+                if ($attr['domain'])
+                    $route->domain($attr['domain']);
+                if ($attr['defaults'])
+                    $route->defaults($attr['defaults']);
+
+                $this->staticRoutes[$method][$path] = $route;
+                if ($attr['name'])
+                    $this->namedRoutes[$attr['name']] = $route;
+            }
+        }
+
+        // Reconstruct dynamic routes
+        foreach ($data['dynamic'] ?? [] as $method => $routes) {
+            foreach ($routes as $attr) {
+                $route = new Route($attr['method'], $attr['path'], $attr['handler'], $attr['middleware'], $this);
+                if ($attr['name'])
+                    $route->name($attr['name']);
+                if ($attr['where'])
+                    $route->where($attr['where']);
+                if ($attr['domain'])
+                    $route->domain($attr['domain']);
+                if ($attr['defaults'])
+                    $route->defaults($attr['defaults']);
+
+                $this->routes[$method][] = $route;
+                if ($attr['name'])
+                    $this->namedRoutes[$attr['name']] = $route;
+            }
+        }
+
+        return true;
+    }
+
+    // ============================================
+    // SECURE: SIGNED URLS
+    // ============================================
+
+    /**
+     * Create a signed URL for a named route.
+     */
+    public function signedRoute(string $name, array $parameters = [], ?\DateTimeInterface $expiration = null, bool $absolute = true): string
+    {
+        if ($expiration) {
+            $parameters['expires'] = $expiration->getTimestamp();
+        }
+
+        $url = $this->route($name, $parameters, $absolute);
+        $signature = $this->createSignature($url);
+
+        return $url . (str_contains($url, '?') ? '&' : '?') . 'signature=' . $signature;
+    }
+
+    /**
+     * Create a temporary signed URL.
+     */
+    public function temporarySignedRoute(string $name, \DateTimeInterface $expiration, array $parameters = [], bool $absolute = true): string
+    {
+        return $this->signedRoute($name, $parameters, $expiration, $absolute);
+    }
+
+    /**
+     * Check if the request has a valid signature.
+     */
+    public function hasValidSignature(ServerRequestInterface $request, bool $absolute = true): bool
+    {
+        $uri = $request->getUri();
+        $queryParams = $request->getQueryParams();
+        $signature = $queryParams['signature'] ?? null;
+
+        if (!$signature) {
+            return false;
+        }
+
+        // Check expiration
+        if (isset($queryParams['expires']) && (int) $queryParams['expires'] < time()) {
+            return false;
+        }
+
+        // Recreate URL WITHOUT the signature to verify
+        $originalUrl = (string) $uri;
+        $originalUrl = preg_replace('/([?&])signature=[^&]+(&?)/', '$1', $originalUrl);
+        $originalUrl = rtrim($originalUrl, '?&');
+
+        return hash_equals($this->createSignature($originalUrl), $signature);
+    }
+
+    /**
+     * Create a URL signature using APP_KEY.
+     */
+    private function createSignature(string $url): string
+    {
+        $key = $_ENV['APP_KEY'] ?? 'base64:plugs-framework-default-key-replace-me';
+        return hash_hmac('sha256', $url, $key);
+    }
+
     public function setCacheEnabled(bool $enabled): void
     {
         $this->cacheEnabled = $enabled;
@@ -1315,97 +1547,7 @@ class Router
         }
     }
 
-    /**
-     * Cache all registered routes to a physical file
-     */
-    public function cacheRoutes(): bool
-    {
-        $data = [
-            'routes' => [],
-            'namedRoutes' => [],
-        ];
 
-        foreach ($this->routes as $method => $routes) {
-            foreach ($routes as $route) {
-                $routeData = $route->toArray();
-
-                // We must handle the handler separately as it might be a closure
-                $handler = $route->getHandler();
-                if ($handler instanceof Closure) {
-                    throw new RuntimeException("Route [{$route->getPath()}] uses a closure and cannot be cached. Use controller actions instead.");
-                }
-
-                $routeData['handler'] = $handler;
-                $data['routes'][$method][] = $routeData;
-
-                if ($route->isNamed()) {
-                    $data['namedRoutes'][$route->getName()] = [
-                        'method' => $method,
-                        'index' => count($data['routes'][$method]) - 1,
-                    ];
-                }
-            }
-        }
-
-        $cacheFile = $this->getPersistentCachePath();
-        $this->ensureCacheDirectoryExists(dirname($cacheFile));
-
-        $content = '<?php return ' . var_export($data, true) . ';';
-
-        return file_put_contents($cacheFile, $content) !== false;
-    }
-
-    /**
-     * Load routes from the physical cache file
-     */
-    public function loadFromPersistentCache(): bool
-    {
-        $cacheFile = $this->getPersistentCachePath();
-        if (!file_exists($cacheFile)) {
-            return false;
-        }
-
-        $data = require $cacheFile;
-
-        foreach ($data['routes'] as $method => $routesData) {
-            foreach ($routesData as $routeData) {
-                $handler = $routeData['handler'];
-                unset($routeData['handler']);
-
-                $route = new Route(
-                    $routeData['method'],
-                    $routeData['path'],
-                    $handler,
-                    $routeData['middleware'],
-                    $this
-                );
-
-                if ($routeData['name']) {
-                    $route->name($routeData['name']);
-                }
-
-                if (!empty($routeData['where'])) {
-                    $route->where($routeData['where']);
-                }
-
-                if (!empty($routeData['defaults'])) {
-                    $route->defaults($routeData['defaults']);
-                }
-
-                if ($routeData['domain']) {
-                    $route->domain($routeData['domain']);
-                }
-
-                if ($routeData['scheme']) {
-                    $route->scheme($routeData['scheme']);
-                }
-
-                $this->routes[$method][] = $route;
-            }
-        }
-
-        return true;
-    }
 
     private function getPersistentCachePath(): string
     {
@@ -1444,6 +1586,41 @@ class Router
     {
         return (new RouteRegistrar($this))->prefix($prefix);
     }
+
+    /**
+     * Create a RouteRegistrar with the given version.
+     *
+     * @param string $version
+     * @return RouteRegistrar
+     */
+    public function version(string $version): RouteRegistrar
+    {
+        return (new RouteRegistrar($this))->version($version);
+    }
+
+    /**
+     * Create a RouteRegistrar with the given name prefix.
+     *
+     * @param string $as
+     * @return RouteRegistrar
+     */
+    public function as(string $as): RouteRegistrar
+    {
+        return (new RouteRegistrar($this))->as($as);
+    }
+
+    /**
+     * Create a RouteRegistrar with the given domain.
+     * Enables fluent syntax: Route::domain('{tenant}.example.com')->group(...)
+     *
+     * @param string $domain
+     * @return RouteRegistrar
+     */
+    public function domainGroup(string $domain): RouteRegistrar
+    {
+        return (new RouteRegistrar($this))->domain($domain);
+    }
+
 
     /**
      * Push middleware to the global stack (applied to ALL routes).
@@ -1491,11 +1668,6 @@ class Router
     public function getNamedRoutes(): array
     {
         return $this->namedRoutes;
-    }
-
-    public function hasRoute(string $name): bool
-    {
-        return isset($this->namedRoutes[$name]);
     }
 
     public function getRoutesByMethod(string $method): array
@@ -1804,5 +1976,39 @@ class Router
         }
 
         return $model;
+    }
+
+    /**
+     * Get compiled routes regex for the given method.
+     */
+    private function getCompiledRoutes(string $method): ?array
+    {
+        if (isset($this->compiledRoutes[$method])) {
+            return $this->compiledRoutes[$method];
+        }
+
+        $routes = $this->routes[$method] ?? [];
+        if (empty($routes)) {
+            return null;
+        }
+
+        $patterns = [];
+        foreach ($routes as $route) {
+            $patterns[] = $route->getPattern();
+        }
+
+        // Combine all patterns into one large regex
+        // We use '#' as delimiter to match Route::compilePattern
+        // The 'J' flag enables PCRE2_DUPNAMES — allows duplicate named subpatterns
+        // which is necessary since different routes may share parameter names like {slug}
+        $regex = '#^(?:' . implode('|', array_map(function ($p) {
+            return substr($p, 2, -3); // Strip '#^' and '$#u'
+        }, $patterns)) . ')$#uJ';
+
+        $this->compiledRoutes[$method] = [
+            'regex' => $regex,
+        ];
+
+        return $this->compiledRoutes[$method];
     }
 }
