@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Plugs\Database\Exception;
+namespace Plugs\Database\Exceptions;
 
 use RuntimeException;
 
@@ -13,14 +13,14 @@ class ModelNotFoundException extends RuntimeException
      *
      * @var string
      */
-    protected $model;
+    protected string $model = '';
 
     /**
      * The affected model IDs.
      *
      * @var array
      */
-    protected $ids = [];
+    protected array $ids = [];
 
     /**
      * Set the affected model and identifiers.

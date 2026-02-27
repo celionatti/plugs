@@ -167,7 +167,7 @@ trait HasAttributes
         if (!isset($this->relations) || !array_key_exists($key, $this->relations)) {
             /** @phpstan-ignore-next-line */
             if (property_exists($this, 'preventLazyLoading') && static::$preventLazyLoading) {
-                throw new \Plugs\Database\Exception\LazyLoadingDisabledException(static::class, $key);
+                throw new \Plugs\Database\Exceptions\LazyLoadingDisabledException(static::class, $key);
             }
 
             $relation = $this->$key();

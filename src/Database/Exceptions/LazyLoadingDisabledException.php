@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Plugs\Database\Exception;
+namespace Plugs\Database\Exceptions;
 
 use Plugs\Exceptions\PlugsException;
 

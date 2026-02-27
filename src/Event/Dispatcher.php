@@ -4,7 +4,10 @@ declare(strict_types=1);
 
 namespace Plugs\Event;
 
+use InvalidArgumentException;
+use Plugs\Concurrency\Async;
 use Plugs\Container\Container;
+use Plugs\Debug\Profiler;
 
 class Dispatcher implements DispatcherInterface
 {
@@ -91,7 +94,7 @@ class Dispatcher implements DispatcherInterface
 
         // Run them in parallel using our FiberManager/Async helper
         // We use full namespace to avoid import conflicts if not imported
-        return \Plugs\Concurrency\Async::parallel($tasks);
+        return Async::parallel($tasks);
     }
 
     /**
@@ -112,7 +115,7 @@ class Dispatcher implements DispatcherInterface
         }
 
         // Optional: Enforce TypedEvent usage for object events
-        if (is_object($event) && !$event instanceof \Plugs\Event\Event) {
+        if (is_object($event) && !$event instanceof Event) {
             // We can log a warning or just proceed. For now, we proceed to maintain BC.
             // But we can ensure it follows our TypedEvent contract if strict mode was enabled.
         }
@@ -155,8 +158,8 @@ class Dispatcher implements DispatcherInterface
 
     protected function recordEvent(string $event, float $duration): void
     {
-        if (class_exists(\Plugs\Debug\Profiler::class)) {
-            \Plugs\Debug\Profiler::getInstance()->recordEvent($event, $duration);
+        if (class_exists(Profiler::class)) {
+            Profiler::getInstance()->recordEvent($event, $duration);
         }
     }
 
@@ -216,7 +219,7 @@ class Dispatcher implements DispatcherInterface
             }
         }
 
-        throw new \InvalidArgumentException("Listener [{$listener}] is not a valid callable.");
+        throw new InvalidArgumentException("Listener [{$listener}] is not a valid callable.");
     }
 
     /**

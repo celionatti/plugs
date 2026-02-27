@@ -16,26 +16,18 @@ namespace Plugs\Container;
 use Closure;
 use Plugs\Exceptions\BindingResolutionException;
 use Psr\Container\ContainerInterface;
-use Psr\Container\NotFoundExceptionInterface;
 use ReflectionClass;
 use ReflectionException;
 
-/**
- * Container Not Found Exception
- */
-class ContainerNotFoundException extends \Exception implements NotFoundExceptionInterface
-{
-}
-
 class Container implements ContainerInterface
 {
-    private static $instance = null;
+    private static ?self $instance = null;
 
-    private $bindings = [];
-    private $instances = [];
-    private $scopedInstances = [];
-    private $aliases = [];
-    private $contextual = [];
+    private array $bindings = [];
+    private array $instances = [];
+    private array $scopedInstances = [];
+    private array $aliases = [];
+    private array $contextual = [];
     private array $reflectionCache = [];
 
     private ?Inspector $inspector = null;

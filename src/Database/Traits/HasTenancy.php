@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Plugs\Database\Traits;
 
-use Plugs\Multitenancy\TenantManager;
+use Plugs\Tenancy\TenantManager;
 use Plugs\Database\Attributes\TenantAware;
 use ReflectionClass;
 
@@ -24,18 +24,18 @@ trait HasTenancy
 
         // 1. Add Global Scope for filtering by tenant
         static::addGlobalScope('tenancy', function ($builder) use ($column) {
-            $manager = TenantManager::getInstance();
-            if ($manager->hasTenant()) {
-                return $builder->where($column, $manager->getTenantId());
+            $manager = app(TenantManager::class);
+            if ($manager->isActive()) {
+                return $builder->where($column, $manager->getTenantKey());
             }
             return $builder;
         });
 
         // 2. Automatically inject tenant_id on creating
         static::creating(function ($model) use ($column) {
-            $manager = TenantManager::getInstance();
-            if ($manager->hasTenant() && !isset($model->attributes[$column])) {
-                $model->setAttribute($column, $manager->getTenantId());
+            $manager = app(TenantManager::class);
+            if ($manager->isActive() && !isset($model->attributes[$column])) {
+                $model->setAttribute($column, $manager->getTenantKey());
             }
         });
     }
@@ -53,3 +53,4 @@ trait HasTenancy
         return $query->where($column, $tenantId);
     }
 }
+
