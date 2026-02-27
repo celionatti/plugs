@@ -13,9 +13,10 @@ namespace Plugs;
 | point for the application and can be used to initialize and run the.
 */
 
+use Plugs\Bootstrap\ContextType;
 use Plugs\Http\Message\ServerRequest;
-use Plugs\Http\Message\Stream;
 use Plugs\Http\MiddlewareDispatcher;
+use Plugs\Kernel\KernelInterface;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Server\MiddlewareInterface;
@@ -450,9 +451,38 @@ class Plugs
             \Plugs\Debug\Profiler::getInstance()->stop();
         }
 
+        // Terminate the active kernel (context-specific cleanup)
+        if ($this->container->has(KernelInterface::class)) {
+            $this->container->make(KernelInterface::class)->terminate();
+        }
+
         foreach ($this->terminatingCallbacks as $callback) {
             $callback($request, $response);
         }
+    }
+
+    /**
+     * Get the active kernel instance, if booted.
+     */
+    public function getKernel(): ?KernelInterface
+    {
+        if ($this->container->has(KernelInterface::class)) {
+            return $this->container->make(KernelInterface::class);
+        }
+
+        return null;
+    }
+
+    /**
+     * Get the current execution context.
+     */
+    public function getContext(): ?ContextType
+    {
+        if ($this->container->has(ContextType::class)) {
+            return $this->container->make(ContextType::class);
+        }
+
+        return null;
     }
 
     private function createServerRequest(): ServerRequestInterface

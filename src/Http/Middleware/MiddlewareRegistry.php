@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Plugs\Http\Middleware;
 
+use Plugs\Bootstrap\ContextType;
+
 /**
  * Centralized registry for middleware aliases, groups, and priority.
  */
@@ -156,10 +158,46 @@ class MiddlewareRegistry
 
     /**
      * Get the global kernel middleware stack.
+     * If a context is provided, returns the appropriate stack for that context.
      */
-    public function getKernel(): array
+    public function getKernel(?ContextType $context = null): array
     {
+        if ($context !== null) {
+            return $this->getKernelForContext($context);
+        }
+
         return $this->kernel;
+    }
+
+    /**
+     * Get the kernel middleware stack for a specific context.
+     *
+     * Web gets the full kernel stack (session-aware middleware).
+     * API gets a reduced stack (no session, no flash, no SPA).
+     * CLI/Queue get no kernel middleware (no HTTP at all).
+     *
+     * @return array<string>
+     */
+    public function getKernelForContext(ContextType $context): array
+    {
+        return match ($context) {
+            ContextType::Web => $this->kernel,
+            ContextType::Api => array_filter($this->kernel, function (string $mw) {
+                    // API doesn't need session-dependent middleware
+                    $excluded = [
+                    SPAMiddleware::class,
+                    FlashMiddleware::class,
+                    ShareErrorsFromSession::class,
+                    ];
+                    return !in_array($mw, $excluded, true);
+                }),
+            ContextType::Realtime => [
+                PreventRequestsDuringMaintenance::class,
+                SecurityHeadersMiddleware::class,
+            ],
+            // CLI, Queue, Cron — no HTTP middleware
+            default => [],
+        };
     }
 
     /**

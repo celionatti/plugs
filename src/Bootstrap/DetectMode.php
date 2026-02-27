@@ -4,6 +4,15 @@ declare(strict_types=1);
 
 namespace Plugs\Bootstrap;
 
+use Plugs\Bootstrap\ContextType;
+use Plugs\Bootstrap\ContextResolver;
+
+/**
+ * Detect the execution mode of the application.
+ *
+ * This class is now integrated with the ContextResolver system.
+ * Legacy isAsync() method is preserved for backward compatibility.
+ */
 class DetectMode
 {
     /**
@@ -38,5 +47,37 @@ class DetectMode
     public static function getMode(): string
     {
         return self::isAsync() ? 'async' : 'sync';
+    }
+
+    /**
+     * Get the resolved context type from the ContextResolver.
+     */
+    public static function getContext(?array $server = null): ContextType
+    {
+        return ContextResolver::resolve($server);
+    }
+
+    /**
+     * Check if running in a specific context.
+     */
+    public static function isContext(ContextType $expected, ?array $server = null): bool
+    {
+        return self::getContext($server) === $expected;
+    }
+
+    /**
+     * Check if the current context is HTTP-based.
+     */
+    public static function isHttp(?array $server = null): bool
+    {
+        return self::getContext($server)->isHttp();
+    }
+
+    /**
+     * Check if the current context is CLI-based.
+     */
+    public static function isCli(): bool
+    {
+        return in_array(PHP_SAPI, ['cli', 'phpdbg'], true);
     }
 }
