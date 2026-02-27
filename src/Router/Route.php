@@ -620,71 +620,12 @@ class Route
 
     public function url(array $parameters = [], bool $absolute = false): string
     {
-        $path = $this->path;
-
-        foreach ($parameters as $key => $value) {
-            $path = str_replace('{' . $key . '}', (string) $value, $path);
-            $path = str_replace('{' . $key . '?}', (string) $value, $path);
+        if ($this->router !== null) {
+            return $this->router->getUrlGenerator()->generate($this, $parameters, $absolute);
         }
 
-        $path = preg_replace('/\/?\{[^}]+\?\}/', '', $path);
-
-        preg_match_all('/\{([^}?]+)\}/', $path, $matches);
-        if (!empty($matches[1])) {
-            throw new \Plugs\Exceptions\MissingRouteParameterException(
-                $this->name ?? 'unnamed',
-                $this->path,
-                $matches[1],
-                $parameters
-            );
-        }
-
-        if ($absolute) {
-            $scheme = $this->scheme ?? (
-                (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http'
-            );
-            $host = $this->domain ?? ($_SERVER['HTTP_HOST'] ?? 'localhost');
-
-            // Substitute domain parameters (e.g., {tenant} in {tenant}.example.com)
-            foreach ($parameters as $key => $value) {
-                if (str_contains($host, '{' . $key . '}')) {
-                    $host = str_replace('{' . $key . '}', (string) $value, $host);
-                    unset($parameters[$key]);
-                }
-            }
-
-            $basePath = function_exists('get_base_path') ? get_base_path() : '/';
-            $url = $scheme . '://' . $host . rtrim($basePath, '/') . '/' . ltrim($path, '/');
-        } else {
-            $basePath = function_exists('get_base_path') ? get_base_path() : '/';
-            $url = rtrim($basePath, '/') . '/' . ltrim($path, '/');
-        }
-
-        // Append remaining parameters as query string
-        // We've already removed path and domain parameters from $parameters if we were careful
-        // Actually, I need to keep track of which ones were used.
-
-        // Let's re-identify used parameters.
-        $usedParams = [];
-        preg_match_all('/\{([^}?]+)\??\}/', $this->path, $matches);
-        if (!empty($matches[1])) {
-            foreach ($matches[1] as $m)
-                $usedParams[$m] = true;
-        }
-        if ($this->domain) {
-            preg_match_all('/\{([^}?]+)\??\}/', $this->domain, $matches);
-            if (!empty($matches[1])) {
-                foreach ($matches[1] as $m)
-                    $usedParams[$m] = true;
-            }
-        }
-
-        $extraParams = array_diff_key($parameters, $usedParams);
-        if (!empty($extraParams)) {
-            $url .= (str_contains($url, '?') ? '&' : '?') . http_build_query($extraParams);
-        }
-
-        return $url;
+        $generator = new RouteUrlGenerator();
+        return $generator->generate($this, $parameters, $absolute);
     }
 
     public function hasMiddleware(string $middleware): bool

@@ -23,7 +23,6 @@ use Closure;
 use Exception;
 use InvalidArgumentException;
 use Plugs\Container\Container;
-use Plugs\Exceptions\RouteNotFoundException;
 use Plugs\Http\MiddlewareDispatcher;
 use Plugs\Http\ResponseFactory;
 use Plugs\Inertia\InertiaResponse;
@@ -86,6 +85,7 @@ class Router
     private array $staticRoutes = [];
     private ?\Plugs\Http\Middleware\MiddlewareRegistry $registry = null;
     private array $compiledRoutes = [];
+    protected ?RouteUrlGenerator $urlGenerator = null;
 
 
 
@@ -518,47 +518,25 @@ class Router
 
 
 
+    /**
+     * Get the URL generator pointing to this Router instance.
+     * 
+     * @return RouteUrlGenerator
+     */
+    public function getUrlGenerator(): RouteUrlGenerator
+    {
+        if ($this->urlGenerator === null) {
+            $this->urlGenerator = new RouteUrlGenerator($this);
+        }
+
+        return $this->urlGenerator;
+    }
+
     public function route(string $name, array $parameters = [], bool $absolute = false): string
     {
-        $route = $this->getRouteByName($name);
-
-        if ($route === null) {
-            $message = "Route [{$name}] not found.";
-
-            if ($suggestion = $this->getRouteSuggestion($name)) {
-                $message .= " Did you mean [{$suggestion}]?";
-            }
-
-            throw new RouteNotFoundException($name, '', $message);
-        }
-
-        return $route->url($parameters, $absolute);
+        return $this->getUrlGenerator()->route($name, $parameters, $absolute);
     }
 
-    /**
-     * Get a suggestion for a missing route name.
-     */
-    private function getRouteSuggestion(string $name): ?string
-    {
-        $bestMatch = null;
-        $shortestDistance = -1;
-
-        foreach (array_keys($this->namedRoutes) as $routeName) {
-            $distance = levenshtein($name, $routeName);
-
-            if ($distance === 0) {
-                return $routeName;
-            }
-
-            if ($distance <= $shortestDistance || $shortestDistance < 0) {
-                $bestMatch = $routeName;
-                $shortestDistance = $distance;
-            }
-        }
-
-        // Only return if the distance is reasonably small (e.g., < 3)
-        return ($shortestDistance >= 0 && $shortestDistance < 3) ? $bestMatch : null;
-    }
 
     /**
      * Current request/route access
@@ -1124,7 +1102,7 @@ class Router
                 }
 
                 return $container->make($typeName);
-            } catch (\Plugs\Database\Exception\ModelNotFoundException | \Plugs\Http\Exceptions\ValidationException | RuntimeException $e) {
+            } catch (\Plugs\Exceptions\ModelNotFoundException | \Plugs\Http\Exceptions\ValidationException | RuntimeException $e) {
                 // Rethrow these so they can be handled by middleware or global handler
                 throw $e;
             } catch (Exception $e) {
@@ -1972,7 +1950,7 @@ class Router
         // Custom key resolution
         $model = $modelClass::where($key, '=', $value)->first();
         if (!$model) {
-            throw (new \Plugs\Database\Exception\ModelNotFoundException())->setModel($modelClass, $value);
+            throw (new \Plugs\Exceptions\ModelNotFoundException())->setModel($modelClass, $value);
         }
 
         return $model;
