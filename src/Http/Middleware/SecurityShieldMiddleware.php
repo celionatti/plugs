@@ -36,6 +36,8 @@ class SecurityShieldMiddleware implements MiddlewareInterface
     private static ?array $cachedBlacklistedIps = null;
     private static int $lastListLoadTime = 0;
     private bool $listsLoaded = false;
+    private \Plugs\Security\BotDetector $botDetector;
+    private \Plugs\Security\EmailSecurityValidator $emailValidator;
 
     /**
      * Initialize SecurityShield Middleware
@@ -50,6 +52,9 @@ class SecurityShieldMiddleware implements MiddlewareInterface
         $this->whitelistedIps = [];
         $this->blacklistedIps = [];
         $this->initializeRules();
+
+        $this->botDetector = new \Plugs\Security\BotDetector($this->config);
+        $this->emailValidator = new \Plugs\Security\EmailSecurityValidator();
     }
 
     private function ensureListsLoaded(): void
@@ -227,62 +232,7 @@ class SecurityShieldMiddleware implements MiddlewareInterface
 
     private function detectBots(array $requestData): array
     {
-        $userAgent = strtolower($requestData['user_agent']);
-        $headers = $requestData['headers'];
-
-        $botIndicators = 0;
-        $maxIndicators = 10;
-        $details = [];
-
-        // Check for known bot user agents
-        foreach ($this->config['bot_detection']['suspicious_headers'] as $botKeyword) {
-            if (strpos($userAgent, $botKeyword) !== false) {
-                $botIndicators += 2;
-                $details[] = "bot_keyword:{$botKeyword}";
-            }
-        }
-
-        // Check for empty or suspicious user agent
-        if (empty($userAgent) || strlen($userAgent) < 10) {
-            $botIndicators += 1.5;
-            $details[] = 'suspicious_ua_length';
-        }
-
-        // Check for missing standard headers
-        $requiredHeaders = ['accept', 'accept-language'];
-        foreach ($requiredHeaders as $header) {
-            if (!isset($headers[$header])) {
-                $botIndicators += 0.5;
-                $details[] = "missing_header:{$header}";
-            }
-        }
-
-        // Check User-Agent consistency
-        if (!$this->isUserAgentConsistent($userAgent, $headers)) {
-            $botIndicators += 1;
-            $details[] = 'inconsistent_ua';
-        }
-
-        // Check for headless browser signatures
-        if ($this->isHeadlessBrowser($userAgent)) {
-            $botIndicators += 1.5;
-            $details[] = 'headless_browser';
-        }
-
-        $botScore = min($botIndicators / $maxIndicators, 1.0);
-
-        // Block high-confidence bots
-        if ($botScore > 0.75 && $this->config['bot_detection']['block_suspicious_bots']) {
-            return $this->deny('Automated bot detected', $botScore);
-        }
-
-        return [
-            'allowed' => true,
-            'risk_score' => $botScore * 0.8,
-            'challenge_required' => $botScore > 0.4,
-            'challenge_type' => $botScore > 0.6 ? 'advanced_captcha' : 'captcha',
-            'details' => $details,
-        ];
+        return $this->botDetector->detectBots($requestData);
     }
 
     private function analyzeBehavior(array $requestData): array
@@ -315,32 +265,7 @@ class SecurityShieldMiddleware implements MiddlewareInterface
 
     private function validateEmail(array $requestData): array
     {
-        $email = $requestData['email'] ?? '';
-
-        if (empty($email)) {
-            return ['allowed' => true, 'risk_score' => 0, 'challenge_required' => false];
-        }
-
-        // Basic format validation
-        if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
-            return $this->deny('Invalid email format', 0.8);
-        }
-
-        // Check disposable email domains
-        if ($this->isDisposableEmail($email)) {
-            return $this->deny('Disposable email addresses not allowed', 0.85);
-        }
-
-        // Check for typos in popular domains
-        $typoScore = $this->detectEmailTypos($email);
-
-        return [
-            'allowed' => true,
-            'risk_score' => min($typoScore, 0.95),
-            'challenge_required' => $typoScore > 0.6,
-            'typo_detected' => $typoScore > 0.7,
-            'suggested_email' => $typoScore > 0.7 ? $this->suggestEmailCorrection($email) : null,
-        ];
+        return $this->emailValidator->validateEmail($requestData);
     }
 
     private function checkFingerprint(array $requestData): array
@@ -606,87 +531,6 @@ class SecurityShieldMiddleware implements MiddlewareInterface
             isset($requestData['endpoint']);
     }
 
-    private function isUserAgentConsistent(string $userAgent, array $headers): bool
-    {
-        $isBrowser = preg_match('/(mozilla|chrome|safari|firefox|edge)/i', $userAgent);
-        $hasAccept = isset($headers['accept']);
-
-        return $isBrowser === $hasAccept;
-    }
-
-    private function isHeadlessBrowser(string $userAgent): bool
-    {
-        $headlessSignatures = ['headless', 'phantom', 'selenium', 'puppeteer', 'playwright'];
-
-        foreach ($headlessSignatures as $signature) {
-            if (strpos($userAgent, $signature) !== false) {
-                return true;
-            }
-        }
-
-        return false;
-    }
-
-    private function isDisposableEmail(string $email): bool
-    {
-        $domain = strtolower(explode('@', $email)[1] ?? '');
-
-        $disposableDomains = [
-            'tempmail.com',
-            'guerrillamail.com',
-            'mailinator.com',
-            '10minutemail.com',
-            'yopmail.com',
-            'throwawaymail.com',
-            'temp-mail.org',
-            'getnada.com',
-            'maildrop.cc',
-        ];
-
-        return in_array($domain, $disposableDomains);
-    }
-
-    private function detectEmailTypos(string $email): float
-    {
-        $popularDomains = [
-            'gmail.com',
-            'yahoo.com',
-            'hotmail.com',
-            'outlook.com',
-            'aol.com',
-            'icloud.com',
-        ];
-
-        $userDomain = strtolower(explode('@', $email)[1] ?? '');
-
-        foreach ($popularDomains as $correctDomain) {
-            $distance = levenshtein($userDomain, $correctDomain);
-            if ($distance > 0 && $distance <= 2 && $userDomain !== $correctDomain) {
-                return 0.8;
-            }
-        }
-
-        return 0;
-    }
-
-    private function suggestEmailCorrection(string $email): ?string
-    {
-        $parts = explode('@', $email);
-        if (count($parts) !== 2) {
-            return null;
-        }
-
-        $popularDomains = ['gmail.com', 'yahoo.com', 'hotmail.com', 'outlook.com'];
-        $userDomain = strtolower($parts[1]);
-
-        foreach ($popularDomains as $correctDomain) {
-            if (levenshtein($userDomain, $correctDomain) <= 2) {
-                return $parts[0] . '@' . $correctDomain;
-            }
-        }
-
-        return null;
-    }
 
     private function getConcurrentSessions(string $ip): int
     {
