@@ -189,7 +189,7 @@ trait CompilesControlStructures
      */
     protected function compileTagConditionals(string $content): string
     {
-        $attrRegex = '((?:\s+(?:[^>"\'\/]+|"[^"]*"|\'[^\']*\')*)*?)';
+        $attrRegex = '((?:[^>"\']+|"[^"]*"|\'[^\']*\')*)';
 
         // <if :condition="...">
         $content = preg_replace_callback('/<if' . $attrRegex . '>/i', function ($m) {
@@ -233,7 +233,7 @@ trait CompilesControlStructures
      */
     protected function compileTagLoops(string $content): string
     {
-        $attrRegex = '((?:\s+(?:[^>"\'\/]+|"[^"]*"|\'[^\']*\')*)*?)';
+        $attrRegex = '((?:[^>"\']+|"[^"]*"|\'[^\']*\')*)';
 
         // <loop :items="..." :as="...">
         $content = preg_replace_callback('/<loop' . $attrRegex . '>/i', function ($m) {

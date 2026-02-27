@@ -339,7 +339,7 @@ class ViewCompiler
     private function extractComponentsWithSlots(string $content): string
     {
         // Regex to match attributes while ignoring '>' inside quotes
-        $attrRegex = '((?:\s+(?:[^>"\'\/]+|"[^"]*"|\'[^\']*\')*)*?)';
+        $attrRegex = '((?:[^>"\']+|"[^"]*"|\'[^\']*\')*)';
 
         // 1. Self-closing components: <ComponentName attr="value" /> or <Module::Component />
         $content = preg_replace_callback(

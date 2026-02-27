@@ -709,8 +709,10 @@ trait CompilesComponents
      */
     protected function compileComponentTags(string $content): string
     {
+        $attrRegex = '((?:[^>"\']+|"[^"]*"|\'[^\']*\')*)';
+
         // 1. <fragment name="..."> ... </fragment>
-        $content = preg_replace_callback('/<fragment\s+([^>]+)>/is', function ($m) {
+        $content = preg_replace_callback('/<fragment' . $attrRegex . '>/is', function ($m) {
             $attrs = $this->parseAttributes($m[1]);
             if (isset($attrs['name'])) {
                 return "@fragment('{$attrs['name']['value']}')";
@@ -720,7 +722,7 @@ trait CompilesComponents
         $content = preg_replace('/<\/fragment\s*>/is', '@endfragment', $content);
 
         // 2. <teleport to="..."> ... </teleport>
-        $content = preg_replace_callback('/<teleport\s+([^>]+)>/is', function ($m) {
+        $content = preg_replace_callback('/<teleport' . $attrRegex . '>/is', function ($m) {
             $attrs = $this->parseAttributes($m[1]);
             if (isset($attrs['to'])) {
                 return "@teleport('{$attrs['to']['value']}')";
@@ -730,7 +732,7 @@ trait CompilesComponents
         $content = preg_replace('/<\/teleport\s*>/is', '@endteleport', $content);
 
         // 3. <cache key="..." ttl="..."> ... </cache>
-        $content = preg_replace_callback('/<cache\s+([^>]+)>/is', function ($m) {
+        $content = preg_replace_callback('/<cache' . $attrRegex . '>/is', function ($m) {
             $attrs = $this->parseAttributes($m[1]);
             if (isset($attrs['key'])) {
                 $ttl = $attrs['ttl']['value'] ?? 'null';
@@ -744,7 +746,7 @@ trait CompilesComponents
         $content = preg_replace('/<csp\s*\/?>/is', '@csp', $content);
 
         // 5. <id value="..." />
-        $content = preg_replace_callback('/<id\s+([^>]+)\/?>/is', function ($m) {
+        $content = preg_replace_callback('/<id' . $attrRegex . '\/?>/is', function ($m) {
             $attrs = $this->parseAttributes($m[1]);
             if (isset($attrs['value'])) {
                 return "@id({$attrs['value']['value']})";
@@ -753,7 +755,7 @@ trait CompilesComponents
         }, $content);
 
         // 6. <vite entry="..." />
-        $content = preg_replace_callback('/<vite\s+([^>]+)\/?>/is', function ($m) {
+        $content = preg_replace_callback('/<vite' . $attrRegex . '\/?>/is', function ($m) {
             $attrs = $this->parseAttributes($m[1]);
             if (isset($attrs['entries'])) {
                 return "@vite({$attrs['entries']['value']})";
@@ -765,7 +767,7 @@ trait CompilesComponents
         }, $content);
 
         // 7. <skeleton type="..." width="..." height="..." />
-        $content = preg_replace_callback('/<skeleton\s+([^>]+)\/?>/is', function ($m) {
+        $content = preg_replace_callback('/<skeleton' . $attrRegex . '\/?>/is', function ($m) {
             $attrs = $this->parseAttributes($m[1]);
             if (isset($attrs['type'])) {
                 $width = $attrs['width']['value'] ?? '100%';
@@ -803,7 +805,7 @@ trait CompilesComponents
         $content = preg_replace('/<\/production\s*>/is', '@endproduction', $content);
 
         // 12. <env is="..."> ... </env>
-        $content = preg_replace_callback('/<env\s+([^>]+)>/is', function ($m) {
+        $content = preg_replace_callback('/<env' . $attrRegex . '>/is', function ($m) {
             $attrs = $this->parseAttributes($m[1]);
             if (isset($attrs['is'])) {
                 return "@envIs('{$attrs['is']['value']}')";
@@ -813,7 +815,7 @@ trait CompilesComponents
         $content = preg_replace('/<\/env\s*>/is', '@endenvIs', $content);
 
         // 13. RBAC Tags
-        $content = preg_replace_callback('/<can\s+([^>]+)>/is', function ($m) {
+        $content = preg_replace_callback('/<can' . $attrRegex . '>/is', function ($m) {
             $attrs = $this->parseAttributes($m[1]);
             if (isset($attrs['ability'])) {
                 return "@can('{$attrs['ability']['value']}')";
@@ -822,7 +824,7 @@ trait CompilesComponents
         }, $content);
         $content = preg_replace('/<\/can\s*>/is', '@endcan', $content);
 
-        $content = preg_replace_callback('/<cannot\s+([^>]+)>/is', function ($m) {
+        $content = preg_replace_callback('/<cannot' . $attrRegex . '>/is', function ($m) {
             $attrs = $this->parseAttributes($m[1]);
             if (isset($attrs['ability'])) {
                 return "@cannot('{$attrs['ability']['value']}')";
@@ -831,7 +833,7 @@ trait CompilesComponents
         }, $content);
         $content = preg_replace('/<\/cannot\s*>/is', '@endcannot', $content);
 
-        $content = preg_replace_callback('/<role\s+([^>]+)>/is', function ($m) {
+        $content = preg_replace_callback('/<role' . $attrRegex . '>/is', function ($m) {
             $attrs = $this->parseAttributes($m[1]);
             if (isset($attrs['name'])) {
                 return "@role('{$attrs['name']['value']}')";
@@ -841,7 +843,7 @@ trait CompilesComponents
         $content = preg_replace('/<\/role\s*>/is', '@endrole', $content);
 
         // 14. <active route="..." class="..." />
-        $content = preg_replace_callback('/<active\s+([^>]+)\/?>/is', function ($m) {
+        $content = preg_replace_callback('/<active' . $attrRegex . '\/?>/is', function ($m) {
             $attrs = $this->parseAttributes($m[1]);
             if (isset($attrs['route'])) {
                 $class = $attrs['class']['value'] ?? 'active';
@@ -851,7 +853,7 @@ trait CompilesComponents
         }, $content);
 
         // 15. <svg icon="..." class="..." />
-        $content = preg_replace_callback('/<svg\s+([^>]+)\/?>/is', function ($m) {
+        $content = preg_replace_callback('/<svg' . $attrRegex . '\/?>/is', function ($m) {
             $attrs = $this->parseAttributes($m[1]);
             if (isset($attrs['icon'])) {
                 $class = $attrs['class']['value'] ?? '';

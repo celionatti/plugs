@@ -14,7 +14,7 @@ trait CompilesLayouts
      */
     protected function compileLayoutTag(string $content): string
     {
-        $attrRegex = '((?:\s+(?:[^>"\'\/]+|"[^"]*"|\'[^\']*\')*)*?)';
+        $attrRegex = '((?:[^>"\']+|"[^"]*"|\'[^\']*\')*)';
 
         return preg_replace_callback('/<layout' . $attrRegex . '>(.*?)<\/layout\s*>/is', function ($matches) use ($attrRegex) {
             $attrs = $this->parseAttributes($matches[1]);
@@ -73,7 +73,7 @@ trait CompilesLayouts
      */
     protected function compileTagDirectives(string $content): string
     {
-        $attrRegex = '((?:\s+(?:[^>"\'\/]+|"[^"]*"|\'[^\']*\')*)*?)';
+        $attrRegex = '((?:[^>"\']+|"[^"]*"|\'[^\']*\')*)';
 
         // 1. <push:name> ... </push:name>
         $content = preg_replace_callback('/<push:([\w-]+)\s*>/s', function ($m) {

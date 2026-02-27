@@ -359,11 +359,13 @@ trait CompilesFormDirectives
      */
     protected function compileFormTags(string $content): string
     {
+        $attrRegex = '((?:[^>"\']+|"[^"]*"|\'[^\']*\')*)';
+
         // <csrf />
         $content = preg_replace('/<csrf\s*\/?>/is', '@csrf', $content);
 
         // 2. <method type="..." />
-        $content = preg_replace_callback('/<method\s+([^>]+)\/?>/is', function ($m) {
+        $content = preg_replace_callback('/<method' . $attrRegex . '\/?>/is', function ($m) {
             $attrs = $this->parseAttributes($m[1]);
             if (isset($attrs['type'])) {
                 return "@method('{$attrs['type']['value']}')";
@@ -372,7 +374,7 @@ trait CompilesFormDirectives
         }, $content);
 
         // <error field="..." />
-        $content = preg_replace_callback('/<error\s+([^>]+)>/is', function ($m) {
+        $content = preg_replace_callback('/<error' . $attrRegex . '>/is', function ($m) {
             $attrs = $this->parseAttributes($m[1]);
             if (isset($attrs['field'])) {
                 if (str_ends_with(trim($m[1]), '/')) {
@@ -390,7 +392,7 @@ trait CompilesFormDirectives
         $content = preg_replace('/<\/errors\s*>/is', '@enderrors', $content);
 
         // <class :map="..." />
-        $content = preg_replace_callback('/<class\s+([^>]+)\/?>/is', function ($m) {
+        $content = preg_replace_callback('/<class' . $attrRegex . '\/?>/is', function ($m) {
             $attrs = $this->parseAttributes($m[1]);
             if (isset($attrs['map'])) {
                 return "@class({$attrs['map']['value']})";
@@ -399,7 +401,7 @@ trait CompilesFormDirectives
         }, $content);
 
         // <style :map="..." />
-        $content = preg_replace_callback('/<style\s+([^>]+)\/?>/is', function ($m) {
+        $content = preg_replace_callback('/<style' . $attrRegex . '\/?>/is', function ($m) {
             $attrs = $this->parseAttributes($m[1]);
             if (isset($attrs['map'])) {
                 return "@style({$attrs['map']['value']})";
@@ -419,7 +421,7 @@ trait CompilesFormDirectives
         }, $content);
 
         // <stream view="..." [:data="..."] />
-        $content = preg_replace_callback('/<stream\s+([^>]+)\/?>/is', function ($m) {
+        $content = preg_replace_callback('/<stream' . $attrRegex . '\/?>/is', function ($m) {
             $attrs = $this->parseAttributes($m[1]);
             if (isset($attrs['view'])) {
                 $view = $attrs['view']['value'];
@@ -430,7 +432,7 @@ trait CompilesFormDirectives
         }, $content);
 
         // <checked :when="..." />
-        $content = preg_replace_callback('/<checked\s+([^>]+)\/?>/is', function ($m) {
+        $content = preg_replace_callback('/<checked' . $attrRegex . '\/?>/is', function ($m) {
             $attrs = $this->parseAttributes($m[1]);
             if (isset($attrs['when'])) {
                 return "@checked({$attrs['when']['value']})";
@@ -439,7 +441,7 @@ trait CompilesFormDirectives
         }, $content);
 
         // <selected :when="..." />
-        $content = preg_replace_callback('/<selected\s+([^>]+)\/?>/is', function ($m) {
+        $content = preg_replace_callback('/<selected' . $attrRegex . '\/?>/is', function ($m) {
             $attrs = $this->parseAttributes($m[1]);
             if (isset($attrs['when'])) {
                 return "@selected({$attrs['when']['value']})";
@@ -448,7 +450,7 @@ trait CompilesFormDirectives
         }, $content);
 
         // <disabled :when="..." />
-        $content = preg_replace_callback('/<disabled\s+([^>]+)\/?>/is', function ($m) {
+        $content = preg_replace_callback('/<disabled' . $attrRegex . '\/?>/is', function ($m) {
             $attrs = $this->parseAttributes($m[1]);
             if (isset($attrs['when'])) {
                 return "@disabled({$attrs['when']['value']})";
