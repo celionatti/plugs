@@ -41,7 +41,7 @@ class Profiler
     private function __construct()
     {
         $this->useHrTime = function_exists('hrtime');
-        $this->startTime = $this->useHrTime ? (float) hrtime(true) / 1e9 : microtime(true);
+        $this->startTime = microtime(true);
         $this->startMemory = memory_get_usage(false); // Use emalloc for speed
     }
 
@@ -91,7 +91,7 @@ class Profiler
     public function start(): void
     {
         $this->enabled = true;
-        $this->startTime = $this->useHrTime ? (float) hrtime(true) / 1e9 : microtime(true);
+        $this->startTime = microtime(true);
         $this->startMemory = memory_get_usage(false);
         $this->timeline = [];
         $this->views = [];
@@ -116,7 +116,7 @@ class Profiler
 
         $this->stopSegment('total');
 
-        $endTime = $this->useHrTime ? (float) hrtime(true) / 1e9 : microtime(true);
+        $endTime = microtime(true);
         $duration = ($endTime - $this->startTime) * 1000; // ms
 
         $memoryPeak = memory_get_peak_usage(false);
@@ -209,7 +209,7 @@ class Profiler
 
         $this->timeline[$name] = [
             'label' => $label ?: $name,
-            'start' => $this->useHrTime ? (float) hrtime(true) / 1e9 : microtime(true),
+            'start' => microtime(true),
             'end' => null,
             'duration' => null,
             'memory_start' => memory_get_usage(false),
@@ -227,7 +227,7 @@ class Profiler
             return;
         }
 
-        $endTime = $this->useHrTime ? (float) hrtime(true) / 1e9 : microtime(true);
+        $endTime = microtime(true);
         $start = $this->timeline[$name]['start'];
 
         $this->timeline[$name]['end'] = $endTime;
@@ -256,7 +256,7 @@ class Profiler
             'time' => microtime(true),
         ];
 
-        $now = $this->useHrTime ? (float) hrtime(true) / 1e9 : microtime(true);
+        $now = microtime(true);
         $this->timeline['view_' . uniqid()] = [
             'label' => 'View: ' . $name,
             'start' => $now - ($duration / 1000),
@@ -341,7 +341,7 @@ class Profiler
             'time_offset' => $this->getElapsedTime(),
         ];
 
-        $now = $this->useHrTime ? (float) hrtime(true) / 1e9 : microtime(true);
+        $now = microtime(true);
         $this->timeline['event_' . uniqid()] = [
             'label' => 'Event: ' . $name,
             'start' => $now - $duration,
@@ -461,7 +461,7 @@ class Profiler
 
     public function getElapsedTime(): float
     {
-        $now = $this->useHrTime ? (float) hrtime(true) / 1e9 : microtime(true);
+        $now = microtime(true);
         return round(($now - $this->startTime) * 1000, 2);
     }
 

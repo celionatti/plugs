@@ -17,6 +17,9 @@ use PDO;
 use PDOException;
 use Plugs\Exceptions\ConfigurationException;
 use Plugs\Exceptions\DatabaseException as PlugsDatabaseException;
+use Plugs\Database\Pooling\ConnectionPool;
+use Plugs\Database\Analysis\QueryAnalyzer;
+use Plugs\Database\Guard\QueryGuard;
 
 class Connection
 {
@@ -63,8 +66,7 @@ class Connection
     /** @phpstan-ignore property.onlyWritten */
     private int $connectionAttempts = 0;
     private int $maxRetries = 3;
-    private static array $queryLog = [];
-    private static bool $loggingQueries = false;
+
     private ?\Plugs\Database\Optimization\OptimizationManager $optimizationManager = null;
 
     // Security & Advanced Features
@@ -331,8 +333,8 @@ class Connection
 
         if ($this->isInPool) {
             // Pool-level config takes highest priority when pooled
-            if (self::$poolConfig['persistent'] !== null) {
-                $persistent = self::$poolConfig['persistent'];
+            if (ConnectionPool::getConfig()['persistent'] !== null) {
+                $persistent = ConnectionPool::getConfig()['persistent'];
             } elseif (!isset($config['persistent'])) {
                 // Auto-enable persistent connections for pooled connections
                 // This is the only way PHP-FPM can reuse connections across requests
@@ -349,384 +351,95 @@ class Connection
         return array_merge($defaults, $config['options'] ?? []);
     }
 
-    // ==================== CONNECTION POOLING ====================
+    // ==================== POOLING GETTERS/SETTERS ====================
 
-    /**
-     * Configure connection pool settings
-     */
+    public function getPoolId(): ?string
+    {
+        return $this->poolId;
+    }
+
+    public function setIsInPool(bool $inPool): void
+    {
+        $this->isInPool = $inPool;
+    }
+
+    public function isStale(int $timeout = 300): bool
+    {
+        return (time() - $this->lastActivityTime) > $timeout;
+    }
+
+    public function isHealthy(): bool
+    {
+        return $this->isHealthy;
+    }
+
+    public function touchActivity(): void
+    {
+        $this->lastActivityTime = time();
+    }
+
+    // ==================== DELEGATED POOL METHODS ====================
+
     public static function configurePool(array $config): void
     {
-        self::$poolConfig = array_merge(self::$poolConfig, $config);
+        ConnectionPool::configure($config);
     }
 
-    /**
-     * Configure pool with environment-specific presets.
-     *
-     * @param string $env One of 'production', 'development', 'testing'
-     */
     public static function configurePoolForEnvironment(string $env = 'production'): void
     {
-        $configs = [
-            'production' => [
-                'min_connections' => 5,
-                'max_connections' => 20,
-                'connection_timeout' => 10,
-                'idle_timeout' => 300,
-                'validate_on_checkout' => true,
-                'persistent' => true,
-            ],
-            'development' => [
-                'min_connections' => 1,
-                'max_connections' => 5,
-                'connection_timeout' => 30,
-                'idle_timeout' => 600,
-                'validate_on_checkout' => false,
-                'persistent' => false,
-            ],
-            'testing' => [
-                'min_connections' => 1,
-                'max_connections' => 3,
-                'connection_timeout' => 5,
-                'idle_timeout' => 60,
-                'validate_on_checkout' => false,
-                'persistent' => false,
-            ],
-        ];
-
-        self::configurePool($configs[$env] ?? $configs['production']);
+        ConnectionPool::configureForEnvironment($env);
     }
 
-    /**
-     * Detect the current PHP runtime environment.
-     *
-     * @return string One of 'swoole', 'frankenphp', 'roadrunner', 'standard'
-     */
-    public static function detectRuntime(): string
-    {
-        if (self::$detectedRuntime !== null) {
-            return self::$detectedRuntime;
-        }
-
-        if (extension_loaded('swoole') || extension_loaded('openswoole')) {
-            self::$detectedRuntime = 'swoole';
-        } elseif (isset($_SERVER['FRANKENPHP_WORKER'])) {
-            self::$detectedRuntime = 'frankenphp';
-        } elseif (isset($_SERVER['RR_MODE'])) {
-            self::$detectedRuntime = 'roadrunner';
-        } else {
-            self::$detectedRuntime = 'standard';
-        }
-
-        return self::$detectedRuntime;
-    }
-
-    /**
-     * Acquire a pool-level lock (thread-safe for async runtimes).
-     */
-    private static function acquirePoolLock(string $name): void
-    {
-        $runtime = self::detectRuntime();
-
-        if ($runtime === 'swoole') {
-            if (!isset(self::$poolLocks[$name])) {
-                // Swoole\Lock is available in Swoole environments
-                if (class_exists('\Swoole\Lock')) {
-                    self::$poolLocks[$name] = new \Swoole\Lock(SWOOLE_MUTEX);
-                } else {
-                    return; // Graceful fallback
-                }
-            }
-            self::$poolLocks[$name]->lock();
-        }
-        // For standard PHP-FPM / CLI: no lock needed (single-threaded per request)
-        // For RoadRunner/FrankenPHP: PHP workers are isolated processes, no lock needed
-    }
-
-    /**
-     * Release a pool-level lock.
-     */
-    private static function releasePoolLock(string $name): void
-    {
-        if (isset(self::$poolLocks[$name]) && self::detectRuntime() === 'swoole') {
-            self::$poolLocks[$name]->unlock();
-        }
-    }
-
-    /**
-     * Pre-warm the pool by eagerly creating up to min_connections.
-     *
-     * @param string $name Connection name
-     * @return int Number of connections created
-     */
     public static function warmPool(string $name = 'default'): int
     {
         $config = self::$config[$name] ?? self::loadConfigFromFile($name);
         self::$config[$name] = $config;
 
-        if (!isset(self::$connectionPools[$name])) {
-            self::$connectionPools[$name] = [
-                'available' => [],
-                'in_use' => [],
-                'total' => 0,
-            ];
-        }
-
-        $pool = &self::$connectionPools[$name];
-        $warmed = 0;
-
-        while ($pool['total'] < self::$poolConfig['min_connections']) {
-            try {
-                $conn = new self($config, $name);
-                $conn->isInPool = true;
-                $conn->connect($config); // Eagerly connect
-                $pool['available'][] = $conn;
-                $pool['total']++;
-                $warmed++;
-            } catch (\Throwable $e) {
-                // Log but don't fail — partial warm-up is better than none
-                error_log("[DB Pool] Failed to warm connection #{$warmed} for [{$name}]: " . $e->getMessage());
-                break;
-            }
-        }
-
-        return $warmed;
+        return ConnectionPool::warmPool($name, $config, function () use ($config, $name) {
+            return new self($config, $name);
+        });
     }
 
-    /**
-     * Initialize the pool structure for a given connection name.
-     */
-    private static function initializePool(string $name): void
-    {
-        if (!isset(self::$connectionPools[$name])) {
-            self::$connectionPools[$name] = [
-                'available' => [],
-                'in_use' => [],
-                'total' => 0,
-            ];
-        }
-    }
-
-    /**
-     * Get a connection from the pool (with connection pooling).
-     *
-     * Thread-safe for async runtimes (Swoole/OpenSwoole).
-     * Uses exponential backoff with jitter instead of busy-waiting.
-     */
     public static function getPooledConnection(string $name = 'default'): self
     {
-        self::acquirePoolLock($name);
-
-        try {
-            self::initializePool($name);
-            $pool = &self::$connectionPools[$name];
-
-            // Try to get an available connection
-            while (!empty($pool['available'])) {
-                $conn = array_shift($pool['available']);
-
-                // Validate connection if required
-                if (self::$poolConfig['validate_on_checkout']) {
-                    if ($conn->ping() && !$conn->isStale()) {
-                        $pool['in_use'][$conn->poolId] = $conn;
-
-                        return $conn;
-                    } else {
-                        // Connection is bad, destroy it
-                        $conn->disconnect();
-                        $pool['total']--;
-                    }
-                } else {
-                    // Quick stale check even without full validation
-                    if ($conn->isStale()) {
-                        $conn->disconnect();
-                        $pool['total']--;
-
-                        continue;
-                    }
-
-                    $pool['in_use'][$conn->poolId] = $conn;
-
-                    return $conn;
-                }
-            }
-
-            // No available connections, check if we can create a new one
-            if ($pool['total'] < self::$poolConfig['max_connections']) {
-                $config = self::$config[$name] ?? self::loadConfigFromFile($name);
-                $conn = new self($config, $name);
-                $conn->isInPool = true;
-                $pool['in_use'][$conn->poolId] = $conn;
-                $pool['total']++;
-
-                return $conn;
-            }
-        } finally {
-            self::releasePoolLock($name);
-        }
-
-        // Pool is full — exponential backoff with jitter
-        $startTime = microtime(true);
-        $timeout = self::$poolConfig['connection_timeout'];
-        $waitMs = 10;   // Start at 10ms
-        $maxWaitMs = 500; // Cap between retries
-
-        while ((microtime(true) - $startTime) < $timeout) {
-            $jitter = random_int(0, max(1, (int) ($waitMs * 0.3)));
-            usleep(($waitMs + $jitter) * 1000);
-            $waitMs = min($waitMs * 2, $maxWaitMs);
-
-            self::acquirePoolLock($name);
-
-            try {
-                // Check if a connection became available
-                if (!empty($pool['available'])) {
-                    $conn = array_shift($pool['available']);
-                    $pool['in_use'][$conn->poolId] = $conn;
-
-                    return $conn;
-                }
-
-                // Try pruning stale idle connections to free a slot
-                self::pruneIdleConnections($name);
-
-                if ($pool['total'] < self::$poolConfig['max_connections']) {
-                    $config = self::$config[$name] ?? self::loadConfigFromFile($name);
-                    $conn = new self($config, $name);
-                    $conn->isInPool = true;
-                    $pool['in_use'][$conn->poolId] = $conn;
-                    $pool['total']++;
-
-                    return $conn;
-                }
-            } finally {
-                self::releasePoolLock($name);
-            }
-        }
-
-        throw new PlugsDatabaseException(
-            "Connection pool [{$name}] exhausted (max: " . self::$poolConfig['max_connections'] .
-            ", in-use: " . count($pool['in_use']) .
-            "). Timeout after {$timeout}s waiting for available connection."
-        );
+        $config = self::$config[$name] ?? self::loadConfigFromFile($name);
+        return ConnectionPool::getConnection($name, 'standard', $config, function () use ($config, $name) {
+            return new self($config, $name);
+        });
     }
 
-    /**
-     * Return connection to pool.
-     *
-     * Thread-safe: acquires pool lock before modifying pool arrays.
-     */
     public function release(): void
     {
-        if (!$this->isInPool) {
-            return; // Not a pooled connection
-        }
-
-        // Reset connection state before returning to pool
+        if (!$this->isInPool)
+            return;
         $this->resetConnection();
-
-        self::acquirePoolLock($this->connectionName);
-
-        try {
-            $pool = &self::$connectionPools[$this->connectionName];
-
-            // Remove from in_use
-            if (isset($pool['in_use'][$this->poolId])) {
-                unset($pool['in_use'][$this->poolId]);
-            }
-
-            // Only return healthy connections to the pool
-            if ($this->isHealthy) {
-                $pool['available'][] = $this;
-                $this->lastActivityTime = time();
-            } else {
-                // Unhealthy connection — discard and decrement total
-                $this->disconnect();
-                $pool['total']--;
-            }
-        } finally {
-            self::releasePoolLock($this->connectionName);
-        }
+        ConnectionPool::release($this, 'standard');
     }
 
-    /**
-     * Reset connection state thoroughly before returning to pool.
-     *
-     * Rolls back open transactions, resets the transaction counter,
-     * clears sticky write flags, and resets MySQL session state.
-     */
+    public static function pruneIdleConnections(string $name = 'default'): int
+    {
+        return ConnectionPool::pruneIdleConnections($name);
+    }
+
     private function resetConnection(): void
     {
         try {
-            // Rollback any open transactions
             if ($this->pdo !== null && $this->pdo->inTransaction()) {
                 $this->pdo->rollBack();
             }
-
-            // Reset internal state
             $this->transactions = 0;
             $this->lastWriteTimestamp = 0;
             $this->sticky = self::$config[$this->connectionName]['sticky'] ?? false;
 
-            // Reset database session state
-            if ($this->pdo !== null) {
-                $driver = $this->pdo->getAttribute(PDO::ATTR_DRIVER_NAME);
-
-                if ($driver === 'mysql') {
-                    // Reset user variables and session state
-                    // Note: RESET QUERY CACHE is removed in MySQL 8.0+, so we suppress errors
-                    try {
-                        $this->pdo->exec('SET @_plugs_reset = NULL');
-                    } catch (PDOException $e) {
-                        // Non-critical, ignore
-                    }
+            if ($this->pdo !== null && $this->pdo->getAttribute(PDO::ATTR_DRIVER_NAME) === 'mysql') {
+                try {
+                    $this->pdo->exec('SET @_plugs_reset = NULL');
+                } catch (PDOException $e) {
                 }
             }
         } catch (PDOException $e) {
-            // If reset fails, mark connection as unhealthy
             $this->isHealthy = false;
         }
-    }
-
-    /**
-     * Check if connection is stale
-     */
-    private function isStale(): bool
-    {
-        $idleTime = time() - $this->lastActivityTime;
-
-        return $idleTime > self::$poolConfig['idle_timeout'];
-    }
-
-    /**
-     * Close idle connections in pool
-     */
-    public static function pruneIdleConnections(string $name = 'default'): int
-    {
-        if (!isset(self::$connectionPools[$name])) {
-            return 0;
-        }
-
-        $pool = &self::$connectionPools[$name];
-        $pruned = 0;
-        $minConnections = self::$poolConfig['min_connections'];
-
-        // Keep at least min_connections alive
-        while (count($pool['available']) > $minConnections) {
-            $conn = array_shift($pool['available']);
-
-            if ($conn->isStale()) {
-                $conn->disconnect();
-                $pool['total']--;
-                $pruned++;
-            } else {
-                // Put it back if not stale
-                array_unshift($pool['available'], $conn);
-
-                break;
-            }
-        }
-
-        return $pruned;
     }
 
     // ==================== PREPARED STATEMENT POOL ====================
@@ -774,266 +487,26 @@ class Connection
         }
     }
 
-    // ==================== QUERY ANALYSIS ====================
+    // ==================== DELEGATED QUERY ANALYSIS ====================
 
-    /**
-     * Enable query analysis for detecting N+1 queries
-     */
     public static function enableQueryAnalysis(bool $enable = true): void
     {
-        self::$enableQueryAnalysis = $enable;
-        self::$loggingQueries = $enable; // Also enable logging for profiler
+        QueryAnalyzer::enable($enable);
     }
 
-    /**
-     * Configure query analysis thresholds
-     */
     public static function configureQueryAnalysis(array $config): void
     {
-        self::$queryAnalysisThresholds = array_merge(self::$queryAnalysisThresholds, $config);
+        QueryAnalyzer::configure($config);
     }
 
-    /**
-     * Execute query with analysis
-     */
-    public function query(string $sql, array $params = []): \PDOStatement
-    {
-        $this->ensureConnectionHealth();
-        $this->lastActivityTime = time();
-        $pdo = $this->getPdoForQuery($sql);
-
-        // Security: Query Guard - Alert on updates/deletes without WHERE
-        $this->guardQuery($sql);
-
-        $startTime = microtime(true);
-        $backtrace = null;
-
-        if (self::$enableQueryAnalysis) {
-            $backtrace = $this->captureBacktrace();
-        }
-
-        try {
-            $stmt = $pdo->prepare($sql);
-            $stmt->execute($params);
-
-            $executionTime = microtime(true) - $startTime;
-
-            if (self::$enableQueryAnalysis) {
-                $this->analyzeQuery($sql, $params, $executionTime, $backtrace);
-            }
-
-            if (self::$loggingQueries) {
-                self::$queryLog[] = [
-                    'query' => $sql,
-                    'bindings' => $params,
-                    'time' => $executionTime,
-                    'connection' => ($pdo === $this->pdo ? 'write' : 'read'),
-                ];
-            }
-
-            // --- Observability & Metrics ---
-            $this->recordObservabilityMetrics($sql, $params, $executionTime);
-
-            if ($this->optimizationManager) {
-                $this->optimizationManager->process($sql, $params, $executionTime, $backtrace);
-            }
-
-            return $stmt;
-        } catch (PDOException $e) {
-            // Try to reconnect once on connection errors
-            if ($this->isConnectionError($e)) {
-                $this->reconnect();
-
-                return $this->query($sql, $params);
-            }
-
-            $this->auditLog("Query error: " . $e->getMessage() . " | SQL: " . $sql, 'WARNING');
-
-            throw $e;
-        }
-    }
-
-    /**
-     * Analyze query for potential issues
-     */
-    private function analyzeQuery(string $sql, array $params, float $executionTime, ?array $backtrace): void
-    {
-        // Normalize SQL for pattern matching
-        $normalizedSql = $this->normalizeSql($sql);
-
-        // Initialize stats for this query pattern
-        if (!isset(self::$queryStats[$normalizedSql])) {
-            self::$queryStats[$normalizedSql] = [
-                'count' => 0,
-                'total_time' => 0,
-                'max_time' => 0,
-                'min_time' => PHP_FLOAT_MAX,
-                'locations' => [],
-                'consecutive_count' => 0,
-                'last_seen' => null,
-            ];
-        }
-
-        $stats = &self::$queryStats[$normalizedSql];
-        $stats['count']++;
-        $stats['total_time'] += $executionTime;
-        $stats['max_time'] = max($stats['max_time'], $executionTime);
-        $stats['min_time'] = min($stats['min_time'], $executionTime);
-
-        // Track query location
-        if ($backtrace) {
-            $location = $this->formatBacktrace($backtrace);
-            if (!in_array($location, $stats['locations'])) {
-                $stats['locations'][] = $location;
-            }
-        }
-
-        // Detect N+1 queries (similar queries executed in quick succession)
-        $currentTime = microtime(true);
-        if ($stats['last_seen'] && ($currentTime - $stats['last_seen']) < 0.1) {
-            $stats['consecutive_count']++;
-
-            if ($stats['consecutive_count'] >= self::$queryAnalysisThresholds['n_plus_one_threshold']) {
-                $this->logWarning("Potential N+1 query detected", [
-                    'query' => $normalizedSql,
-                    'consecutive_count' => $stats['consecutive_count'],
-                    'location' => $location ?? 'unknown',
-                ]);
-            }
-        } else {
-            $stats['consecutive_count'] = 0;
-        }
-        $stats['last_seen'] = $currentTime;
-
-        // Detect slow queries
-        if ($executionTime > self::$queryAnalysisThresholds['slow_query_time']) {
-            $this->logWarning("Slow query detected", [
-                'query' => $normalizedSql,
-                'execution_time' => $executionTime,
-                'location' => $location ?? 'unknown',
-            ]);
-        }
-    }
-
-    /**
-     * Normalize SQL for pattern matching
-     */
-    private function normalizeSql(string $sql): string
-    {
-        // Remove extra whitespace
-        $sql = preg_replace('/\s+/', ' ', $sql);
-
-        // Replace parameter placeholders with generic marker
-        $sql = preg_replace('/:[a-zA-Z0-9_]+/', ':param', $sql);
-
-        return trim($sql);
-    }
-
-    /**
-     * Capture backtrace for query location
-     */
-    private function captureBacktrace(): array
-    {
-        $trace = debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS, 10);
-
-        // Find the first frame outside this class
-        foreach ($trace as $frame) {
-            if (!isset($frame['class']) || $frame['class'] !== self::class) {
-                return $frame;
-            }
-        }
-
-        return $trace[0] ?? [];
-    }
-
-    /**
-     * Format backtrace for logging
-     */
-    private function formatBacktrace(array $frame): string
-    {
-        $file = $frame['file'] ?? 'unknown';
-        $line = $frame['line'] ?? 0;
-        $function = $frame['function'] ?? 'unknown';
-
-        return "{$file}:{$line} ({$function})";
-    }
-
-    /**
-     * Get query analysis report
-     */
     public static function getQueryAnalysisReport(): array
     {
-        $report = [
-            'total_queries' => 0,
-            'query_count' => 0,
-            'unique_queries' => count(self::$queryStats),
-            'total_time' => 0,
-            'query_time_ms' => 0,
-            'slow_queries' => [],
-            'n_plus_one_suspects' => [],
-            'most_frequent' => [],
-            'queries' => self::$queryLog,
-        ];
-
-        foreach (self::$queryStats as $sql => $stats) {
-            $report['total_queries'] += $stats['count'];
-            $report['total_time'] += $stats['total_time'];
-
-            $avgTime = $stats['total_time'] / $stats['count'];
-
-            // Identify slow queries
-            if ($stats['max_time'] > self::$queryAnalysisThresholds['slow_query_time']) {
-                $report['slow_queries'][] = [
-                    'query' => $sql,
-                    'max_time' => $stats['max_time'],
-                    'avg_time' => $avgTime,
-                    'count' => $stats['count'],
-                ];
-            }
-
-            // Identify potential N+1 queries
-            if ($stats['count'] > self::$queryAnalysisThresholds['n_plus_one_threshold']) {
-                $report['n_plus_one_suspects'][] = [
-                    'query' => $sql,
-                    'count' => $stats['count'],
-                    'locations' => $stats['locations'],
-                ];
-            }
-        }
-
-        // Sort by frequency
-        $sortedStats = self::$queryStats;
-        uasort($sortedStats, function ($a, $b) {
-            return $b['count'] <=> $a['count'];
-        });
-
-        $report['most_frequent'] = array_slice($sortedStats, 0, 10, true);
-
-        // Map for profiler bar compatibility
-        $report['query_count'] = $report['total_queries'];
-        $report['query_time_ms'] = $report['total_time'] * 1000;
-
-        return $report;
+        return QueryAnalyzer::getReport();
     }
 
-    /**
-     * Reset query statistics
-     */
     public static function resetQueryStats(): void
     {
-        self::$queryStats = [];
-    }
-
-    /**
-     * Log warning (extend this to use your logging system)
-     */
-    private function logWarning(string $message, array $context): void
-    {
-        error_log(sprintf(
-            "[DB Warning] %s: %s",
-            $message,
-            json_encode($context, JSON_UNESCAPED_SLASHES)
-        ));
+        QueryAnalyzer::resetStats();
     }
 
     // ==================== EXISTING METHODS (Enhanced) ====================
@@ -1182,6 +655,35 @@ class Connection
         $this->lastActivityTime = time();
 
         return $this->pdo;
+    }
+
+    public function query(string $sql, array $params = []): \PDOStatement
+    {
+        if (class_exists(QueryGuard::class)) {
+            QueryGuard::check($sql, $this->strictMode ?? false, function ($msg, $lvl) {
+                $this->auditLog($msg, $lvl);
+            });
+        }
+
+        $pdo = $this->getPdoForQuery($sql);
+        $stmt = $pdo->prepare($sql);
+
+        $start = microtime(true);
+        $stmt->execute($params);
+        $time = microtime(true) - $start;
+
+        if (class_exists(QueryAnalyzer::class)) {
+            if (QueryAnalyzer::isLoggingEnabled()) {
+                QueryAnalyzer::logQuery($sql, $params, $time, $pdo === $this->pdo ? 'write' : 'read');
+            }
+            if (QueryAnalyzer::isEnabled()) {
+                QueryAnalyzer::analyze($sql, $params, $time, QueryAnalyzer::captureBacktrace(self::class));
+            }
+        }
+
+        $this->recordObservabilityMetrics($sql, $params, $time);
+
+        return $stmt;
     }
 
     public function fetch(string $sql, array $params = []): ?array
@@ -1354,37 +856,32 @@ class Connection
 
     public static function getPoolStats(string $name = 'default'): array
     {
-        if (!isset(self::$connectionPools[$name])) {
-            return ['pool_exists' => false];
-        }
-
-        $pool = self::$connectionPools[$name];
-
-        return [
-            'pool_exists' => true,
-            'total_connections' => $pool['total'],
-            'available_connections' => count($pool['available']),
-            'in_use_connections' => count($pool['in_use']),
-            'pool_config' => self::$poolConfig,
-            'runtime' => self::detectRuntime(),
-            'persistent_enabled' => self::$poolConfig['persistent'],
-        ];
+        return ConnectionPool::getStats($name);
     }
 
     /**
      * Get the current pool configuration.
      */
-    public static function getPoolConfig(): array
-    {
-        return self::$poolConfig;
-    }
+
 
     /**
      * Reset the runtime detection cache (useful for testing).
      */
+
+
+    public static function getPoolConfig(): array
+    {
+        return ConnectionPool::getConfig();
+    }
+
+    public static function detectRuntime(): string
+    {
+        return ConnectionPool::detectRuntime();
+    }
+
     public static function resetRuntimeDetection(): void
     {
-        self::$detectedRuntime = null;
+        ConnectionPool::resetRuntimeDetection();
     }
 
     public static function closeAll(): void
@@ -1392,19 +889,8 @@ class Connection
         foreach (self::$instances as $instance) {
             $instance->disconnect();
         }
-
-        // Close all pooled connections
-        foreach (self::$connectionPools as $name => $pool) {
-            foreach ($pool['available'] as $conn) {
-                $conn->disconnect();
-            }
-            foreach ($pool['in_use'] as $conn) {
-                $conn->disconnect();
-            }
-        }
-
+        ConnectionPool::closeAll();
         self::$instances = [];
-        self::$connectionPools = [];
         self::$statementPool = [];
         self::$loadBalancers = [];
     }
@@ -1414,7 +900,7 @@ class Connection
      */
     public function enableQueryLog(): void
     {
-        self::$loggingQueries = true;
+        QueryAnalyzer::enable(true);
     }
 
     /**
@@ -1422,7 +908,7 @@ class Connection
      */
     public function disableQueryLog(): void
     {
-        self::$loggingQueries = false;
+        QueryAnalyzer::enable(false);
     }
 
     /**
@@ -1430,7 +916,7 @@ class Connection
      */
     public function getQueryLog(): array
     {
-        return self::$queryLog;
+        return QueryAnalyzer::getLog();
     }
 
     /**
@@ -1438,7 +924,7 @@ class Connection
      */
     public function clearQueryLog(): void
     {
-        self::$queryLog = [];
+        QueryAnalyzer::clearLog();
     }
 
     /**
@@ -1590,17 +1076,6 @@ class Connection
     /**
      * Guard against dangerous queries (e.g. DELETE/UPDATE without WHERE)
      */
-    private function guardQuery(string $sql): void
-    {
-        if (preg_match('/^\s*(update|delete)\b/i', $sql) && !preg_match('/\bWHERE\b/i', $sql)) {
-            $message = "DANGEROUS QUERY DETECTED (No WHERE clause): " . trim($sql);
-            $this->auditLog($message, 'ALERT');
-
-            if ($this->strictMode) {
-                throw new PlugsDatabaseException($message);
-            }
-        }
-    }
 
     /**
      * Audit log message to file
@@ -1622,9 +1097,11 @@ class Connection
     /**
      * Record metrics and check for slow queries.
      */
-    private function recordObservabilityMetrics(string $sql, array $params, float $time): void
+    private function recordObservabilityMetrics(string $sql, array $params, float $time, ?array $backtrace = null): void
     {
-        $backtrace = $this->captureBacktrace();
+        if ($backtrace === null) {
+            $backtrace = QueryAnalyzer::captureBacktrace(self::class);
+        }
         $modelClass = null;
 
         // Try to identify the model class from the backtrace

@@ -115,7 +115,17 @@ class Validator
             $isValid = $rule->validate($field, $value, $this->data);
 
             if ($isValid !== true) {
-                $message = is_string($isValid) ? $isValid : $rule->message();
+                $baseName = class_basename($rule);
+                $ruleName = strtolower(preg_replace('/(?<!^)[A-Z]/', '_$0', $baseName));
+
+                if (isset($this->customMessages["{$field}.{$ruleName}"])) {
+                    $message = $this->customMessages["{$field}.{$ruleName}"];
+                } elseif (isset($this->customMessages[$ruleName])) {
+                    $message = $this->customMessages[$ruleName];
+                } else {
+                    $message = is_string($isValid) ? $isValid : $rule->message();
+                }
+
                 $this->addError($field, 'custom_rule_obj', ['message' => $message]);
             }
 
