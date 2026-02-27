@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace Plugs\Http\Middleware;
 
 use Plugs\Bootstrap\ContextType;
+use Plugs\Http\Middleware\MiddlewareLayer;
+use Plugs\Http\Middleware\MiddlewareMetadata;
 
 /**
  * Centralized registry for middleware aliases, groups, and priority.
@@ -57,6 +59,20 @@ class MiddlewareRegistry
     ];
 
     /**
+     * Explicit layer assignments for classes (overrides metadata in class).
+     */
+    protected array $layers = [
+        \Plugs\Http\Middleware\PreventRequestsDuringMaintenance::class => MiddlewareLayer::SECURITY,
+        \Plugs\Http\Middleware\SecurityHeadersMiddleware::class => MiddlewareLayer::SECURITY,
+        \Plugs\Http\Middleware\SecurityShieldMiddleware::class => MiddlewareLayer::SECURITY,
+        \Plugs\Http\Middleware\CsrfMiddleware::class => MiddlewareLayer::SECURITY,
+        \Plugs\Http\Middleware\CorsMiddleware::class => MiddlewareLayer::SECURITY,
+        \Plugs\Http\Middleware\RateLimitMiddleware::class => MiddlewareLayer::SECURITY,
+        \Plugs\Http\Middleware\ProfilerMiddleware::class => MiddlewareLayer::PERFORMANCE,
+        \Plugs\Http\Middleware\SPAMiddleware::class => MiddlewareLayer::BUSINESS,
+    ];
+
+    /**
      * Default priority for middleware execution.
      * Lower values run first.
      * This ensures security middlewares always execute before logic.
@@ -91,6 +107,9 @@ class MiddlewareRegistry
         }
         if (isset($config['priority'])) {
             $this->priority = array_merge($this->priority, $config['priority']);
+        }
+        if (isset($config['layers'])) {
+            $this->layers = array_merge($this->layers, $config['layers']);
         }
     }
 
@@ -211,21 +230,43 @@ class MiddlewareRegistry
 
     /**
      * Get the priority of a middleware class.
-     * Defaults to 500 if not explicitly defined.
-     * 
-     * @param string $class
-     * @return int
+     * Defaults to metadata defined in the class or 500.
      */
     public function getPriority(string $class): int
     {
-        return $this->priority[$class] ?? 500;
+        if (isset($this->priority[$class])) {
+            return $this->priority[$class];
+        }
+
+        return MiddlewareMetadata::extract($class)['priority'];
+    }
+
+    /**
+     * Get the layer of a middleware class.
+     */
+    public function getLayer(string $class): MiddlewareLayer
+    {
+        if (isset($this->layers[$class])) {
+            $layer = $this->layers[$class];
+            return $layer instanceof MiddlewareLayer ? $layer : MiddlewareLayer::tryFrom($layer) ?? MiddlewareLayer::BUSINESS;
+        }
+
+        return MiddlewareMetadata::extract($class)['layer'];
+    }
+
+    /**
+     * Get full metadata for a middleware class.
+     */
+    public function getMetadata(string $class): array
+    {
+        return [
+            'layer' => $this->getLayer($class),
+            'priority' => $this->getPriority($class),
+        ];
     }
 
     /**
      * Sort an array of middleware by their defined priority.
-     * 
-     * @param array $middleware Array of middleware instances or class strings
-     * @return array Sorted array
      */
     public function sort(array $middleware): array
     {
@@ -241,17 +282,59 @@ class MiddlewareRegistry
                 $classB = explode(':', $classB, 2)[0];
             }
 
-            $pA = $this->getPriority($classA);
-            $pB = $this->getPriority($classB);
+            $metaA = $this->getMetadata($classA);
+            $metaB = $this->getMetadata($classB);
 
-            if ($pA === $pB) {
+            // First compare layers
+            $order = MiddlewareLayer::getOrder();
+            $layerA = array_search($metaA['layer'], $order, true);
+            $layerB = array_search($metaB['layer'], $order, true);
+
+            if ($layerA !== $layerB) {
+                return $layerA <=> $layerB;
+            }
+
+            // Then compare priorities within the same layer
+            if ($metaA['priority'] === $metaB['priority']) {
                 return 0;
             }
 
-            return ($pA < $pB) ? -1 : 1;
+            return ($metaA['priority'] < $metaB['priority']) ? -1 : 1;
         });
 
         return $middleware;
+    }
+
+    /**
+     * Group middleware by their respective layers.
+     * 
+     * @param array $middleware
+     * @return array<string, array<string>>
+     */
+    public function orchestrate(array $middleware): array
+    {
+        $orchestrated = [];
+        foreach (MiddlewareLayer::cases() as $layer) {
+            $orchestrated[$layer->value] = [];
+        }
+
+        foreach ($middleware as $mw) {
+            $class = is_string($mw) ? $mw : get_class($mw);
+            $actualClass = $class;
+            if (strpos($class, ':') !== false) {
+                $actualClass = explode(':', $class, 2)[0];
+            }
+
+            $layer = $this->getLayer($actualClass);
+            $orchestrated[$layer->value][] = $mw;
+        }
+
+        // Sort each layer individually
+        foreach ($orchestrated as $layer => &$mws) {
+            $mws = $this->sort($mws);
+        }
+
+        return $orchestrated;
     }
 
 }

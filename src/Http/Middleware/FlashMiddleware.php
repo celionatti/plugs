@@ -8,6 +8,8 @@ use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Server\MiddlewareInterface;
 use Psr\Http\Server\RequestHandlerInterface;
+use Plugs\Http\Middleware\MiddlewareLayer;
+use Plugs\Http\Middleware\Middleware;
 
 /**
  * Flash Middleware
@@ -17,6 +19,7 @@ use Psr\Http\Server\RequestHandlerInterface;
  * - Marks old flash data for deletion
  * - Cleans up flash data after response
  */
+#[Middleware(layer: MiddlewareLayer::BUSINESS, priority: 200)]
 class FlashMiddleware implements MiddlewareInterface
 {
     public function process(

@@ -98,7 +98,18 @@ class MiddlewareDispatcher implements RequestHandlerInterface
         }
 
         // 3. Sort by priority (Security-First)
-        $sorted = $this->registry->sort(array_unique($resolvedRows, SORT_REGULAR));
+        // 3. Orchestrate by Layer + Priority
+        $orchestrated = $this->registry->orchestrate($resolvedRows);
+
+        // Flatten back to a single list for the closure chain
+        $sorted = [];
+        foreach ($orchestrated as $layerMiddleware) {
+            foreach ($layerMiddleware as $mw) {
+                if (!in_array($mw, $sorted, true)) {
+                    $sorted[] = $mw;
+                }
+            }
+        }
 
         // 4. Build the closure chain from bottom (fallback) to top
         $next = function (ServerRequestInterface $req) {

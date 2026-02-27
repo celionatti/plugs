@@ -10,12 +10,15 @@ use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Server\MiddlewareInterface;
 use Psr\Http\Server\RequestHandlerInterface;
+use Plugs\Http\Middleware\MiddlewareLayer;
+use Plugs\Http\Middleware\Middleware;
 
 /**
  * Profiler Middleware
  *
  * Profiles request performance and optionally injects a profiler bar into HTML responses.
  */
+#[Middleware(layer: MiddlewareLayer::PERFORMANCE, priority: 10)]
 class ProfilerMiddleware implements MiddlewareInterface
 {
     private bool $injectBar;

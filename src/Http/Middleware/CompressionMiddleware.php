@@ -9,7 +9,10 @@ use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Server\MiddlewareInterface;
 use Psr\Http\Server\RequestHandlerInterface;
 use Plugs\Http\Message\Stream;
+use Plugs\Http\Middleware\MiddlewareLayer;
+use Plugs\Http\Middleware\Middleware;
 
+#[Middleware(layer: MiddlewareLayer::PERFORMANCE, priority: 20)]
 class CompressionMiddleware implements MiddlewareInterface
 {
     private array $compressibleTypes = [
