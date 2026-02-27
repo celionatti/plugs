@@ -11,6 +11,18 @@ namespace Plugs\Utils;
 class Str
 {
     /**
+     * Get the class "basename" of the given object / class.
+     *
+     * @param string|object $class
+     * @return string
+     */
+    public static function classBasename($class): string
+    {
+        $class = is_object($class) ? get_class($class) : $class;
+        return basename(str_replace('\\', '/', $class));
+    }
+
+    /**
      * The cache of snake-cased words.
      */
     protected static array $snakeCache = [];
@@ -699,6 +711,55 @@ class Str
         $end = mb_substr($string, $startIndex + $segmentLen);
 
         return $start . str_repeat(mb_substr($character, 0, 1, $encoding), $segmentLen) . $end;
+    }
+
+    /**
+     * Mask sensitive data (email, phone, card, etc.).
+     *
+     * @param string $value
+     * @param string $type
+     * @param string $maskChar
+     * @param int $visibleStart
+     * @param int $visibleEnd
+     * @return string
+     */
+    public static function maskSensitive(string $value, string $type = 'custom', string $maskChar = '*', int $visibleStart = 3, int $visibleEnd = 3): string
+    {
+        if (empty($value))
+            return $value;
+        $length = strlen($value);
+
+        switch ($type) {
+            case 'email':
+                if (!filter_var($value, FILTER_VALIDATE_EMAIL))
+                    return $value;
+                [$username, $domain] = explode('@', $value);
+                $maskedUsername = substr($username, 0, 1) . str_repeat($maskChar, max(0, strlen($username) - 1));
+                $domainParts = explode('.', $domain);
+                $maskedDomain = substr($domainParts[0], 0, 1) . str_repeat($maskChar, max(0, strlen($domainParts[0]) - 1));
+                return $maskedUsername . '@' . $maskedDomain . '.' . ($domainParts[1] ?? '');
+
+            case 'phone':
+                $cleaned = preg_replace('/[^0-9+]/', '', $value);
+                if (strlen($cleaned) < 4)
+                    return str_repeat($maskChar, strlen($cleaned));
+                return substr($cleaned, 0, 3) . str_repeat($maskChar, strlen($cleaned) - 7) . substr($cleaned, -4);
+
+            case 'card':
+                $cleaned = preg_replace('/[^0-9]/', '', $value);
+                if (strlen($cleaned) < 4)
+                    return str_repeat($maskChar, strlen($cleaned));
+                return str_repeat($maskChar, strlen($cleaned) - 4) . substr($cleaned, -4);
+
+            case 'full':
+                return str_repeat($maskChar, $length);
+
+            case 'custom':
+            default:
+                if ($length <= ($visibleStart + $visibleEnd))
+                    return str_repeat($maskChar, $length);
+                return substr($value, 0, $visibleStart) . str_repeat($maskChar, $length - $visibleStart - $visibleEnd) . substr($value, -$visibleEnd);
+        }
     }
 
     /**

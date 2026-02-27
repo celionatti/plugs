@@ -2,36 +2,51 @@
 
 declare(strict_types=1);
 
+if (defined('PLUGS_APP_LOADED'))
+    return;
+define('PLUGS_APP_LOADED', true);
 
+use Plugs\Utils\Str;
+use Plugs\Security\Sanitizer;
+use Plugs\Security\Csrf;
+use Plugs\Container\Container;
+use Plugs\Http\ResponseFactory;
+use Plugs\Session\Session;
+use Plugs\Utils\FlashMessage;
+use Plugs\View\View;
+use Plugs\View\ViewEngineInterface;
+use Plugs\View\Escaper;
 use Psr\Http\Message\ServerRequestInterface;
 
 /*
 |--------------------------------------------------------------------------
-| Application Helper Functions
+| Application Helper Functions - Refactored
 |--------------------------------------------------------------------------
 |
-| This file contains various helper functions to facilitate common tasks
-| within the application, such as accessing the service container,
-| retrieving configuration values, and generating URLs.
+| Thin wrappers delegates to Plugs core classes and services.
 */
 
 if (!function_exists('class_basename')) {
+    /**
+     * Get the class "basename" of the given object / class.
+     */
     function class_basename($class): string
     {
-        $class = is_object($class) ? get_class($class) : $class;
-
-        return basename(str_replace('\\', '/', $class));
+        return Str::classBasename($class);
     }
 }
 
 if (!function_exists('env')) {
+    /**
+     * Get an environment variable value.
+     */
     function env(string $key, $default = null)
     {
         if (isset($GLOBALS['__env_overrides'][$key])) {
             return $GLOBALS['__env_overrides'][$key];
         }
 
-        $value = $GLOBALS['__env_overrides'][$key] ?? $_ENV[$key] ?? $_SERVER[$key] ?? getenv($key);
+        $value = $_ENV[$key] ?? $_SERVER[$key] ?? getenv($key);
 
         if ($value === false || $value === null) {
             return $default;
@@ -58,11 +73,11 @@ if (!function_exists('env')) {
 
 if (!function_exists('app')) {
     /**
-     * Get the container instance or resolve a binding
+     * Get the container instance or resolve a binding.
      */
     function app(string|null $abstract = null, array $parameters = [])
     {
-        $container = \Plugs\Container\Container::getInstance();
+        $container = Container::getInstance();
 
         if ($abstract === null) {
             return $container;
@@ -74,7 +89,7 @@ if (!function_exists('app')) {
 
 if (!function_exists('resolve')) {
     /**
-     * Resolve a class from the container
+     * Resolve a class from the container.
      */
     function resolve(string $abstract, array $parameters = [])
     {
@@ -84,7 +99,7 @@ if (!function_exists('resolve')) {
 
 if (!function_exists('config')) {
     /**
-     * Get / set configuration value
+     * Get / set configuration value.
      */
     function config(string|array|null $key = null, $default = null)
     {
@@ -96,7 +111,6 @@ if (!function_exists('config')) {
             foreach ($key as $k => $v) {
                 \Plugs\Config::set($k, $v);
             }
-
             return null;
         }
 
@@ -105,216 +119,179 @@ if (!function_exists('config')) {
 }
 
 if (!function_exists('base_path')) {
+    /**
+     * Get the base path of the installation.
+     */
     function base_path(string $path = ''): string
     {
         $base = defined('BASE_PATH') ? BASE_PATH : realpath(__DIR__ . '/../../');
-
         return rtrim($base, '/\\') . DIRECTORY_SEPARATOR . ltrim($path, '/\\');
     }
 }
 
 if (!function_exists('storage_path')) {
+    /**
+     * Get the storage path of the installation.
+     */
     function storage_path(string $path = ''): string
     {
         $storage = defined('STORAGE_PATH') ? STORAGE_PATH : base_path('storage');
-
         return rtrim($storage, '/\\') . DIRECTORY_SEPARATOR . ltrim($path, '/\\');
     }
 }
 
 if (!function_exists('public_path')) {
+    /**
+     * Get the public path of the installation.
+     */
     function public_path(string $path = ''): string
     {
-        return base_path('public/' . ltrim($path, '/'));
+        $public = defined('PUBLIC_PATH') ? PUBLIC_PATH : base_path('public');
+        return rtrim($public, '/\\') . DIRECTORY_SEPARATOR . ltrim($path, '/\\');
     }
 }
 
 if (!function_exists('resource_path')) {
+    /**
+     * Get the resource path of the installation.
+     */
     function resource_path(string $path = ''): string
     {
-        return base_path('resources/' . ltrim($path, '/'));
+        $resources = defined('RESOURCE_PATH') ? RESOURCE_PATH : base_path('resources');
+        return rtrim($resources, '/\\') . DIRECTORY_SEPARATOR . ltrim($path, '/\\');
+    }
+}
+
+if (!function_exists('database_path')) {
+    /**
+     * Get the database path of the installation.
+     */
+    function database_path(string $path = ''): string
+    {
+        $databases = defined('DATABASE_PATH') ? DATABASE_PATH : base_path('database');
+        return rtrim($databases, '/\\') . DIRECTORY_SEPARATOR . ltrim($path, '/\\');
     }
 }
 
 if (!function_exists('view')) {
-    function view(string $view, array $data = []): \Plugs\View\View
-    {
-        $engine = app(\Plugs\View\ViewEngineInterface::class);
-
-        return new \Plugs\View\View($engine, $view, $data);
-    }
-}
-
-if (!function_exists('inertia')) {
     /**
-     * Render an Inertia response
-     *
-     * Returns an InertiaResponse that can render as JSON (for XHR requests)
-     * or as a full HTML page with embedded page data.
-     *
-     * @param string $component Component name (e.g., 'Users/Index')
-     * @param array $props Data to pass to the component
-     * @return \Plugs\Inertia\InertiaResponse
+     * Render a view component.
      */
-    function inertia(string $component, array $props = []): \Plugs\Inertia\InertiaResponse
+    function view(string $view, array $data = []): View
     {
-        return \Plugs\Inertia\Inertia::render($component, $props);
+        $engine = app(ViewEngineInterface::class);
+        return new View($engine, $view, $data);
     }
 }
 
 if (!function_exists('csrf_token')) {
+    /**
+     * Get the current CSRF token.
+     */
     function csrf_token(): string
     {
-        return \Plugs\Security\Csrf::token();
+        return Csrf::token();
     }
 }
 
 if (!function_exists('csrf_field')) {
+    /**
+     * Get the CSRF token HTML field.
+     */
     function csrf_field(): string
     {
-        return \Plugs\Security\Csrf::field();
-    }
-}
-
-if (!function_exists('db')) {
-    /**
-     * Get the database manager instance or a table query builder.
-     *
-     * @param string|null $table
-     * @param string|null $connection
-     * @return \Plugs\Database\DatabaseManager|\Plugs\Database\QueryBuilder
-     */
-    function db(?string $table = null, ?string $connection = null): \Plugs\Database\DatabaseManager|\Plugs\Database\QueryBuilder
-    {
-        $db = app('db');
-
-        if ($table === null) {
-            return $db;
-        }
-
-        return $db->table($table, $connection);
+        return Csrf::field();
     }
 }
 
 if (!function_exists('request')) {
     /**
-     * Get the current request instance
-     *
-     * @return \Plugs\Http\Message\ServerRequest|\Psr\Http\Message\ServerRequestInterface|null
+     * Get the current request instance.
      */
     function request()
     {
         try {
             $container = app();
-
-            // Try to get from container
             if ($container->bound(ServerRequestInterface::class)) {
                 return $container->make(ServerRequestInterface::class);
             }
-
-            // Try to get current request from global context
             if (isset($GLOBALS['__current_request']) && $GLOBALS['__current_request'] instanceof ServerRequestInterface) {
                 return $GLOBALS['__current_request'];
             }
         } catch (\Exception $e) {
-            // Silent fail in production, log in development
             if (env('APP_DEBUG', false)) {
                 error_log('Request helper error: ' . $e->getMessage());
             }
         }
-
         return null;
     }
 }
 
 if (!function_exists('response')) {
+    /**
+     * Create a response.
+     */
     function response($content = '', int $status = 200, array $headers = []): \Psr\Http\Message\ResponseInterface
     {
-        if ($content instanceof \Plugs\View\View) {
-            return \Plugs\Http\ResponseFactory::html($content->render(), $status, $headers);
+        if ($content instanceof View) {
+            return ResponseFactory::html($content->render(), $status, $headers);
         }
-
-        if (is_object($content) && method_exists($content, '__toString')) {
-            return \Plugs\Http\ResponseFactory::html((string) $content, $status, $headers);
-        }
-
         if (is_array($content) || is_object($content)) {
-            return \Plugs\Http\ResponseFactory::json($content, $status, $headers);
+            return ResponseFactory::json($content, $status, $headers);
         }
-
-        return \Plugs\Http\ResponseFactory::html((string) $content, $status, $headers);
+        return ResponseFactory::html((string) $content, $status, $headers);
     }
 }
 
 if (!function_exists('session')) {
     /**
-     * Get / set session value or return the session manager
+     * Get / set session value.
      */
     function session(string|array|null $key = null, $default = null)
     {
         try {
-            $session = resolve(\Plugs\Session\Session::class);
+            $session = resolve(Session::class);
 
-            if ($key === null) {
+            if ($key === null)
                 return $session;
-            }
-
             if (is_array($key)) {
-                foreach ($key as $k => $v) {
+                foreach ($key as $k => $v)
                     $session->set($k, $v);
-                }
-
                 return null;
             }
 
-            // Check flash through FlashMessage first
-            if (\Plugs\Utils\FlashMessage::has($key)) {
-                return \Plugs\Utils\FlashMessage::get($key);
-            }
+            if (FlashMessage::has($key))
+                return FlashMessage::get($key);
 
             return $session->get($key, $default);
         } catch (\Exception $e) {
-            if (session_status() === PHP_SESSION_NONE) {
+            if (session_status() === PHP_SESSION_NONE)
                 session_start();
-            }
-            if ($key === null) {
-                return $_SESSION;
-            }
-
-            return $_SESSION[$key] ?? $default;
+            return $key === null ? $_SESSION : ($_SESSION[$key] ?? $default);
         }
     }
 }
 
 if (!function_exists('old')) {
     /**
-     * Get old input value from previous request
+     * Get old input value.
      */
     function old(?string $key = null, mixed $default = null): mixed
     {
-        if (session_status() === PHP_SESSION_NONE) {
+        if (session_status() === PHP_SESSION_NONE)
             session_start();
-        }
-
-        // Check both common locations for old input
         $oldInput = $_SESSION['_old_input'] ?? $_SESSION['_flash']['_old_input'] ?? [];
 
-        if ($key === null) {
+        if ($key === null)
             return $oldInput;
-        }
 
-        // Support dot notation for nested arrays
         if (str_contains($key, '.')) {
-            $keys = explode('.', $key);
             $value = $oldInput;
-
-            foreach ($keys as $segment) {
-                if (!is_array($value) || !array_key_exists($segment, $value)) {
+            foreach (explode('.', $key) as $segment) {
+                if (!is_array($value) || !array_key_exists($segment, $value))
                     return $default;
-                }
                 $value = $value[$segment];
             }
-
             return $value;
         }
 
@@ -322,390 +299,120 @@ if (!function_exists('old')) {
     }
 }
 
-if (!function_exists('flash')) {
-    /**
-     * Get or set flash message
-     */
-    function flash(string $key, $value = null, ?string $title = null)
-    {
-        if ($value === null) {
-            return \Plugs\Utils\FlashMessage::get($key);
-        }
-
-        \Plugs\Utils\FlashMessage::set($key, $value, $title);
-    }
-}
-
-if (!function_exists('auth')) {
-    /**
-     * Get the auth manager or a specific guard
-     */
-    function auth(?string $guard = null)
-    {
-        if ($guard === null) {
-            return app('auth');
-        }
-
-        return app('auth')->guard($guard);
-    }
-}
-
-if (!function_exists('user')) {
-    /**
-     * Get the currently authenticated user
-     */
-    function user(?string $guard = null)
-    {
-        return auth($guard)->user();
-    }
-}
-
-if (!function_exists('dispatch')) {
-    /**
-     * Dispatch a job to the queue
-     */
-    function dispatch($job, $data = '', $queue = null)
-    {
-        return app('queue')->push($job, $data, $queue);
-    }
-}
-
-if (!function_exists('storage')) {
-    /**
-     * Get the storage manager or a specific disk
-     */
-    function storage(?string $disk = null)
-    {
-        if (is_null($disk)) {
-            return app('storage');
-        }
-
-        return app('storage')->disk($disk);
-    }
-}
-
-if (!function_exists('storage_url')) {
-    /**
-     * Get the URL for a stored file
-     */
-    function storage_url(string $path, ?string $disk = null): string
-    {
-        return storage($disk)->url($path);
-    }
-}
-
-if (!function_exists('abort')) {
-    function abort(int $code, string $message = ''): void
-    {
-        throw new \Plugs\Exceptions\HttpException($code, $message ?: "HTTP Error {$code}");
-    }
-}
+// abort() is defined in abort.php (canonical source with full signature)
 
 if (!function_exists('sanitize')) {
+    /**
+     * Sanitize values using the Sanitizer service.
+     */
     function sanitize($value, string $type = 'string')
     {
-        $method = [\Plugs\Security\Sanitizer::class, $type];
-
-        if (is_callable($method)) {
-            return call_user_func($method, $value);
-        }
-
-        return \Plugs\Security\Sanitizer::string($value);
-    }
-}
-
-if (!function_exists('escape')) {
-    function escape($value): string
-    {
-        return \Plugs\View\Escaper::html($value);
+        $method = [Sanitizer::class, $type];
+        return is_callable($method) ? call_user_func($method, $value) : Sanitizer::string($value);
     }
 }
 
 if (!function_exists('e')) {
+    /**
+     * Escape HTML.
+     */
     function e($value): string
     {
-        return \Plugs\View\Escaper::html($value);
-    }
-}
-
-if (!function_exists('attr')) {
-    /**
-     * Escape for HTML attributes
-     */
-    function attr($value): string
-    {
-        return \Plugs\View\Escaper::attr($value);
-    }
-}
-
-if (!function_exists('js')) {
-    /**
-     * Escape for JavaScript context
-     */
-    function js($value): string
-    {
-        return \Plugs\View\Escaper::js($value);
-    }
-}
-
-if (!function_exists('css')) {
-    /**
-     * Escape for CSS context (style attributes)
-     */
-    function css($value): string
-    {
-        return \Plugs\View\Escaper::css($value);
-    }
-}
-
-if (!function_exists('u')) {
-    /**
-     * Escape for URL query parameter context
-     * (Formerly url(), renamed to u() to avoid conflict with core framework URL functions)
-     */
-    function u($value): string
-    {
-        return \Plugs\View\Escaper::query($value);
-    }
-}
-
-if (!function_exists('json')) {
-    /**
-     * Escape for JSON context
-     */
-    function json($value): string
-    {
-        return \Plugs\View\Escaper::json($value);
-    }
-}
-
-if (!function_exists('safeUrl')) {
-    /**
-     * Provide protocol-safe URL escaping for attributes.
-     */
-    function safeUrl($value): string
-    {
-        return \Plugs\View\Escaper::safeUrl($value);
+        return Escaper::html($value);
     }
 }
 
 if (!function_exists('mask')) {
     /**
-     * Mask sensitive data with asterisks or custom character
-     *
-     * @param string $value The value to mask
-     * @param string $type The type of masking (email, phone, card, custom, full)
-     * @param string $maskChar The character to use for masking (default: *)
-     * @param int $visibleStart Number of visible characters at the start (for custom type)
-     * @param int $visibleEnd Number of visible characters at the end (for custom type)
-     * @return string The masked value
+     * Mask sensitive data using Str utility.
      */
     function mask(string $value, string $type = 'custom', string $maskChar = '*', int $visibleStart = 3, int $visibleEnd = 3): string
     {
-        if (empty($value)) {
-            return $value;
-        }
-
-        $length = strlen($value);
-
-        switch ($type) {
-            case 'email':
-                // Mask email: j***@e******.com
-                if (!filter_var($value, FILTER_VALIDATE_EMAIL)) {
-                    return $value; // Not a valid email, return as is
-                }
-
-                [$username, $domain] = explode('@', $value);
-                $usernameLength = strlen($username);
-                $showChars = min(1, $usernameLength - 1);
-
-                $maskedUsername = $usernameLength > 1
-                    ? substr($username, 0, $showChars) . str_repeat($maskChar, $usernameLength - $showChars)
-                    : $username;
-
-                // Mask domain part (before the dot)
-                $domainParts = explode('.', $domain);
-                $domainName = $domainParts[0];
-                $domainExt = implode('.', array_slice($domainParts, 1));
-
-                $domainLength = strlen($domainName);
-                $showDomainChars = min(1, $domainLength - 1);
-
-                $maskedDomain = $domainLength > 1
-                    ? substr($domainName, 0, $showDomainChars) . str_repeat($maskChar, $domainLength - $showDomainChars)
-                    : $domainName;
-
-                return $maskedUsername . '@' . $maskedDomain . '.' . $domainExt;
-
-            case 'phone':
-                // Mask phone: +234***9876 or 080***1234
-                $cleaned = preg_replace('/[\s\-\(\)]/', '', $value);
-                $cleanedLength = strlen($cleaned);
-
-                if ($cleanedLength < 4) {
-                    return str_repeat($maskChar, $cleanedLength);
-                }
-
-                $visiblePrefix = substr($cleaned, 0, min(3, $cleanedLength - 4));
-                $visibleSuffix = substr($cleaned, -4);
-                $maskedMiddle = str_repeat($maskChar, $cleanedLength - strlen($visiblePrefix) - 4);
-
-                return $visiblePrefix . $maskedMiddle . $visibleSuffix;
-
-            case 'card':
-                // Mask card number: **** **** **** 1234
-                $cleaned = preg_replace('/\s/', '', $value);
-                $cleanedLength = strlen($cleaned);
-
-                if ($cleanedLength < 4) {
-                    return str_repeat($maskChar, $cleanedLength);
-                }
-
-                $visibleDigits = substr($cleaned, -4);
-                $maskedPart = str_repeat($maskChar, $cleanedLength - 4);
-
-                // Format in groups of 4
-                $masked = $maskedPart . $visibleDigits;
-
-                return implode(' ', str_split($masked, 4));
-
-            case 'full':
-                // Mask entire string
-                return str_repeat($maskChar, $length);
-
-            case 'custom':
-            default:
-                // Custom masking with configurable visible characters
-                if ($length <= ($visibleStart + $visibleEnd)) {
-                    // String too short, mask the middle part only
-                    if ($length <= 2) {
-                        return str_repeat($maskChar, $length);
-                    }
-
-                    $start = substr($value, 0, 1);
-                    $end = substr($value, -1);
-                    $middle = str_repeat($maskChar, $length - 2);
-
-                    return $start . $middle . $end;
-                }
-
-                $start = substr($value, 0, $visibleStart);
-                $end = substr($value, -$visibleEnd);
-                $middle = str_repeat($maskChar, $length - $visibleStart - $visibleEnd);
-
-                return $start . $middle . $end;
-        }
-    }
-}
-
-
-if (!function_exists('now')) {
-    function now(): int
-    {
-        return time();
+        return Str::maskSensitive($value, $type, $maskChar, $visibleStart, $visibleEnd);
     }
 }
 
 if (!function_exists('logger')) {
     /**
-     * Log a message or get the logger instance
+     * Log a message.
      */
     function logger(string|null $message = null, string $level = 'info', array $context = [])
     {
         $logger = app('log');
-
-        if ($message === null) {
+        if ($message === null)
             return $logger;
-        }
-
         $logger->log($level, $message, $context);
     }
 }
 
-function loadFunctions(string|array|null $source): void
-{
-    // If no source provided, use default directory behavior
-    if ($source === null) {
-        $source = __DIR__ . '/';
-    }
-
-    // Handle directory source
-    if (is_string($source) && is_dir($source)) {
-        $files = glob($source . '*.php');
-        requireFiles($files);
-
-        return;
-    }
-
-    // Handle array source (like your example)
-    if (is_array($source)) {
-        $files = extractFilesFromArray($source);
-        requireFiles($files);
-
-        return;
-    }
-
-    // Handle single file path
-    if (file_exists($source)) {
-        requireFiles([$source]);
-
-        return;
-    }
-}
-
-function requireFiles(array $files): void
-{
-    foreach ($files as $file) {
-        if (file_exists($file) && is_file($file) && pathinfo($file, PATHINFO_EXTENSION) === 'php') {
-            require_once $file;
-        }
-    }
-}
-
-function extractFilesFromArray(array $fileArray): array
-{
-    $files = [];
-
-    foreach ($fileArray as $key => $value) {
-        // Extract file paths from array values
-        if (is_string($value) && file_exists($value) && pathinfo($value, PATHINFO_EXTENSION) === 'php') {
-            $files[] = $value;
-        }
-        // Handle nested arrays recursively
-        elseif (is_array($value)) {
-            $files = array_merge($files, extractFilesFromArray($value));
-        }
-    }
-
-    return array_unique($files); // Remove duplicates
-}
-
 /**
- * Quick pagination helper
+ * Utility functions for loading other functions.
  */
-function paginate($data, $perPage = 15, $page = null)
-{
-    $page = $page ?? $_GET['page'] ?? 1;
+if (!function_exists('loadFunctions')) {
+    function loadFunctions(string|array|null $source): void
+    {
+        if ($source === null)
+            $source = __DIR__;
 
-    if (is_array($data)) {
-        return \Plugs\Paginator\Pagination::fromArray([
-            'data' => array_slice($data, ((int) $page - 1) * $perPage, $perPage),
-            'per_page' => $perPage,
-            'current_page' => (int) $page,
-            'total' => count($data),
-        ]);
+        if (is_string($source) && is_dir($source)) {
+            requireFiles(glob(rtrim($source, '/\\') . DIRECTORY_SEPARATOR . '*.php'));
+            return;
+        }
+
+        if (is_array($source)) {
+            requireFiles(extractFilesFromArray($source));
+            return;
+        }
+
+        if (file_exists($source))
+            requireFiles([$source]);
     }
-
-    // Assume it's PlugModel pagination array
-    return \Plugs\Paginator\Pagination::fromArray((array) $data);
 }
 
-if (!function_exists('ai')) {
-    /**
-     * Get the AI manager instance
-     */
-    function ai(): \Plugs\AI\AIManager
+if (!function_exists('requireFiles')) {
+    function requireFiles(array $files): void
     {
-        return app('ai');
+        foreach ($files as $file) {
+            // Skip current file to avoid potential double-loading issues
+            if (realpath($file) === realpath(__FILE__)) {
+                continue;
+            }
+
+            if (file_exists($file) && is_file($file) && pathinfo($file, PATHINFO_EXTENSION) === 'php') {
+                require_once $file;
+            }
+        }
+    }
+}
+
+if (!function_exists('extractFilesFromArray')) {
+    function extractFilesFromArray(array $fileArray): array
+    {
+        $files = [];
+        foreach ($fileArray as $value) {
+            if (is_string($value) && file_exists($value)) {
+                $files[] = $value;
+            } elseif (is_array($value)) {
+                $files = array_merge($files, extractFilesFromArray($value));
+            }
+        }
+        return array_unique($files);
+    }
+}
+
+// Manual require for helper files not listed in composer.json
+$extraHelpers = [
+    'async.php',
+    'cache.php',
+    'form.php',
+    'input.php',
+    'skeleton_helper.php',
+    'translation.php',
+];
+
+foreach ($extraHelpers as $helper) {
+    $helperFile = __DIR__ . DIRECTORY_SEPARATOR . $helper;
+    if (file_exists($helperFile)) {
+        require_once $helperFile;
     }
 }
