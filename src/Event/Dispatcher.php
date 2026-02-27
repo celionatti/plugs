@@ -4,35 +4,30 @@ declare(strict_types=1);
 
 namespace Plugs\Event;
 
-use InvalidArgumentException;
 use Plugs\Concurrency\Async;
 use Plugs\Container\Container;
 use Plugs\Debug\Profiler;
+use Psr\EventDispatcher\StoppableEventInterface;
 
 class Dispatcher implements DispatcherInterface
 {
     /**
-     * The registered event listeners.
+     * The listener provider instance.
      *
-     * @var array
+     * @var ListenerProvider
      */
-    protected array $listeners = [];
-
-    /**
-     * The container instance.
-     *
-     * @var Container
-     */
-    protected Container $container;
+    protected ListenerProvider $provider;
 
     /**
      * Create a new event dispatcher instance.
      *
      * @param Container|null $container
+     * @param ListenerProvider|null $provider
      */
-    public function __construct(?Container $container = null)
+    public function __construct(?Container $container = null, ?ListenerProvider $provider = null)
     {
-        $this->container = $container ?: Container::getInstance();
+        $container = $container ?: Container::getInstance();
+        $this->provider = $provider ?: new ListenerProvider($container);
     }
 
     /**
@@ -45,7 +40,7 @@ class Dispatcher implements DispatcherInterface
      */
     public function listen(string $event, $listener, int $priority = 0): void
     {
-        $this->listeners[$event][$priority][] = $listener;
+        $this->provider->listen($event, $listener, $priority);
     }
 
     /**
@@ -56,17 +51,9 @@ class Dispatcher implements DispatcherInterface
      */
     public function hasListeners(string $eventName): bool
     {
-        return isset($this->listeners[$eventName]);
+        return $this->provider->hasListeners($eventName);
     }
 
-    /**
-     * Fire an event and call all relevant listeners.
-     *
-     * @param string|object $event
-     * @param mixed $payload
-     * @param bool $halt
-     * @return array|null
-     */
     /**
      * Dispatch an event and call all listeners asynchronously (in parallel).
      *
@@ -88,12 +75,11 @@ class Dispatcher implements DispatcherInterface
 
         // Gather all listeners as tasks
         $tasks = [];
-        foreach ($this->getListeners($eventName) as $listener) {
-            $tasks[] = fn() => $this->callListener($listener, $payload);
+        foreach ($this->provider->getListenersForEvent($event) as $listener) {
+            $tasks[] = fn() => call_user_func_array($listener, $payload);
         }
 
         // Run them in parallel using our FiberManager/Async helper
-        // We use full namespace to avoid import conflicts if not imported
         return Async::parallel($tasks);
     }
 
@@ -103,21 +89,16 @@ class Dispatcher implements DispatcherInterface
      * @param string|object $event
      * @param mixed $payload
      * @param bool $halt
-     * @return array|null
+     * @return array|object|null
      */
-    public function dispatch($event, $payload = [], bool $halt = false): ?array
+    public function dispatch(object|string $event, mixed $payload = [], bool $halt = false): object|array|null
     {
         // If the event is an object, we use its class name as the event name
         $eventName = is_object($event) ? get_class($event) : $event;
 
         if (is_object($event) && $event instanceof AsyncEventInterface && !$halt) {
-            return $this->dispatchAsync($event, $payload);
-        }
-
-        // Optional: Enforce TypedEvent usage for object events
-        if (is_object($event) && !$event instanceof Event) {
-            // We can log a warning or just proceed. For now, we proceed to maintain BC.
-            // But we can ensure it follows our TypedEvent contract if strict mode was enabled.
+            $this->dispatchAsync($event, $payload);
+            return $event; // PSR-14: always return the object
         }
 
         if (is_object($event) && empty($payload)) {
@@ -125,18 +106,18 @@ class Dispatcher implements DispatcherInterface
         }
 
         if (!$this->hasListeners($eventName)) {
-            return null;
+            return is_object($event) ? $event : null;
         }
 
         $start = microtime(true);
         $responses = [];
 
-        foreach ($this->getListeners($eventName) as $listener) {
-            $response = $this->callListener($listener, $payload);
+        foreach ($this->provider->getListenersForEvent($event) as $listener) {
+            $response = call_user_func_array($listener, $payload);
 
             if ($halt && !is_null($response)) {
                 $this->recordEvent($eventName, microtime(true) - $start);
-                return [$response];
+                return is_object($event) ? $event : [$response];
             }
 
             if ($response === false) {
@@ -145,15 +126,15 @@ class Dispatcher implements DispatcherInterface
 
             $responses[] = $response;
 
-            // Check if the event object has propagation stopped
-            if (is_object($event) && $event instanceof Event && $event->isPropagationStopped()) {
+            // Check if the event object has propagation stopped (PSR-14)
+            if (is_object($event) && $event instanceof StoppableEventInterface && $event->isPropagationStopped()) {
                 break;
             }
         }
 
         $this->recordEvent($eventName, microtime(true) - $start);
 
-        return $responses;
+        return is_object($event) ? $event : $responses;
     }
 
     protected function recordEvent(string $event, float $duration): void
@@ -164,65 +145,6 @@ class Dispatcher implements DispatcherInterface
     }
 
     /**
-     * Get the listeners for a given event name, sorted by priority.
-     *
-     * @param string $eventName
-     * @return array
-     */
-    protected function getListeners(string $eventName): array
-    {
-        $listeners = $this->listeners[$eventName];
-
-        krsort($listeners);
-
-        return array_merge(...$listeners);
-    }
-
-    /**
-     * Call the given listener with the payload.
-     *
-     * @param callable|string $listener
-     * @param array $payload
-     * @return mixed
-     */
-    protected function callListener($listener, array $payload)
-    {
-        if (is_string($listener)) {
-            $listener = $this->resolveListener($listener);
-        }
-
-        return call_user_func_array($listener, $payload);
-    }
-
-    /**
-     * Resolve a string-based listener.
-     *
-     * @param string $listener
-     * @return callable
-     */
-    protected function resolveListener(string $listener): callable
-    {
-        if (strpos($listener, '@') !== false) {
-            [$class, $method] = explode('@', $listener);
-            $instance = $this->container->make($class);
-
-            return [$instance, $method];
-        }
-
-        if (class_exists($listener)) {
-            $instance = $this->container->make($listener);
-            if (method_exists($instance, 'handle')) {
-                return [$instance, 'handle'];
-            }
-            if (is_callable($instance)) {
-                return $instance;
-            }
-        }
-
-        throw new InvalidArgumentException("Listener [{$listener}] is not a valid callable.");
-    }
-
-    /**
      * Remove a set of listeners from the dispatcher.
      *
      * @param string $event
@@ -230,6 +152,6 @@ class Dispatcher implements DispatcherInterface
      */
     public function forget(string $event): void
     {
-        unset($this->listeners[$event]);
+        $this->provider->forget($event);
     }
 }

@@ -4,12 +4,14 @@ declare(strict_types=1);
 
 namespace Plugs\Event;
 
+use Psr\EventDispatcher\EventDispatcherInterface as PsrEventDispatcherInterface;
+
 /**
  * Interface DispatcherInterface
  *
  * Defines the contract for an event dispatcher.
  */
-interface DispatcherInterface
+interface DispatcherInterface extends PsrEventDispatcherInterface
 {
     /**
      * Register an event listener with the dispatcher.
@@ -35,9 +37,9 @@ interface DispatcherInterface
      * @param string|object $event
      * @param mixed $payload
      * @param bool $halt
-     * @return array|null
+     * @return array|object|null
      */
-    public function dispatch($event, $payload = [], bool $halt = false): ?array;
+    public function dispatch(object|string $event, mixed $payload = [], bool $halt = false): object|array|null;
 
     /**
      * Remove a set of listeners from the dispatcher.

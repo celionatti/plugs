@@ -4,12 +4,14 @@ declare(strict_types=1);
 
 namespace Plugs\Event;
 
+use Psr\EventDispatcher\StoppableEventInterface;
+
 /**
  * Class Event
  *
  * Base class for all application events.
  */
-abstract class Event
+abstract class Event implements StoppableEventInterface
 {
     /**
      * Whether the event propagation is stopped.
