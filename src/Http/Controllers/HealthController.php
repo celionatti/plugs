@@ -31,6 +31,19 @@ class HealthController
     }
 
     /**
+     * Returns the modern Health Dashboard UI.
+     */
+    public function dashboard(ServerRequestInterface $request): ResponseInterface
+    {
+        ob_start();
+        // Fallback to direct require since this is an internal framework UI
+        require dirname(__DIR__, 2) . '/View/debug/health/dashboard.php';
+        $content = ob_get_clean() ?: '';
+
+        return ResponseFactory::html($content);
+    }
+
+    /**
      * Detailed health with metrics.
      */
     public function detailed(ServerRequestInterface $request): ResponseInterface
@@ -199,6 +212,10 @@ class HealthController
             'os' => PHP_OS,
             'server_time' => date('c'),
             'uptime' => $this->getUptime(),
+            'extensions' => get_loaded_extensions(),
+            'framework_version' => config('app.version', '1.0.0'),
+            'environment' => config('app.env', 'production'),
+            'server_software' => $_SERVER['SERVER_SOFTWARE'] ?? 'Unknown',
         ];
     }
 

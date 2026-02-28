@@ -51,6 +51,7 @@ $router->group(['prefix' => '_plugs'], function () use ($router) {
     $router->get('/health/detailed', [\Plugs\Http\Controllers\HealthController::class, 'detailed'])->name('plugs.health.detailed');
     $router->get('/health/liveness', [\Plugs\Http\Controllers\HealthController::class, 'liveness'])->name('plugs.health.liveness');
     $router->get('/health/readiness', [\Plugs\Http\Controllers\HealthController::class, 'readiness'])->name('plugs.health.readiness');
+    $router->get('/health/dashboard', [\Plugs\Http\Controllers\HealthController::class, 'dashboard'])->name('plugs.health.dashboard');
 
     // Metrics (Prometheus-compatible)
     $router->get('/metrics', [\Plugs\Http\Controllers\MetricsController::class, 'prometheus'])->name('plugs.metrics');
