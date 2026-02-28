@@ -35,7 +35,7 @@ class Config
             return self::$config[$file] ?? $default;
         }
 
-        return \Plugs\Utils\Arr::get(self::$config[$file], implode('.', $parts), $default);
+        return \Plugs\Utils\Arr::get(self::$config[$file] ?? [], implode('.', $parts), $default);
     }
 
     /**

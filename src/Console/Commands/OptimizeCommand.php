@@ -30,12 +30,22 @@ class OptimizeCommand extends Command
             usleep(100000);
         });
 
+        $this->loading('Caching container metadata', function () {
+            $this->call('container:cache');
+            usleep(100000);
+        });
+
+        $this->loading('Pre-compiling application views', function () {
+            $this->call('view:cache');
+            usleep(100000);
+        });
+
         $this->checkpoint('finished');
 
         $this->newLine(2);
         $this->box(
             "Framework successfully optimized for production!\n\n" .
-            "Actions: Config & Route Caching",
+            "Actions: Config, Route, Container & View Caching",
             "✅ Optimization Complete",
             "success"
         );

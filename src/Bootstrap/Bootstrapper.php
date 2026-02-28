@@ -55,6 +55,12 @@ class Bootstrapper
         // Phase 2: Context detection
         $context = $forceContext ?? ContextResolver::resolve();
 
+        // Load container cache if available
+        $containerCache = STORAGE_PATH . 'framework/container.php';
+        if (file_exists($containerCache)) {
+            $this->container->loadFromCache($containerCache);
+        }
+
         // Store context in container for global access
         $this->container->instance(ContextType::class, $context);
 
@@ -164,6 +170,7 @@ class Bootstrapper
         if ($this->container->has('router')) {
             /** @var Router $router */
             $router = $this->container->make('router');
+
             $this->app->pipe(new RoutingMiddleware($router));
         }
     }

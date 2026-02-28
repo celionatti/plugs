@@ -97,8 +97,9 @@ class MiddlewareRegistry
      * 
      * @param array $config Configuration that can override defaults
      */
-    public function __construct(array $config = [])
+    public function __construct(?array $config = [])
     {
+        $config = $config ?? [];
         if (isset($config['aliases'])) {
             $this->aliases = array_merge($this->aliases, $config['aliases']);
         }

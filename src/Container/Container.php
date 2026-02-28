@@ -244,7 +244,7 @@ class Container implements ContainerInterface
         }
 
         if (isset($this->reflectionCache[$concrete])) {
-            [$reflector, $constructor, $constructorParams] = $this->reflectionCache[$concrete];
+            $metadata = $this->reflectionCache[$concrete];
         } else {
             try {
                 $reflector = new ReflectionClass($concrete);
@@ -258,23 +258,51 @@ class Container implements ContainerInterface
             }
 
             $constructor = $reflector->getConstructor();
-            $constructorParams = $constructor ? $constructor->getParameters() : null;
+            $constructorParams = $constructor ? $constructor->getParameters() : [];
 
-            $this->reflectionCache[$concrete] = [$reflector, $constructor, $constructorParams];
+            $metadata = [
+                'hasConstructor' => $constructor !== null,
+                'parameters' => $this->extractParameterMetadata($constructorParams),
+            ];
+
+            $this->reflectionCache[$concrete] = $metadata;
         }
 
         // If no constructor, just instantiate
-        if ($constructor === null) {
+        if (!$metadata['hasConstructor']) {
             return new $concrete();
         }
 
         // Resolve constructor dependencies
         $dependencies = $this->resolveDependencies(
-            $constructorParams,
+            $metadata['parameters'],
             $parameters
         );
 
-        return $reflector->newInstanceArgs($dependencies);
+        return new $concrete(...$dependencies);
+    }
+
+    /**
+     * Extract serializable metadata from reflection parameters.
+     */
+    private function extractParameterMetadata(array $parameters): array
+    {
+        $metadata = [];
+        foreach ($parameters as $parameter) {
+            $type = $parameter->getType();
+
+            $metadata[] = [
+                'name' => $parameter->getName(),
+                'type' => ($type instanceof \ReflectionNamedType) ? $type->getName() : null,
+                'isBuiltin' => $type === null || ($type instanceof \ReflectionNamedType && $type->isBuiltin()),
+                'isOptional' => $parameter->isOptional(),
+                'hasDefaultValue' => $parameter->isDefaultValueAvailable(),
+                'defaultValue' => $parameter->isDefaultValueAvailable() ? $parameter->getDefaultValue() : null,
+                'inject' => ($attr = $parameter->getAttributes(\Plugs\Container\Attributes\Inject::class)[0] ?? null)
+                    ? $attr->newInstance()->service : null,
+            ];
+        }
+        return $metadata;
     }
 
 
@@ -293,7 +321,7 @@ class Container implements ContainerInterface
         $dependencies = [];
 
         foreach ($parameters as $parameter) {
-            $name = $parameter->getName();
+            $name = $parameter['name'];
 
             // Check if primitive value provided
             if (isset($primitives[$name])) {
@@ -302,36 +330,24 @@ class Container implements ContainerInterface
             }
 
             // Check for attributes (Contextual Binding)
-            $attribute = $parameter->getAttributes(\Plugs\Container\Attributes\Inject::class)[0] ?? null;
-            if ($attribute) {
-                $inject = $attribute->newInstance();
-                $dependencies[] = $this->make($inject->service);
+            if ($parameter['inject']) {
+                $dependencies[] = $this->make($parameter['inject']);
                 continue;
             }
 
-            // Get parameter type
-            $type = $parameter->getType();
-
-            // Union/intersection types (e.g. int|string) don't have isBuiltin()
-            // Treat them as primitives — use default value if available
-            $isBuiltin = $type === null
-                || $type instanceof \ReflectionUnionType
-                || $type instanceof \ReflectionIntersectionType
-                || $type->isBuiltin();
-
-            if ($isBuiltin) {
+            if ($parameter['isBuiltin']) {
                 // Check for contextual primitive binding
                 $concrete = end($this->buildStack);
                 if (isset($this->contextual[$concrete][$name])) {
                     $dependencies[] = $this->getContextualConcrete($this->contextual[$concrete][$name]);
-                } elseif ($parameter->isDefaultValueAvailable()) {
-                    $dependencies[] = $parameter->getDefaultValue();
+                } elseif ($parameter['hasDefaultValue']) {
+                    $dependencies[] = $parameter['defaultValue'];
                 } else {
                     throw BindingResolutionException::unresolvedPrimitive($name);
                 }
             } else {
                 // Resolve class dependency
-                $typeName = $type->getName();
+                $typeName = $parameter['type'];
 
                 // Check for contextual class binding
                 $concrete = end($this->buildStack);
@@ -468,6 +484,46 @@ class Container implements ContainerInterface
             'aliases' => $this->aliases,
             'contextual' => $this->contextual,
         ];
+    }
+
+    /**
+     * Cache the container's reflection data and bindings.
+     */
+    public function cache(string $path): bool
+    {
+        $cacheData = [
+            'reflectionCache' => $this->reflectionCache,
+            'aliases' => $this->aliases,
+        ];
+
+        $content = '<?php return ' . var_export($cacheData, true) . ';';
+        $dir = dirname($path);
+
+        if (!is_dir($dir)) {
+            mkdir($dir, 0755, true);
+        }
+
+        return file_put_contents($path, $content) !== false;
+    }
+
+    /**
+     * Load the container's cached data.
+     */
+    public function loadFromCache(string $path): bool
+    {
+        if (!file_exists($path)) {
+            return false;
+        }
+
+        $cacheData = require $path;
+
+        if (is_array($cacheData)) {
+            $this->reflectionCache = array_merge($this->reflectionCache, $cacheData['reflectionCache'] ?? []);
+            $this->aliases = array_merge($this->aliases, $cacheData['aliases'] ?? []);
+            return true;
+        }
+
+        return false;
     }
 
     /**

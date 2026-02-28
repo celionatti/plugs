@@ -86,6 +86,7 @@ class Router
     private ?\Plugs\Http\Middleware\MiddlewareRegistry $registry = null;
     private array $compiledRoutes = [];
     protected ?RouteUrlGenerator $urlGenerator = null;
+    private bool $routesLoaded = false;
 
 
 
@@ -1408,7 +1409,7 @@ class Router
                 $handler = $route->getHandler();
 
                 if ($handler instanceof Closure) {
-                    throw new RuntimeException("Route [{$path}] uses a closure and cannot be cached. Use controller actions instead.");
+                    continue;
                 }
 
                 $routeData['handler'] = $handler;
@@ -1423,7 +1424,7 @@ class Router
                 $handler = $route->getHandler();
 
                 if ($handler instanceof Closure) {
-                    throw new RuntimeException("Route [{$route->getPath()}] uses a closure and cannot be cached. Use controller actions instead.");
+                    continue;
                 }
 
                 $routeData['handler'] = $handler;
@@ -1458,6 +1459,7 @@ class Router
 
         // Clear existing routes
         $this->staticRoutes = [];
+        $this->namedRoutes = [];
         $this->routes = [
             'GET' => [],
             'POST' => [],
@@ -1863,8 +1865,13 @@ class Router
      */
     public function loadInternalRoutes(): void
     {
+        if ($this->routesLoaded) {
+            return;
+        }
+
         $router = $this;
         require __DIR__ . '/internal_routes.php';
+        $this->routesLoaded = true;
     }
 
     /**
@@ -2045,6 +2052,11 @@ class Router
         return $this->compiledRoutes[$method];
     }
 
+    /**
+     * Get a structured map of all registered routes for AI introspection.
+     *
+     * @return array
+     */
     /**
      * Get a structured map of all registered routes for AI introspection.
      *

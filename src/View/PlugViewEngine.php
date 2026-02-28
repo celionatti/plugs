@@ -1150,6 +1150,62 @@ class PlugViewEngine implements ViewEngineInterface
         return $this->cachePath . DIRECTORY_SEPARATOR . self::fastHash($view) . '.php';
     }
 
+    /**
+     * Compile all views in the view directory.
+     * Useful for production warming.
+     */
+    public function compileAll(): array
+    {
+        $viewFiles = $this->getAllViewFiles($this->viewPath);
+        $compiledCount = 0;
+        $errors = [];
+
+        foreach ($viewFiles as $file) {
+            try {
+                // Get relative path as view name
+                $viewName = str_replace([$this->viewPath . DIRECTORY_SEPARATOR, '.plug.php', '.php', '.html'], '', $file);
+                $viewName = str_replace(DIRECTORY_SEPARATOR, '.', $viewName);
+
+                $compiled = $this->getCompiledPath($viewName);
+                $this->compile($file, $compiled);
+                $compiledCount++;
+            } catch (Throwable $e) {
+                $errors[] = $file . ': ' . $e->getMessage();
+            }
+        }
+
+        return ['compiled' => $compiledCount, 'errors' => $errors];
+    }
+
+    /**
+     * Get all view files recursively.
+     */
+    private function getAllViewFiles(string $directory): array
+    {
+        $files = [];
+        $items = scandir($directory);
+
+        foreach ($items as $item) {
+            if ($item === '.' || $item === '..')
+                continue;
+
+            $path = $directory . DIRECTORY_SEPARATOR . $item;
+
+            if (is_dir($path)) {
+                $files = array_merge($files, $this->getAllViewFiles($path));
+            } else {
+                foreach (self::VIEW_EXTENSIONS as $ext) {
+                    if (str_ends_with($path, $ext)) {
+                        $files[] = $path;
+                        break;
+                    }
+                }
+            }
+        }
+
+        return $files;
+    }
+
     private function stripStrictTypesDeclaration(string $content): string
     {
         return preg_replace(
