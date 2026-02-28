@@ -130,6 +130,10 @@ class Profiler
             ? Connection::getQueryAnalysisReport()
             : ['queries' => [], 'total_time' => 0, 'query_count' => 0];
 
+        $container = \Plugs\Container\Container::getInstance();
+        $metadataRegistry = $container->make(\Plugs\AI\Metadata\MetadataRegistry::class);
+        $timelineRegistry = $container->make(\Plugs\AI\Metadata\EventTimelineRegistry::class);
+
         $profile = [
             'id' => uniqid('prof_', true),
             'timestamp' => time(),
@@ -157,7 +161,8 @@ class Profiler
             'database' => $dbReport,
             'cache' => $this->cache,
             'events' => $this->events,
-            'core_timeline' => \Plugs\AI\Metadata\EventTimelineRegistry::getTimeline(),
+            'core_timeline' => $timelineRegistry->getTimeline(),
+            'metadata' => $metadataRegistry->getSnapshot(),
             'timeline' => $this->timeline,
             'views' => $this->views,
             'logs' => $this->logs,

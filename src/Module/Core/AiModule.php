@@ -23,6 +23,9 @@ class AiModule implements ModuleInterface
 
     public function register(Container $container): void
     {
+        $container->scoped(\Plugs\AI\Metadata\EventTimelineRegistry::class);
+        $container->scoped(\Plugs\AI\Metadata\MetadataRegistry::class);
+
         $container->singleton('ai', function () use ($container) {
             return new \Plugs\AI\AIManager(config('ai'), $container->make('cache'));
         });
@@ -33,6 +36,7 @@ class AiModule implements ModuleInterface
     {
         $container = $app->getContainer();
         $events = $container->make('events');
+        $timeline = $container->make(\Plugs\AI\Metadata\EventTimelineRegistry::class);
 
         // Listen to all core events to build the timeline for AI analysis
         $coreEvents = [
@@ -48,7 +52,7 @@ class AiModule implements ModuleInterface
         ];
 
         foreach ($coreEvents as $eventClass) {
-            $events->listen($eventClass, function ($event) use ($eventClass) {
+            $events->listen($eventClass, function ($event) use ($eventClass, $timeline) {
                 $metadata = [];
                 if (method_exists($event, 'toArray')) {
                     $metadata = $event->toArray();
@@ -56,7 +60,7 @@ class AiModule implements ModuleInterface
                     $metadata = ['sql' => $event->sql, 'time' => $event->time];
                 }
 
-                \Plugs\AI\Metadata\EventTimelineRegistry::record($eventClass, $metadata);
+                $timeline->record($eventClass, $metadata);
             });
         }
     }

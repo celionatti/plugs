@@ -23,11 +23,11 @@ class DatabaseModule implements ModuleInterface
 
     public function register(Container $container): void
     {
-        $container->bind(\Plugs\Database\Connection::class, function () {
+        $container->scoped(\Plugs\Database\Connection::class, function () {
             return \Plugs\Database\Connection::getInstance();
-        }, true);
+        });
 
-        $container->singleton('database', function () use ($container) {
+        $container->singleton('database', function ($container) {
             return new \Plugs\Database\DatabaseManager($container->make(\Plugs\Database\Connection::class));
         });
 
@@ -38,9 +38,8 @@ class DatabaseModule implements ModuleInterface
     {
         $databaseConfig = config('database');
         if ($databaseConfig && isset($databaseConfig['connections'][$databaseConfig['default']])) {
-            \Plugs\Base\Model\PlugModel::setConnection(
-                $databaseConfig['connections'][$databaseConfig['default']]
-            );
+            $connection = $databaseConfig['connections'][$databaseConfig['default']];
+            \Plugs\Base\Model\PlugModel::setConnection($connection);
         }
     }
 }

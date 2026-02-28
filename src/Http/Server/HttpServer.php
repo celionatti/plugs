@@ -6,7 +6,6 @@ namespace Plugs\Http\Server;
 
 use Plugs\Concurrency\LoopManager;
 use Plugs\Http\Message\ServerRequest;
-use Plugs\Http\Message\Response;
 use Closure;
 
 class HttpServer
@@ -15,11 +14,11 @@ class HttpServer
     protected int $port;
     protected LoopManager $loop;
 
-    public function __construct(string $host = '0.0.0.0', int $port = 8080)
+    public function __construct(LoopManager $loop, string $host = '0.0.0.0', int $port = 8080)
     {
+        $this->loop = $loop;
         $this->host = $host;
         $this->port = $port;
-        $this->loop = app(LoopManager::class);
     }
 
     public function start(Closure $handler): void

@@ -99,7 +99,7 @@ class ModuleManager
         $instances = [];
         foreach ($this->modules as $module) {
             if (is_string($module)) {
-                $instance = new $module();
+                $instance = $container->make($module);
             } else {
                 $instance = $module;
             }

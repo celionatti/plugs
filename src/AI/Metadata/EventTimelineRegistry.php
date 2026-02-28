@@ -10,29 +10,31 @@ namespace Plugs\AI\Metadata;
  */
 class EventTimelineRegistry
 {
-    private static array $timeline = [];
-    private static float $startTime;
+    private array $timeline = [];
+    private float $startTime;
 
-    public static function record(string $event, array $metadata = []): void
+    public function __construct()
     {
-        if (empty(self::$timeline)) {
-            self::$startTime = microtime(true);
-        }
+        $this->startTime = microtime(true);
+    }
 
-        self::$timeline[] = [
+    public function record(string $event, array $metadata = []): void
+    {
+        $this->timeline[] = [
             'event' => $event,
-            'offset_ms' => round((microtime(true) - self::$startTime) * 1000, 2),
+            'offset_ms' => round((microtime(true) - $this->startTime) * 1000, 2),
             'metadata' => $metadata,
         ];
     }
 
-    public static function getTimeline(): array
+    public function getTimeline(): array
     {
-        return self::$timeline;
+        return $this->timeline;
     }
 
-    public static function clear(): void
+    public function clear(): void
     {
-        self::$timeline = [];
+        $this->timeline = [];
+        $this->startTime = microtime(true);
     }
 }

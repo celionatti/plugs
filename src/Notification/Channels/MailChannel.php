@@ -21,9 +21,9 @@ class MailChannel
      *
      * @param MailService|null $mailer
      */
-    public function __construct(?MailService $mailer = null)
+    public function __construct(MailService $mailer)
     {
-        $this->mailer = $mailer ?: Container::getInstance()->make('mail');
+        $this->mailer = $mailer;
     }
 
     /**

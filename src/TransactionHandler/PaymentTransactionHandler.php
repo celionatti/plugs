@@ -64,11 +64,11 @@ class PaymentTransactionHandler
      * @param array $config Platform configuration
      * @param LoggerInterface|null $logger
      */
-    public function __construct(string $platform, array $config, ?LoggerInterface $logger = null)
+    public function __construct(string $platform, array $config, LoggerInterface $logger)
     {
         $this->platform = strtolower($platform);
         $this->config = $config;
-        $this->logger = $logger ?? (function_exists('app') ? app('log') : null);
+        $this->logger = $logger;
         $this->initializeAdapter();
     }
 

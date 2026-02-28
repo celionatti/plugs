@@ -23,9 +23,7 @@ class CacheModule implements ModuleInterface
 
     public function register(Container $container): void
     {
-        $container->singleton('cache', function () {
-            return new \Plugs\Cache\CacheManager();
-        });
+        $container->lazy('cache', \Plugs\Cache\CacheManager::class);
 
         $container->singleton('ratelimiter', function ($container) {
             return new \Plugs\Security\RateLimiter();
