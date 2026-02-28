@@ -455,6 +455,22 @@ class Container implements ContainerInterface
     }
 
     /**
+     * Get a structured graph of all bindings and instances for AI introspection.
+     *
+     * @return array
+     */
+    public function getGraph(): array
+    {
+        return [
+            'bindings' => $this->bindings,
+            'instances' => array_keys($this->instances),
+            'scoped' => array_keys($this->scopedInstances),
+            'aliases' => $this->aliases,
+            'contextual' => $this->contextual,
+        ];
+    }
+
+    /**
      * Flush the container
      */
     public function flush(): void

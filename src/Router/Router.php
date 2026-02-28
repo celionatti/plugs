@@ -1407,8 +1407,8 @@ class Router
                 $routeData = $route->toArray();
                 $handler = $route->getHandler();
 
-                if ($handler instanceof \Closure) {
-                    throw new \RuntimeException("Route [{$path}] uses a closure and cannot be cached. Use controller actions instead.");
+                if ($handler instanceof Closure) {
+                    throw new RuntimeException("Route [{$path}] uses a closure and cannot be cached. Use controller actions instead.");
                 }
 
                 $routeData['handler'] = $handler;
@@ -1422,8 +1422,8 @@ class Router
                 $routeData = $route->toArray();
                 $handler = $route->getHandler();
 
-                if ($handler instanceof \Closure) {
-                    throw new \RuntimeException("Route [{$route->getPath()}] uses a closure and cannot be cached. Use controller actions instead.");
+                if ($handler instanceof Closure) {
+                    throw new RuntimeException("Route [{$route->getPath()}] uses a closure and cannot be cached. Use controller actions instead.");
                 }
 
                 $routeData['handler'] = $handler;
@@ -1434,7 +1434,7 @@ class Router
         try {
             $content = "<?php\n\nreturn " . var_export($data, true) . ";\n";
             return file_put_contents($cachePath, $content) !== false;
-        } catch (\Throwable $e) {
+        } catch (Throwable $e) {
             return false;
         }
     }
@@ -2043,5 +2043,39 @@ class Router
         ];
 
         return $this->compiledRoutes[$method];
+    }
+
+    /**
+     * Get a structured map of all registered routes for AI introspection.
+     *
+     * @return array
+     */
+    public function getRouteMap(): array
+    {
+        $map = [];
+
+        foreach ($this->routes as $method => $routes) {
+            foreach ($routes as $route) {
+                // We use path + method as key for uniqueness in the map
+                $key = $method . ':' . $route->getPath();
+                if (!isset($map[$key])) {
+                    $map[$key] = $route->toArray();
+
+                    // Add handler information specifically
+                    $handler = $route->getHandler();
+                    if (is_string($handler)) {
+                        $map[$key]['handler_type'] = 'string';
+                    } elseif (is_array($handler)) {
+                        $map[$key]['handler_type'] = 'controller';
+                    } elseif ($handler instanceof \Closure) {
+                        $map[$key]['handler_type'] = 'closure';
+                    } else {
+                        $map[$key]['handler_type'] = 'unknown';
+                    }
+                }
+            }
+        }
+
+        return $map;
     }
 }

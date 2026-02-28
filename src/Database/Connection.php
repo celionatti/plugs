@@ -1214,4 +1214,36 @@ class Connection
 
         return $columns;
     }
+    /**
+     * Get structured metadata for all tables in the schema for AI introspection.
+     *
+     * @return array
+     */
+    public function getSchemaMetadata(): array
+    {
+        if ($this->pdo === null) {
+            $this->connect(self::$config[$this->connectionName]);
+        }
+
+        $driver = $this->pdo->getAttribute(\PDO::ATTR_DRIVER_NAME);
+        $tables = [];
+
+        if ($driver === 'mysql') {
+            $stmt = $this->pdo->query("SHOW TABLES");
+            $tables = $stmt->fetchAll(\PDO::FETCH_COLUMN);
+        } elseif ($driver === 'sqlite') {
+            $stmt = $this->pdo->query("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'");
+            $tables = $stmt->fetchAll(\PDO::FETCH_COLUMN);
+        }
+
+        $schema = [];
+        foreach ($tables as $table) {
+            $schema[$table] = [
+                'columns' => $this->getTableColumns($table),
+                'indexes' => $this->getTableIndexes($table),
+            ];
+        }
+
+        return $schema;
+    }
 }

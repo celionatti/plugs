@@ -31,5 +31,33 @@ class AiModule implements ModuleInterface
 
     public function boot(Plugs $app): void
     {
+        $container = $app->getContainer();
+        $events = $container->make('events');
+
+        // Listen to all core events to build the timeline for AI analysis
+        $coreEvents = [
+            \Plugs\Event\Core\ApplicationBootstrapped::class,
+            \Plugs\Event\Core\RequestReceived::class,
+            \Plugs\Event\Core\RouteMatched::class,
+            \Plugs\Event\Core\ActionExecuting::class,
+            \Plugs\Event\Core\ActionExecuted::class,
+            \Plugs\Event\Core\ResponseSending::class,
+            \Plugs\Event\Core\ResponseSent::class,
+            \Plugs\Event\Core\ExceptionThrown::class,
+            \Plugs\Event\Core\QueryExecuted::class,
+        ];
+
+        foreach ($coreEvents as $eventClass) {
+            $events->listen($eventClass, function ($event) use ($eventClass) {
+                $metadata = [];
+                if (method_exists($event, 'toArray')) {
+                    $metadata = $event->toArray();
+                } elseif (isset($event->sql)) {
+                    $metadata = ['sql' => $event->sql, 'time' => $event->time];
+                }
+
+                \Plugs\AI\Metadata\EventTimelineRegistry::record($eventClass, $metadata);
+            });
+        }
     }
 }

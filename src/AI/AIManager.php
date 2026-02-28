@@ -11,6 +11,8 @@ use Plugs\AI\Drivers\AnthropicDriver;
 use Plugs\AI\Drivers\GeminiDriver;
 use Plugs\AI\Drivers\GroqDriver;
 use Plugs\AI\Drivers\OpenRouterDriver;
+use Plugs\AI\Metadata\MetadataRegistry;
+use Plugs\AI\Metadata\EventTimelineRegistry;
 
 class AIManager
 {
@@ -257,6 +259,19 @@ class AIManager
     public function defer(): DeferredAIManager
     {
         return new DeferredAIManager($this);
+    }
+
+    /**
+     * Get the full application context (metadata + timeline) for AI.
+     */
+    public function getAppContext(): array
+    {
+        $registry = new MetadataRegistry(app());
+        $snapshot = $registry->getSnapshot();
+
+        return array_merge($snapshot, [
+            'timeline' => EventTimelineRegistry::getTimeline(),
+        ]);
     }
 
     /**
