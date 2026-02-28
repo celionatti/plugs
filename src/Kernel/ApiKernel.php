@@ -43,7 +43,6 @@ class ApiKernel extends AbstractKernel
 
     protected function bootServices(): void
     {
-        $this->configureDatabase();
         $this->setupRouter();
         $this->setupRequest();
         $this->loadProfilerMiddleware();

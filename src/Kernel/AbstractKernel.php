@@ -100,31 +100,6 @@ abstract class AbstractKernel implements KernelInterface
     }
 
     /**
-     * Configure the database connection (shared by most kernels).
-     */
-    protected function configureDatabase(): void
-    {
-        $databaseConfig = config('database');
-        if ($databaseConfig) {
-            \Plugs\Base\Model\PlugModel::setConnection(
-                $databaseConfig['connections'][$databaseConfig['default']]
-            );
-        }
-    }
-
-    /**
-     * Configure and start the session (Web kernel only).
-     */
-    protected function configureSession(): void
-    {
-        $sessionConfig = config('security.session');
-        if ($sessionConfig) {
-            $sessionLoader = new \Plugs\Session\SessionManager($sessionConfig);
-            $sessionLoader->start();
-        }
-    }
-
-    /**
      * Setup the router and register it in the container.
      */
     protected function setupRouter(): void

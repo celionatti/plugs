@@ -29,8 +29,6 @@ class CliKernel extends AbstractKernel
 
     protected function bootServices(): void
     {
-        $this->configureDatabase();
-
         // Initialize the console command system
         $this->consoleKernel = new ConsoleCommandKernel();
         $this->consolePlug = new ConsolePlugs($this->consoleKernel);

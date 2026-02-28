@@ -23,8 +23,6 @@ class QueueKernel extends AbstractKernel
 
     protected function bootServices(): void
     {
-        $this->configureDatabase();
-
         // Queue manager is a deferred service in the container,
         // it will be resolved on first access via container->make('queue')
     }

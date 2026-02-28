@@ -32,7 +32,6 @@ class RealtimeKernel extends AbstractKernel
 
     protected function bootServices(): void
     {
-        $this->configureDatabase();
         $this->setupRequest();
 
         // Realtime kernel boots event system for pub/sub
