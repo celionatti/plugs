@@ -81,3 +81,15 @@ Now that you understand the basics of interacting with your database, you may wa
 - [Database Migrations](file:///docs/database/migrations.md)
 - [Fluent Query Builder](file:///docs/database/query-builder.md)
 - [PlugModel ORM](file:///docs/database/models.md)
+
+## Modular Nature
+
+The database system is provided by the `Database` module. For applications that do not require a database (e.g., simple static sites or proxy APIs), you can disable it entirely:
+
+```php
+use Plugs\Framework;
+
+Framework::disableModule('Database');
+```
+
+When disabled, the `DB` facade and Model support will not be initialized, reducing the application's memory footprint.

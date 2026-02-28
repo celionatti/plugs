@@ -1,6 +1,16 @@
-# Helper Functions
-
 Plugs includes a variety of global "helper" PHP functions. Many of these functions are used by the framework itself; however, you are free to use them in your own applications if you find them convenient.
+
+## Loading Helpers
+
+Helpers are managed by the **`FunctionsModule`**. This module dynamically scans the `src/functions/` directory and loads all PHP files found there.
+
+### Production Optimization
+
+In production environments (`APP_ENV=production`), the `FunctionsModule` automatically caches the list of helper files in `storage/framework/functions.php`. This eliminates the need to scan the filesystem on every request, providing a significant performance boost.
+
+### Custom Helpers
+
+You can add your own helper functions by creating `.php` files in a directory and loading them via a custom module or a service provider. The recommended way is to follow the framework's pattern and use the `FunctionsModule` for central management.
 
 ## String Manipulation
 

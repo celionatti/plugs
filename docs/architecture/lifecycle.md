@@ -11,6 +11,8 @@ Every request starts in `public/index.php`. This file is the gateway to your app
 The `Plugs\Bootstrap\Bootstrapper` takes over. It:
 
 - Loads the `.env` file and merges configurations.
+- **Module Registration**: Registers all core framework modules (Log, DB, Session, etc.) with the `ModuleManager`.
+- **Modular Boot**: Executes the `bootstrap()` phase on the application, which boots all enabled modules for the current context.
 - Registers core services in the DI Container.
 - Discovers and boots all `ServiceProviders` in `app/Providers`.
 - Sets up the Error and Exception handlers.

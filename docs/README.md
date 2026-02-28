@@ -25,6 +25,11 @@ Welcome to the official documentation for the **Plugs** framework. Plugs is a li
   - [Step 5: Verification & Testing](file:///docs/api-guide/step-5-testing.md)
   - [**Full Implementation Example**](file:///docs/api-guide/full-example.md)
 
+### 🏗️ Architecture
+
+- [**Modular First Architecture**](file:///docs/architecture/modular-architecture.md) (New)
+- [Request Lifecycle](file:///docs/architecture/lifecycle.md) (Updated)
+
 ### 🧩 The Basics
 
 - [Routing](file:///docs/the-basics/routing.md)

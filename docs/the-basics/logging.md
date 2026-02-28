@@ -90,3 +90,18 @@ When the log format is set to `json` (if supported by the driver), the framework
   "context": { "user_id": 123 }
 }
 ```
+
+## Modular Nature
+
+The logging system is provided by the `Log` module. If you wish to disable logging entirely (e.g., for maximum performance in a microservice), you can do so before the framework boots:
+
+```php
+use Plugs\Framework;
+
+Framework::disableModule('Log');
+```
+
+---
+
+> [!NOTE]
+> When the `Log` module is disabled, the `Log` facade and `logger()` helper will remain available but will silently discard all log entries.
