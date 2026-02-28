@@ -27,8 +27,10 @@ class ApiKernel extends AbstractKernel
 {
     protected array $middlewareLayers = [
         'security' => [
+            \Plugs\Http\Middleware\SecurityEngineMiddleware::class,
             PreventRequestsDuringMaintenance::class,
             SecurityHeadersMiddleware::class,
+            \Plugs\Http\Middleware\SecurityShieldMiddleware::class,
             CorsMiddleware::class,
             RateLimitMiddleware::class,
         ],

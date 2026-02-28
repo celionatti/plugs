@@ -36,7 +36,7 @@ trait CompilesEchos
             if ($expr === '') {
                 return '';
             }
-            return "<?php echo e({$expr}); ?>";
+            return "<?php echo \Plugs\View\Escaper::html({$expr}); ?>";
         }, $content);
     }
 
@@ -66,7 +66,7 @@ trait CompilesEchos
                 $attr = $matches[1];
                 $expression = $matches[4];
 
-                return sprintf(' %s="<?php echo e(%s); ?>"', $attr, $expression);
+                return sprintf(' %s="<?php echo \Plugs\View\Escaper::attr(%s); ?>"', $attr, $expression);
             },
             $content
         );

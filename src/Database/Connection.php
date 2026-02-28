@@ -660,7 +660,7 @@ class Connection
     public function query(string $sql, array $params = []): \PDOStatement
     {
         if (class_exists(QueryGuard::class)) {
-            QueryGuard::check($sql, $this->strictMode ?? false, function ($msg, $lvl) {
+            QueryGuard::check($sql, true, function ($msg, $lvl) {
                 $this->auditLog($msg, $lvl);
             });
         }

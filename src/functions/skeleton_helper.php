@@ -25,6 +25,18 @@ if (!function_exists('skeleton_styles')) {
      */
     function skeleton_styles(): string
     {
-        return Skeleton::styles();
+        $nonce = null;
+        try {
+            $container = \Plugs\Container\Container::getInstance();
+            if ($container && $container->bound('view')) {
+                $viewEngine = $container->make('view');
+                if (method_exists($viewEngine, 'getCspNonce')) {
+                    $nonce = $viewEngine->getCspNonce();
+                }
+            }
+        } catch (\Throwable $e) {
+            // Silently fail — nonce is optional
+        }
+        return Skeleton::styles($nonce);
     }
 }

@@ -21,7 +21,8 @@ class ThreatDetector
         // SQL injection patterns
         '/(\bunion\b.*\bselect\b|\bselect\b.*\bfrom\b|\binsert\b.*\binto\b|\bdelete\b.*\bfrom\b)/i',
         '/(\bor\b|\band\b)\s+[\'"]\d+[\'"]?\s*=\s*[\'"]\d+/i',
-        "/(--|#|;)/",
+        // Instead of matching any `;`, check for known malicious chaining ` ; ` or SQL comment sequence `-- `
+        "/(?:\s--\s|\s#\s|;\s*(?:DROP|ALTER|CREATE|TRUNCATE))/i",
         '/\bwaitfor\b\s+\bdelay\b/i',
         '/\bbenchmark\s*\(/i',
         // Path traversal
@@ -35,8 +36,8 @@ class ThreatDetector
         // Null byte injection
         '/\x00/',
         '/\\\\0/',
-        // LDAP injection
-        '/[()\\\\*\x00]/',
+        // LDAP injection: avoid matching normal parentheses and MIME asterisks
+        '/(?:\x00|(?<=\=)\s*\()|(?<=\=)\s*\*/i',
     ];
 
     private const SCORE_THRESHOLD = 10;

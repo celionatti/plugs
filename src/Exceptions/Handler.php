@@ -403,7 +403,7 @@ class Handler
         }
 
         if ($this->debug) {
-            return $this->renderDebugPage($e);
+            return $this->renderDebugPage($e, $request);
         }
 
         return $this->renderErrorPage($request, 500, $message);
@@ -466,7 +466,7 @@ class Handler
         }
 
         if ($this->debug) {
-            return $this->renderDebugPage($e);
+            return $this->renderDebugPage($e, $request);
         }
 
         return $this->renderErrorPage($request, $statusCode);
@@ -493,9 +493,10 @@ class Handler
                 require_once $errorFile;
             }
 
+            $nonce = $request->getAttribute('csp_nonce');
             return ResponseFactory::html(
                 function_exists('getProductionErrorHtml')
-                ? getProductionErrorHtml($statusCode, null, $message)
+                ? getProductionErrorHtml($statusCode, null, $message, $nonce)
                 : "<h1>Error {$statusCode}</h1><p>" . htmlspecialchars($message ?? 'An error occurred.') . '</p>',
                 $statusCode
             );
@@ -518,9 +519,10 @@ class Handler
                 require_once $errorFile;
             }
 
+            $nonce = $request->getAttribute('csp_nonce');
             return ResponseFactory::html(
                 function_exists('getProductionErrorHtml')
-                ? getProductionErrorHtml($statusCode, null, $message)
+                ? getProductionErrorHtml($statusCode, null, $message, $nonce)
                 : "<h1>Error {$statusCode}</h1><p>" . htmlspecialchars($message ?? 'An error occurred.') . '</p>',
                 $statusCode
             );
@@ -533,9 +535,10 @@ class Handler
      * Render the debug page.
      *
      * @param Throwable $e
+     * @param ServerRequestInterface|null $request
      * @return ResponseInterface
      */
-    protected function renderDebugPage(Throwable $e): ResponseInterface
+    protected function renderDebugPage(Throwable $e, ?ServerRequestInterface $request = null): ResponseInterface
     {
         try {
             // Ensure error.php is loaded (may have been deferred in production)
@@ -544,8 +547,10 @@ class Handler
                 require_once $errorFile;
             }
 
+            $nonce = $request ? $request->getAttribute('csp_nonce') : null;
+
             ob_start();
-            renderDebugErrorPage($e);
+            renderDebugErrorPage($e, $nonce);
             $html = ob_get_clean();
 
             $statusCode = $e instanceof PlugsException ? $e->getStatusCode() : 500;
@@ -583,7 +588,7 @@ class Handler
         }
 
         if ($this->debug) {
-            return $this->renderDebugPage($e);
+            return $this->renderDebugPage($e, $request);
         }
 
         return $this->renderErrorPage($request, 419, $e->getMessage());
@@ -616,7 +621,7 @@ class Handler
         }
 
         if ($this->debug) {
-            return $this->renderDebugPage($e);
+            return $this->renderDebugPage($e, $request);
         }
 
         // In production, never expose database details

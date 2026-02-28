@@ -76,8 +76,8 @@ class ProfilerMiddleware implements MiddlewareInterface
 
         // Inject profiler bar into HTML responses if enabled
         if ($this->injectBar && $this->shouldInjectBar($response)) {
-            // Get nonce from AssetManager if available
-            $nonce = function_exists('asset_manager') ? asset_manager()->getNonce() : null;
+            // Get nonce from request attribute or AssetManager
+            $nonce = $request->getAttribute('csp_nonce') ?? (function_exists('asset_manager') ? asset_manager()->getNonce() : null);
             $response = $this->injectProfilerBar($response, $profile, $nonce);
         }
 

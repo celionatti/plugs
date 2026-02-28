@@ -242,10 +242,11 @@ class Skeleton
     /**
      * Get the CSS styles required for skeleton animation.
      */
-    public static function styles(): string
+    public static function styles(?string $nonce = null): string
     {
+        $nonceAttr = $nonce ? ' nonce="' . $nonce . '"' : '';
         return '
-        <style>
+        <style' . $nonceAttr . '>
             .plugs-skeleton {
                 background: #e2e8f0;
                 background-image: linear-gradient(

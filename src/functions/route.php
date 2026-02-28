@@ -56,23 +56,41 @@ if (!function_exists('url')) {
      */
     function url(string $path = '', array $parameters = []): string
     {
-        $baseUrl = env('APP_URL');
         $path = '/' . ltrim($path, '/');
         $basePath = get_base_path();
 
-        if ($baseUrl && (str_starts_with($baseUrl, 'http://') || str_starts_with($baseUrl, 'https://'))) {
-            $url = rtrim($baseUrl, '/') . $path;
-        } else {
-            $request = request();
-            if ($request !== null) {
-                $uri = $request->getUri();
-                $url = ($uri->getScheme() ? $uri->getScheme() . '://' : '') . $uri->getAuthority() . rtrim($basePath, '/') . $path;
-            } else {
-                $scheme = isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off' ? 'https' : 'http';
-                $host = $_SERVER['HTTP_HOST'] ?? 'localhost';
-                $url = $scheme . '://' . $host . rtrim($basePath, '/') . $path;
+        $request = request();
+        $scheme = isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off' ? 'https' : 'http';
+        $host = '';
+
+        if ($request !== null) {
+            $uri = $request->getUri();
+            $scheme = $uri->getScheme() ?: $scheme;
+            $host = $uri->getAuthority();
+
+            // Fallback to Host header if Authority is empty (common in some PSR-7 setups)
+            if (empty($host) && $request->hasHeader('Host')) {
+                $host = $request->getHeaderLine('Host');
             }
         }
+
+        // If still no host, try $_SERVER or fallback to env('APP_URL')
+        if (empty($host)) {
+            if (!empty($_SERVER['HTTP_HOST'])) {
+                $host = $_SERVER['HTTP_HOST'];
+            } else {
+                $baseUrl = env('APP_URL');
+                if ($baseUrl) {
+                    $parsed = parse_url($baseUrl);
+                    $scheme = $parsed['scheme'] ?? $scheme;
+                    $host = ($parsed['host'] ?? 'localhost') . (isset($parsed['port']) ? ':' . $parsed['port'] : '');
+                } else {
+                    $host = 'localhost';
+                }
+            }
+        }
+
+        $url = $scheme . '://' . $host . rtrim($basePath, '/') . $path;
 
         if (!empty($parameters)) {
             $url .= (str_contains($url, '?') ? '&' : '?') . http_build_query($parameters);

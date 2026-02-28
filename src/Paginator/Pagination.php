@@ -34,6 +34,7 @@ class Pagination implements \IteratorAggregate, \Countable, \ArrayAccess, \JsonS
     protected ?string $path = null;
     protected array $query = [];
     protected $presenter;
+    protected ?string $nonce = null; // Added for CSP nonce
     protected array $options = [
         // Display options
         'show_numbers' => true,
@@ -837,7 +838,8 @@ class Pagination implements \IteratorAggregate, \Countable, \ArrayAccess, \JsonS
             ];
         }
 
-        return '<script type="application/ld+json">' . json_encode($data, JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT) . '</script>';
+        $nonceAttr = $this->nonce ? ' nonce="' . $this->nonce . '"' : '';
+        return '<script type="application/ld+json"' . $nonceAttr . '>' . json_encode($data, JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT) . '</script>';
     }
 
     /**
@@ -877,12 +879,13 @@ class Pagination implements \IteratorAggregate, \Countable, \ArrayAccess, \JsonS
     }
 
     /**
-     * Get standard CSS for the pagination
+     * Get tobacco CSS for the pagination
      */
-    public static function getStyles(): string
+    public function getStyles(): string
     {
-        return <<<'CSS'
-<style>
+        $nonceAttr = $this->nonce ? ' nonce="' . $this->nonce . '"' : '';
+        return <<<CSS
+<style{$nonceAttr}>
 .pagination-container {
     display: flex;
     justify-content: space-between;
@@ -1014,8 +1017,9 @@ CSS;
      */
     public function getAjaxScript(): string
     {
-        return <<<'JS'
-<script>
+        $nonceAttr = $this->nonce ? ' nonce="' . $this->nonce . '"' : '';
+        return <<<JS
+<script{$nonceAttr}>
 document.addEventListener('DOMContentLoaded', function() {
     const loadMoreBtn = document.querySelector('.btn-load-more');
     if (!loadMoreBtn) return;

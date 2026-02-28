@@ -15,29 +15,77 @@ namespace Plugs\View;
 class Escaper
 {
     /**
-     * Escape for HTML body content.
+     * Escape for HTML body content. Deeply escapes arrays and object properties.
      * 
      * @param mixed $value
-     * @return string
+     * @param bool $doubleEncode
+     * @return mixed
      */
-    public static function html(mixed $value): string
+    public static function html(mixed $value, bool $doubleEncode = true): mixed
     {
-        return htmlspecialchars((string) $value, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
+        if (is_array($value)) {
+            $escaped = [];
+            foreach ($value as $key => $val) {
+                $escaped[$key] = self::html($val, $doubleEncode);
+            }
+            return $escaped;
+        }
+
+        if (is_object($value)) {
+            if (method_exists($value, '__toString')) {
+                return htmlspecialchars((string) $value, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8', $doubleEncode);
+            }
+            if (method_exists($value, 'toArray')) {
+                return self::html($value->toArray(), $doubleEncode);
+            }
+            if ($value instanceof \JsonSerializable) {
+                return self::html($value->jsonSerialize(), $doubleEncode);
+            }
+            return $value;
+        }
+
+        if ($value === null) {
+            return '';
+        }
+
+        return htmlspecialchars((string) $value, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8', $doubleEncode);
     }
 
     /**
-     * Escape for HTML attributes.
+     * Escape for HTML attributes. Deeply escapes arrays and object properties.
      * 
      * @param mixed $value
-     * @return string
+     * @param bool $doubleEncode
+     * @return mixed
      */
-    public static function attr(mixed $value): string
+    public static function attr(mixed $value, bool $doubleEncode = true): mixed
     {
+        if (is_array($value)) {
+            $escaped = [];
+            foreach ($value as $key => $val) {
+                $escaped[$key] = self::attr($val, $doubleEncode);
+            }
+            return $escaped;
+        }
+
+        if (is_object($value)) {
+            if (method_exists($value, '__toString')) {
+                return htmlspecialchars((string) $value, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8', $doubleEncode);
+            }
+            if (method_exists($value, 'toArray')) {
+                return self::attr($value->toArray(), $doubleEncode);
+            }
+            if ($value instanceof \JsonSerializable) {
+                return self::attr($value->jsonSerialize(), $doubleEncode);
+            }
+            return $value;
+        }
+
         if (empty($value) && $value !== '0' && $value !== 0) {
             return '';
         }
 
-        return htmlspecialchars((string) $value, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
+        return htmlspecialchars((string) $value, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8', $doubleEncode);
     }
 
     /**

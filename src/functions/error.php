@@ -18,9 +18,9 @@ if (!function_exists('renderDebugErrorPage')) {
     /**
      * Render debug error page with detailed information
      */
-    function renderDebugErrorPage(Throwable $e): void
+    function renderDebugErrorPage(Throwable $e, ?string $nonce = null): void
     {
-        (new HtmlErrorRenderer())->renderDebug($e);
+        (new HtmlErrorRenderer())->renderDebug($e, $nonce);
     }
 }
 
@@ -28,9 +28,9 @@ if (!function_exists('renderProductionErrorPage')) {
     /**
      * Render production error page without sensitive information
      */
-    function renderProductionErrorPage(Throwable $e, int $statusCode = 500): void
+    function renderProductionErrorPage(Throwable $e, int $statusCode = 500, ?string $nonce = null): void
     {
-        (new HtmlErrorRenderer())->renderProduction($e, $statusCode);
+        (new HtmlErrorRenderer())->renderProduction($e, $statusCode, $nonce);
     }
 }
 
@@ -38,8 +38,8 @@ if (!function_exists('getProductionErrorHtml')) {
     /**
      * Get the HTML content for a production error page.
      */
-    function getProductionErrorHtml(int $statusCode = 500, ?string $title = null, ?string $message = null): string
+    function getProductionErrorHtml(int $statusCode = 500, ?string $title = null, ?string $message = null, ?string $nonce = null): string
     {
-        return (new HtmlErrorRenderer())->getProductionHtml($statusCode);
+        return (new HtmlErrorRenderer())->getProductionHtml($statusCode, $nonce);
     }
 }

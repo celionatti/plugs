@@ -29,6 +29,20 @@ class ProfilerBar
         $durationClass = self::getDurationClass($duration);
         $statusClass = self::getStatusClass($statusCode);
 
+        // Fallback nonce retrieval if not passed
+        if ($nonce === null) {
+            try {
+                $container = \Plugs\Container\Container::getInstance();
+                if ($container && $container->bound('view')) {
+                    $viewEngine = $container->make('view');
+                    if (method_exists($viewEngine, 'getCspNonce')) {
+                        $nonce = $viewEngine->getCspNonce();
+                    }
+                }
+            } catch (\Throwable $e) {
+            }
+        }
+
         // Prepare full profile detail HTML
         $detailHtml = self::renderProfileDetails($profile, $nonce);
 
@@ -337,6 +351,7 @@ class ProfilerBar
      */
     protected static function renderProfileDetails(array $profile, ?string $nonce = null): string
     {
+        $nonceAttr = $nonce ? ' nonce="' . $nonce . '"' : '';
         ob_start();
 
         $totalDuration = $profile['duration'] ?? 0;
@@ -424,17 +439,17 @@ class ProfilerBar
 
         // Tab: Cache
         echo '<div id="tab-cache" class="plugs-dbg-tab-content" style="padding: 32px;">';
-        echo self::renderCacheTab($profile);
+        echo self::renderCacheTab($profile, $nonce);
         echo '</div>';
 
         // Tab: Events
         echo '<div id="tab-events" class="plugs-dbg-tab-content" style="padding: 32px;">';
-        echo self::renderEventsTab($profile);
+        echo self::renderEventsTab($profile, $nonce);
         echo '</div>';
 
         // Tab: Route, Request, App, Files, History, Config
-        echo '<div id="tab-route" class="plugs-dbg-tab-content" style="padding: 32px;">' . self::renderRouteTab($profile) . '</div>';
-        echo '<div id="tab-request" class="plugs-dbg-tab-content" style="padding: 32px;">' . self::renderRequestTab($profile) . '</div>';
+        echo '<div id="tab-route" class="plugs-dbg-tab-content" style="padding: 32px;">' . self::renderRouteTab($profile, $nonce) . '</div>';
+        echo '<div id="tab-request" class="plugs-dbg-tab-content" style="padding: 32px;">' . self::renderRequestTab($profile, $nonce) . '</div>';
 
         // Tab: App (Models & Views)
         echo '<div id="tab-app" class="plugs-dbg-tab-content" style="padding: 32px;">';
@@ -493,14 +508,16 @@ class ProfilerBar
         echo '</div>'; // End tab-app
         echo '<div id="tab-files" class="plugs-dbg-tab-content" style="padding: 32px;">' . self::renderFilesTab($profile, $nonce) . '</div>';
         echo '<div id="tab-history" class="plugs-dbg-tab-content" style="padding: 32px;">' . self::renderHistoryTab($nonce) . '</div>';
-        echo '<div id="tab-config" class="plugs-dbg-tab-content" style="padding: 32px;">' . self::renderConfigTab($profile) . '</div>';
+        echo '<div id="tab-config" class="plugs-dbg-tab-content" style="padding: 32px;">' . self::renderConfigTab($profile, $nonce) . '</div>';
 
         echo '</div></div>'; // End content and wrapper
 
         $dataJson = json_encode($data);
+        $jsonNonce = $nonce ?? '';
+        echo '<script' . $nonceAttr . '>';
         echo <<<JS
-<script{$nonceAttr}>
     (function() {
+        const data = {$dataJson};
         const toggleBtn = document.getElementById('plugs-profiler-toggle');
         if (toggleBtn) {
             toggleBtn.addEventListener('click', function() {
@@ -553,18 +570,25 @@ class ProfilerBar
         aiModal.innerHTML = `
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
                 <h3 style="margin:0; color:#a78bfa; font-size:18px; display:flex; align-items:center; gap:8px;">✨ <span>AI Insights</span></h3>
-                <button onclick="this.closest('#plugs-ai-insights-modal').style.display='none'" style="background:none; border:none; color:#64748b; cursor:pointer; font-size:20px;">✕</button>
+                <button class="plugs-ai-close-btn" style="background:none; border:none; color:#64748b; cursor:pointer; font-size:20px;">✕</button>
             </div>
             <div id="plugs-ai-content" style="line-height:1.6; font-size:14px; max-height:400px; overflow-y:auto; padding-right:8px; color: #cbd5e1;"></div>
             <div style="margin-top:24px; text-align:right;">
-                <button onclick="this.closest('#plugs-ai-insights-modal').style.display='none'" style="background:#334155; color:white; border:none; padding:8px 24px; border-radius:6px; cursor:pointer; font-weight:600;">Dismiss</button>
+                <button class="plugs-ai-dismiss-btn" style="background:#334155; color:white; border:none; padding:8px 24px; border-radius:6px; cursor:pointer; font-weight:600;">Dismiss</button>
             </div>
         `;
         document.body.appendChild(aiModal);
 
+        aiModal.querySelector('.plugs-ai-close-btn').addEventListener('click', function() {
+            aiModal.style.display = 'none';
+        });
+        aiModal.querySelector('.plugs-ai-dismiss-btn').addEventListener('click', function() {
+            aiModal.style.display = 'none';
+        });
+
         const showAiInsight = (title, content) => {
             aiModal.querySelector('h3 span').textContent = title;
-            document.getElementById('plugs-ai-content').innerHTML = content.replace(/\\n/g, '<br>').replace(/\\*\\*(.*?)\\*\\*/g, '<strong>$1</strong>');
+            document.getElementById('plugs-ai-content').innerHTML = content.replace(/\\\\n/g, '<br>').replace(/\\\\*\\\\*(.*?)\\\\*\\\\*/g, '<strong>$1</strong>');
             aiModal.style.display = 'block';
         };
 
@@ -582,7 +606,7 @@ class ProfilerBar
                     const response = await fetch('/plugs/profiler/analyze-request', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ profile: {$dataJson} })
+                        body: JSON.stringify({ profile: data })
                     });
                     const result = await response.json();
                     if (result.success) showAiInsight('Performance Analysis', result.analysis);
@@ -609,6 +633,9 @@ class ProfilerBar
         });
 
         const style = document.createElement('style');
+        if ('{$jsonNonce}') {
+            style.setAttribute('nonce', '{$jsonNonce}');
+        }
         style.textContent = '.plugs-dbg-animate-spin { animation: plugsDbgSpin 1s linear infinite; } @keyframes plugsDbgSpin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }';
         document.head.appendChild(style);
     })();
@@ -618,7 +645,7 @@ JS;
         return ob_get_clean();
     }
 
-    private static function renderTimelineTab(array $profile): string
+    private static function renderTimelineTab(array $profile, ?string $nonce = null): string
     {
         $timeline = $profile['timeline'] ?? [];
         if (empty($timeline))
@@ -706,7 +733,8 @@ JS;
 
         $html .= '</div>'; // End grid
 
-        $html .= '<script' . $nonceAttr . '>
+        $html .= '<script' . $nonceAttr . '>';
+        $html .= '
             document.getElementById("pbar-file-filter")?.addEventListener("input", function(e) {
                 const val = e.target.value.toLowerCase();
                 document.querySelectorAll(".pbar-file-item").forEach(el => {
@@ -747,7 +775,7 @@ JS;
         return $html . '</tbody></table></div></div>';
     }
 
-    private static function renderConfigTab(array $profile): string
+    private static function renderConfigTab(array $profile, ?string $nonce = null): string
     {
         $groups = [
             '🚀 Environment' => [
@@ -818,7 +846,7 @@ JS;
         return $html;
     }
 
-    private static function renderRouteTab(array $profile): string
+    private static function renderRouteTab(array $profile, ?string $nonce = null): string
     {
         $html = '<div style="padding:32px; background:rgba(255,255,255,0.02); border-radius:12px; margin:20px;">';
         $html .= '<h3 style="color:#60a5fa; margin-bottom:16px;">Route Information</h3>';
@@ -835,7 +863,7 @@ JS;
         return $html . '</table></div>';
     }
 
-    private static function renderRequestTab(array $profile): string
+    private static function renderRequestTab(array $profile, ?string $nonce = null): string
     {
         $request = $profile['request'] ?? [];
         $html = '<div class="plugs-request-dashboard" style="display: flex; flex-direction: column; gap: 32px;">';
@@ -908,7 +936,7 @@ JS;
         return str_ireplace('</body>', self::render($profile, $nonce) . '</body>', $html);
     }
 
-    private static function renderCacheTab(array $profile): string
+    private static function renderCacheTab(array $profile, ?string $nonce = null): string
     {
         $cache = $profile['cache'] ?? ['hits' => 0, 'misses' => 0, 'keys' => []];
         $total = $cache['hits'] + $cache['misses'];
@@ -950,7 +978,7 @@ JS;
         return $html;
     }
 
-    private static function renderEventsTab(array $profile): string
+    private static function renderEventsTab(array $profile, ?string $nonce = null): string
     {
         $events = $profile['events'] ?? [];
         $html = '<div class="plugs-events-dashboard">';

@@ -17,9 +17,10 @@ class HtmlErrorRenderer
      * Render a detailed debug error page.
      * 
      * @param Throwable $e
+     * @param string|null $nonce
      * @return void
      */
-    public function renderDebug(Throwable $e): void
+    public function renderDebug(Throwable $e, ?string $nonce = null): void
     {
         error_log($e->getMessage() . "\n" . $e->getTraceAsString());
         http_response_code(500);
@@ -48,9 +49,9 @@ class HtmlErrorRenderer
         $className = get_class($e);
         $shortClass = basename(str_replace('\\', '/', $className));
 
-        $html = $this->getDebugHeader($shortClass);
-        $html .= $this->getDebugBody($e, $className, $file, $line, $frames);
-        $html .= $this->getDebugFooter();
+        $html = $this->getDebugHeader($shortClass, $nonce);
+        $html .= $this->getDebugBody($e, $className, $file, $line, $frames, $nonce);
+        $html .= $this->getDebugFooter($nonce);
 
         echo $html;
     }
@@ -60,9 +61,10 @@ class HtmlErrorRenderer
      * 
      * @param Throwable $e
      * @param int $statusCode
+     * @param string|null $nonce
      * @return void
      */
-    public function renderProduction(Throwable $e, int $statusCode = 500): void
+    public function renderProduction(Throwable $e, int $statusCode = 500, ?string $nonce = null): void
     {
         error_log($e->getMessage() . "\n" . $e->getTraceAsString());
         http_response_code($statusCode);
@@ -71,21 +73,22 @@ class HtmlErrorRenderer
             header('Content-Type: text/html; charset=UTF-8');
         }
 
-        echo $this->getProductionHtml($statusCode);
+        echo $this->getProductionHtml($statusCode, $nonce);
     }
 
     /**
      * Get debug head/styles.
      */
-    protected function getDebugHeader(string $title): string
+    protected function getDebugHeader(string $title, ?string $nonce = null): string
     {
+        $nonceAttr = $nonce ? ' nonce="' . $nonce . '"' : '';
         return '<!DOCTYPE html>
 <html lang="en" class="dark">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Plugs &middot; ' . htmlspecialchars($title) . '</title>
-    <style>
+    <style' . $nonceAttr . '>
         .plugs-error-page {
             --bg-body: #080b12; --bg-sidebar: rgba(15, 23, 42, 0.95); --bg-card: rgba(30, 41, 59, 0.3);
             --bg-header: rgba(8, 11, 18, 0.9); --border-color: rgba(255, 255, 255, 0.08);
@@ -121,7 +124,7 @@ class HtmlErrorRenderer
     /**
      * Get debug body content.
      */
-    protected function getDebugBody(Throwable $e, string $className, string $file, int $line, array $frames): string
+    protected function getDebugBody(Throwable $e, string $className, string $file, int $line, array $frames, ?string $nonce = null): string
     {
         $html = '<div class="container">
         <aside class="sidebar">
@@ -131,7 +134,7 @@ class HtmlErrorRenderer
             $f = $frame['file'] ?? '{internal}';
             $l = $frame['line'] ?? '-';
             $method = ($frame['class'] ?? '') . ($frame['type'] ?? '') . $frame['function'];
-            $html .= '<li class="stack-item ' . $active . '" onclick="switchFrame(' . $index . ', this)" data-file="' . htmlspecialchars(basename($f)) . '" data-line="' . $l . '">
+            $html .= '<li class="stack-item ' . $active . '" data-index="' . $index . '" data-file="' . htmlspecialchars(basename($f)) . '" data-line="' . $l . '">
                 <div style="font-size: 0.8rem; color: var(--text-secondary);">' . htmlspecialchars(basename($f)) . ':' . $l . '</div>
                 <div style="color: var(--accent-primary); font-weight: 500;">' . htmlspecialchars($method) . '</div>
             </li>';
@@ -161,16 +164,21 @@ class HtmlErrorRenderer
     /**
      * Get debug footer/scripts.
      */
-    protected function getDebugFooter(): string
+    protected function getDebugFooter(?string $nonce = null): string
     {
-        return '<script>
-        function switchFrame(index, el) {
-            document.querySelectorAll(".stack-item").forEach(i => i.classList.remove("active"));
-            el.classList.add("active");
-            document.querySelectorAll(".code-viewer").forEach(v => v.classList.remove("active"));
-            document.getElementById("code-" + index).classList.add("active");
-            document.getElementById("active-location").textContent = el.getAttribute("data-file") + " | Line " + el.getAttribute("data-line");
-        }
+        $nonceAttr = $nonce ? ' nonce="' . $nonce . '"' : '';
+        return '<script' . $nonceAttr . '>
+        document.querySelectorAll(".stack-item").forEach(el => {
+            el.addEventListener("click", function() {
+                const index = this.getAttribute("data-index");
+                document.querySelectorAll(".stack-item").forEach(i => i.classList.remove("active"));
+                this.classList.add("active");
+                document.querySelectorAll(".code-viewer").forEach(v => v.classList.remove("active"));
+                const viewer = document.getElementById("code-" + index);
+                if (viewer) viewer.classList.add("active");
+                document.getElementById("active-location").textContent = this.getAttribute("data-file") + " | Line " + this.getAttribute("data-line");
+            });
+        });
     </script></body></html>';
     }
 
@@ -198,10 +206,11 @@ class HtmlErrorRenderer
     /**
      * Get production error page HTML.
      */
-    public function getProductionHtml(int $statusCode = 500): string
+    public function getProductionHtml(int $statusCode = 500, ?string $nonce = null): string
     {
         $titles = [404 => 'Not Found', 500 => 'Server Error'];
         $title = $titles[$statusCode] ?? 'Error';
-        return '<!DOCTYPE html><html><head><title>' . $statusCode . '</title><style>body{background:#080b12;color:#f8fafc;display:flex;align-items:center;justify-content:center;height:100vh;font-family:sans-serif;}h1{font-size:4rem;margin-bottom:1rem;}</style></head><body><div><h1>' . $statusCode . '</h1><p>' . $title . '</p></div></body></html>';
+        $nonceAttr = $nonce ? ' nonce="' . $nonce . '"' : '';
+        return '<!DOCTYPE html><html><head><title>' . $statusCode . '</title><style' . $nonceAttr . '>body{background:#080b12;color:#f8fafc;display:flex;align-items:center;justify-content:center;height:100vh;font-family:sans-serif;}h1{font-size:4rem;margin-bottom:1rem;}</style></head><body><div><h1>' . $statusCode . '</h1><p>' . $title . '</p></div></body></html>';
     }
 }

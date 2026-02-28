@@ -441,7 +441,7 @@ CSS;
     /**
      * Render styles once per page load
      */
-    protected static function renderStyles(array $options): string
+    protected static function renderStyles(array $options, ?string $nonce = null): string
     {
         if (self::$stylesRendered || !$options['include_styles']) {
             return '';
@@ -451,10 +451,11 @@ CSS;
 
         // Use custom CSS file if provided
         if (!empty($options['custom_css_path'])) {
-            return '<link rel="stylesheet" href="' . htmlspecialchars($options['custom_css_path'], ENT_QUOTES, 'UTF-8') . '">';
+            return '<link rel="stylesheet" href="' . htmlspecialchars($options['custom_css_path'], ENT_QUOTES, 'UTF-8') . '"' . ($nonce ? ' nonce="' . $nonce . '"' : '') . '>';
         }
 
-        return self::$defaultStyles;
+        $nonceAttr = $nonce ? ' nonce="' . $nonce . '"' : '';
+        return str_replace('<style>', "<style{$nonceAttr}>", self::$defaultStyles);
     }
 
     /**
@@ -470,7 +471,7 @@ CSS;
 
         $options = array_merge(self::$renderOptions, $options);
 
-        $html = self::renderStyles($options);
+        $html = self::renderStyles($options, $nonce);
 
         $containerClass = $options['container_class'];
         if ($options['position'] === 'static') {
@@ -597,7 +598,7 @@ CSS;
     /**
      * Render for specific type only
      */
-    public static function renderType(string $type, array $options = []): string
+    public static function renderType(string $type, array $options = [], ?string $nonce = null): string
     {
         $messages = self::get($type);
 
@@ -607,7 +608,7 @@ CSS;
 
         $options = array_merge(self::$renderOptions, $options);
 
-        $html = self::renderStyles($options);
+        $html = self::renderStyles($options, $nonce);
 
         $containerClass = $options['container_class'];
         if ($options['position'] === 'static') {

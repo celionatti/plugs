@@ -537,6 +537,9 @@ class PlugViewEngine implements ViewEngineInterface
         $data = array_merge($this->sharedData, $data);
         $data['view'] = $this;
         $data['__fragmentRenderer'] = $this->getFragmentRenderer();
+        if ($this->cspNonce !== null && !isset($data['cspNonce'])) {
+            $data['cspNonce'] = $this->cspNonce;
+        }
         $data = $this->applyComposers($view, $data);
 
         $viewFile = $isComponent
@@ -927,6 +930,10 @@ class PlugViewEngine implements ViewEngineInterface
             );
         }
 
+        if ($this->cspNonce !== null && !isset($data['cspNonce'])) {
+            $data['cspNonce'] = $this->cspNonce;
+        }
+
         // FIX: Pass both sections and stacks to parent
         $parentData = array_merge($data, [
             '__sections' => $sections,
@@ -962,6 +969,10 @@ class PlugViewEngine implements ViewEngineInterface
         $parentContent = file_get_contents($parentFile);
         $compiledParent = $this->getCompiler()->compile($parentContent);
         $compiledParent = $this->stripStrictTypesDeclaration($compiledParent);
+
+        if ($this->cspNonce !== null && !isset($data['cspNonce'])) {
+            $data['cspNonce'] = $this->cspNonce;
+        }
 
         // Pass both sections and stacks to parent
         $localVars = $this->sanitizeDataForExtract(array_merge($data, [

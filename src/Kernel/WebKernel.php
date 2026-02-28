@@ -29,6 +29,7 @@ class WebKernel extends AbstractKernel
 {
     protected array $middlewareLayers = [
         'security' => [
+            \Plugs\Http\Middleware\SecurityEngineMiddleware::class,
             PreventRequestsDuringMaintenance::class,
             SecurityHeadersMiddleware::class,
         ],
@@ -57,14 +58,10 @@ class WebKernel extends AbstractKernel
      */
     private function loadSecurityMiddleware(): void
     {
-        $securityConfig = config('security');
-
-        if ($securityConfig['security_shield']['enabled'] ?? false) {
-            // Insert shield right after the base security middleware
-            array_splice($this->middlewareLayers['security'], 2, 0, [
-                SecurityShieldMiddleware::class,
-            ]);
-        }
+        // SecurityShield is mandatory and enforced by default
+        array_splice($this->middlewareLayers['security'], 2, 0, [
+            SecurityShieldMiddleware::class,
+        ]);
 
         // CSRF is always part of web security
         $this->middlewareLayers['security'][] = CsrfMiddleware::class;
@@ -140,8 +137,9 @@ class WebKernel extends AbstractKernel
                 ], 404);
             }
 
+            $nonce = $request->getAttribute('csp_nonce');
             return ResponseFactory::html(
-                getProductionErrorHtml(404, 'Page Not Found', 'The requested page has vanished into the deep space of our server.'),
+                getProductionErrorHtml(404, 'Page Not Found', 'The requested page has vanished into the deep space of our server.', $nonce),
                 404
             );
         });

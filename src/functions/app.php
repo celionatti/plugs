@@ -316,7 +316,7 @@ if (!function_exists('e')) {
     /**
      * Escape HTML.
      */
-    function e($value): string
+    function e($value): mixed
     {
         return Escaper::html($value);
     }
