@@ -503,6 +503,24 @@ class Router
 
 
 
+    /**
+     * Get all registered routes.
+     *
+     * @return array<string, Route[]>
+     */
+    public function getRoutes(): array
+    {
+        $allRoutes = $this->routes;
+
+        foreach ($this->staticRoutes as $method => $routes) {
+            foreach ($routes as $path => $route) {
+                $allRoutes[$method][] = $route;
+            }
+        }
+
+        return $allRoutes;
+    }
+
     public function getRouteByName(string $name): ?Route
     {
         return $this->namedRoutes[$name] ?? null;
@@ -1692,13 +1710,6 @@ class Router
         return $this->patterns;
     }
 
-    /**
-     * Utility methods
-     */
-    public function getRoutes(): array
-    {
-        return $this->routes;
-    }
 
     public function getNamedRoutes(): array
     {

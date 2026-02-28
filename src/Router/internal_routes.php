@@ -52,6 +52,13 @@ $router->group(['prefix' => '_plugs'], function () use ($router) {
     $router->get('/health/liveness', [\Plugs\Http\Controllers\HealthController::class, 'liveness'])->name('plugs.health.liveness');
     $router->get('/health/readiness', [\Plugs\Http\Controllers\HealthController::class, 'readiness'])->name('plugs.health.readiness');
     $router->get('/health/dashboard', [\Plugs\Http\Controllers\HealthController::class, 'dashboard'])->name('plugs.health.dashboard');
+    $router->get('/health/logs', [\Plugs\Http\Controllers\HealthController::class, 'logs'])->name('plugs.health.logs');
+    $router->get('/health/database', [\Plugs\Http\Controllers\HealthController::class, 'database'])->name('plugs.health.database');
+    $router->get('/health/cache', [\Plugs\Http\Controllers\HealthController::class, 'cache_info'])->name('plugs.health.cache');
+    $router->get('/health/routes', [\Plugs\Http\Controllers\HealthController::class, 'route_map'])->name('plugs.health.routes');
+    $router->get('/health/dependencies', [\Plugs\Http\Controllers\HealthController::class, 'dependencies'])->name('plugs.health.dependencies');
+    $router->get('/health/security', [\Plugs\Http\Controllers\HealthController::class, 'security_audit'])->name('plugs.health.security');
+    $router->post('/health/ai-analyze', [\Plugs\Http\Controllers\HealthController::class, 'ai_analyze'])->name('plugs.health.ai_analyze');
 
     // Metrics (Prometheus-compatible)
     $router->get('/metrics', [\Plugs\Http\Controllers\MetricsController::class, 'prometheus'])->name('plugs.metrics');

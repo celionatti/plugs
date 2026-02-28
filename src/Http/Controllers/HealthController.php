@@ -5,8 +5,12 @@ declare(strict_types=1);
 namespace Plugs\Http\Controllers;
 
 use Plugs\Http\ResponseFactory;
+use Plugs\Database\Optimization\SlowQueryLogger;
+use Plugs\Cache\CacheManager;
+use Plugs\Router\Router;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
+use Throwable;
 
 /**
  * Health Check Controller.
@@ -239,6 +243,204 @@ class HealthController
             'k' => $value * 1024,
             default => $value,
         };
+    }
+
+    /**
+     * Get latest application logs.
+     */
+    public function logs(ServerRequestInterface $request): ResponseInterface
+    {
+        $logPath = storage_path('logs/plugs.log');
+        $logs = [];
+
+        if (file_exists($logPath)) {
+            $content = file($logPath);
+            $logs = array_slice($content, -100); // Last 100 lines
+            $logs = array_map(function ($line) {
+                // Basic log parsing [timestamp] Level: Message
+                preg_match('/^\[(.*?)\] (.*?): (.*)$/', $line, $matches);
+                if (count($matches) === 4) {
+                    return [
+                        'timestamp' => $matches[1],
+                        'level' => strtolower($matches[2]),
+                        'message' => $matches[3],
+                    ];
+                }
+                return ['message' => $line];
+            }, array_reverse($logs));
+        }
+
+        return ResponseFactory::json(['logs' => $logs]);
+    }
+
+    /**
+     * Get detailed database information.
+     */
+    public function database(ServerRequestInterface $request): ResponseInterface
+    {
+        $tables = [];
+        $slowQueries = [];
+
+        try {
+            // Get table sizes (MySQL specific)
+            if (function_exists('db')) {
+                $dbName = config('database.connections.mysql.database');
+                $result = db()->query("
+                    SELECT table_name AS name, 
+                           round(((data_length + index_length) / 1024 / 1024), 2) AS size_mb,
+                           table_rows AS rows
+                    FROM information_schema.TABLES 
+                    WHERE table_schema = '{$dbName}'
+                    ORDER BY (data_length + index_length) DESC
+                ");
+                $tables = $result->fetchAll();
+            }
+
+            // Get slow queries
+            $logger = new SlowQueryLogger();
+            $slowQueries = $logger->readLogs();
+        } catch (Throwable $e) {
+            // Silent fail for non-MySQL or permission issues
+        }
+
+        return ResponseFactory::json([
+            'tables' => $tables,
+            'slow_queries' => $slowQueries,
+        ]);
+    }
+
+    /**
+     * Get cache status and keys if possible.
+     */
+    public function cache_info(ServerRequestInterface $request): ResponseInterface
+    {
+        $stats = [
+            'driver' => config('cache.default', 'file'),
+            'hits' => 0,
+            'misses' => 0,
+            'keys_count' => 0,
+        ];
+
+        // Placeholder for driver-specific stats if we had them
+        return ResponseFactory::json($stats);
+    }
+
+    /**
+     * Get all registered routes.
+     */
+    public function route_map(ServerRequestInterface $request): ResponseInterface
+    {
+        $router = app(Router::class);
+        $routesRaw = $router->getRoutes();
+        $routes = [];
+
+        foreach ($routesRaw as $method => $methodRoutes) {
+            foreach ($methodRoutes as $route) {
+                $routes[] = [
+                    'method' => $method,
+                    'uri' => $route->getPath(),
+                    'name' => $route->getName(),
+                    'handler' => $this->formatHandler($route->getHandler()),
+                    'middleware' => $route->getMiddleware(),
+                ];
+            }
+        }
+
+        return ResponseFactory::json(['routes' => $routes]);
+    }
+
+    /**
+     * Get composer dependencies.
+     */
+    public function dependencies(ServerRequestInterface $request): ResponseInterface
+    {
+        $composerPath = base_path('composer.json');
+        $lockPath = base_path('composer.lock');
+        $packages = [];
+
+        if (file_exists($composerPath)) {
+            $json = json_decode(file_get_contents($composerPath), true);
+            $require = $json['require'] ?? [];
+            $requireDev = $json['require-dev'] ?? [];
+
+            foreach ($require as $name => $version) {
+                $packages[] = ['name' => $name, 'version' => $version, 'dev' => false];
+            }
+            foreach ($requireDev as $name => $version) {
+                $packages[] = ['name' => $name, 'version' => $version, 'dev' => true];
+            }
+        }
+
+        return ResponseFactory::json(['packages' => $packages]);
+    }
+
+    /**
+     * Run a basic security audit.
+     */
+    public function security_audit(ServerRequestInterface $request): ResponseInterface
+    {
+        $issues = [];
+        $score = 100;
+
+        // Check debug mode
+        if (config('app.debug', false)) {
+            $issues[] = ['severity' => 'warning', 'message' => 'Debug mode is enabled. Ensure this is disabled in production.'];
+            $score -= 20;
+        }
+
+        // Check folder permissions (basic check)
+        $storagePath = storage_path();
+        if (is_writable($storagePath)) {
+            // Good
+        } else {
+            $issues[] = ['severity' => 'critical', 'message' => 'Storage directory is not writable.'];
+            $score -= 50;
+        }
+
+        return ResponseFactory::json([
+            'score' => max(0, $score),
+            'issues' => $issues,
+        ]);
+    }
+
+    /**
+     * AI analysis of current health telemetry.
+     */
+    public function ai_analyze(ServerRequestInterface $request): ResponseInterface
+    {
+        if (!class_exists('\Plugs\AI\Facades\AI')) {
+            return ResponseFactory::json(['error' => 'AI module not found.'], 404);
+        }
+
+        $data = $this->detailed($request);
+        $telemetry = json_decode((string) $data->getBody(), true);
+
+        try {
+            $prompt = "Analyze the following system health telemetry and provide optimization suggestions:\n" . json_encode($telemetry, JSON_PRETTY_PRINT);
+            $analysis = \Plugs\AI\Facades\AI::ask($prompt);
+
+            return ResponseFactory::json(['analysis' => $analysis]);
+        } catch (Throwable $e) {
+            return ResponseFactory::json(['error' => 'AI analysis failed: ' . $e->getMessage()], 500);
+        }
+    }
+
+    /**
+     * Format route handler for display.
+     */
+    private function formatHandler($handler): string
+    {
+        if (is_string($handler)) {
+            return $handler;
+        }
+        if (is_array($handler)) {
+            $controller = is_object($handler[0]) ? get_class($handler[0]) : $handler[0];
+            return "{$controller}@{$handler[1]}";
+        }
+        if ($handler instanceof \Closure) {
+            return 'Closure';
+        }
+        return 'Unknown';
     }
 
     /**
