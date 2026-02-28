@@ -337,8 +337,8 @@ class Container implements ContainerInterface
 
             if ($parameter['isBuiltin']) {
                 // Check for contextual primitive binding
-                $concrete = end($this->buildStack);
-                if (isset($this->contextual[$concrete][$name])) {
+                $concrete = empty($this->buildStack) ? null : end($this->buildStack);
+                if ($concrete && isset($this->contextual[$concrete][$name])) {
                     $dependencies[] = $this->getContextualConcrete($this->contextual[$concrete][$name]);
                 } elseif ($parameter['hasDefaultValue']) {
                     $dependencies[] = $parameter['defaultValue'];
@@ -349,9 +349,13 @@ class Container implements ContainerInterface
                 // Resolve class dependency
                 $typeName = $parameter['type'];
 
+                if ($typeName === null) {
+                    throw new BindingResolutionException("Cannot resolve parameter [{$name}] with null type.");
+                }
+
                 // Check for contextual class binding
-                $concrete = end($this->buildStack);
-                if (isset($this->contextual[$concrete][$typeName])) {
+                $concrete = empty($this->buildStack) ? null : end($this->buildStack);
+                if ($concrete && isset($this->contextual[$concrete][$typeName])) {
                     $dependencies[] = $this->getContextualConcrete($this->contextual[$concrete][$typeName]);
                 } else {
                     $dependencies[] = $this->make($typeName);
@@ -402,7 +406,7 @@ class Container implements ContainerInterface
         }
 
         return $this->resolveDependencies(
-            $reflector->getParameters(),
+            $this->extractParameterMetadata($reflector->getParameters()),
             $primitives
         );
     }

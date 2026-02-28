@@ -404,6 +404,7 @@ if (!function_exists('extractFilesFromArray')) {
 $extraHelpers = [
     'async.php',
     'cache.php',
+    'database.php',
     'form.php',
     'input.php',
     'skeleton_helper.php',

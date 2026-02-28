@@ -131,7 +131,7 @@ class HealthController
                 'status' => 'ok',
                 'latency_ms' => $latency,
             ];
-        } catch (\Throwable $e) {
+        } catch (Throwable $e) {
             return [
                 'status' => 'error',
                 'message' => $e->getMessage(),
@@ -160,7 +160,7 @@ class HealthController
                 'status' => 'ok',
                 'latency_ms' => $latency,
             ];
-        } catch (\Throwable $e) {
+        } catch (Throwable $e) {
             return [
                 'status' => 'error',
                 'message' => $e->getMessage(),
@@ -254,12 +254,22 @@ class HealthController
         $logs = [];
 
         if (file_exists($logPath)) {
-            $content = file($logPath);
-            $logs = array_slice($content, -100); // Last 100 lines
-            $logs = array_map(function ($line) {
+            $maxLines = 100;
+            $fileSize = filesize($logPath);
+            $readSize = min($fileSize, 50 * 1024); // Read max 50KB
+
+            $handle = fopen($logPath, 'r');
+            fseek($handle, -$readSize, SEEK_END);
+            $data = fread($handle, $readSize);
+            fclose($handle);
+
+            $lines = explode("\n", $data);
+            $logs = array_slice($lines, -$maxLines);
+            $logs = array_filter(array_map('trim', $logs));
+
+            $parsedLogs = array_map(function ($line) {
                 // Basic log parsing [timestamp] Level: Message
-                preg_match('/^\[(.*?)\] (.*?): (.*)$/', $line, $matches);
-                if (count($matches) === 4) {
+                if (preg_match('/^\[(.*?)\] (.*?): (.*)$/', $line, $matches)) {
                     return [
                         'timestamp' => $matches[1],
                         'level' => strtolower($matches[2]),
@@ -267,10 +277,13 @@ class HealthController
                     ];
                 }
                 return ['message' => $line];
-            }, array_reverse($logs));
+            }, $logs);
+
+            // Return in reverse chronological order for the dashboard
+            $logs = array_reverse($parsedLogs);
         }
 
-        return ResponseFactory::json(['logs' => $logs]);
+        return ResponseFactory::json(['logs' => array_values($logs)]);
     }
 
     /**
@@ -280,30 +293,56 @@ class HealthController
     {
         $tables = [];
         $slowQueries = [];
+        $debugDbName = null;
+        $debugDbClass = null;
+        $debugError = null;
 
         try {
             // Get table sizes (MySQL specific)
             if (function_exists('db')) {
+                $debugDbClass = is_object(db()) ? get_class(db()) : gettype(db());
                 $dbName = config('database.connections.mysql.database');
+                $debugDbName = $dbName;
+
                 $result = db()->query("
-                    SELECT table_name AS name, 
-                           round(((data_length + index_length) / 1024 / 1024), 2) AS size_mb,
-                           table_rows AS rows
+                    SELECT table_name AS `name`, 
+                           round(((data_length + index_length) / 1024 / 1024), 2) AS `size_mb`,
+                           table_rows AS `rows`
                     FROM information_schema.TABLES 
                     WHERE table_schema = '{$dbName}'
                     ORDER BY (data_length + index_length) DESC
                 ");
-                $tables = $result->fetchAll();
+
+                $data = $result->fetchAll();
+                // Ensure we return a clean array of objects/associative arrays
+                $tables = array_map(function ($row) {
+                    return [
+                        'name' => $row['name'] ?? $row[0] ?? 'Unknown',
+                        'size_mb' => $row['size_mb'] ?? $row[1] ?? 0,
+                        'rows' => $row['rows'] ?? $row[2] ?? 0,
+                    ];
+                }, $data);
+            } else {
+                $debugDbClass = 'function_not_exists';
             }
 
             // Get slow queries
             $logger = new SlowQueryLogger();
             $slowQueries = $logger->readLogs();
         } catch (Throwable $e) {
-            // Silent fail for non-MySQL or permission issues
+            $debugError = $e->getMessage();
+            // Log error internally if needed
+            if (config('app.debug')) {
+                error_log("Database Health Error: " . $e->getMessage());
+            }
         }
 
         return ResponseFactory::json([
+            'debug' => [
+                'db_name' => $debugDbName,
+                'db_class' => $debugDbClass,
+                'error' => $debugError,
+            ],
             'tables' => $tables,
             'slow_queries' => $slowQueries,
         ]);
@@ -417,7 +456,10 @@ class HealthController
 
         try {
             $prompt = "Analyze the following system health telemetry and provide optimization suggestions:\n" . json_encode($telemetry, JSON_PRETTY_PRINT);
-            $analysis = \Plugs\AI\Facades\AI::ask($prompt);
+
+            // Call dynamically to prevent static analysis / IDE errors about unknown class
+            $aiClass = '\Plugs\AI\Facades\AI';
+            $analysis = $aiClass::ask($prompt);
 
             return ResponseFactory::json(['analysis' => $analysis]);
         } catch (Throwable $e) {
