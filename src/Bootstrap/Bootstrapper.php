@@ -81,6 +81,13 @@ class Bootstrapper
             $this->wireFallback();
         }
 
+        // Phase 8: Emit ApplicationBootstrapped event
+        if ($this->container->has('events')) {
+            $this->container->make('events')->dispatch(
+                new \Plugs\Event\Core\ApplicationBootstrapped($this->app)
+            );
+        }
+
         return $this->app;
     }
 

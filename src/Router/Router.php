@@ -724,6 +724,13 @@ class Router
         $this->currentRequest = $request;
         setCurrentRequest($request);
 
+        // Emit RouteMatched event
+        if (function_exists('app') && app()->has('events')) {
+            app('events')->dispatch(
+                new \Plugs\Event\Core\RouteMatched($request, $route)
+            );
+        }
+
         // Merge global and route middleware
         $allMiddleware = array_merge($this->globalMiddleware, $route->getMiddleware());
 
@@ -828,7 +835,23 @@ class Router
             $reflection = new ReflectionFunction($handler);
             $parameters = $this->resolveMethodParameters($reflection, $request);
 
-            return $handler(...$parameters);
+            // Emit ActionExecuting event (Closure)
+            if (function_exists('app') && app()->has('events')) {
+                app('events')->dispatch(
+                    new \Plugs\Event\Core\ActionExecuting($request, 'Closure', 'invoke', $parameters)
+                );
+            }
+
+            $response = $handler(...$parameters);
+
+            // Emit ActionExecuted event
+            if (function_exists('app') && app()->has('events')) {
+                app('events')->dispatch(
+                    new \Plugs\Event\Core\ActionExecuted($request, $this->normalizeResponse($response))
+                );
+            }
+
+            return $response;
         }
 
         // This handles array callables like [$object, 'method']
@@ -836,7 +859,23 @@ class Router
             $reflection = new ReflectionMethod($handler[0], $handler[1]);
             $parameters = $this->resolveMethodParameters($reflection, $request);
 
-            return $handler(...$parameters);
+            // Emit ActionExecuting event (Array Callable)
+            if (function_exists('app') && app()->has('events')) {
+                app('events')->dispatch(
+                    new \Plugs\Event\Core\ActionExecuting($request, $handler[0], $handler[1], $parameters)
+                );
+            }
+
+            $response = $handler(...$parameters);
+
+            // Emit ActionExecuted event
+            if (function_exists('app') && app()->has('events')) {
+                app('events')->dispatch(
+                    new \Plugs\Event\Core\ActionExecuted($request, $this->normalizeResponse($response))
+                );
+            }
+
+            return $response;
         }
 
         // Fallback for simple callables
@@ -897,7 +936,23 @@ class Router
         $reflection = new ReflectionMethod($instance, $method);
         $parameters = $this->resolveMethodParameters($reflection, $request);
 
-        return $instance->$method(...$parameters);
+        // Emit ActionExecuting event
+        if (function_exists('app') && app()->has('events')) {
+            app('events')->dispatch(
+                new \Plugs\Event\Core\ActionExecuting($request, $instance, $method, $parameters)
+            );
+        }
+
+        $response = $instance->$method(...$parameters);
+
+        // Emit ActionExecuted event
+        if (function_exists('app') && app()->has('events')) {
+            app('events')->dispatch(
+                new \Plugs\Event\Core\ActionExecuted($request, $this->normalizeResponse($response))
+            );
+        }
+
+        return $response;
     }
 
     /**

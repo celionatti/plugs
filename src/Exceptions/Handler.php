@@ -96,6 +96,13 @@ class Handler
             return;
         }
 
+        // Emit ExceptionThrown event
+        if ($this->container->has('events')) {
+            $this->container->make('events')->dispatch(
+                new \Plugs\Event\Core\ExceptionThrown($e)
+            );
+        }
+
         try {
             $logger = $this->container->make(LoggerInterface::class);
             $logger->error($e->getMessage(), [

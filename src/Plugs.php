@@ -140,6 +140,13 @@ class Plugs
         // Set global current request early for helpers and diagnostics
         $GLOBALS['__current_request'] = $request;
 
+        // Emit RequestReceived event
+        if ($this->container->has('events')) {
+            $this->container->make('events')->dispatch(
+                new \Plugs\Event\Core\RequestReceived($request)
+            );
+        }
+
         try {
             // Set the fallback handler before handling the request
             $this->dispatcher->setFallbackHandler($this->fallbackHandler);
@@ -240,6 +247,13 @@ class Plugs
             return;
         }
 
+        // Emit ResponseSending event
+        if ($this->container->has('events')) {
+            $this->container->make('events')->dispatch(
+                new \Plugs\Event\Core\ResponseSending($response)
+            );
+        }
+
         // Send status line
         $statusCode = $response->getStatusCode();
         $reasonPhrase = $response->getReasonPhrase();
@@ -267,6 +281,13 @@ class Plugs
             echo gzencode($content, 6);
         } else {
             echo $response->getBody();
+        }
+
+        // Emit ResponseSent event
+        if ($this->container->has('events')) {
+            $this->container->make('events')->dispatch(
+                new \Plugs\Event\Core\ResponseSent($response)
+            );
         }
     }
 

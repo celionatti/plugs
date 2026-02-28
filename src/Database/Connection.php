@@ -1112,6 +1112,13 @@ class Connection
             }
         }
 
+        // Emit QueryExecuted event
+        if (function_exists('app') && app()->has('events')) {
+            app('events')->dispatch(
+                new \Plugs\Event\Core\QueryExecuted($sql, $params, $time, $this->connectionName)
+            );
+        }
+
         $threshold = 0.1; // Default 100ms
         $shouldAlert = true;
 
