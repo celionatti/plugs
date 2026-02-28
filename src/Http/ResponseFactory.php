@@ -99,8 +99,9 @@ class ResponseFactory
     /**
      * Create a text response
      */
-    public static function text(string $text, int $statusCode = 200, array $headers = []): ResponseInterface
+    public static function text($text, int $statusCode = 200, array $headers = []): ResponseInterface
     {
+        $text = (string) $text;
         $body = new Stream(fopen('php://temp', 'w+'));
         $body->write($text);
         $body->rewind();
@@ -117,8 +118,9 @@ class ResponseFactory
     /**
      * Create an HTML response
      */
-    public static function html(string $html, int $statusCode = 200, array $headers = []): ResponseInterface
+    public static function html($html, int $statusCode = 200, array $headers = []): ResponseInterface
     {
+        $html = (string) $html;
         $body = new Stream(fopen('php://temp', 'w+'));
         $body->write($html);
         $body->rewind();

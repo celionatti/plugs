@@ -25,7 +25,7 @@ class ProfilerController
 
         $profiles = Profiler::getProfiles(50);
 
-        return ResponseFactory::html(view('debug.profiler.index', ['profiles' => $profiles]));
+        return view('debug.profiler.index', ['profiles' => $profiles]);
     }
 
     /**
@@ -42,7 +42,7 @@ class ProfilerController
             abort(404, 'Profile not found');
         }
 
-        return ResponseFactory::html(view('debug.profiler.show', ['profile' => $profile]));
+        return view('debug.profiler.show', ['profile' => $profile]);
     }
 
     /**
