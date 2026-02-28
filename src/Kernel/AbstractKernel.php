@@ -96,7 +96,7 @@ abstract class AbstractKernel implements KernelInterface
      */
     public function terminate(): void
     {
-        // Base implementation — subclasses can override
+        $this->container->forgetScoped();
     }
 
     /**

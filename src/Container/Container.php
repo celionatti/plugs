@@ -27,8 +27,9 @@ class Container implements ContainerInterface
     private array $instances = [];
     private array $scopedInstances = [];
     private array $aliases = [];
-    private array $contextual = [];
-    private array $reflectionCache = [];
+    protected array $contextual = [];
+    protected array $reflectionCache = [];
+    protected array $buildStack = [];
 
     private ?Inspector $inspector = null;
 
@@ -95,6 +96,18 @@ class Container implements ContainerInterface
     }
 
     /**
+     * Bind a lazy proxy for the given abstract.
+     */
+    public function lazy(string $abstract, $concrete = null): void
+    {
+        $this->bind($abstract, function ($container) use ($abstract, $concrete) {
+            return new LazyProxy(function () use ($container, $abstract, $concrete) {
+                return $container->build($concrete ?? $abstract);
+            });
+        });
+    }
+
+    /**
      * Bind an existing instance
      */
     public function instance(string $abstract, $instance): void
@@ -108,6 +121,30 @@ class Container implements ContainerInterface
     public function alias(string $abstract, string $alias): void
     {
         $this->aliases[$alias] = $abstract;
+    }
+
+    /**
+     * Define a contextual binding.
+     */
+    public function when(string $concrete): ContextualBindingBuilder
+    {
+        return new ContextualBindingBuilder($this, $this->getAlias($concrete));
+    }
+
+    /**
+     * Add a contextual binding to the container.
+     */
+    public function addContextualBinding(string $concrete, string $abstract, $implementation): void
+    {
+        $this->contextual[$concrete][$abstract] = $implementation;
+    }
+
+    /**
+     * Resolve an alias to its abstract name.
+     */
+    protected function getAlias(string $abstract): string
+    {
+        return isset($this->aliases[$abstract]) ? $this->getAlias($this->aliases[$abstract]) : $abstract;
     }
 
     /**
@@ -158,8 +195,12 @@ class Container implements ContainerInterface
             // Get concrete implementation
             $concrete = $this->getConcrete($abstract);
 
+            $this->buildStack[] = $abstract;
+
             // Build the object
             $object = $this->build($concrete, $parameters);
+
+            array_pop($this->buildStack);
 
             // Store as singleton if needed
             if (isset($this->bindings[$abstract]) && $this->bindings[$abstract]['shared']) {
@@ -279,8 +320,11 @@ class Container implements ContainerInterface
                 || $type->isBuiltin();
 
             if ($isBuiltin) {
-                // Handle primitive types
-                if ($parameter->isDefaultValueAvailable()) {
+                // Check for contextual primitive binding
+                $concrete = end($this->buildStack);
+                if (isset($this->contextual[$concrete][$name])) {
+                    $dependencies[] = $this->getContextualConcrete($this->contextual[$concrete][$name]);
+                } elseif ($parameter->isDefaultValueAvailable()) {
                     $dependencies[] = $parameter->getDefaultValue();
                 } else {
                     throw BindingResolutionException::unresolvedPrimitive($name);
@@ -289,8 +333,13 @@ class Container implements ContainerInterface
                 // Resolve class dependency
                 $typeName = $type->getName();
 
-                // OPTIMIZATION: Resolve only once
-                $dependencies[] = $this->make($typeName);
+                // Check for contextual class binding
+                $concrete = end($this->buildStack);
+                if (isset($this->contextual[$concrete][$typeName])) {
+                    $dependencies[] = $this->getContextualConcrete($this->contextual[$concrete][$typeName]);
+                } else {
+                    $dependencies[] = $this->make($typeName);
+                }
             }
         }
 
@@ -386,19 +435,22 @@ class Container implements ContainerInterface
     }
 
     /**
-     * Remove a shared instance from the container.
+     * Get the contextual concrete search for a given abstract.
      */
-    public function forgetInstance(string $abstract): void
+    protected function getContextualConcrete($implementation)
     {
-        unset($this->instances[$abstract]);
+        if ($implementation instanceof Closure) {
+            return $implementation($this);
+        }
+
+        return is_string($implementation) ? $this->make($implementation) : $implementation;
     }
 
     /**
-     * Clear all shared instances from the container.
+     * Clear all scoped instances from the container.
      */
-    public function forgetInstances(): void
+    public function forgetScoped(): void
     {
-        $this->instances = [];
         $this->scopedInstances = [];
     }
 
