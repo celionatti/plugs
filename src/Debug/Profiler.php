@@ -157,6 +157,7 @@ class Profiler
             'database' => $dbReport,
             'cache' => $this->cache,
             'events' => $this->events,
+            'core_timeline' => \Plugs\AI\Metadata\EventTimelineRegistry::getTimeline(),
             'timeline' => $this->timeline,
             'views' => $this->views,
             'logs' => $this->logs,

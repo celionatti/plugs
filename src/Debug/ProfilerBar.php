@@ -402,6 +402,8 @@ class ProfilerBar
         echo '<button class="plugs-dbg-tab-btn" data-tab="tab-queries">🔮 Queries (' . count($data['queries']) . ')</button>';
         echo '<button class="plugs-dbg-tab-btn" data-tab="tab-cache">💾 Cache (' . ($cacheHits + $cacheMisses) . ')</button>';
         echo '<button class="plugs-dbg-tab-btn" data-tab="tab-events">⚡ Events (' . $eventCount . ')</button>';
+        echo '<button class="plugs-dbg-tab-btn" data-tab="tab-ai-aware">🤖 AI Aware</button>';
+        echo '<button class="plugs-dbg-tab-btn" data-tab="tab-container">🧠 Container</button>';
         echo '<button class="plugs-dbg-tab-btn" data-tab="tab-route">🛣️ Route</button>';
         echo '<button class="plugs-dbg-tab-btn" data-tab="tab-request">🌐 Request</button>';
         echo '<button class="plugs-dbg-tab-btn" data-tab="tab-app">🧠 Application</button>';
@@ -445,6 +447,16 @@ class ProfilerBar
         // Tab: Events
         echo '<div id="tab-events" class="plugs-dbg-tab-content" style="padding: 32px;">';
         echo self::renderEventsTab($profile, $nonce);
+        echo '</div>';
+
+        // Tab: AI Aware
+        echo '<div id="tab-ai-aware" class="plugs-dbg-tab-content" style="padding: 32px;">';
+        echo self::renderAiAwareTab($profile, $nonce);
+        echo '</div>';
+
+        // Tab: Container
+        echo '<div id="tab-container" class="plugs-dbg-tab-content" style="padding: 32px;">';
+        echo self::renderContainerTab($profile, $nonce);
         echo '</div>';
 
         // Tab: Route, Request, App, Files, History, Config
@@ -645,19 +657,113 @@ JS;
         return ob_get_clean();
     }
 
+    private static function renderAiAwareTab(array $profile, ?string $nonce = null): string
+    {
+        $registry = new \Plugs\AI\Metadata\MetadataRegistry(\Plugs\Container\Container::getInstance());
+        $snapshot = $registry->getSnapshot();
+
+        $html = '<div class="pbar-ai-aware-dashboard">';
+        $html .= '<h3 style="color: #a78bfa; margin-bottom: 24px;">🤖 AI-Aware System Metadata</h3>';
+
+        $html .= '<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(450px, 1fr)); gap: 24px;">';
+
+        // Routes Section
+        $html .= '<div style="background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.05); border-radius: 12px; padding: 20px;">';
+        $html .= '<h4 style="color: #60a5fa; margin-bottom: 16px; border-bottom: 1px solid rgba(96, 165, 250, 0.2); padding-bottom: 8px;">🛣️ Route Map</h4>';
+        $html .= '<div style="max-height: 400px; overflow-y: auto; font-family: monospace; font-size: 11px;">';
+        foreach ($snapshot['routes'] as $key => $route) {
+            $routeHandler = $route['handler'] ?? 'Closure';
+            $html .= sprintf('<div style="padding: 6px; border-bottom: 1px solid rgba(255,255,255,0.03); color: #94a3b8;"><span style="color: #f8fafc;">%s</span><br><span style="color: #64748b;">Handler:</span> %s</div>', $key, htmlspecialchars(is_string($routeHandler) ? $routeHandler : 'Closure'));
+        }
+        $html .= '</div></div>';
+
+        // Database Schema Section
+        $html .= '<div style="background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.05); border-radius: 12px; padding: 20px;">';
+        $html .= '<h4 style="color: #10b981; margin-bottom: 16px; border-bottom: 1px solid rgba(16, 185, 129, 0.2); padding-bottom: 8px;">🔮 Database Schema</h4>';
+        $html .= '<div style="max-height: 400px; overflow-y: auto; font-family: monospace; font-size: 11px;">';
+        foreach ($snapshot['database'] as $table => $meta) {
+            $html .= sprintf('<div style="padding: 8px; border-bottom: 1px solid rgba(255,255,255,0.03); color: #94a3b8;"><strong style="color: #f8fafc;">%s</strong><br><span style="color: #64748b;">Cols:</span> %d | <span style="color: #64748b;">Idx:</span> %d</div>', $table, count($meta['columns']), count($meta['indexes']));
+        }
+        $html .= '</div></div>';
+
+        $html .= '</div></div>';
+        return $html;
+    }
+
+    private static function renderContainerTab(array $profile, ?string $nonce = null): string
+    {
+        $graph = \Plugs\Container\Container::getInstance()->getGraph();
+
+        $html = '<div class="pbar-container-dashboard">';
+        $html .= '<h3 style="color: #60a5fa; margin-bottom: 24px;">🧠 Service Container Graph</h3>';
+
+        $html .= '<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); gap: 24px;">';
+
+        // Bindings
+        $html .= '<div style="background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.05); border-radius: 12px; padding: 20px;">';
+        $html .= '<h4 style="color: #a78bfa; margin-bottom: 16px; border-bottom: 1px solid rgba(167, 139, 250, 0.2); padding-bottom: 8px;">🔗 Registered Bindings</h4>';
+        $html .= '<div style="max-height: 400px; overflow-y: auto; font-family: monospace; font-size: 11px;">';
+        foreach ($graph['bindings'] as $abstract => $binding) {
+            $shared = $binding['shared'] ? ' <span style="color: #10b981;">[Shared]</span>' : '';
+            $html .= sprintf('<div style="padding: 6px; border-bottom: 1px solid rgba(255,255,255,0.03); color: #94a3b8;"><span style="color: #f8fafc;">%s</span>%s</div>', $abstract, $shared);
+        }
+        $html .= '</div></div>';
+
+        // Instances
+        $html .= '<div style="background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.05); border-radius: 12px; padding: 20px;">';
+        $html .= '<h4 style="color: #3b82f6; margin-bottom: 16px; border-bottom: 1px solid rgba(59, 130, 246, 0.2); padding-bottom: 8px;">⚡ Resolved Instances</h4>';
+        $html .= '<div style="max-height: 400px; overflow-y: auto; font-family: monospace; font-size: 11px;">';
+        foreach ($graph['instances'] as $instance) {
+            $html .= sprintf('<div style="padding: 6px; border-bottom: 1px solid rgba(255,255,255,0.03); color: #f8fafc;">%s</div>', $instance);
+        }
+        foreach ($graph['scoped'] as $instance) {
+            $html .= sprintf('<div style="padding: 6px; border-bottom: 1px solid rgba(255,255,255,0.03); color: #f8fafc;">%s <span style="color: #f59e0b;">[Scoped]</span></div>', $instance);
+        }
+        $html .= '</div></div>';
+
+        $html .= '</div></div>';
+        return $html;
+    }
+
     private static function renderTimelineTab(array $profile, ?string $nonce = null): string
     {
         $timeline = $profile['timeline'] ?? [];
-        if (empty($timeline))
+        $coreTimeline = $profile['core_timeline'] ?? [];
+
+        if (empty($timeline) && empty($coreTimeline)) {
             return '<p style="color:#94a3b8;">No timeline data available.</p>';
+        }
+
         $totalDuration = max($profile['duration'] ?? 1, 1);
-        $html = '<div class="timeline-v2" style="display:flex; flex-direction:column; gap:16px;">';
+        $html = '<div class="timeline-v2" style="display:flex; flex-direction:column; gap:12px;">';
+
+        // 1. Render Core Framework Events (High-Res)
+        if (!empty($coreTimeline)) {
+            $html .= '<h4 style="color: #a78bfa; font-size: 14px; margin-bottom: 8px; border-bottom: 1px solid rgba(167, 139, 250, 0.2); padding-bottom: 4px;">⚡ Core Lifecycle Flow</h4>';
+            foreach ($coreTimeline as $entry) {
+                $offsetPercent = min(100, ($entry['offset_ms'] / $totalDuration) * 100);
+                $eventName = basename(str_replace('\\', '/', $entry['event']));
+
+                $html .= sprintf('<div class="timeline-row" style="display:flex; align-items:center; gap:16px; padding: 4px 12px;">
+                    <div style="width:220px; font-size:11px;"><span style="color:#cbd5e1;">%s</span></div>
+                    <div style="flex:1; height:4px; background:rgba(255,255,255,0.03); border-radius:4px; position:relative;">
+                        <div style="position:absolute; width:8px; height:8px; background:#a78bfa; border-radius:50%%; top:-2px; left:%s%%; box-shadow:0 0 8px #a78bfa;" title="%s ms"></div>
+                    </div>
+                    <div style="width:60px; font-size:10px; color:#64748b; text-align:right;">%s ms</div>
+                </div>', $eventName, number_format($offsetPercent, 2), $entry['offset_ms'], number_format($entry['offset_ms'], 2));
+            }
+        }
+
+        // 2. Render Profiling Segments
+        $html .= '<h4 style="color: #60a5fa; font-size: 14px; margin-top: 24px; margin-bottom: 8px; border-bottom: 1px solid rgba(96, 165, 250, 0.2); padding-bottom: 4px;">⏱️ Performance Segments</h4>';
         foreach ($timeline as $name => $segment) {
             if (!isset($segment['duration']))
                 continue;
+
             $percentage = min(100, ($segment['duration'] / $totalDuration) * 100);
             $relativeStart = ($segment['start'] - ($profile['timeline']['total']['start'] ?? $segment['start'])) * 1000;
             $offsetPercent = min(100, ($relativeStart / $totalDuration) * 100);
+
             $color = '#8b5cf6';
             if (str_contains(strtolower($name), 'middleware'))
                 $color = '#f59e0b';
@@ -665,12 +771,16 @@ JS;
                 $color = '#3b82f6';
             if (str_contains(strtolower($name), 'view'))
                 $color = '#10b981';
-            $html .= sprintf('<div class="timeline-row" style="display:flex; align-items:center; gap:24px; padding: 12px; border-radius: 8px;">
-                <div style="width:240px; font-size:13px;"><span style="color:#f8fafc; font-weight:500;">%s</span><br><span style="color:#94a3b8; font-size:11px;">%s ms</span></div>
-                <div style="flex:1; height:10px; background:rgba(255,255,255,0.05); border-radius:10px; position:relative;">
-                    <div style="position:absolute; height:100%%; background:%s; border-radius:10px; width:%s%%; left:%s%%; box-shadow:0 0 10px %s;"></div>
-                </div></div>', htmlspecialchars($segment['label']), number_format($segment['duration'], 2), $color, number_format($percentage, 2), number_format($offsetPercent, 2), $color);
+
+            $html .= sprintf('<div class="timeline-row" style="display:flex; align-items:center; gap:16px; padding: 8px 12px; border-radius: 8px; background: rgba(255,255,255,0.01);">
+                <div style="width:220px; font-size:12px;"><span style="color:#f8fafc; font-weight:500;">%s</span></div>
+                <div style="flex:1; height:8px; background:rgba(255,255,255,0.05); border-radius:8px; position:relative;">
+                    <div style="position:absolute; height:100%%; background:%s; border-radius:8px; width:%s%%; left:%s%%; box-shadow:0 0 10px %s33;"></div>
+                </div>
+                <div style="width:60px; font-size:11px; color:#94a3b8; text-align:right;">%s ms</div>
+            </div>', htmlspecialchars($segment['label']), $color, number_format($percentage, 2), number_format($offsetPercent, 2), substr($color, 1), number_format($segment['duration'], 2));
         }
+
         return $html . '</div>';
     }
 

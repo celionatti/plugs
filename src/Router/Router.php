@@ -2063,11 +2063,18 @@ class Router
 
                     // Add handler information specifically
                     $handler = $route->getHandler();
+                    $map[$key]['handler'] = match (true) {
+                        is_string($handler) => $handler,
+                        is_array($handler) => implode('@', $handler),
+                        $handler instanceof Closure => 'Closure',
+                        default => 'Unknown'
+                    };
+
                     if (is_string($handler)) {
                         $map[$key]['handler_type'] = 'string';
                     } elseif (is_array($handler)) {
                         $map[$key]['handler_type'] = 'controller';
-                    } elseif ($handler instanceof \Closure) {
+                    } elseif ($handler instanceof Closure) {
                         $map[$key]['handler_type'] = 'closure';
                     } else {
                         $map[$key]['handler_type'] = 'unknown';
