@@ -212,13 +212,41 @@ trait CompilesComponents
     }
 
     /**
-     * Compile @csp directive for automatic Content-Security-Policy meta tag
+     * Compile @csp directive for automatic Content-Security-Policy meta tag.
+     * Dynamically builds the CSP meta tag using the nonce and config.
      */
     protected function compileCsp(string $content): string
     {
         return preg_replace(
             '/@csp\s*/',
-            '<?php echo \'<meta http-equiv="Content-Security-Policy" content="default-src \\\'self\\\'; script-src \\\'self\\\' \\\'nonce-\' . ($__cspNonce ?? "") . \'\\\'; style-src \\\'self\\\' \\\'unsafe-inline\\\'; img-src \\\'self\\\' data:;">\'; ?>',
+            '<?php echo (function() {
+                $nonce = $cspNonce ?? "";
+                $scriptSrc = "\'self\'";
+                $styleSrc = "\'self\' \'unsafe-inline\'";
+                if ($nonce) {
+                    $scriptSrc .= " \'nonce-" . $nonce . "\'";
+                }
+                // Add configured allowed domains
+                if (function_exists("config")) {
+                    $domains = config("security.csp.allowed_domains", []);
+                    if (!empty($domains)) {
+                        $domainStr = " " . implode(" ", $domains);
+                        $scriptSrc .= $domainStr;
+                        $styleSrc .= $domainStr;
+                    }
+                }
+                return \'<meta http-equiv="Content-Security-Policy" content="\'
+                    . "default-src \'self\'; "
+                    . "script-src " . $scriptSrc . "; "
+                    . "style-src " . $styleSrc . "; "
+                    . "img-src \'self\' data:; "
+                    . "font-src \'self\'"
+                    . (function_exists("config") && !empty(config("security.csp.allowed_domains", []))
+                        ? " " . implode(" ", config("security.csp.allowed_domains", []))
+                        : "")
+                    . ";"
+                    . \'">\';
+            })(); ?>',
             $content
         );
     }
@@ -536,45 +564,77 @@ trait CompilesComponents
 
     protected function compileAssets(string $content): string
     {
-        // @css
+        // @css('path') or @css('path', ['media' => 'print'])
         $content = preg_replace_callback(
             '/@css\s*\(\s*[\'\"](.+?)[\'\"](?:\s*,\s*(\[.+?\]))?\s*\)/',
             function ($matches) {
                 $href = addslashes($matches[1]);
-                if (isset($matches[2])) {
+                $hasCustomAttrs = isset($matches[2]);
+
+                if ($hasCustomAttrs) {
                     $attrsExpr = $matches[2];
                     return '<?php $__cssAttrs = ' . $attrsExpr . '; '
+                        . '$__cssNonce = isset($cspNonce) && $cspNonce ? \' nonce="\' . htmlspecialchars($cspNonce, ENT_QUOTES, \'UTF-8\') . \'"\' : \'\'; '
                         . '$__cssExtra = \'\'; '
                         . 'foreach ($__cssAttrs as $__k => $__v) { '
                         . '    if ($__v === true) { $__cssExtra .= \' \' . $__k; } '
                         . '    elseif ($__v !== false && $__v !== null) { $__cssExtra .= \' \' . $__k . \'="\' . htmlspecialchars((string)$__v, ENT_QUOTES, \'UTF-8\') . \'"\'; } '
                         . '} '
-                        . 'echo \'<link rel="stylesheet" href="' . $href . '"\' . $__cssExtra . \'>\'; ?>';
+                        . 'echo \'<link rel="stylesheet" href="' . $href . '"\' . $__cssNonce . $__cssExtra . \'>\'; '
+                        . 'unset($__cssAttrs, $__cssNonce, $__cssExtra); ?>';
                 }
-                return '<link rel="stylesheet" href="' . $href . '">';
+
+                return '<?php $__cssNonce = isset($cspNonce) && $cspNonce ? \' nonce="\' . htmlspecialchars($cspNonce, ENT_QUOTES, \'UTF-8\') . \'"\' : \'\'; '
+                    . 'echo \'<link rel="stylesheet" href="' . $href . '"\' . $__cssNonce . \'>\'; '
+                    . 'unset($__cssNonce); ?>';
             },
             $content
         );
 
-        // @js
+        // @js('path') or @js('path', ['defer' => true])
         $content = preg_replace_callback(
             '/@js\s*\(\s*[\'\"](.+?)[\'\"](?:\s*,\s*(\[.+?\]))?\s*\)/',
             function ($matches) {
                 $src = addslashes($matches[1]);
-                if (isset($matches[2])) {
+                $hasCustomAttrs = isset($matches[2]);
+
+                if ($hasCustomAttrs) {
                     $attrsExpr = $matches[2];
                     return '<?php $__jsAttrs = ' . $attrsExpr . '; '
+                        . '$__jsNonce = isset($cspNonce) && $cspNonce ? \' nonce="\' . htmlspecialchars($cspNonce, ENT_QUOTES, \'UTF-8\') . \'"\' : \'\'; '
                         . '$__jsExtra = \'\'; '
                         . 'foreach ($__jsAttrs as $__k => $__v) { '
                         . '    if ($__v === true) { $__jsExtra .= \' \' . $__k; } '
                         . '    elseif ($__v !== false && $__v !== null) { $__jsExtra .= \' \' . $__k . \'="\' . htmlspecialchars((string)$__v, ENT_QUOTES, \'UTF-8\') . \'"\'; } '
                         . '} '
-                        . 'echo \'<script src="' . $src . '"\' . $__jsExtra . \'></script>\'; ?>';
+                        . 'echo \'<script src="' . $src . '"\' . $__jsNonce . $__jsExtra . \'></script>\'; '
+                        . 'unset($__jsAttrs, $__jsNonce, $__jsExtra); ?>';
                 }
-                return '<script src="' . $src . '"></script>';
+
+                return '<?php $__jsNonce = isset($cspNonce) && $cspNonce ? \' nonce="\' . htmlspecialchars($cspNonce, ENT_QUOTES, \'UTF-8\') . \'"\' : \'\'; '
+                    . 'echo \'<script src="' . $src . '"\' . $__jsNonce . \'></script>\'; '
+                    . 'unset($__jsNonce); ?>';
             },
             $content
         );
+
+        // @inlineCss ... @endInlineCss → <style nonce="...">...</style>
+        $content = preg_replace(
+            '/@inlineCss\s*/',
+            '<?php $__inNonce = isset($cspNonce) && $cspNonce ? \' nonce="\' . htmlspecialchars($cspNonce, ENT_QUOTES, \'UTF-8\') . \'"\' : \'\'; '
+            . 'echo \'<style\' . $__inNonce . \'>\'; unset($__inNonce); ?>',
+            $content
+        );
+        $content = str_replace('@endInlineCss', '</style>', $content);
+
+        // @inlineJs ... @endInlineJs → <script nonce="...">...</script>
+        $content = preg_replace(
+            '/@inlineJs\s*/',
+            '<?php $__inNonce = isset($cspNonce) && $cspNonce ? \' nonce="\' . htmlspecialchars($cspNonce, ENT_QUOTES, \'UTF-8\') . \'"\' : \'\'; '
+            . 'echo \'<script\' . $__inNonce . \'>\'; unset($__inNonce); ?>',
+            $content
+        );
+        $content = str_replace('@endInlineJs', '</script>', $content);
 
         return $content;
     }
@@ -587,10 +647,12 @@ trait CompilesComponents
             '/@dump\s*\(' . $balanced . '\)/s',
             function ($matches) {
                 $var = trim($matches[1]);
-                return sprintf(
-                    '<?php if(function_exists("config") ? config("app.debug", false) : true) { echo "<pre style=\"background:#1e1e2e;color:#cdd6f4;padding:12px;border-radius:8px;font-size:13px;overflow-x:auto;margin:8px 0;\">"; var_export(%s); echo "</pre>"; } ?>',
-                    $var
-                );
+                $code = '<?php if(function_exists("config") ? config("app.debug", false) : true) { ';
+                $code .= '$__dumpNonce = isset($cspNonce) && $cspNonce ? \' nonce="\' . htmlspecialchars($cspNonce, ENT_QUOTES, \'UTF-8\') . \'"\' : \'\'; ';
+                $code .= 'echo "<pre" . $__dumpNonce . " style=\"background:#1e1e2e;color:#cdd6f4;padding:12px;border-radius:8px;font-size:13px;overflow-x:auto;margin:8px 0;\">"; ';
+                $code .= 'var_export(%s); ';
+                $code .= 'echo "</pre>"; unset($__dumpNonce); } ?>';
+                return sprintf($code, $var);
             },
             $content
         );

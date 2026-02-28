@@ -543,7 +543,10 @@ class ViewCompiler
         $content = $this->compileDump($content);
         $content = $this->compileMarkdown($content);
 
-        // Phase 7: Formatting, Helper Directives & Echos
+        // Phase 7: Assets, Security & Formatting
+        $content = $this->compileAssets($content);
+        $content = $this->compileNonce($content);
+        $content = $this->compileCsp($content);
         $content = $this->compileHelperDirectives($content);
         $content = $this->compileReadTime($content);
         $content = $this->compileWordCount($content);

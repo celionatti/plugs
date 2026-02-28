@@ -28,6 +28,7 @@ class HtmlErrorRenderer
 
         if (!headers_sent()) {
             header('Content-Type: text/html; charset=UTF-8');
+            header_remove('Content-Security-Policy'); // Ensure error page styles are not blocked
         }
 
         $trace = $e->getTrace();
@@ -75,6 +76,7 @@ class HtmlErrorRenderer
 
         if (!headers_sent()) {
             header('Content-Type: text/html; charset=UTF-8');
+            header_remove('Content-Security-Policy'); // Ensure error page styles are not blocked
         }
 
         echo $this->getProductionHtml($statusCode, $nonce);
@@ -92,43 +94,52 @@ class HtmlErrorRenderer
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Plugs &middot; ' . htmlspecialchars($title) . '</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <style' . $nonceAttr . '>
+        @import url("https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Dancing+Script:wght@700&family=JetBrains+Mono:wght@400;500&display=swap");
+
         .plugs-error-page {
-            --bg-body: #080b12; --bg-sidebar: rgba(15, 23, 42, 0.95); --bg-card: rgba(30, 41, 59, 0.3);
-            --bg-header: rgba(8, 11, 18, 0.9); --border-color: rgba(255, 255, 255, 0.08);
+            --bg-body: #080b12; --bg-sidebar: rgba(15, 23, 42, 0.6); --bg-card: rgba(30, 41, 59, 0.3);
+            --bg-header: rgba(8, 11, 18, 0.7); --border-color: rgba(255, 255, 255, 0.08);
             --text-primary: #f8fafc; --text-secondary: #94a3b8; --text-muted: #64748b;
             --accent-primary: #8b5cf6; --accent-secondary: #3b82f6; --danger: #ef4444;
-            --code-bg: rgba(13, 17, 23, 0.5); --highlight-bg: rgba(239, 68, 68, 0.1);
-            font-family: sans-serif; background-color: var(--bg-body); color: var(--text-primary); height: 100vh; display: flex; flex-direction: column; overflow: hidden; font-size: 15px; margin: 0; padding: 0; box-sizing: border-box;
+            --code-bg: rgba(13, 17, 23, 0.7); --highlight-bg: rgba(239, 68, 68, 0.15);
+            font-family: "Outfit", sans-serif; 
+            background-color: var(--bg-body); 
+            background-image: radial-gradient(circle at 15% 15%, rgba(139, 92, 246, 0.08) 0%, transparent 40%), radial-gradient(circle at 85% 85%, rgba(59, 130, 246, 0.08) 0%, transparent 40%);
+            color: var(--text-primary); height: 100vh; display: flex; flex-direction: column; overflow: hidden; font-size: 15px; margin: 0; padding: 0; box-sizing: border-box;
         }
         .plugs-error-page * { box-sizing: border-box; }
-        .plugs-error-page .header { height: 64px; border-bottom: 1px solid var(--border-color); display: flex; align-items: center; padding: 0 2rem; background-color: var(--bg-header); backdrop-filter: blur(10px); z-index: 50; justify-content: space-between; }
-        .plugs-error-page .brand { font-size: 1.75rem; font-weight: 700; color: var(--accent-primary); text-decoration: none; }
+        .plugs-error-page .header { height: 64px; border-bottom: 1px solid var(--border-color); display: flex; align-items: center; padding: 0 2rem; background-color: var(--bg-header); backdrop-filter: blur(12px); z-index: 50; justify-content: space-between; }
+        .plugs-error-page .brand { font-family: "Dancing Script", cursive; font-size: 2.2rem; background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; text-decoration: none; }
         .plugs-error-page .container { display: flex; flex: 1; overflow: hidden; }
-        .plugs-error-page .sidebar { width: 420px; background-color: var(--bg-sidebar); border-right: 1px solid var(--border-color); display: flex; flex-direction: column; flex-shrink: 0; }
-        .plugs-error-page .stack-list { overflow-y: auto; flex: 1; list-style: none; }
-        .plugs-error-page .stack-item { border-bottom: 1px solid var(--border-color); padding: 1rem 1.5rem; cursor: pointer; }
+        .plugs-error-page .sidebar { width: 380px; background-color: var(--bg-sidebar); backdrop-filter: blur(20px); border-right: 1px solid var(--border-color); display: flex; flex-direction: column; flex-shrink: 0; }
+        .plugs-error-page .stack-list { overflow-y: auto; flex: 1; list-style: none; padding: 0; margin: 0; }
+        .plugs-error-page .stack-item { border-bottom: 1px solid var(--border-color); padding: 1.25rem 1.5rem; cursor: pointer; transition: background 0.2s; }
+        .plugs-error-page .stack-item:hover { background: rgba(255,255,255,0.02); }
         .plugs-error-page .stack-item.active { background: rgba(139, 92, 246, 0.1); border-left: 3px solid var(--accent-primary); }
         .plugs-error-page .content { flex: 1; display: flex; flex-direction: column; overflow-y: auto; }
-        .plugs-error-page .error-banner { padding: 3rem; border-bottom: 1px solid var(--border-color); }
-        .plugs-error-page .exception-message { font-size: 1.75rem; font-weight: 600; margin-bottom: 1rem; }
-        .plugs-error-page .code-viewer-container { background: var(--code-bg); flex-shrink: 0; }
-        .plugs-error-page .code-viewer { display: none; padding: 0; }
+        .plugs-error-page .error-banner { padding: 3rem; border-bottom: 1px solid var(--border-color); background: linear-gradient(to bottom, rgba(239,68,68,0.05), transparent); }
+        .plugs-error-page .exception-message { font-size: 2rem; font-weight: 600; margin-bottom: 1rem; line-height: 1.3; }
+        .plugs-error-page .code-viewer-container { background: var(--code-bg); flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+        .plugs-error-page .code-viewer { display: none; padding: 0; flex: 1; overflow-y: auto; }
         .plugs-error-page .code-viewer.active { display: block; }
-        .plugs-error-page .code-table { width: 100%; border-collapse: collapse; font-family: monospace; }
-        .plugs-error-page .code-row.error-line { background: var(--highlight-bg); }
-        .plugs-error-page .code-line-num { width: 60px; text-align: right; padding: 0 1rem; color: var(--text-muted); border-right: 1px solid var(--border-color); }
-        .plugs-error-page .code-content { padding: 0 1.5rem; white-space: pre; }
-        .plugs-error-page .suggestions-box { background: rgba(139, 92, 246, 0.1); border-left: 4px solid var(--accent-primary); padding: 1.5rem; margin-top: 1.5rem; border-radius: 6px; }
-        .plugs-error-page .suggestions-title { font-size: 1.1rem; font-weight: 600; margin-bottom: 0.75rem; display: flex; align-items: center; gap: 0.5rem; }
-        .plugs-error-page .suggestion-item { margin-bottom: 0.5rem; line-height: 1.5; color: #e2e8f0; }
+        .plugs-error-page .code-table { width: 100%; border-collapse: collapse; font-family: "JetBrains Mono", monospace; font-size: 13.5px; }
+        .plugs-error-page .code-row.error-line { background: var(--highlight-bg); position: relative; }
+        .plugs-error-page .code-row.error-line::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 3px; background: var(--danger); }
+        .plugs-error-page .code-line-num { width: 60px; text-align: right; padding: 0.25rem 1rem; color: var(--text-muted); border-right: 1px solid rgba(255,255,255,0.05); user-select: none; }
+        .plugs-error-page .code-content { padding: 0.25rem 1.5rem; white-space: pre; color: #e2e8f0; }
+        .plugs-error-page .suggestions-box { background: rgba(139, 92, 246, 0.1); border: 1px solid rgba(139, 92, 246, 0.2); border-left: 4px solid var(--accent-primary); padding: 1.5rem; margin-top: 1.5rem; border-radius: 8px; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1); }
+        .plugs-error-page .suggestions-title { font-size: 1.1rem; font-weight: 600; margin-bottom: 0.75rem; display: flex; align-items: center; gap: 0.5rem; color: var(--accent-primary); }
+        .plugs-error-page .suggestion-item { margin-bottom: 0.5rem; line-height: 1.6; color: #e2e8f0; }
         .plugs-error-page .suggestion-item:last-child { margin-bottom: 0; }
-        .plugs-error-page .vscode-btn { display: inline-flex; align-items: center; gap: 0.5rem; background: var(--bg-card); border: 1px solid var(--border-color); color: var(--text-primary); padding: 0.4rem 0.8rem; border-radius: 6px; font-size: 0.85rem; text-decoration: none; cursor: pointer; transition: all 0.2s; }
-        .plugs-error-page .vscode-btn:hover { background: rgba(255,255,255,0.1); border-color: rgba(255,255,255,0.2); }
-        .plugs-error-page .file-location-bar { display: flex; align-items: center; justify-content: space-between; margin-top: 1rem; color: var(--text-secondary); font-family: monospace; }
-        .plugs-error-page .stack-file-path { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-        .plugs-error-page .vscode-icon { color: var(--text-muted); transition: color 0.2s; display: flex; align-items: center; }
-        .plugs-error-page .vscode-icon:hover { color: var(--accent-primary); }
+        .plugs-error-page .vscode-btn { display: inline-flex; align-items: center; gap: 0.5rem; background: rgba(255,255,255,0.05); border: 1px solid var(--border-color); color: var(--text-primary); padding: 0.5rem 1rem; border-radius: 8px; font-size: 0.9rem; text-decoration: none; cursor: pointer; transition: all 0.2s; font-weight: 500; }
+        .plugs-error-page .vscode-btn:hover { background: rgba(255,255,255,0.1); border-color: rgba(255,255,255,0.2); transform: translateY(-1px); }
+        .plugs-error-page .file-location-bar { display: flex; align-items: center; justify-content: space-between; margin-top: 1.5rem; color: var(--text-secondary); font-family: "JetBrains Mono", monospace; font-size: 13.5px; background: rgba(0,0,0,0.2); padding: 0.75rem 1.5rem; border-radius: 8px; border: 1px solid var(--border-color); }
+        .plugs-error-page .stack-file-path { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-family: "JetBrains Mono", monospace; }
+        .plugs-error-page .vscode-icon { color: var(--text-muted); transition: color 0.2s; display: flex; align-items: center; padding: 4px; border-radius: 4px; }
+        .plugs-error-page .vscode-icon:hover { color: var(--accent-primary); background: rgba(139, 92, 246, 0.15); }
     </style>
 </head>
 <body class="plugs-error-page">
@@ -260,9 +271,62 @@ class HtmlErrorRenderer
      */
     public function getProductionHtml(int $statusCode = 500, ?string $nonce = null): string
     {
-        $titles = [404 => 'Not Found', 500 => 'Server Error'];
+        $titles = [404 => 'Not Found', 403 => 'Forbidden', 401 => 'Unauthorized', 500 => 'Server Error', 503 => 'Service Unavailable'];
         $title = $titles[$statusCode] ?? 'Error';
         $nonceAttr = $nonce ? ' nonce="' . $nonce . '"' : '';
-        return '<!DOCTYPE html><html><head><title>' . $statusCode . '</title><style' . $nonceAttr . '>body{background:#080b12;color:#f8fafc;display:flex;align-items:center;justify-content:center;height:100vh;font-family:sans-serif;}h1{font-size:4rem;margin-bottom:1rem;}</style></head><body><div><h1>' . $statusCode . '</h1><p>' . $title . '</p></div></body></html>';
+        return '<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>' . $statusCode . ' - ' . htmlspecialchars($title) . '</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <style' . $nonceAttr . '>
+        @import url("https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700&display=swap");
+        body {
+            background-color: #080b12;
+            background-image: radial-gradient(circle at 15% 15%, rgba(139, 92, 246, 0.08) 0%, transparent 40%), radial-gradient(circle at 85% 85%, rgba(59, 130, 246, 0.08) 0%, transparent 40%);
+            color: #f8fafc;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            margin: 0;
+            font-family: "Outfit", sans-serif;
+            text-align: center;
+        }
+        .error-card {
+            background: rgba(30, 41, 59, 0.5);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            padding: 3rem 4rem;
+            border-radius: 16px;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+            transform: translateY(-20px);
+        }
+        h1 {
+            font-size: 5rem;
+            margin: 0;
+            line-height: 1;
+            background: linear-gradient(135deg, #8b5cf6, #3b82f6);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        p {
+            font-size: 1.5rem;
+            color: #94a3b8;
+            margin: 1rem 0 0 0;
+            font-weight: 400;
+        }
+    </style>
+</head>
+<body>
+    <div class="error-card">
+        <h1>' . $statusCode . '</h1>
+        <p>' . htmlspecialchars($title) . '</p>
+    </div>
+</body>
+</html>';
     }
 }

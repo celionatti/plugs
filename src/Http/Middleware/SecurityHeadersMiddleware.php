@@ -95,19 +95,29 @@ class SecurityHeadersMiddleware implements MiddlewareInterface
     private function buildCspHeader(?string $nonce = null, ?array $cspConfig = null): string
     {
         $cspConfig = $cspConfig ?? config('security.csp', $this->defaultCsp);
+
+        // Get allowed external domains from config
+        $allowedDomains = config('security.csp.allowed_domains', []);
+
         $directives = [];
 
         foreach ($cspConfig as $key => $values) {
-            if ($key === 'enabled' || !is_array($values)) {
+            if ($key === 'enabled' || $key === 'allowed_domains' || !is_array($values)) {
                 continue;
             }
 
-            // Inject nonce into script-src if available
+            // Inject nonce into script-src only. 
+            // Do NOT inject into style-src because it invalidates 'unsafe-inline' and breaks style="..." attributes.
             if ($nonce && $key === 'script-src') {
                 $values[] = "'nonce-{$nonce}'";
             }
 
-            $directives[] = $key . ' ' . implode(' ', $values);
+            // Add allowed domains to relevant directives
+            if (!empty($allowedDomains) && in_array($key, ['script-src', 'style-src', 'font-src', 'img-src', 'connect-src'])) {
+                $values = array_merge($values, $allowedDomains);
+            }
+
+            $directives[] = $key . ' ' . implode(' ', array_unique($values));
         }
 
         return implode('; ', $directives);

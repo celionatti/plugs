@@ -22,7 +22,6 @@ use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Log\LoggerInterface;
 use Throwable;
-
 class Handler
 {
     /**
@@ -493,13 +492,13 @@ class Handler
                 require_once $errorFile;
             }
 
-            $nonce = $request->getAttribute('csp_nonce');
+            $nonce = null; // Error CSP explicitly relies on 'unsafe-inline' without nonces
             return ResponseFactory::html(
                 function_exists('getProductionErrorHtml')
                 ? getProductionErrorHtml($statusCode, null, $message, $nonce)
                 : "<h1>Error {$statusCode}</h1><p>" . htmlspecialchars($message ?? 'An error occurred.') . '</p>',
                 $statusCode
-            );
+            )->withHeader('Content-Security-Policy', "default-src 'self' 'unsafe-inline';");
         }
 
         $this->renderingErrorPage = true;
@@ -511,7 +510,8 @@ class Handler
                 'statusCode' => $statusCode,
             ]);
 
-            return ResponseFactory::html($html, $statusCode);
+            return ResponseFactory::html($html, $statusCode)
+                ->withHeader('Content-Security-Policy', "default-src 'self' 'unsafe-inline';");
         } catch (Throwable $e) {
             // Ensure error helpers are available for the fallback
             $errorFile = dirname(__DIR__) . '/functions/error.php';
@@ -519,13 +519,13 @@ class Handler
                 require_once $errorFile;
             }
 
-            $nonce = $request->getAttribute('csp_nonce');
+            $nonce = null; // Error CSP explicitly relies on 'unsafe-inline' without nonces
             return ResponseFactory::html(
                 function_exists('getProductionErrorHtml')
                 ? getProductionErrorHtml($statusCode, null, $message, $nonce)
                 : "<h1>Error {$statusCode}</h1><p>" . htmlspecialchars($message ?? 'An error occurred.') . '</p>',
                 $statusCode
-            );
+            )->withHeader('Content-Security-Policy', "default-src 'self' 'unsafe-inline';");
         } finally {
             $this->renderingErrorPage = false;
         }
@@ -547,7 +547,11 @@ class Handler
                 require_once $errorFile;
             }
 
-            $nonce = $request ? $request->getAttribute('csp_nonce') : null;
+            // We explicitly do NOT pass a nonce to the error renderer.
+            // The error response header relies on 'unsafe-inline'.
+            // If the element has a nonce attribute but the header lacks that exact nonce string,
+            // modern browsers will block the styles completely.
+            $nonce = null;
 
             ob_start();
             renderDebugErrorPage($e, $nonce);
@@ -555,7 +559,11 @@ class Handler
 
             $statusCode = $e instanceof PlugsException ? $e->getStatusCode() : 500;
 
-            return ResponseFactory::html($html, $statusCode);
+            $response = ResponseFactory::html($html, $statusCode);
+
+            // Explicitly set a relaxed CSP so SecurityHeadersMiddleware doesn't overwrite it
+            // with strict application rules that block the error page's inline highlighting.
+            return $response->withHeader('Content-Security-Policy', "default-src 'self' 'unsafe-inline' 'unsafe-eval' data:;");
         } catch (Throwable $renderError) {
             // Emergency fallback — ensure user always sees something
             ob_end_clean(); // Clean any partial output
@@ -568,7 +576,8 @@ class Handler
             $html .= '<p style="color:#f59e0b;">⚠ Debug page rendering also failed: ' . htmlspecialchars($renderError->getMessage()) . '</p>';
             $html .= '</body></html>';
 
-            return ResponseFactory::html($html, 500);
+            $response = ResponseFactory::html($html, 500);
+            return $response->withHeader('Content-Security-Policy', "default-src 'self' 'unsafe-inline';");
         }
     }
 
