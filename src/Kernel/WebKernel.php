@@ -90,7 +90,7 @@ class WebKernel extends AbstractKernel
         $router = $this->container->make('router');
         $basePath = defined('BASE_PATH') ? BASE_PATH : '';
 
-        if (Plugs::isProduction() && $router->loadFromPersistentCache()) {
+        if (Plugs::isProduction() && $router->loadFromCache()) {
             // Loaded from cache
         } else {
             $router->loadInternalRoutes();

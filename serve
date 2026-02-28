@@ -1,0 +1,93 @@
+#!/usr/bin/env php
+<?php
+
+declare(strict_types=1);
+
+/*
+ |----------------------------------------------------------------------
+ | Plugs Zero Config Development Server
+ |----------------------------------------------------------------------
+ |
+ | This script provides an interactive and beautiful command-line interface
+ | to launch PHP's built-in web server. It embodies the "Zero Config Mode" 
+ | philosophy, letting developers run the app simply with `php serve`.
+ */
+
+// Define basic colors for CLI output
+$colors = [
+    'reset' => "\033[0m",
+    'bold' => "\033[1m",
+    'green' => "\033[32m",
+    'blue' => "\033[34m",
+    'cyan' => "\033[36m",
+    'yellow' => "\033[33m",
+    'red' => "\033[31m",
+    'purple' => "\033[35m",
+];
+
+// Configuration defaults
+$host = '127.0.0.1';
+$port = 8000;
+$publicPath = __DIR__ . '/public';
+
+// Parse command line arguments for custom host/port
+foreach ($argv as $arg) {
+    if (str_starts_with($arg, '--host=')) {
+        $host = substr($arg, 7);
+    } elseif (str_starts_with($arg, '--port=')) {
+        $port = (int) substr($arg, 7);
+    }
+}
+
+// Ensure the port is available, try next if not
+while (is_resource(@fsockopen($host, $port))) {
+    $port++;
+}
+
+// Format the URL
+$url = "http://{$host}:{$port}";
+
+// Clear the screen
+if (strncasecmp(PHP_OS, 'WIN', 3) === 0) {
+    system('cls');
+} else {
+    system('clear');
+}
+
+// Display beautiful header
+echo "\n";
+echo "  {$colors['bold']}{$colors['purple']}⚡ Plugs Framework {$colors['reset']}\n";
+echo "  {$colors['cyan']}Zero Config Mode Activated{$colors['reset']}\n\n";
+
+echo "  {$colors['bold']}Server is running at:{$colors['reset']} {$colors['green']}{$url}{$colors['reset']}\n";
+echo "  {$colors['bold']}Document root:{$colors['reset']}        {$colors['yellow']}{$publicPath}{$colors['reset']}\n\n";
+
+echo "  {$colors['blue']}Press Ctrl+C to stop the server{$colors['reset']}\n\n";
+
+// Ensure the directory exists
+if (!is_dir($publicPath)) {
+    echo "  {$colors['red']}Error: Public directory not found! Ensure 'public/' exists.{$colors['reset']}\n";
+    exit(1);
+}
+
+// Construct the command to run PHP's built-in server
+// We optionally specify a router script if one exists (e.g., server.php)
+$routerScript = '';
+if (file_exists(__DIR__ . '/server.php')) {
+    $routerScript = ' ' . escapeshellarg(__DIR__ . '/server.php');
+}
+
+$command = sprintf(
+    'php -S %s:%d -t %s%s',
+    escapeshellarg($host),
+    $port,
+    escapeshellarg($publicPath),
+    $routerScript
+);
+
+// Start the server
+passthru($command, $status);
+
+// Exit gracefully
+echo "\n  {$colors['cyan']}Server stopped gracefully. Goodbye!{$colors['reset']}\n\n";
+exit($status);
