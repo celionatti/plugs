@@ -104,6 +104,32 @@ use App\Modules\MyCustomModule;
 Framework::addModule(MyCustomModule::class);
 ```
 
+## Module Generator (CLI)
+
+You can easily scaffold a new custom module using the `theplugs` CLI tool. This will create a module class in `app/Modules/`.
+
+```bash
+# Create a standard module
+php theplugs make:module MyModule
+
+# Create a web-only module
+php theplugs make:module MyModule --web
+
+# Create an API-only module
+php theplugs make:module MyModule --api
+```
+
+### Registry & Booting
+
+After creating your module, you must register it in your application's bootstrap process (e.g., `src/Bootstrap/Bootstrapper.php` or `bootstrap/boot.php`):
+
+```php
+use Plugs\Module\ModuleManager;
+use App\Modules\MyModule;
+
+ModuleManager::getInstance()->addModule(MyModule::class);
+```
+
 ## Core Modules List
 
 Below are some of the core modules you can interact with:

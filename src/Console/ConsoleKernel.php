@@ -109,6 +109,7 @@ class ConsoleKernel
         'make:listener' => MakeListenerCommand::class,
         'make:notification' => MakeNotificationCommand::class,
         'make:ai-migration' => MakeAiMigrationCommand::class,
+        'make:module' => \Plugs\Console\Commands\MakeModuleCommand::class,
 
         'db:backup' => DatabaseBackupCommand::class,
         'db:restore' => DatabaseRestoreCommand::class,
@@ -179,6 +180,7 @@ class ConsoleKernel
         'g:evt' => 'make:event',
         'g:lis' => 'make:listener',
         'g:not' => 'make:notification',
+        'g:mod' => 'make:module',
         'seed' => 'db:seed',
         'routes' => 'route:list',
         'route:show' => 'route:list',
@@ -223,6 +225,7 @@ class ConsoleKernel
             'make:listener',
             'make:notification',
             'make:ai-migration',
+            'make:module',
         ],
         'Routes' => ['route:list', 'route:cache', 'route:clear', 'route:test'],
         'Utility' => ['serve', 'cache:clear', 'config:cache', 'optimize', 'opcache:clear', 'opcache:status', 'queue:work', 'queue:failed', 'queue:retry', 'health', 'storage:link', 'type:gen', 'ai:chat', 'ai:fix', 'ai:audit', 'make:ai-test', 'ai:agent', 'ai:think', 'framework:scan-security'],
