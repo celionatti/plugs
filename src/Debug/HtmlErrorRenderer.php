@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Plugs\Debug;
 
 use Throwable;
+use Plugs\Debug\ErrorAnalyzer;
 
 /**
  * Plugs Framework HTML Error Renderer
@@ -49,8 +50,11 @@ class HtmlErrorRenderer
         $className = get_class($e);
         $shortClass = basename(str_replace('\\', '/', $className));
 
+        $analyzer = new ErrorAnalyzer();
+        $suggestions = $analyzer->analyze($e);
+
         $html = $this->getDebugHeader($shortClass, $nonce);
-        $html .= $this->getDebugBody($e, $className, $file, $line, $frames, $nonce);
+        $html .= $this->getDebugBody($e, $className, $file, $line, $frames, $suggestions, $nonce);
         $html .= $this->getDebugFooter($nonce);
 
         echo $html;
@@ -115,6 +119,16 @@ class HtmlErrorRenderer
         .plugs-error-page .code-row.error-line { background: var(--highlight-bg); }
         .plugs-error-page .code-line-num { width: 60px; text-align: right; padding: 0 1rem; color: var(--text-muted); border-right: 1px solid var(--border-color); }
         .plugs-error-page .code-content { padding: 0 1.5rem; white-space: pre; }
+        .plugs-error-page .suggestions-box { background: rgba(139, 92, 246, 0.1); border-left: 4px solid var(--accent-primary); padding: 1.5rem; margin-top: 1.5rem; border-radius: 6px; }
+        .plugs-error-page .suggestions-title { font-size: 1.1rem; font-weight: 600; margin-bottom: 0.75rem; display: flex; align-items: center; gap: 0.5rem; }
+        .plugs-error-page .suggestion-item { margin-bottom: 0.5rem; line-height: 1.5; color: #e2e8f0; }
+        .plugs-error-page .suggestion-item:last-child { margin-bottom: 0; }
+        .plugs-error-page .vscode-btn { display: inline-flex; align-items: center; gap: 0.5rem; background: var(--bg-card); border: 1px solid var(--border-color); color: var(--text-primary); padding: 0.4rem 0.8rem; border-radius: 6px; font-size: 0.85rem; text-decoration: none; cursor: pointer; transition: all 0.2s; }
+        .plugs-error-page .vscode-btn:hover { background: rgba(255,255,255,0.1); border-color: rgba(255,255,255,0.2); }
+        .plugs-error-page .file-location-bar { display: flex; align-items: center; justify-content: space-between; margin-top: 1rem; color: var(--text-secondary); font-family: monospace; }
+        .plugs-error-page .stack-file-path { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .plugs-error-page .vscode-icon { color: var(--text-muted); transition: color 0.2s; display: flex; align-items: center; }
+        .plugs-error-page .vscode-icon:hover { color: var(--accent-primary); }
     </style>
 </head>
 <body class="plugs-error-page">
@@ -124,7 +138,7 @@ class HtmlErrorRenderer
     /**
      * Get debug body content.
      */
-    protected function getDebugBody(Throwable $e, string $className, string $file, int $line, array $frames, ?string $nonce = null): string
+    protected function getDebugBody(Throwable $e, string $className, string $file, int $line, array $frames, array $suggestions = [], ?string $nonce = null): string
     {
         $html = '<div class="container">
         <aside class="sidebar">
@@ -134,9 +148,14 @@ class HtmlErrorRenderer
             $f = $frame['file'] ?? '{internal}';
             $l = $frame['line'] ?? '-';
             $method = ($frame['class'] ?? '') . ($frame['type'] ?? '') . $frame['function'];
-            $html .= '<li class="stack-item ' . $active . '" data-index="' . $index . '" data-file="' . htmlspecialchars(basename($f)) . '" data-line="' . $l . '">
-                <div style="font-size: 0.8rem; color: var(--text-secondary);">' . htmlspecialchars(basename($f)) . ':' . $l . '</div>
-                <div style="color: var(--accent-primary); font-weight: 500;">' . htmlspecialchars($method) . '</div>
+            $html .= '<li class="stack-item ' . $active . '" data-index="' . $index . '" data-file="' . htmlspecialchars(basename($f)) . '" data-full-file="' . htmlspecialchars($f) . '" data-line="' . $l . '">
+                <div style="font-size: 0.8rem; color: var(--text-secondary); display: flex; justify-content: space-between; align-items: center;">
+                    <span class="stack-file-path">' . htmlspecialchars(basename($f)) . ':' . $l . '</span>
+                    ' . ($f !== '{internal}' ? '<a href="vscode://file/' . htmlspecialchars($f) . ':' . $l . '" class="vscode-icon" title="Open in VS Code" onclick="event.stopPropagation()">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4"/></svg>
+                    </a>' : '') . '
+                </div>
+                <div style="color: var(--accent-primary); font-weight: 500; margin-top: 0.25rem;">' . htmlspecialchars($method) . '</div>
             </li>';
         }
         $html .= '</ul>
@@ -145,8 +164,30 @@ class HtmlErrorRenderer
             <div class="error-banner">
                 <div style="color: var(--danger); font-size: 0.8rem; font-weight: 700;">' . htmlspecialchars($className) . '</div>
                 <h1 class="exception-message">' . htmlspecialchars($e->getMessage()) . '</h1>
-                <div style="color: var(--text-secondary); font-family: monospace;" id="active-location">' . htmlspecialchars(basename($file)) . ' | Line ' . $line . '</div>
-            </div>
+                <div class="file-location-bar">
+                    <span id="active-location">' . htmlspecialchars(basename($file)) . ' | Line ' . $line . '</span>
+                    <a href="vscode://file/' . htmlspecialchars(realpath($file) ?: $file) . ':' . $line . '" id="active-vscode-btn" class="vscode-btn">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4"/></svg>
+                        Open in VS Code
+                    </a>
+                </div>';
+
+        if (!empty($suggestions)) {
+            $html .= '<div class="suggestions-box">
+                <div class="suggestions-title">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18h6m-3-13a4.5 4.5 0 00-4.5 4.5c0 1.8 1.5 3.5 1.5 4.5v2a1 1 0 001 1h4a1 1 0 001-1v-2c0-1 1.5-2.7 1.5-4.5A4.5 4.5 0 0012 5z"/></svg>
+                    Possible fixes
+                </div>
+                <ul style="margin: 0; padding-left: 1.5rem;">';
+            foreach ($suggestions as $suggestion) {
+                $parsed = preg_replace('/\*\*(.*?)\*\*/', '<strong>$1</strong>', htmlspecialchars($suggestion));
+                $parsed = preg_replace('/`(.*?)`/', '<code style="background: rgba(0,0,0,0.3); padding: 0.1rem 0.3rem; border-radius: 3px;">$1</code>', $parsed);
+                $html .= '<li class="suggestion-item">' . $parsed . '</li>';
+            }
+            $html .= '</ul></div>';
+        }
+
+        $html .= '</div>
             <div class="code-viewer-container">';
         foreach ($frames as $index => $frame) {
             $active = $index === 0 ? 'active' : '';
@@ -176,7 +217,18 @@ class HtmlErrorRenderer
                 document.querySelectorAll(".code-viewer").forEach(v => v.classList.remove("active"));
                 const viewer = document.getElementById("code-" + index);
                 if (viewer) viewer.classList.add("active");
-                document.getElementById("active-location").textContent = this.getAttribute("data-file") + " | Line " + this.getAttribute("data-line");
+                
+                const file = this.getAttribute("data-full-file");
+                const line = this.getAttribute("data-line");
+                document.getElementById("active-location").textContent = this.getAttribute("data-file") + " | Line " + line;
+                
+                const btn = document.getElementById("active-vscode-btn");
+                if (file && file !== "{internal}") {
+                    btn.style.display = "inline-flex";
+                    btn.href = "vscode://file/" + file + ":" + line;
+                } else {
+                    btn.style.display = "none";
+                }
             });
         });
     </script></body></html>';
