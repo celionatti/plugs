@@ -104,7 +104,7 @@ class ViewManager
             $config['views'],
             $config['cache'],
             $this->container,
-            config('app.env') === 'production'
+            true // Always enable caching (Dirty check handles local development)
         );
 
         $engine->setOpcacheEnabled(config('opcache.enabled', true));

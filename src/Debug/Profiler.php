@@ -114,6 +114,10 @@ class Profiler
             return [];
         }
 
+        if ($this->currentProfile !== null) {
+            return $this->currentProfile;
+        }
+
         $this->stopSegment('total');
 
         $endTime = microtime(true);

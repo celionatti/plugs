@@ -32,10 +32,12 @@ class SecurityEngineMiddleware implements MiddlewareInterface
         $ip = $this->getClientIp($request);
         $container = class_exists(\Plugs\Container\Container::class) ? \Plugs\Container\Container::getInstance() : null;
         $rateLimiter = $container && $container->bound('ratelimiter') ? $container->make('ratelimiter') : new RateLimiter();
-        if ($rateLimiter->tooManyAttempts($ip, 100)) {
+        if (!$isLocal && $rateLimiter->tooManyAttempts($ip, 100)) {
             return $this->blockRequest($request, 'Too many requests. Please try again later.', 429);
         }
-        $rateLimiter->hit($ip, 60);
+        if (!$isLocal) {
+            $rateLimiter->hit($ip, 60);
+        }
 
         // 3. Generate CSP Nonce natively
         // The provided code snippet for this section was JavaScript and not valid PHP.

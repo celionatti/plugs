@@ -76,7 +76,8 @@ class SecurityShieldMiddleware implements MiddlewareInterface
         $requestData = $this->extractRequestData($request);
 
         // Run security checks
-        $decision = $this->protect($requestData);
+        $isLocal = in_array($requestData['ip'], ['127.0.0.1', '::1', 'localhost', 'plugs.local']);
+        $decision = $isLocal ? ['allowed' => true, 'risk_score' => 0, 'challenge_required' => false] : $this->protect($requestData);
 
         // Handle security decision
         if (!$decision['allowed']) {
