@@ -60,7 +60,12 @@ class ContextResolver
             return ContextType::Api;
         }
 
-        // 4. Content-Type header detection
+        // 4. Exception: Framework reactive component routes use JSON but require Web context
+        if (self::isReactiveComponentRoute($server)) {
+            return ContextType::Web;
+        }
+
+        // 5. Content-Type header detection
         if (self::hasJsonContentType($server)) {
             return ContextType::Api;
         }
@@ -128,6 +133,18 @@ class ContextResolver
         $host = strtolower(explode(':', $host)[0]);
 
         return str_starts_with($host, 'api.');
+    }
+
+    /**
+     * Check if the route is a framework reactive component route.
+     * These routes use JSON but belong to the Web context.
+     */
+    private static function isReactiveComponentRoute(array $server): bool
+    {
+        $uri = $server['REQUEST_URI'] ?? '';
+        $path = parse_url($uri, PHP_URL_PATH) ?: '';
+
+        return str_starts_with(rtrim($path, '/'), '/plugs/component');
     }
 
     /**

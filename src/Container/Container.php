@@ -293,8 +293,8 @@ class Container implements ContainerInterface
 
             $metadata[] = [
                 'name' => $parameter->getName(),
-                'type' => ($type instanceof \ReflectionNamedType) ? $type->getName() : null,
-                'isBuiltin' => $type === null || ($type instanceof \ReflectionNamedType && $type->isBuiltin()),
+                'type' => ($type instanceof \ReflectionNamedType && !$type->isBuiltin()) ? $type->getName() : null,
+                'isBuiltin' => !($type instanceof \ReflectionNamedType && !$type->isBuiltin()),
                 'isOptional' => $parameter->isOptional(),
                 'hasDefaultValue' => $parameter->isDefaultValueAvailable(),
                 'defaultValue' => $parameter->isDefaultValueAvailable() ? $parameter->getDefaultValue() : null,
