@@ -20,50 +20,76 @@ class CacheClearCommand extends Command
     public function handle(): int
     {
         $this->checkpoint('start');
-        $this->title('Cache Management');
+        $this->advancedHeader('Cache Management', 'Internal Framework Cache Purge');
 
-        $cacheDir = storage_path('cache');
+        $cachePath = storage_path('cache');
 
-        $this->section('Configuration');
-        $this->keyValue('Cache Path', str_replace(getcwd() . '/', '', $cacheDir));
-        $this->newLine();
+        $this->section('General Cache');
 
-        if (!is_dir($cacheDir)) {
-            $this->warning('Cache directory does not exist or is already empty.');
-            $this->checkpoint('finished');
-
-            return 0;
-        }
-
-        $this->checkpoint('clearing');
-        $count = 0;
-        $files = Filesystem::files($cacheDir, true);
-
-        if (empty($files)) {
-            $this->info('No cache files found to clear.');
-            $this->checkpoint('finished');
-
-            return 0;
-        }
-
-        $this->withProgressBar(count($files), function ($step) use ($files, &$count) {
-            $file = $files[$step - 1];
-            if (Filesystem::delete($file)) {
-                $count++;
+        $this->task('Clearing application cache', function () use ($cachePath) {
+            if (Filesystem::isDirectory($cachePath)) {
+                $items = array_diff(scandir($cachePath), ['.', '..']);
+                foreach ($items as $item) {
+                    $path = $cachePath . DIRECTORY_SEPARATOR . $item;
+                    if (Filesystem::isDirectory($path)) {
+                        Filesystem::deleteDirectory($path);
+                    } else {
+                        unlink($path);
+                    }
+                }
             }
-            usleep(10000); // Tiny delay for visual feedback
-        }, 'Purging cache entries');
+            return true;
+        });
+
+        $this->section('Framework Caches');
+
+        // Clear Configuration Cache
+        $this->task('Clearing configuration cache', function () {
+            try {
+                $this->call('config:clear');
+                return true;
+            } catch (\Throwable $e) {
+                return false;
+            }
+        });
+
+        // Clear Route Cache
+        $this->task('Clearing route cache', function () {
+            try {
+                $this->call('route:clear');
+                return true;
+            } catch (\Throwable $e) {
+                return false;
+            }
+        });
+
+        // Clear View Cache
+        $this->task('Clearing view cache', function () {
+            try {
+                $this->call('view:clear');
+                return true;
+            } catch (\Throwable $e) {
+                return false;
+            }
+        });
+
+        // Clear OPcache if enabled
+        $this->task('Clearing OPcache', function () {
+            try {
+                // The call() handles non-existent commands gracefully or we can just try/catch
+                $this->call('opcache:clear');
+                return true;
+            } catch (\Throwable $e) {
+                return false;
+            }
+        });
 
         $this->checkpoint('finished');
-
         $this->newLine(2);
-        $this->box(
-            "Cache cleared successfully!\n\n" .
-            "Files Purged: {$count}\n" .
-            "Time: {$this->formatTime($this->elapsed())}",
-            "✅ Cache Cleaned",
-            "success"
-        );
+
+        $this->success('All system and application caches have been cleared!');
+
+        $this->metrics($this->elapsed(), memory_get_peak_usage());
 
         if ($this->isVerbose()) {
             $this->displayTimings();

@@ -116,7 +116,7 @@ class AuthManager
         // Resilient fallback for missing configurations
         if (is_null($config)) {
             $config = match ($name) {
-                'session' => ['driver' => 'session', 'provider' => 'users'],
+                'web', 'session' => ['driver' => 'session', 'provider' => 'users'],
                 'token', 'api' => ['driver' => 'token', 'provider' => 'users'],
                 'jwt' => ['driver' => 'jwt', 'provider' => 'users'],
                 'key' => ['driver' => 'key', 'provider' => 'key_users'],

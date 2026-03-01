@@ -65,6 +65,7 @@ use Plugs\Console\Commands\DatabaseAnalyzeCommand;
 use Plugs\Console\Commands\SecurityScanCommand;
 use Plugs\Console\Commands\ViewCacheCommand;
 use Plugs\Console\Commands\ViewClearCommand;
+use Plugs\Console\Commands\LogClearCommand;
 use Plugs\Tenancy\Console\TenantMigrateCommand;
 use Plugs\Exceptions\ConsoleException;
 
@@ -124,6 +125,7 @@ class ConsoleKernel
 
         'serve' => ServeCommand::class,
         'cache:clear' => CacheClearCommand::class,
+        'logs:clear' => LogClearCommand::class,
         'config:cache' => \Plugs\Console\Commands\ConfigCacheCommand::class,
         'config:clear' => \Plugs\Console\Commands\ConfigClearCommand::class,
         'optimize' => \Plugs\Console\Commands\OptimizeCommand::class,
@@ -192,6 +194,7 @@ class ConsoleKernel
         'route:show' => 'route:list',
         's' => 'serve',
         'cc' => 'cache:clear',
+        'lc' => 'logs:clear',
         'oc' => 'optimize',
         'i' => 'inspire',
         'm' => 'migrate',
@@ -234,7 +237,7 @@ class ConsoleKernel
             'make:module',
         ],
         'Routes' => ['route:list', 'route:cache', 'route:clear', 'route:test'],
-        'Utility' => ['serve', 'cache:clear', 'view:cache', 'view:clear', 'config:cache', 'optimize', 'opcache:clear', 'opcache:status', 'queue:work', 'queue:failed', 'queue:retry', 'health', 'storage:link', 'type:gen', 'ai:chat', 'ai:fix', 'ai:audit', 'make:ai-test', 'ai:agent', 'ai:think', 'framework:scan-security', 'auth:install', 'identity:install'],
+        'Utility' => ['serve', 'cache:clear', 'logs:clear', 'view:cache', 'view:clear', 'config:cache', 'optimize', 'opcache:clear', 'opcache:status', 'queue:work', 'queue:failed', 'queue:retry', 'health', 'storage:link', 'type:gen', 'ai:chat', 'ai:fix', 'ai:audit', 'make:ai-test', 'ai:agent', 'ai:think', 'framework:scan-security', 'auth:install', 'identity:install'],
 
         'Scheduling' => ['schedule:run', 'schedule:list'],
         'Database' => ['migrate', 'migrate:rollback', 'migrate:status', 'migrate:fresh', 'migrate:validate', 'migrate:reset', 'make:migration', 'db:seed', 'db:analyze', 'db:backup', 'db:restore', 'tenant:migrate'],
