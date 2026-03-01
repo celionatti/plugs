@@ -6,7 +6,6 @@ namespace Plugs\Http\Controllers;
 
 use Plugs\Http\ResponseFactory;
 use Plugs\Database\Optimization\SlowQueryLogger;
-use Plugs\Cache\CacheManager;
 use Plugs\Router\Router;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
@@ -258,29 +257,51 @@ class HealthController
             $fileSize = filesize($logPath);
             $readSize = min($fileSize, 50 * 1024); // Read max 50KB
 
-            $handle = fopen($logPath, 'r');
-            fseek($handle, -$readSize, SEEK_END);
-            $data = fread($handle, $readSize);
-            fclose($handle);
+            if ($readSize > 0) {
+                $handle = fopen($logPath, 'r');
+                fseek($handle, -$readSize, SEEK_END);
+                $data = fread($handle, $readSize);
+                fclose($handle);
 
-            $lines = explode("\n", $data);
-            $logs = array_slice($lines, -$maxLines);
-            $logs = array_filter(array_map('trim', $logs));
-
-            $parsedLogs = array_map(function ($line) {
-                // Basic log parsing [timestamp] Level: Message
-                if (preg_match('/^\[(.*?)\] (.*?): (.*)$/', $line, $matches)) {
-                    return [
-                        'timestamp' => $matches[1],
-                        'level' => strtolower($matches[2]),
-                        'message' => $matches[3],
-                    ];
+                // Clean potential invalid UTF-8 bytes caused by cutting chunks
+                if (function_exists('mb_convert_encoding')) {
+                    $data = mb_convert_encoding($data, 'UTF-8', 'UTF-8');
                 }
-                return ['message' => $line];
-            }, $logs);
 
-            // Return in reverse chronological order for the dashboard
-            $logs = array_reverse($parsedLogs);
+                $lines = explode("\n", $data);
+
+                // Discard the very first item if we didn't read from byte 0, since it's likely a partial line
+                if ($fileSize > $readSize && count($lines) > 1) {
+                    array_shift($lines);
+                }
+
+                $logs = array_slice($lines, -$maxLines);
+                $logs = array_filter(array_map('trim', $logs));
+
+                $parsedLogs = array_map(function ($line) {
+                    // Basic log parsing [timestamp] Level: Message
+                    if (preg_match('/^\[(.*?)\] (.*?): (.*)$/', $line, $matches)) {
+                        $level = strtolower($matches[2]);
+                        // Handle "local.error" -> "error"
+                        if (str_contains($level, '.')) {
+                            $parts = explode('.', $level);
+                            $level = end($parts);
+                        }
+                        return [
+                            'timestamp' => $matches[1],
+                            'level' => $level,
+                            'message' => mb_strimwidth($matches[3], 0, 1500, '...'),
+                        ];
+                    }
+                    return [
+                        'message' => mb_strimwidth($line, 0, 1500, '...'),
+                        'level' => 'info'
+                    ];
+                }, $logs);
+
+                // Return in reverse chronological order for the dashboard
+                $logs = array_reverse($parsedLogs);
+            }
         }
 
         return ResponseFactory::json(['logs' => array_values($logs)]);
@@ -420,25 +441,56 @@ class HealthController
     {
         $issues = [];
         $score = 100;
+        $metrics = [
+            'debug_mode' => 100,
+            'storage_rw' => 100,
+            'ssl_active' => 100,
+            'app_key' => 100,
+            'session_secure' => 100,
+        ];
 
         // Check debug mode
         if (config('app.debug', false)) {
             $issues[] = ['severity' => 'warning', 'message' => 'Debug mode is enabled. Ensure this is disabled in production.'];
             $score -= 20;
+            $metrics['debug_mode'] = 0;
         }
 
-        // Check folder permissions (basic check)
+        // Check storage permissions
         $storagePath = storage_path();
-        if (is_writable($storagePath)) {
-            // Good
-        } else {
+        if (!is_writable($storagePath)) {
             $issues[] = ['severity' => 'critical', 'message' => 'Storage directory is not writable.'];
-            $score -= 50;
+            $score -= 40;
+            $metrics['storage_rw'] = 0;
+        }
+
+        // Check SSL
+        $isSsl = !empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off';
+        if (!$isSsl) {
+            $issues[] = ['severity' => 'warning', 'message' => 'Site is not running over HTTPS.'];
+            $score -= 15;
+            $metrics['ssl_active'] = 0;
+        }
+
+        // Check APP_KEY
+        $appKey = config('app.key');
+        if (empty($appKey) || $appKey === 'base64:unconfigured') {
+            $issues[] = ['severity' => 'critical', 'message' => 'Application key is not set or is insecure.'];
+            $score -= 30;
+            $metrics['app_key'] = 0;
+        }
+
+        // Check Session Secure Cookie
+        if (!config('session.secure', false) && $isSsl) {
+            $issues[] = ['severity' => 'info', 'message' => 'Consider enabling secure session cookies in production.'];
+            $score -= 5;
+            $metrics['session_secure'] = 50;
         }
 
         return ResponseFactory::json([
             'score' => max(0, $score),
             'issues' => $issues,
+            'metrics' => $metrics,
         ]);
     }
 
