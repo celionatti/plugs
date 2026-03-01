@@ -255,6 +255,7 @@ class DefaultConfig
                 'max_age' => 86400,
             ],
             'session' => [
+                'driver' => env('SESSION_DRIVER', 'file'),
                 'secure' => env('APP_ENV') === 'production',
                 'httponly' => true,
                 'samesite' => 'Lax',

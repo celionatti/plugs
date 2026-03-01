@@ -74,9 +74,11 @@ class DeviceTrustManager
      */
     public function invalidateOtherSessions(int $userId): void
     {
+        $currentId = session_id();
+
         Connection::getInstance()->execute(
             "DELETE FROM sessions WHERE user_id = ? AND id != ?",
-            [$userId, session_id()]
+            [$userId, $currentId]
         );
     }
 

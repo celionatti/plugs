@@ -148,10 +148,15 @@ class Plugs
         }
 
         try {
-            // Set the fallback handler before handling the request
             $this->dispatcher->setFallbackHandler($this->fallbackHandler);
 
             $response = $this->dispatcher->handle($request);
+
+            // Force session close before response is emitted to ensure cookies (like CSRF guest tokens) are sent
+            if (session_status() === PHP_SESSION_ACTIVE) {
+                session_write_close();
+            }
+
             $this->emitResponse($response);
 
             // Execute post-response logic
@@ -161,6 +166,11 @@ class Plugs
             try {
                 $handler = $this->container->make(\Plugs\Exceptions\Handler::class);
                 $response = $handler->handle($e, $request);
+
+                if (session_status() === PHP_SESSION_ACTIVE) {
+                    session_write_close();
+                }
+
                 $this->emitResponse($response);
 
                 // Still terminate even on error

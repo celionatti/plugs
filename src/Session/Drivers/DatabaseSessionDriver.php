@@ -50,47 +50,107 @@ class DatabaseSessionDriver implements SessionDriverInterface
 
     public function read(string $id): string
     {
+        // 1. Try Database (Authenticated)
         $result = $this->connection->fetch(
             "SELECT payload FROM {$this->table} WHERE id = ?",
             [$id]
         );
 
-        return $result['payload'] ?? '';
+        if ($result) {
+            return $result['payload'] ?? '';
+        }
+
+        // 2. Try Cookie Fallback (Guest/Anonymous)
+        // This ensures CSRF tokens work without cluttering the database with guest rows.
+        $cookieKey = 'guest_sess_' . $id;
+        $cookie = $this->getCookieJar();
+        return $cookie ? (string) $cookie->get($cookieKey, '') : '';
     }
 
     public function write(string $id, string $data): bool
     {
+        $userId = $this->getUserIdFromData($data);
+        $ipAddress = $_SERVER['REMOTE_ADDR'] ?? null;
+        $userAgent = $_SERVER['HTTP_USER_AGENT'] ?? null;
+
         $existing = $this->connection->fetch(
             "SELECT id FROM {$this->table} WHERE id = ?",
             [$id]
         );
 
-        $attributes = [
-            'payload' => $data,
-            'last_activity' => time(),
-        ];
+        $cookieKey = 'guest_sess_' . $id;
+        $cookie = $this->getCookieJar();
 
-        if ($existing) {
-            $this->connection->execute(
-                "UPDATE {$this->table} SET payload = ?, last_activity = ? WHERE id = ?",
-                [$attributes['payload'], $attributes['last_activity'], $id]
-            );
-        } else {
-            $this->connection->execute(
-                "INSERT INTO {$this->table} (id, payload, last_activity) VALUES (?, ?, ?)",
-                [$id, $attributes['payload'], $attributes['last_activity']]
-            );
+        // Hybrid Strategy:
+        // Guest sessions (no user_id) are stored in an encrypted cookie.
+        // Authenticated sessions are stored in the database.
+        if ($userId === null && !$existing) {
+            // Store in cookie for guest
+            if ($cookie) {
+                $cookie->set($cookieKey, $data, 120); // 2 hours
+            }
+            return true;
+        }
+
+        // If it's becoming authenticated, clear the guest cookie
+        if ($userId !== null && $cookie && $cookie->has($cookieKey)) {
+            $cookie->forget($cookieKey);
+        }
+
+        try {
+            if ($existing) {
+                $this->connection->execute(
+                    "UPDATE {$this->table} SET payload = ?, last_activity = ?, user_id = ?, ip_address = ?, user_agent = ? WHERE id = ?",
+                    [$data, time(), $userId, $ipAddress, $userAgent, $id]
+                );
+            } else {
+                $this->connection->execute(
+                    "INSERT INTO {$this->table} (id, payload, last_activity, user_id, ip_address, user_agent) VALUES (?, ?, ?, ?, ?, ?)",
+                    [$id, $data, time(), $userId, $ipAddress, $userAgent]
+                );
+            }
+        } catch (\Exception $e) {
+            return false;
         }
 
         return true;
     }
 
+    protected function getCookieJar()
+    {
+        $container = \Plugs\Container\Container::getInstance();
+        if ($container->bound('cookie')) {
+            return $container->make('cookie');
+        }
+        return null;
+    }
+
+    protected function getUserIdFromData(string $data): ?int
+    {
+        // PHP sessions are serialized in a special format: key|serialized_value
+        // We look for keys starting with 'login_' (e.g., login_web_..., login_session_...)
+
+        // Match both integer (i:123;) and string (s:3:"123";) IDs
+        if (preg_match('/login_[a-zA-Z0-9_]+\|(?:i:(\d+)|s:\d+:"(\d+)")/', $data, $matches)) {
+            // Return whichever group matched
+            return isset($matches[2]) && $matches[2] !== '' ? (int) $matches[2] : (int) $matches[1];
+        }
+
+        return null;
+    }
+
     public function destroy(string $id): bool
     {
+        // Clear both database and guest cookie
         $this->connection->execute(
-            "DELETE FROM {$this->table} WHERE id = ?",
+            "DELETE FROM sessions WHERE id = ?",
             [$id]
         );
+
+        $cookie = $this->getCookieJar();
+        if ($cookie) {
+            $cookie->forget('guest_sess_' . $id);
+        }
 
         return true;
     }

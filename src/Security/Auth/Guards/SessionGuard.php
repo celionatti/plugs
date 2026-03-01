@@ -177,6 +177,7 @@ class SessionGuard implements StatefulGuardInterface
         $user = $this->user;
 
         $this->session->remove($this->getName());
+        $this->session->destroy();
 
         if ($this->user instanceof Authenticatable) {
             $rememberToken = $this->user->getRememberToken();
