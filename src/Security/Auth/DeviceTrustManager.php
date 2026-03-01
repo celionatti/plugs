@@ -16,7 +16,7 @@ use Plugs\Database\Connection;
 class DeviceTrustManager
 {
     private const COOKIE_NAME = 'device_trust_token';
-    private const LIFETIME = 90 * 24 * 60 * 60; // 90 days
+    private const LIFETIME_MINUTES = 129600; // 90 days in minutes
 
     /**
      * Trust current device for the given user.
@@ -41,10 +41,17 @@ class DeviceTrustManager
 
     /**
      * Check if the current device is trusted for the user.
+     * Only enforces trust for users utilizing the Identity system (with a public_key).
      */
     public function isTrusted(Authenticatable $user, ?string $ip = null): bool
     {
-        $rawToken = $_COOKIE[self::COOKIE_NAME] ?? null;
+        // 1. If user is not an Identity user (no public key), they don't use device trust
+        // We allow standard password-based sessions to pass through.
+        if (method_exists($user, 'getPublicKey') && !$user->getPublicKey()) {
+            return true;
+        }
+
+        $rawToken = \Plugs\Facades\Cookie::get(self::COOKIE_NAME);
         if (!$rawToken) {
             return false;
         }
@@ -78,15 +85,7 @@ class DeviceTrustManager
      */
     private function setTrustCookie(string $rawToken): void
     {
-        $secure = isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off';
-
-        setcookie(self::COOKIE_NAME, $rawToken, [
-            'expires' => time() + self::LIFETIME,
-            'path' => '/',
-            'secure' => $secure,
-            'httponly' => true,
-            'samesite' => 'Lax',
-        ]);
+        \Plugs\Facades\Cookie::set(self::COOKIE_NAME, $rawToken, self::LIFETIME_MINUTES);
     }
 
     /**

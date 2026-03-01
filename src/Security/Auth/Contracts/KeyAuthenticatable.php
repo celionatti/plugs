@@ -44,4 +44,11 @@ interface KeyAuthenticatable extends Authenticatable
      * @return void
      */
     public function setPromptIds(array $promptIds): void;
+
+    /**
+     * Get the email address associated with the identity.
+     *
+     * @return string
+     */
+    public function getEmail(): string;
 }

@@ -12,6 +12,7 @@ use Plugs\Security\Auth\Events\AuthAttempting;
 use Plugs\Security\Auth\Events\AuthFailed;
 use Plugs\Security\Auth\Events\AuthSucceeded;
 use Plugs\Security\Auth\Events\LogoutOccurred;
+use Plugs\Security\Auth\DeviceTrustManager;
 use Plugs\Security\Hash;
 use Plugs\Session\Session;
 
@@ -27,6 +28,7 @@ class SessionGuard implements StatefulGuardInterface
     protected UserProviderInterface $provider;
     protected Session $session;
     protected ?DispatcherInterface $events;
+    protected ?DeviceTrustManager $deviceTrust;
     protected ?Authenticatable $user = null;
     protected bool $viaRemember = false;
 
@@ -35,11 +37,13 @@ class SessionGuard implements StatefulGuardInterface
         UserProviderInterface $provider,
         Session $session,
         ?DispatcherInterface $events = null,
+        ?DeviceTrustManager $deviceTrust = null,
     ) {
         $this->name = $name;
         $this->provider = $provider;
         $this->session = $session;
         $this->events = $events;
+        $this->deviceTrust = $deviceTrust;
     }
 
     /**
@@ -64,13 +68,26 @@ class SessionGuard implements StatefulGuardInterface
     public function user(): ?Authenticatable
     {
         if (!is_null($this->user)) {
+            // Continuous verification: check if device is still trusted
+            if ($this->deviceTrust && !$this->deviceTrust->isTrusted($this->user)) {
+                $this->logout();
+                return null;
+            }
             return $this->user;
         }
 
         $id = $this->session->get($this->getName());
 
         if (!is_null($id)) {
-            $this->user = $this->provider->retrieveById($id);
+            $user = $this->provider->retrieveById($id);
+
+            // Continuous verification on first fetch
+            if ($user && $this->deviceTrust && !$this->deviceTrust->isTrusted($user)) {
+                $this->logout();
+                return null;
+            }
+
+            $this->user = $user;
         }
 
         return $this->user;

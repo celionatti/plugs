@@ -120,3 +120,22 @@ if (!function_exists('api_response')) {
         return new \Plugs\Http\StandardResponse($data, true, $status, $message);
     }
 }
+if (!function_exists('cookie')) {
+    /**
+     * Get the cookie jar instance or get/set a cookie.
+     */
+    function cookie(?string $name = null, $default = null, int $minutes = 0, array $options = [])
+    {
+        $cookie = \Plugs\Facades\Cookie::getFacadeRoot();
+
+        if (is_null($name)) {
+            return $cookie;
+        }
+
+        if (func_num_args() === 1) {
+            return $cookie->get($name);
+        }
+
+        return $cookie->set($name, $default, $minutes, $options);
+    }
+}

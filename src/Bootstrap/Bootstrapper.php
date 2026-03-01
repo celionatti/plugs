@@ -108,6 +108,7 @@ class Bootstrapper
             \Plugs\Module\Core\FunctionsModule::class,
             \Plugs\Module\Core\LogModule::class,
             \Plugs\Module\Core\CacheModule::class,
+            \Plugs\Module\Core\CookieModule::class,
             \Plugs\Module\Core\EncryptionModule::class,
             \Plugs\Module\Core\EventsModule::class,
             \Plugs\Module\Core\DatabaseModule::class,

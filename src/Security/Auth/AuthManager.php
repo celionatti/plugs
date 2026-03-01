@@ -159,6 +159,7 @@ class AuthManager
             ? $this->container->make(Session::class)
             : new Session(),
             $this->events,
+            $this->deviceTrust()
         );
     }
 

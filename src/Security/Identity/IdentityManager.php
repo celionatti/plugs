@@ -9,6 +9,7 @@ use Plugs\Security\Auth\Authenticatable;
 use Plugs\Security\Auth\Contracts\KeyAuthenticatable;
 use Plugs\Security\Auth\Events\IdentityRecovered;
 use Plugs\Security\Auth\Events\IdentityRegistered;
+use Plugs\Security\Identity\Models\IdentityChallenge;
 use RuntimeException;
 
 /**
@@ -115,15 +116,22 @@ class IdentityManager
     }
 
     /**
-     * Verify a user's identity (used internally by KeyGuard).
+     * Verify a user's identity including a nonce challenge.
      *
      * @param string $email
      * @param string $passphrase
+     * @param string $nonce
      * @return KeyAuthenticatable|null The authenticated user, or null on failure
      */
-    public function verify(string $email, string $passphrase): ?KeyAuthenticatable
+    public function verify(string $email, string $passphrase, string $nonce): ?KeyAuthenticatable
     {
         $email = mb_strtolower(trim($email));
+
+        // 1. Validate the nonce challenge from the DB
+        $challenge = IdentityChallenge::findValid($email, $nonce);
+        if (!$challenge) {
+            return null;
+        }
 
         if (!class_exists($this->userModel) || !method_exists($this->userModel, 'where')) {
             return null;
@@ -135,7 +143,7 @@ class IdentityManager
             return null;
         }
 
-        // Derive keys and compare public key
+        // 2. Derive keys and compare public key
         $keyPair = $this->keyService->deriveKeyPair($email, $passphrase);
         $derivedPublicKey = base64_encode($keyPair['publicKey']);
 
@@ -145,7 +153,13 @@ class IdentityManager
         sodium_memzero($keyPair['privateKey']);
         sodium_memzero($keyPair['seed']);
 
-        return $isValid ? $user : null;
+        if ($isValid) {
+            // 3. Mark challenge as used
+            $challenge->use();
+            return $user;
+        }
+
+        return null;
     }
 
     /**
@@ -177,9 +191,7 @@ class IdentityManager
             );
         }
 
-        $email = method_exists($user, 'getEmail')
-            ? $user->getEmail()
-            : (property_exists($user, 'email') ? $user->email : '');
+        $email = $user->getEmail();
 
         // Derive new public key
         $publicKey = $this->keyService->derivePublicKey($email, $newPassphrase);
@@ -204,11 +216,31 @@ class IdentityManager
     }
 
     /**
-     * Get a nonce challenge for key-based authentication.
+     * Get a nonce challenge for key-based authentication and store it in the database.
      */
     public function challenge(string $email): string
     {
-        return $this->nonceService->generate(mb_strtolower(trim($email)));
+        $email = mb_strtolower(trim($email));
+        $nonce = $this->nonceService->generate($email);
+
+        // Store in database for tracking and one-time-use enforcement.
+        // We update the existing record for this email to prevent table bloat.
+        $challenge = IdentityChallenge::where('email', '=', $email)->first();
+
+        $data = [
+            'email' => $email,
+            'nonce' => $nonce,
+            'used' => false,
+            'expires_at' => date('Y-m-d H:i:s', time() + $this->nonceService->getTtl()),
+        ];
+
+        if ($challenge) {
+            $challenge->fill($data)->save();
+        } else {
+            IdentityChallenge::create($data);
+        }
+
+        return $nonce;
     }
 
     /**
