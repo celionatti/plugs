@@ -393,20 +393,38 @@ class HealthController
         $router = app(Router::class);
         $routesRaw = $router->getRoutes();
         $routes = [];
+        $stats = [
+            'GET' => 0,
+            'POST' => 0,
+            'PUT' => 0,
+            'DELETE' => 0,
+            'PATCH' => 0,
+            'OTHER' => 0,
+        ];
 
         foreach ($routesRaw as $method => $methodRoutes) {
+            $upperMethod = strtoupper($method);
             foreach ($methodRoutes as $route) {
                 $routes[] = [
-                    'method' => $method,
+                    'method' => $upperMethod,
                     'uri' => $route->getPath(),
                     'name' => $route->getName(),
                     'handler' => $this->formatHandler($route->getHandler()),
                     'middleware' => $route->getMiddleware(),
                 ];
+
+                if (isset($stats[$upperMethod])) {
+                    $stats[$upperMethod]++;
+                } else {
+                    $stats['OTHER']++;
+                }
             }
         }
 
-        return ResponseFactory::json(['routes' => $routes]);
+        return ResponseFactory::json([
+            'routes' => $routes,
+            'stats' => $stats,
+        ]);
     }
 
     /**

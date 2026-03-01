@@ -536,21 +536,43 @@
 
             <!-- Routes Tab -->
             <div id="routes" class="tab-pane">
-                <div class="card">
-                    <div class="card-title"><i class="ri-map-pin-line"></i> Application Router Map</div>
-                    <div class="table-responsive">
-                        <table id="routes-table">
-                            <thead>
-                                <tr>
-                                    <th>Method</th>
-                                    <th>URI</th>
-                                    <th>Name</th>
-                                    <th>Handler</th>
-                                    <th>Middleware</th>
-                                </tr>
-                            </thead>
-                            <tbody></tbody>
-                        </table>
+                <div class="grid">
+                    <div class="card" style="grid-column: span 1;">
+                        <div class="card-title"><i class="ri-pie-chart-line"></i> Method Distribution</div>
+                        <div style="height: 300px; display: flex; justify-content: center;">
+                            <canvas id="routeChart"></canvas>
+                        </div>
+                    </div>
+                    <div class="card" style="grid-column: span 1;">
+                        <div class="card-title"><i class="ri-search-line"></i> Filter Routes</div>
+                        <p style="color:var(--text-muted); font-size:0.85rem; margin-bottom:1.5rem;">Quickly find any endpoint by URI, name, or controller.</p>
+                        <div class="input-group" style="margin-bottom:1rem;">
+                            <input type="text" id="route-search" placeholder="Search routes..." style="width:100%; padding:0.75rem; background:rgba(255,255,255,0.05); border:1px solid var(--border-subtle); border-radius:0.5rem; color:white; font-family:var(--font-mono);">
+                        </div>
+                        <div id="route-stats" style="display:flex; flex-wrap:wrap; gap:0.5rem; margin-top:auto;">
+                            <!-- Stats Badges -->
+                        </div>
+                    </div>
+                    <div class="card" style="grid-column: span 2;">
+                        <div class="card-title" style="display:flex; justify-content:space-between; align-items:center;">
+                            <span><i class="ri-map-pin-line"></i> Application Router Map</span>
+                            <span id="route-count" class="badge" style="background:rgba(255,255,255,0.1)">0 Routes</span>
+                        </div>
+                        <div class="table-responsive" style="max-height: 500px; overflow-y: auto;">
+                            <table id="routes-table">
+                                <thead style="position: sticky; top: 0; background: var(--bg-card); z-index: 10;">
+                                    <tr>
+                                        <th>Method</th>
+                                        <th>URI</th>
+                                        <th>Name</th>
+                                        <th>Handler</th>
+                                        <th>Middleware</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody></tbody>
+                            </table>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -913,21 +935,103 @@
             }
         }
 
+        let allRoutes = [];
+        let routeChart = null;
+
         async function fetchRoutes() {
             try {
                 const response = await fetch('/_plugs/health/routes');
                 const data = await response.json();
-                const tbody = document.querySelector('#routes-table tbody');
-                tbody.innerHTML = data.routes.map(r => `
-                    <tr>
-                        <td><span class="badge ${r.method === 'GET' ? 'badge-success' : 'badge-danger'}" style="background:rgba(255,255,255,0.05); color:white;">${r.method}</span></td>
-                        <td style="font-family:var(--font-mono); color:var(--accent-primary);">${r.uri}</td>
-                        <td style="color:var(--text-muted)">${r.name || '-'}</td>
-                        <td style="font-size:0.85rem;">${r.handler}</td>
-                        <td style="font-size:0.85rem; color:var(--text-dim)">${r.middleware.join(', ')}</td>
-                    </tr>
+                allRoutes = data.routes;
+
+                // Stats badges
+                const statsContainer = document.getElementById('route-stats');
+                statsContainer.innerHTML = Object.entries(data.stats).map(([method, count]) => `
+                    <div class="badge" style="background:rgba(255,255,255,0.05); border:1px solid var(--border-subtle);">
+                        <span style="color:var(--accent-primary); font-weight:700;">${method}:</span> ${count}
+                    </div>
                 `).join('');
+
+                document.getElementById('route-count').innerText = `${allRoutes.length} Total Routes`;
+                
+                renderRoutesTable(allRoutes);
+                renderRouteChart(data.stats);
+
+                // Add search listener once
+                const searchInput = document.getElementById('route-search');
+                if (searchInput && !searchInput.dataset.listener) {
+                    searchInput.addEventListener('input', (e) => {
+                        const term = e.target.value.toLowerCase();
+                        const filtered = allRoutes.filter(r => 
+                            r.uri.toLowerCase().includes(term) || 
+                            (r.name && r.name.toLowerCase().includes(term)) ||
+                            r.handler.toLowerCase().includes(term)
+                        );
+                        renderRoutesTable(filtered);
+                    });
+                    searchInput.dataset.listener = 'true';
+                }
             } catch (e) { }
+        }
+
+        function renderRoutesTable(routes) {
+            const tbody = document.querySelector('#routes-table tbody');
+            tbody.innerHTML = routes.map(r => `
+                <tr>
+                    <td><span class="badge" style="background:rgba(var(--accent-primary-rgb), 0.1); color:var(--accent-primary); font-weight:bold;">${r.method}</span></td>
+                    <td style="font-family:var(--font-mono); color:var(--accent-primary); font-size:0.9rem;">${r.uri}</td>
+                    <td style="color:var(--text-muted); font-size:0.85rem;">${r.name || '-'}</td>
+                    <td style="font-size:0.85rem; max-width:200px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="${r.handler}">${r.handler}</td>
+                    <td>
+                        <div style="display:flex; flex-wrap:wrap; gap:0.25rem;">
+                            ${r.middleware.map(m => `<span class="badge" style="font-size:0.7rem; background:rgba(255,255,255,0.05); color:var(--text-dim);">${m}</span>`).join('')}
+                        </div>
+                    </td>
+                    <td>
+                        ${r.method === 'GET' ? `<button onclick="window.open('${r.uri}', '_blank')" class="badge" style="cursor:pointer; background:var(--accent-success); color:white; border:none;"><i class="ri-external-link-line"></i> Test</button>` : '-'}
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        function renderRouteChart(stats) {
+            const ctx = document.getElementById('routeChart').getContext('2d');
+            const data = {
+                labels: Object.keys(stats).filter(k => stats[k] > 0),
+                datasets: [{
+                    data: Object.values(stats).filter(v => v > 0),
+                    backgroundColor: [
+                        '#10b981', // GET
+                        '#38bdf8', // POST
+                        '#f59e0b', // PUT
+                        '#ef4444', // DELETE
+                        '#8b5cf6', // PATCH
+                        '#64748b'  // OTHER
+                    ],
+                    borderWidth: 0
+                }]
+            };
+
+            if (routeChart) {
+                routeChart.data = data;
+                routeChart.update();
+            } else {
+                routeChart = new Chart(ctx, {
+                    type: 'doughnut',
+                    data: data,
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        cutout: '70%',
+                        plugins: {
+                            legend: {
+                                position: 'bottom',
+                                labels: { color: '#94a3b8', padding: 20, font: { size: 10 } }
+                            }
+                        }
+                    }
+                });
+            }
         }
 
         let securityChart = null;
