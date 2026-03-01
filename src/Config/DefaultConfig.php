@@ -43,7 +43,7 @@ class DefaultConfig
             'fallback_locale' => env('APP_FALLBACK_LOCALE', 'en'),
             'theme' => env('APP_THEME', 'default'),
             'paths' => [
-                'views' => env('VIEW_PATH', base_path('resources')),
+                'views' => env('VIEW_PATH', base_path('resources/views')),
                 'cache' => base_path('storage/cache'),
                 'logs' => base_path('storage/logs'),
                 'storage' => base_path('storage'),
