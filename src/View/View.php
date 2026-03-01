@@ -189,13 +189,7 @@ class View
         $this->logError($e);
 
         // Return appropriate error message based on environment
-        if ($this->isDebugMode()) {
-            return $this->renderDebugError($e);
-        }
-
-        return '<div style="padding: 1rem; color: #721c24; background: #f8d7da; border: 1px solid #f5c6cb;">'
-            . 'Error rendering view. Please check logs for details.'
-            . '</div>';
+        return ErrorRenderer::render($e, $this->view, $this->data);
     }
 
     /**
@@ -224,7 +218,7 @@ class View
      *
      * @return bool
      */
-    private function isDebugMode(): bool
+    public function isDebugMode(): bool
     {
         // Check constant first (most performant)
         if (defined('APP_DEBUG')) {
@@ -246,55 +240,7 @@ class View
         return false;
     }
 
-    /**
-     * Render debug error message with full details
-     *
-     * @param Throwable $e Exception to render
-     * @return string HTML error display
-     */
-    private function renderDebugError(Throwable $e): string
-    {
-        $message = htmlspecialchars($e->getMessage(), ENT_QUOTES, 'UTF-8');
-        $file = htmlspecialchars($e->getFile(), ENT_QUOTES, 'UTF-8');
-        $line = $e->getLine();
-        $view = htmlspecialchars($this->view, ENT_QUOTES, 'UTF-8');
 
-        // FIX: Limit stack trace to prevent excessive information disclosure
-        $fullTrace = $e->getTraceAsString();
-        $traceLines = explode("\n", $fullTrace);
-        $limitedTraceLines = array_slice($traceLines, 0, self::MAX_TRACE_LINES);
-        $limitedTrace = implode("\n", $limitedTraceLines);
-
-        if (count($traceLines) > self::MAX_TRACE_LINES) {
-            $limitedTrace .= "\n... (" . (count($traceLines) - self::MAX_TRACE_LINES) . " more lines)";
-        }
-
-        $trace = htmlspecialchars($limitedTrace, ENT_QUOTES, 'UTF-8');
-
-        return <<<HTML
-        <div style="background: #f8d7da; color: #721c24; padding: 1.5rem; border: 2px solid #f5c6cb; border-radius: 4px; margin: 1rem; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;">
-            <h3 style="margin-top: 0; color: #721c24; font-size: 1.25rem;">View Rendering Error</h3>
-            <p style="margin: 0.5rem 0;"><strong>View:</strong> {$view}</p>
-            <p style="margin: 0.5rem 0;"><strong>Error:</strong> {$message}</p>
-            <p style="margin: 0.5rem 0;"><strong>File:</strong> {$file}:{$line}</p>
-            <details style="margin-top: 1rem;">
-                <summary style="cursor: pointer; font-weight: bold; padding: 0.5rem; background: #f5c6cb; border-radius: 4px;">Stack Trace (limited to {$this->getTraceLineCount($traceLines)} lines)</summary>
-                <pre style="margin-top: 0.5rem; padding: 1rem; background: #fff; border: 1px solid #ccc; overflow-x: auto; font-size: 0.875rem; line-height: 1.5;">{$trace}</pre>
-            </details>
-        </div>
-        HTML;
-    }
-
-    /**
-     * Get the count of trace lines to display
-     *
-     * @param array $traceLines Full trace lines
-     * @return int Number of lines shown
-     */
-    private function getTraceLineCount(array $traceLines): int
-    {
-        return min(count($traceLines), self::MAX_TRACE_LINES);
-    }
 
     // ============================================
     // NEW CHAINABLE RESPONSE METHODS

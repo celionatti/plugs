@@ -97,49 +97,223 @@ class HtmlErrorRenderer
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <style' . $nonceAttr . '>
-        @import url("https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Dancing+Script:wght@700&family=JetBrains+Mono:wght@400;500&display=swap");
+        @import url("https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Fira+Code:wght@400;500&display=swap");
 
-        .plugs-error-page {
-            --bg-body: #080b12; --bg-sidebar: rgba(15, 23, 42, 0.6); --bg-card: rgba(30, 41, 59, 0.3);
-            --bg-header: rgba(8, 11, 18, 0.7); --border-color: rgba(255, 255, 255, 0.08);
-            --text-primary: #f8fafc; --text-secondary: #94a3b8; --text-muted: #64748b;
-            --accent-primary: #8b5cf6; --accent-secondary: #3b82f6; --danger: #ef4444;
-            --code-bg: rgba(13, 17, 23, 0.7); --highlight-bg: rgba(239, 68, 68, 0.15);
-            font-family: "Outfit", sans-serif; 
-            background-color: var(--bg-body); 
-            background-image: radial-gradient(circle at 15% 15%, rgba(139, 92, 246, 0.08) 0%, transparent 40%), radial-gradient(circle at 85% 85%, rgba(59, 130, 246, 0.08) 0%, transparent 40%);
-            color: var(--text-primary); height: 100vh; display: flex; flex-direction: column; overflow: hidden; font-size: 15px; margin: 0; padding: 0; box-sizing: border-box;
+        :root {
+            --bg: #0f172a;
+            --card: #1e293b;
+            --primary: #10b981;
+            --accent: #06b6d4;
+            --danger: #ef4444;
+            --text: #f8fafc;
+            --text-muted: #94a3b8;
+            --border: rgba(255, 255, 255, 0.08);
+            --glass: rgba(15, 23, 42, 0.8);
+            --glass-light: rgba(255, 255, 255, 0.03);
         }
+
+        body.plugs-error-page {
+            background-color: var(--bg);
+            background-image: radial-gradient(circle at 15% 15%, rgba(16, 185, 129, 0.05) 0%, transparent 40%), 
+                              radial-gradient(circle at 85% 85%, rgba(6, 182, 212, 0.05) 0%, transparent 40%);
+            color: var(--text);
+            font-family: "Outfit", sans-serif;
+            margin: 0; padding: 0; min-height: 100vh; overflow-x: hidden;
+        }
+
         .plugs-error-page * { box-sizing: border-box; }
-        .plugs-error-page .header { height: 64px; border-bottom: 1px solid var(--border-color); display: flex; align-items: center; padding: 0 2rem; background-color: var(--bg-header); backdrop-filter: blur(12px); z-index: 50; justify-content: space-between; }
-        .plugs-error-page .brand { font-family: "Dancing Script", cursive; font-size: 2.2rem; background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; text-decoration: none; }
-        .plugs-error-page .container { display: flex; flex: 1; overflow: hidden; }
-        .plugs-error-page .sidebar { width: 380px; background-color: var(--bg-sidebar); backdrop-filter: blur(20px); border-right: 1px solid var(--border-color); display: flex; flex-direction: column; flex-shrink: 0; }
-        .plugs-error-page .stack-list { overflow-y: auto; flex: 1; list-style: none; padding: 0; margin: 0; }
-        .plugs-error-page .stack-item { border-bottom: 1px solid var(--border-color); padding: 1.25rem 1.5rem; cursor: pointer; transition: background 0.2s; }
-        .plugs-error-page .stack-item:hover { background: rgba(255,255,255,0.02); }
-        .plugs-error-page .stack-item.active { background: rgba(139, 92, 246, 0.1); border-left: 3px solid var(--accent-primary); }
-        .plugs-error-page .content { flex: 1; display: flex; flex-direction: column; overflow-y: auto; }
-        .plugs-error-page .error-banner { padding: 3rem; border-bottom: 1px solid var(--border-color); background: linear-gradient(to bottom, rgba(239,68,68,0.05), transparent); }
-        .plugs-error-page .exception-message { font-size: 2rem; font-weight: 600; margin-bottom: 1rem; line-height: 1.3; }
-        .plugs-error-page .code-viewer-container { background: var(--code-bg); flex: 1; display: flex; flex-direction: column; overflow: hidden; }
-        .plugs-error-page .code-viewer { display: none; padding: 0; flex: 1; overflow-y: auto; }
-        .plugs-error-page .code-viewer.active { display: block; }
-        .plugs-error-page .code-table { width: 100%; border-collapse: collapse; font-family: "JetBrains Mono", monospace; font-size: 13.5px; }
-        .plugs-error-page .code-row.error-line { background: var(--highlight-bg); position: relative; }
-        .plugs-error-page .code-row.error-line::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 3px; background: var(--danger); }
-        .plugs-error-page .code-line-num { width: 60px; text-align: right; padding: 0.25rem 1rem; color: var(--text-muted); border-right: 1px solid rgba(255,255,255,0.05); user-select: none; }
-        .plugs-error-page .code-content { padding: 0.25rem 1.5rem; white-space: pre; color: #e2e8f0; }
-        .plugs-error-page .suggestions-box { background: rgba(139, 92, 246, 0.1); border: 1px solid rgba(139, 92, 246, 0.2); border-left: 4px solid var(--accent-primary); padding: 1.5rem; margin-top: 1.5rem; border-radius: 8px; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1); }
-        .plugs-error-page .suggestions-title { font-size: 1.1rem; font-weight: 600; margin-bottom: 0.75rem; display: flex; align-items: center; gap: 0.5rem; color: var(--accent-primary); }
-        .plugs-error-page .suggestion-item { margin-bottom: 0.5rem; line-height: 1.6; color: #e2e8f0; }
-        .plugs-error-page .suggestion-item:last-child { margin-bottom: 0; }
-        .plugs-error-page .vscode-btn { display: inline-flex; align-items: center; gap: 0.5rem; background: rgba(255,255,255,0.05); border: 1px solid var(--border-color); color: var(--text-primary); padding: 0.5rem 1rem; border-radius: 8px; font-size: 0.9rem; text-decoration: none; cursor: pointer; transition: all 0.2s; font-weight: 500; }
-        .plugs-error-page .vscode-btn:hover { background: rgba(255,255,255,0.1); border-color: rgba(255,255,255,0.2); transform: translateY(-1px); }
-        .plugs-error-page .file-location-bar { display: flex; align-items: center; justify-content: space-between; margin-top: 1.5rem; color: var(--text-secondary); font-family: "JetBrains Mono", monospace; font-size: 13.5px; background: rgba(0,0,0,0.2); padding: 0.75rem 1.5rem; border-radius: 8px; border: 1px solid var(--border-color); }
-        .plugs-error-page .stack-file-path { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-family: "JetBrains Mono", monospace; }
-        .plugs-error-page .vscode-icon { color: var(--text-muted); transition: color 0.2s; display: flex; align-items: center; padding: 4px; border-radius: 4px; }
-        .plugs-error-page .vscode-icon:hover { color: var(--accent-primary); background: rgba(139, 92, 246, 0.15); }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 2rem;
+            animation: fadeIn 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .glass-card {
+            background: var(--glass);
+            backdrop-filter: blur(24px);
+            -webkit-backdrop-filter: blur(24px);
+            border: 1px solid var(--border);
+            border-radius: 28px;
+            overflow: hidden;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+        }
+
+        header.header {
+            padding: 2.5rem;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: linear-gradient(to bottom, var(--glass-light), transparent);
+        }
+
+        .brand {
+            font-size: 1.5rem;
+            font-weight: 800;
+            color: var(--primary);
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .error-banner {
+            padding: 2.5rem;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .exception-message {
+            font-size: clamp(1.5rem, 4vw, 2.5rem);
+            font-weight: 700;
+            line-height: 1.2;
+            margin: 1rem 0;
+            color: var(--text);
+        }
+
+        .main-content {
+            padding: 2.5rem;
+        }
+
+        .section-header {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+            color: var(--primary);
+            font-weight: 700;
+            font-size: 1.1rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .section-header::after {
+            content: "";
+            flex: 1;
+            height: 1px;
+            background: linear-gradient(to right, var(--border), transparent);
+        }
+
+        /* Stack & Code */
+        .stack-list {
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+            margin-bottom: 3rem;
+        }
+
+        .stack-item {
+            background: rgba(255,255,255,0.02);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 1.25rem;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .stack-item:hover {
+            background: rgba(255,255,255,0.04);
+            transform: translateX(4px);
+        }
+
+        .stack-item.active {
+            background: rgba(16, 185, 129, 0.05);
+            border-color: var(--primary);
+            box-shadow: 0 0 20px rgba(16, 185, 129, 0.1);
+        }
+
+        .code-viewer-container {
+            border-radius: 16px;
+            background: #0b1120;
+            border: 1px solid var(--border);
+            overflow: hidden;
+            margin-bottom: 3rem;
+        }
+
+        .code-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-family: "Fira Code", monospace;
+            font-size: 14px;
+        }
+
+        .code-row.error-line {
+            background: rgba(239, 68, 68, 0.12);
+            position: relative;
+        }
+
+        .code-row.error-line::before {
+            content: "";
+            position: absolute;
+            left: 0; top: 0; bottom: 0; width: 3px;
+            background: var(--danger);
+            box-shadow: 0 0 10px var(--danger);
+        }
+
+        .code-line-num {
+            width: 65px;
+            text-align: right;
+            padding: 0.4rem 1.25rem;
+            color: #4b5563;
+            border-right: 1px solid rgba(255,255,255,0.05);
+            user-select: none;
+        }
+
+        .error-line .code-line-num {
+            color: var(--danger);
+            font-weight: 700;
+        }
+
+        .code-content {
+            padding: 0.4rem 1.5rem;
+            white-space: pre;
+            color: #e2e8f0;
+        }
+
+        .token-keyword { color: #f472b6; font-weight: 600; }
+        .token-string { color: #34d399; }
+        .token-var { color: #93c5fd; }
+        .token-comment { color: #6b7280; font-style: italic; }
+
+        .suggestions-box {
+            background: rgba(16, 185, 129, 0.05);
+            border: 1px solid rgba(16, 185, 129, 0.2);
+            padding: 1.5rem;
+            margin-top: 2rem;
+            border-radius: 16px;
+        }
+
+        .file-location-bar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: rgba(0,0,0,0.2);
+            padding: 1rem 1.5rem;
+            border-radius: 12px;
+            border: 1px solid var(--border);
+            font-family: "Fira Code", monospace;
+            font-size: 0.9rem;
+        }
+
+        .vscode-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            background: var(--primary);
+            color: white;
+            padding: 0.6rem 1.2rem;
+            border-radius: 10px;
+            font-size: 0.85rem;
+            text-decoration: none;
+            font-weight: 600;
+        }
+
     </style>
 </head>
 <body class="plugs-error-page">
@@ -152,63 +326,70 @@ class HtmlErrorRenderer
     protected function getDebugBody(Throwable $e, string $className, string $file, int $line, array $frames, array $suggestions = [], ?string $nonce = null): string
     {
         $html = '<div class="container">
-        <aside class="sidebar">
-            <ul class="stack-list">';
-        foreach ($frames as $index => $frame) {
-            $active = $index === 0 ? 'active' : '';
-            $f = $frame['file'] ?? '{internal}';
-            $l = $frame['line'] ?? '-';
-            $method = ($frame['class'] ?? '') . ($frame['type'] ?? '') . $frame['function'];
-            $html .= '<li class="stack-item ' . $active . '" data-index="' . $index . '" data-file="' . htmlspecialchars(basename($f)) . '" data-full-file="' . htmlspecialchars($f) . '" data-line="' . $l . '">
-                <div style="font-size: 0.8rem; color: var(--text-secondary); display: flex; justify-content: space-between; align-items: center;">
-                    <span class="stack-file-path">' . htmlspecialchars(basename($f)) . ':' . $l . '</span>
-                    ' . ($f !== '{internal}' ? '<a href="vscode://file/' . htmlspecialchars($f) . ':' . $l . '" class="vscode-icon" title="Open in VS Code" onclick="event.stopPropagation()">
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4"/></svg>
-                    </a>' : '') . '
-                </div>
-                <div style="color: var(--accent-primary); font-weight: 500; margin-top: 0.25rem;">' . htmlspecialchars($method) . '</div>
-            </li>';
-        }
-        $html .= '</ul>
-        </aside>
-        <main class="content">
+        <div class="glass-card">
+            <header class="header">
+                <a href="/" class="brand">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+                    Plugs
+                </a>
+            </header>
+
             <div class="error-banner">
-                <div style="color: var(--danger); font-size: 0.8rem; font-weight: 700;">' . htmlspecialchars($className) . '</div>
+                <div style="color: var(--danger); font-size: 0.85rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.05em;">' . htmlspecialchars($className) . '</div>
                 <h1 class="exception-message">' . htmlspecialchars($e->getMessage()) . '</h1>
                 <div class="file-location-bar">
-                    <span id="active-location">' . htmlspecialchars(basename($file)) . ' | Line ' . $line . '</span>
+                    <span id="active-location" style="color: var(--text-muted);">' . htmlspecialchars(basename($file)) . ' <span style="color: var(--danger);">: ' . $line . '</span></span>
                     <a href="vscode://file/' . htmlspecialchars(realpath($file) ?: $file) . ':' . $line . '" id="active-vscode-btn" class="vscode-btn">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4"/></svg>
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4"/></svg>
                         Open in VS Code
                     </a>
                 </div>';
 
         if (!empty($suggestions)) {
             $html .= '<div class="suggestions-box">
-                <div class="suggestions-title">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18h6m-3-13a4.5 4.5 0 00-4.5 4.5c0 1.8 1.5 3.5 1.5 4.5v2a1 1 0 001 1h4a1 1 0 001-1v-2c0-1 1.5-2.7 1.5-4.5A4.5 4.5 0 0012 5z"/></svg>
-                    Possible fixes
+                <div style="font-size: 1rem; font-weight: 700; margin-bottom: 0.75rem; display: flex; align-items: center; gap: 0.5rem; color: var(--primary);">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M9 18h6m-3-13a4.5 4.5 0 00-4.5 4.5c0 1.8 1.5 3.5 1.5 4.5v2a1 1 0 001 1h4a1 1 0 001-1v-2c0-1 1.5-2.7 1.5-4.5A4.5 4.5 0 0012 5z"/></svg>
+                    Possible Fixes
                 </div>
-                <ul style="margin: 0; padding-left: 1.5rem;">';
+                <ul style="margin: 0; padding-left: 1.5rem; list-style-type: none;">';
             foreach ($suggestions as $suggestion) {
-                $parsed = preg_replace('/\*\*(.*?)\*\*/', '<strong>$1</strong>', htmlspecialchars($suggestion));
-                $parsed = preg_replace('/`(.*?)`/', '<code style="background: rgba(0,0,0,0.3); padding: 0.1rem 0.3rem; border-radius: 3px;">$1</code>', $parsed);
-                $html .= '<li class="suggestion-item">' . $parsed . '</li>';
+                $parsed = preg_replace('/\*\*(.*?)\*\*/', '<strong style="color: var(--text);">$1</strong>', htmlspecialchars($suggestion));
+                $parsed = preg_replace('/`(.*?)`/', '<code style="background: rgba(0,0,0,0.3); padding: 0.15rem 0.4rem; border-radius: 6px; color: var(--accent); font-family: Fira Code;">$1</code>', $parsed);
+                $html .= '<li style="margin-bottom: 0.5rem; color: var(--text-muted); line-height: 1.6; display: flex; gap: 0.5rem;"><span style="color: var(--primary);">•</span> ' . $parsed . '</li>';
             }
             $html .= '</ul></div>';
         }
 
         $html .= '</div>
-            <div class="code-viewer-container">';
+            <div class="main-content">
+                <div class="section-header">Execution Snippet</div>
+                <div class="code-viewer-container">';
         foreach ($frames as $index => $frame) {
             $active = $index === 0 ? 'active' : '';
             $f = $frame['file'] ?? '';
             $l = $frame['line'] ?? 0;
-            $snippet = ($f && file_exists($f)) ? $this->getCodeSnippet($f, $l) : '<div style="padding: 2rem; color: var(--text-muted)">No preview</div>';
+            $snippet = ($f && file_exists($f)) ? $this->getCodeSnippet($f, $l) : '<div style="padding: 2.5rem; color: var(--text-muted); text-align: center;">No preview available for internal frames.</div>';
             $html .= '<div id="code-' . $index . '" class="code-viewer ' . $active . '">' . $snippet . '</div>';
         }
         $html .= '</div>
-        </main>
+
+                <div class="section-header" style="margin-top: 3rem;">Stack Trace</div>
+                <ul class="stack-list">';
+        foreach ($frames as $index => $frame) {
+            $active = $index === 0 ? 'active' : '';
+            $f = $frame['file'] ?? '{internal}';
+            $l = $frame['line'] ?? '-';
+            $method = ($frame['class'] ?? '') . ($frame['type'] ?? '') . $frame['function'];
+            $html .= '<li class="stack-item ' . $active . '" data-index="' . $index . '" data-file="' . htmlspecialchars(basename($f)) . '" data-full-file="' . htmlspecialchars($f) . '" data-line="' . $l . '">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.25rem;">
+                    <span style="font-family: Fira Code; font-size: 0.85rem; color: var(--accent); font-weight: 600;">' . htmlspecialchars($method) . '()</span>
+                    <span style="font-size: 0.75rem; color: var(--text-muted);">' . htmlspecialchars(basename($f)) . ':' . $l . '</span>
+                </div>
+            </li>';
+        }
+        $html .= '</ul>
+            </div>
+        </div>
     </div>';
         return $html;
     }
@@ -219,7 +400,10 @@ class HtmlErrorRenderer
     protected function getDebugFooter(?string $nonce = null): string
     {
         $nonceAttr = $nonce ? ' nonce="' . $nonce . '"' : '';
-        return '<script' . $nonceAttr . '>
+        return '<footer style="margin-top: 3rem; text-align: center; padding: 2.5rem; color: var(--text-muted); font-size: 0.85rem;">
+            &copy; ' . date('Y') . ' Plugs Framework &bull; Built for Plugs by Celio Natti
+        </footer>
+        <script' . $nonceAttr . '>
         document.querySelectorAll(".stack-item").forEach(el => {
             el.addEventListener("click", function() {
                 const index = this.getAttribute("data-index");
@@ -231,7 +415,7 @@ class HtmlErrorRenderer
                 
                 const file = this.getAttribute("data-full-file");
                 const line = this.getAttribute("data-line");
-                document.getElementById("active-location").textContent = this.getAttribute("data-file") + " | Line " + line;
+                document.getElementById("active-location").innerHTML = this.getAttribute("data-file") + " <span style=\"color: var(--danger);\">: " + line + "</span>";
                 
                 const btn = document.getElementById("active-vscode-btn");
                 if (file && file !== "{internal}") {
@@ -242,7 +426,7 @@ class HtmlErrorRenderer
                 }
             });
         });
-    </script></body></html>';
+        </script></body></html>';
     }
 
     /**
@@ -251,15 +435,37 @@ class HtmlErrorRenderer
     protected function getCodeSnippet(string $file, int $line): string
     {
         $lines = file($file);
-        $start = max(0, $line - 11);
-        $end = min(count($lines), $line + 10);
+        $start = max(0, $line - 6);
+        $end = min(count($lines), $line + 5);
         $output = '<table class="code-table">';
+
         for ($i = $start; $i < $end; $i++) {
             $currentLine = $i + 1;
+            $content = $lines[$i];
             $class = $currentLine === $line ? 'error-line' : '';
+
+            // 1. Encode first
+            $highlighted = htmlspecialchars($content, ENT_QUOTES, 'UTF-8');
+
+            // 2. Highlighting placeholders
+            $highlighted = preg_replace('/(\$[a-zA-Z_\x7f-\xff][a-zA-Z0-9_\x7f-\xff]*)/', '##VAR##$1##/VAR##', $highlighted);
+            $highlighted = preg_replace('/(\bpublic\b|\bprivate\b|\bprotected\b|\bclass\b|\bfunction\b|\breturn\b|\bif\b|\belse\b|\bforeach\b|\bas\b|\bstatic\b|\bthrow\b|\bnew\b|\btry\b|\bcatch\b)/', '##KEY##$1##/KEY##', $highlighted);
+            $highlighted = preg_replace('/(&quot;|&#039;|\'|")(.*?)(&quot;|&#039;|\'|")/', '##STR##$1$2$3##/STR##', $highlighted);
+
+            if (str_contains($content, '//')) {
+                $highlighted = preg_replace('/(\/\/.*)/', '##COM##$1##/COM##', $highlighted);
+            }
+
+            // 3. Final Swap
+            $finalContent = str_replace(
+                ['##VAR##', '##/VAR##', '##KEY##', '##/KEY##', '##STR##', '##/STR##', '##COM##', '##/COM##'],
+                ['<span class="token-var">', '</span>', '<span class="token-keyword">', '</span>', '<span class="token-string">', '</span>', '<span class="token-comment">', '</span>'],
+                $highlighted
+            );
+
             $output .= '<tr class="code-row ' . $class . '">
                 <td class="code-line-num">' . $currentLine . '</td>
-                <td class="code-content">' . htmlspecialchars($lines[$i]) . '</td>
+                <td class="code-content">' . rtrim($finalContent) . '</td>
             </tr>';
         }
         $output .= '</table>';
