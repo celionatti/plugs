@@ -17,6 +17,11 @@ use Plugs\Facade;
  * @method static void logout()
  * @method static void setUser(\Plugs\Security\Auth\Authenticatable $user)
  * @method static \Plugs\Security\Auth\GuardInterface guard(string|null $name = null)
+ * @method static string getDefaultGuard()
+ * @method static void setDefaultGuard(string $name)
+ * @method static static extend(string $driver, callable $callback)
+ * @method static static provider(string $driver, callable $callback)
+ * @method static \Plugs\Security\Auth\Contracts\UserProviderInterface createUserProvider(string $name)
  *
  * @see \Plugs\Security\Auth\AuthManager
  */

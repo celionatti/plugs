@@ -12,34 +12,37 @@ use Plugs\Security\Auth\Events\AuthAttempting;
 use Plugs\Security\Auth\Events\AuthFailed;
 use Plugs\Security\Auth\Events\AuthSucceeded;
 use Plugs\Security\Auth\Events\LogoutOccurred;
-use Plugs\Security\Jwt\JwtService;
 use Psr\Http\Message\ServerRequestInterface;
 
 /**
- * JwtGuard
+ * TokenGuard
  *
- * Stateless guard that authenticates users via JWT tokens.
- * Supports pluggable user providers and event dispatching.
+ * Stateless guard that authenticates users via personal access tokens
+ * stored in a database table ("personal_access_tokens").
  */
-class JwtGuard implements StatelessGuardInterface
+class TokenGuard implements StatelessGuardInterface
 {
     protected string $name;
     protected UserProviderInterface $provider;
-    protected JwtService $jwt;
     protected ?DispatcherInterface $events;
     protected ?Authenticatable $user = null;
     protected ?ServerRequestInterface $request = null;
 
+    /**
+     * The model/table class for access tokens.
+     */
+    protected string $tokenModel;
+
     public function __construct(
         string $name,
         UserProviderInterface $provider,
-        JwtService $jwt,
         ?DispatcherInterface $events = null,
+        ?string $tokenModel = null,
     ) {
         $this->name = $name;
         $this->provider = $provider;
-        $this->jwt = $jwt;
         $this->events = $events;
+        $this->tokenModel = $tokenModel ?? config('auth.token.model', 'App\\Models\\PersonalAccessToken');
     }
 
     /**
@@ -80,10 +83,30 @@ class JwtGuard implements StatelessGuardInterface
         $token = $this->getTokenForRequest();
 
         if (!empty($token)) {
-            $payload = $this->jwt->decode($token);
+            $hashedToken = hash('sha256', $token);
 
-            if ($payload && isset($payload['sub'])) {
-                $this->user = $this->provider->retrieveById($payload['sub']);
+            // Look up the token in the database
+            if (class_exists($this->tokenModel) && method_exists($this->tokenModel, 'where')) {
+                $accessToken = $this->tokenModel::where('token', '=', $hashedToken)->first();
+
+                if ($accessToken) {
+                    // Check expiration
+                    if ($this->isTokenExpired($accessToken)) {
+                        return null;
+                    }
+
+                    // Update last used timestamp
+                    if (method_exists($accessToken, 'save')) {
+                        $accessToken->last_used_at = date('Y-m-d H:i:s');
+                        $accessToken->save();
+                    }
+
+                    $tokenableId = $accessToken->tokenable_id ?? $accessToken->user_id ?? null;
+
+                    if ($tokenableId) {
+                        $this->user = $this->provider->retrieveById($tokenableId);
+                    }
+                }
             }
         }
 
@@ -113,11 +136,6 @@ class JwtGuard implements StatelessGuardInterface
             return true;
         }
 
-        // Timing-safe dummy check
-        if (!$user && isset($credentials['password'])) {
-            password_verify($credentials['password'], '$2y$10$fG6z.M5rUu2KqWnQ/G1u2O9wW3o3Y3.qR.z8/G1u2O9wW3o3Y3.qR.');
-        }
-
         return false;
     }
 
@@ -138,11 +156,6 @@ class JwtGuard implements StatelessGuardInterface
         }
 
         $this->fireEvent(new AuthFailed($this->name, $credentials));
-
-        // Timing-safe dummy check
-        if (!$user && isset($credentials['password'])) {
-            password_verify($credentials['password'], '$2y$10$fG6z.M5rUu2KqWnQ/G1u2O9wW3o3Y3.qR.z8/G1u2O9wW3o3Y3.qR.');
-        }
 
         return false;
     }
@@ -175,40 +188,54 @@ class JwtGuard implements StatelessGuardInterface
     }
 
     /**
-     * Issue a JWT for the given user.
+     * Issue a new personal access token for the user.
      *
      * @param Authenticatable $user
-     * @param array $options (e.g. ['expiry' => 3600, 'claims' => [...]])
-     * @return string The JWT token
+     * @param array $options ['name' => 'token-name', 'abilities' => ['*'], 'expiry' => 3600]
+     * @return string The plain-text token (only returned once; store on client side)
      */
     public function issueToken(Authenticatable $user, array $options = []): string
     {
-        $payload = [
-            'sub' => $user->getAuthIdentifier(),
-        ];
+        $plainTextToken = bin2hex(random_bytes(32));
+        $hashedToken = hash('sha256', $plainTextToken);
 
-        if (isset($options['claims'])) {
-            $payload = array_merge($payload, $options['claims']);
+        if (class_exists($this->tokenModel) && method_exists($this->tokenModel, 'create')) {
+            $this->tokenModel::create([
+                'tokenable_type' => get_class($user),
+                'tokenable_id' => $user->getAuthIdentifier(),
+                'user_id' => $user->getAuthIdentifier(),
+                'name' => $options['name'] ?? 'default',
+                'token' => $hashedToken,
+                'abilities' => json_encode($options['abilities'] ?? ['*']),
+                'expires_at' => isset($options['expiry'])
+                    ? date('Y-m-d H:i:s', time() + $options['expiry'])
+                    : null,
+                'created_at' => date('Y-m-d H:i:s'),
+            ]);
         }
 
-        $expiry = $options['expiry'] ?? (int) config('jwt.ttl', 3600);
-
-        return $this->jwt->encode($payload, $expiry);
+        return $plainTextToken;
     }
 
     /**
-     * Revoke a JWT token.
+     * Revoke a specific token.
      *
-     * JWT tokens are stateless and cannot be revoked without a blacklist.
-     * Override this method to implement token blacklisting if needed.
-     *
-     * @param string $token
+     * @param string $token The plain-text token
      * @return bool
      */
     public function revokeToken(string $token): bool
     {
-        // JWT tokens are stateless; revocation requires a blacklist
-        // which can be implemented by extending this class
+        $hashedToken = hash('sha256', $token);
+
+        if (class_exists($this->tokenModel) && method_exists($this->tokenModel, 'where')) {
+            $accessToken = $this->tokenModel::where('token', '=', $hashedToken)->first();
+
+            if ($accessToken && method_exists($accessToken, 'delete')) {
+                $accessToken->delete();
+                return true;
+            }
+        }
+
         return false;
     }
 
@@ -217,12 +244,26 @@ class JwtGuard implements StatelessGuardInterface
      */
     public function revokeAllTokens(Authenticatable $user): int
     {
-        // JWT tokens are stateless; cannot revoke without blacklist
-        return 0;
+        $count = 0;
+
+        if (class_exists($this->tokenModel) && method_exists($this->tokenModel, 'where')) {
+            $tokens = $this->tokenModel::where('tokenable_id', '=', $user->getAuthIdentifier())->get();
+
+            if ($tokens) {
+                foreach ($tokens as $token) {
+                    if (method_exists($token, 'delete')) {
+                        $token->delete();
+                        $count++;
+                    }
+                }
+            }
+        }
+
+        return $count;
     }
 
     /**
-     * Get the token for the current request.
+     * Get the bearer token from the current request.
      */
     public function getTokenForRequest(): ?string
     {
@@ -240,7 +281,21 @@ class JwtGuard implements StatelessGuardInterface
             return substr($header, 7);
         }
 
+        // Also check query parameter as fallback
+        $query = $this->request->getQueryParams();
+        if (isset($query['api_token'])) {
+            return $query['api_token'];
+        }
+
         return null;
+    }
+
+    /**
+     * Get the guard name.
+     */
+    public function getGuardName(): string
+    {
+        return $this->name;
     }
 
     /**
@@ -252,11 +307,17 @@ class JwtGuard implements StatelessGuardInterface
     }
 
     /**
-     * Get the guard name.
+     * Check if the access token has expired.
      */
-    public function getGuardName(): string
+    protected function isTokenExpired(object $accessToken): bool
     {
-        return $this->name;
+        $expiresAt = $accessToken->expires_at ?? null;
+
+        if ($expiresAt === null) {
+            return false; // No expiration set
+        }
+
+        return strtotime($expiresAt) < time();
     }
 
     protected function fireEvent(object $event): void

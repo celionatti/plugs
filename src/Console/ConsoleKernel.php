@@ -153,6 +153,8 @@ class ConsoleKernel
         'db:analyze' => DatabaseAnalyzeCommand::class,
         'framework:scan-security' => SecurityScanCommand::class,
         'tenant:migrate' => TenantMigrateCommand::class,
+        'auth:install' => \Plugs\Console\Commands\AuthInstallCommand::class,
+        'identity:install' => \Plugs\Console\Commands\IdentityInstallCommand::class,
     ];
 
 
@@ -228,7 +230,7 @@ class ConsoleKernel
             'make:module',
         ],
         'Routes' => ['route:list', 'route:cache', 'route:clear', 'route:test'],
-        'Utility' => ['serve', 'cache:clear', 'config:cache', 'optimize', 'opcache:clear', 'opcache:status', 'queue:work', 'queue:failed', 'queue:retry', 'health', 'storage:link', 'type:gen', 'ai:chat', 'ai:fix', 'ai:audit', 'make:ai-test', 'ai:agent', 'ai:think', 'framework:scan-security'],
+        'Utility' => ['serve', 'cache:clear', 'config:cache', 'optimize', 'opcache:clear', 'opcache:status', 'queue:work', 'queue:failed', 'queue:retry', 'health', 'storage:link', 'type:gen', 'ai:chat', 'ai:fix', 'ai:audit', 'make:ai-test', 'ai:agent', 'ai:think', 'framework:scan-security', 'auth:install', 'identity:install'],
 
         'Scheduling' => ['schedule:run', 'schedule:list'],
         'Database' => ['migrate', 'migrate:rollback', 'migrate:status', 'migrate:fresh', 'migrate:validate', 'migrate:reset', 'make:migration', 'db:seed', 'db:analyze', 'db:backup', 'db:restore', 'tenant:migrate'],
