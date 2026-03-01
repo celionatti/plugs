@@ -106,4 +106,18 @@ interface ViewEngineInterface
      * @return mixed
      */
     public function getShared(?string $key = null, $default = null): mixed;
+
+    /**
+     * Clear the view cache.
+     *
+     * @return void
+     */
+    public function clearCache(): void;
+
+    /**
+     * Compile all views.
+     *
+     * @return array
+     */
+    public function compileAll(): array;
 }

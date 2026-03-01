@@ -18,7 +18,7 @@ class ViewModule implements ModuleInterface
 
     public function shouldBoot(ContextType $context): bool
     {
-        return $context === ContextType::Web;
+        return $context === ContextType::Web || $context === ContextType::Cli;
     }
 
     public function register(Container $container): void

@@ -227,6 +227,16 @@ if (!function_exists('request')) {
     }
 }
 
+if (!function_exists('auth')) {
+    /**
+     * Get the auth instance.
+     */
+    function auth()
+    {
+        return \Plugs\Facades\Auth::getFacadeRoot();
+    }
+}
+
 if (!function_exists('response')) {
     /**
      * Create a response.

@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace Plugs\Console\Commands;
 
 use Plugs\Console\Command;
-use Plugs\View\PlugViewEngine;
+use Plugs\View\ViewEngineInterface;
 
 class ViewCacheCommand extends Command
 {
@@ -46,10 +46,10 @@ class ViewCacheCommand extends Command
         return 0;
     }
 
-    private function getViewEngine(): ?PlugViewEngine
+    private function getViewEngine(): ?ViewEngineInterface
     {
         try {
-            return app(PlugViewEngine::class);
+            return app(ViewEngineInterface::class);
         } catch (\Throwable $e) {
             return null;
         }
