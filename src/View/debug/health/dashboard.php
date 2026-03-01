@@ -465,10 +465,46 @@
 
             <!-- Logs Tab -->
             <div id="logs" class="tab-pane">
-                <div class="card" style="min-height: 500px;">
-                    <div class="card-title"><i class="ri-file-list-3-line"></i> System Records</div>
-                    <div id="logs-container">
-                        <!-- Dynamic -->
+                <div class="card"
+                    style="padding:0; display:flex; flex-direction:column; min-height:600px; background:#0f172a; border:1px solid #1e293b; overflow:hidden;">
+                    <!-- Terminal Header/Toolbar -->
+                    <div
+                        style="background:#1e293b; padding:0.75rem 1.25rem; display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #334155;">
+                        <div style="display:flex; gap:0.5rem; align-items:center;">
+                            <div style="width:12px; height:12px; border-radius:50%; background:#ff5f56;"></div>
+                            <div style="width:12px; height:12px; border-radius:50%; background:#ffbd2e;"></div>
+                            <div style="width:12px; height:12px; border-radius:50%; background:#27c93f;"></div>
+                            <span
+                                style="margin-left:0.5rem; color:#94a3b8; font-family:var(--font-mono); font-size:0.75rem; text-transform:uppercase; letter-spacing:0.05em;">System
+                                Records</span>
+                        </div>
+                        <div style="display:flex; gap:1rem; align-items:center;">
+                            <div class="input-group" style="width:250px;">
+                                <input type="text" id="log-search" placeholder="Filter records..."
+                                    style="width:100%; padding:0.4rem 0.75rem; background:rgba(0,0,0,0.2); border:1px solid #334155; border-radius:4px; color:#f1f5f9; font-size:0.8rem;">
+                            </div>
+                            <div style="display:flex; background:rgba(0,0,0,0.2); border-radius:4px; padding:2px;">
+                                <button class="log-filter-btn active" data-level="all"
+                                    style="padding:0.3rem 0.6rem; border:none; background:transparent; color:#94a3b8; cursor:pointer; font-size:0.75rem; border-radius:2px;">ALL</button>
+                                <button class="log-filter-btn" data-level="error"
+                                    style="padding:0.3rem 0.6rem; border:none; background:transparent; color:#ef4444; cursor:pointer; font-size:0.75rem; border-radius:2px;">ERR</button>
+                                <button class="log-filter-btn" data-level="warning"
+                                    style="padding:0.3rem 0.6rem; border:none; background:transparent; color:#f59e0b; cursor:pointer; font-size:0.75rem; border-radius:2px;">WRN</button>
+                                <button class="log-filter-btn" data-level="info"
+                                    style="padding:0.3rem 0.6rem; border:none; background:transparent; color:#38bdf8; cursor:pointer; font-size:0.75rem; border-radius:2px;">INF</button>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- Terminal Content -->
+                    <div id="logs-container"
+                        style="flex:1; overflow-y:auto; padding:1.25rem; font-family:var(--font-mono); font-size:0.85rem; line-height:1.6; color:#cbd5e1;">
+                        <div style="color:#64748b;">Initializing secure log stream...</div>
+                    </div>
+                    <!-- Terminal Footer -->
+                    <div
+                        style="background:#1e293b; padding:0.4rem 1.25rem; border-top:1px solid #334155; display:flex; justify-content:space-between; font-size:0.7rem; color:#64748b; font-family:var(--font-mono);">
+                        <div id="log-status">Total Records: 0</div>
+                        <div>UTF-8 Log Stream | Ready</div>
                     </div>
                 </div>
             </div>
@@ -545,18 +581,22 @@
                     </div>
                     <div class="card" style="grid-column: span 1;">
                         <div class="card-title"><i class="ri-search-line"></i> Filter Routes</div>
-                        <p style="color:var(--text-muted); font-size:0.85rem; margin-bottom:1.5rem;">Quickly find any endpoint by URI, name, or controller.</p>
+                        <p style="color:var(--text-muted); font-size:0.85rem; margin-bottom:1.5rem;">Quickly find any
+                            endpoint by URI, name, or controller.</p>
                         <div class="input-group" style="margin-bottom:1rem;">
-                            <input type="text" id="route-search" placeholder="Search routes..." style="width:100%; padding:0.75rem; background:rgba(255,255,255,0.05); border:1px solid var(--border-subtle); border-radius:0.5rem; color:white; font-family:var(--font-mono);">
+                            <input type="text" id="route-search" placeholder="Search routes..."
+                                style="width:100%; padding:0.75rem; background:rgba(255,255,255,0.05); border:1px solid var(--border-subtle); border-radius:0.5rem; color:white; font-family:var(--font-mono);">
                         </div>
                         <div id="route-stats" style="display:flex; flex-wrap:wrap; gap:0.5rem; margin-top:auto;">
                             <!-- Stats Badges -->
                         </div>
                     </div>
                     <div class="card" style="grid-column: span 2;">
-                        <div class="card-title" style="display:flex; justify-content:space-between; align-items:center;">
+                        <div class="card-title"
+                            style="display:flex; justify-content:space-between; align-items:center;">
                             <span><i class="ri-map-pin-line"></i> Application Router Map</span>
-                            <span id="route-count" class="badge" style="background:rgba(255,255,255,0.1)">0 Routes</span>
+                            <span id="route-count" class="badge" style="background:rgba(255,255,255,0.1)">0
+                                Routes</span>
                         </div>
                         <div class="table-responsive" style="max-height: 500px; overflow-y: auto;">
                             <table id="routes-table">
@@ -755,20 +795,82 @@
             }
         }
 
+        let allLogs = [];
+        let currentLogLevel = 'all';
+
         async function fetchLogs() {
             const container = document.getElementById('logs-container');
-            container.innerHTML = 'Loading logs...';
+            if (!allLogs.length) container.innerHTML = '<div style="color:#64748b;">Fetching system records...</div>';
+
             try {
                 const response = await fetch('/_plugs/health/logs');
                 const data = await response.json();
-                container.innerHTML = data.logs.map(log => `
-                    <div class="log-entry ${log.level || ''}">
-                        <span class="log-time">${log.timestamp || '--:--'}</span>
-                        <span class="log-level level-${log.level || 'info'}">${log.level || 'info'}</span>
-                        <span class="log-msg">${log.message}</span>
+                allLogs = data.logs;
+
+                renderLogs();
+                updateLogStatus();
+
+                // Add listeners once
+                const searchInput = document.getElementById('log-search');
+                if (searchInput && !searchInput.dataset.listener) {
+                    searchInput.addEventListener('input', () => renderLogs());
+                    searchInput.dataset.listener = 'true';
+
+                    document.querySelectorAll('.log-filter-btn').forEach(btn => {
+                        btn.addEventListener('click', (e) => {
+                            document.querySelectorAll('.log-filter-btn').forEach(b => b.classList.remove('active'));
+                            e.target.classList.add('active');
+                            currentLogLevel = e.target.dataset.level;
+                            renderLogs();
+                        });
+                    });
+                }
+            } catch (e) {
+                container.innerHTML = '<div style="color:#ef4444;">! Connection to log stream failed.</div>';
+            }
+        }
+
+        function renderLogs() {
+            const container = document.getElementById('logs-container');
+            const searchTerm = document.getElementById('log-search')?.value.toLowerCase() || '';
+
+            const filtered = allLogs.filter(log => {
+                const matchesLevel = currentLogLevel === 'all' || log.level === currentLogLevel;
+                const matchesSearch = !searchTerm || log.message.toLowerCase().includes(searchTerm) || (log.level && log.level.includes(searchTerm));
+                return matchesLevel && matchesSearch;
+            });
+
+            if (filtered.length === 0) {
+                container.innerHTML = `<div style="color:#64748b; font-style:italic;">-- No records match the current filters --</div>`;
+                return;
+            }
+
+            container.innerHTML = filtered.map(log => {
+                const levelColors = {
+                    error: '#ef4444',
+                    warning: '#f59e0b',
+                    info: '#38bdf8',
+                    debug: '#94a3b8'
+                };
+                const color = levelColors[log.level] || '#cbd5e1';
+                const levelPadding = (log.level || 'info').toUpperCase().padEnd(5, ' ');
+
+                return `
+                    <div style="margin-bottom:0.25rem; display:flex; gap:1rem; border-left:2px solid ${color}; padding-left:0.75rem; background:rgba(255,255,255,0.02);">
+                        <span style="color:#64748b; flex-shrink:0;">[${log.timestamp || '--:--:--'}]</span>
+                        <span style="color:${color}; font-weight:700; flex-shrink:0;">${levelPadding}</span>
+                        <span style="color:#f1f5f9; word-break:break-all;">${log.message}</span>
                     </div>
-                `).join('');
-            } catch (e) { container.innerHTML = 'Error loading logs.'; }
+                `;
+            }).join('');
+
+            // Auto-scroll to bottom
+            container.scrollTop = container.scrollHeight;
+        }
+
+        function updateLogStatus() {
+            const status = document.getElementById('log-status');
+            if (status) status.innerText = `Total Records: ${allLogs.length}`;
         }
 
         let databaseChart = null;
@@ -953,7 +1055,7 @@
                 `).join('');
 
                 document.getElementById('route-count').innerText = `${allRoutes.length} Total Routes`;
-                
+
                 renderRoutesTable(allRoutes);
                 renderRouteChart(data.stats);
 
@@ -962,8 +1064,8 @@
                 if (searchInput && !searchInput.dataset.listener) {
                     searchInput.addEventListener('input', (e) => {
                         const term = e.target.value.toLowerCase();
-                        const filtered = allRoutes.filter(r => 
-                            r.uri.toLowerCase().includes(term) || 
+                        const filtered = allRoutes.filter(r =>
+                            r.uri.toLowerCase().includes(term) ||
                             (r.name && r.name.toLowerCase().includes(term)) ||
                             r.handler.toLowerCase().includes(term)
                         );
