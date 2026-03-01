@@ -18,9 +18,9 @@ class AIManager
 {
     protected array $drivers = [];
     protected array $config;
-    protected ?\Plugs\Cache\CacheManager $cache;
+    protected mixed $cache;
 
-    public function __construct(array $config, ?\Plugs\Cache\CacheManager $cache = null)
+    public function __construct(array $config, mixed $cache = null)
     {
         $this->config = $config;
         $this->cache = $cache;
@@ -270,7 +270,7 @@ class AIManager
         $snapshot = $registry->getSnapshot();
 
         return array_merge($snapshot, [
-            'timeline' => EventTimelineRegistry::getTimeline(),
+            'timeline' => app(EventTimelineRegistry::class)->getTimeline(),
         ]);
     }
 

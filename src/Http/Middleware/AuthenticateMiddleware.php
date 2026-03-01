@@ -41,9 +41,9 @@ class AuthenticateMiddleware implements MiddlewareInterface
     protected string $redirectTo;
 
     /**
-     * @param string ...$guards Guard names to try. Empty = default guard.
+     * @param array $guards Guard names to try. Empty = default guard.
      */
-    public function __construct(string ...$guards)
+    public function __construct(array $guards = [])
     {
         $this->guards = $guards;
         $this->redirectTo = config('auth.login_route', '/login');
