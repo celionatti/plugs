@@ -110,6 +110,11 @@ abstract class AbstractKernel implements KernelInterface
         $this->container->singleton(\Plugs\Router\Router::class, fn() => $router);
         \Plugs\Facades\Route::setFacadeInstance('router', $router);
 
+        // Bind redirector for the Redirect facade
+        $redirector = new \Plugs\Http\Redirector();
+        $this->container->singleton('redirect', fn() => $redirector);
+        \Plugs\Facades\Redirect::setFacadeInstance('redirect', $redirector);
+
         // Load groups from config if available
         $middlewareConfig = config('middleware');
         if (isset($middlewareConfig['groups'])) {
