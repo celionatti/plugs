@@ -10,7 +10,7 @@ use ReflectionClass;
 
 trait HasObservability
 {
-    protected static ?Observable $observabilityConfig = null;
+    public static ?Observable $observabilityConfig = null;
 
     public static function bootHasObservability(): void
     {

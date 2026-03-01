@@ -16,6 +16,7 @@ use Plugs\Security\Auth\Providers\DatabaseUserProvider;
 use Plugs\Security\Auth\Providers\KeyUserProvider;
 use Plugs\Security\Identity\KeyDerivationService;
 use Plugs\Security\Identity\NonceService;
+use Plugs\Security\Auth\DeviceTrustManager;
 use Plugs\Security\Jwt\JwtService;
 use Plugs\Session\Session;
 
@@ -367,6 +368,14 @@ class AuthManager
     public function setUser(Authenticatable $user): void
     {
         $this->guard()->setUser($user);
+    }
+
+    /**
+     * Get the device trust manager instance.
+     */
+    public function deviceTrust(): DeviceTrustManager
+    {
+        return $this->container->make(DeviceTrustManager::class);
     }
 
     /**
