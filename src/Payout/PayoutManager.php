@@ -114,7 +114,7 @@ class PayoutManager
      */
     public function fallback(array $drivers): PayoutDriverInterface
     {
-        return current($drivers); // TODO: implement full FallbackPayoutDriver if requested by user, stubbed for now
+        return new \Plugs\Payout\Drivers\FallbackPayoutDriver($this, $drivers);
     }
 
     /**

@@ -4,15 +4,18 @@ declare(strict_types=1);
 
 namespace Plugs\Payment\Drivers;
 
-use Exception;
 use Plugs\Http\Request;
 use Plugs\Payment\Contracts\PaymentDriverInterface;
 use Plugs\Payment\DTO\PaymentResponse;
 use Plugs\Payment\DTO\PaymentVerification;
 use Plugs\Payment\DTO\RefundResponse;
 
+use Plugs\Payment\Traits\HasHttpCalls;
+
 class PaystackPaymentDriver implements PaymentDriverInterface
 {
+    use HasHttpCalls;
+
     private string $secretKey;
     private string $baseUrl = 'https://api.paystack.co';
 
@@ -108,7 +111,6 @@ class PaystackPaymentDriver implements PaymentDriverInterface
     public function webhook(array $payload): void
     {
         // Event processing logic will be handled by WebhookRouter
-        // This method can do driver-specific pre-processing if necessary.
     }
 
     /**
@@ -135,38 +137,16 @@ class PaystackPaymentDriver implements PaymentDriverInterface
     }
 
     /**
-     * Helper to make API requests to Paystack.
-     *
-     * @param string $endpoint
-     * @param array $data
-     * @param string $method
-     * @return array
-     * @throws Exception
+     * Internal helper specific to Paystack's envelope structure.
      */
-    private function makeRequest(string $endpoint, array $data = [], string $method = 'POST')
+    protected function makeRequest(string $endpoint, array $data = [], string $method = 'POST')
     {
-        $ch = curl_init($this->baseUrl . $endpoint);
-
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-        curl_setopt($ch, CURLOPT_HTTPHEADER, [
+        $headers = [
             'Authorization: Bearer ' . $this->secretKey,
             'Content-Type: application/json',
-        ]);
+        ];
 
-        if ($method === 'POST') {
-            curl_setopt($ch, CURLOPT_POST, true);
-            curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($data));
-        }
-
-        $response = curl_exec($ch);
-        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-        curl_close($ch);
-
-        $result = json_decode((string) $response, true) ?? [];
-
-        if ($httpCode !== 200 && $httpCode !== 201 && $httpCode !== 202) {
-            throw new Exception($result['message'] ?? 'Paystack Request failed: HTTP ' . $httpCode);
-        }
+        $result = $this->makeHttpRequest($this->baseUrl . $endpoint, $data, $method, $headers);
 
         return $result['data'] ?? $result;
     }

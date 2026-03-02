@@ -4,15 +4,18 @@ declare(strict_types=1);
 
 namespace Plugs\Payout\Drivers;
 
-use Exception;
 use Plugs\Http\Request;
 use Plugs\Payout\Contracts\PayoutDriverInterface;
 use Plugs\Payout\DTO\TransferResponse;
 use Plugs\Payout\DTO\WithdrawResponse;
 use Plugs\Payout\DTO\PayoutVerification;
 
+use Plugs\Payment\Traits\HasHttpCalls;
+
 class BTCPayPayoutDriver implements PayoutDriverInterface
 {
+    use HasHttpCalls;
+
     private string $apiKey;
     private string $storeId;
     private string $baseUrl;
@@ -101,6 +104,12 @@ class BTCPayPayoutDriver implements PayoutDriverInterface
         ];
     }
 
+    public function deleteRecipient(string $recipientCode): bool
+    {
+        // BTCPay payouts don't have a 'recipient' entity in the same way as bank gateways
+        return true;
+    }
+
     public function verify(string $reference): PayoutVerification
     {
         return new PayoutVerification($reference, 'pending', 0, 'USD', 'Stubbed', []);
@@ -147,35 +156,13 @@ class BTCPayPayoutDriver implements PayoutDriverInterface
         return 'pending';
     }
 
-    private function makeRequest(string $endpoint, array $data = [], string $method = 'GET')
+    protected function makeRequest(string $endpoint, array $data = [], string $method = 'GET')
     {
-        $url = $this->baseUrl . $endpoint;
-        $ch = curl_init($url);
-
         $headers = [
             'Authorization: token ' . $this->apiKey,
             'Content-Type: application/json',
         ];
 
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-        curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
-        curl_setopt($ch, CURLOPT_CUSTOMREQUEST, $method);
-
-        if (in_array($method, ['POST', 'PUT', 'PATCH']) && !empty($data)) {
-            curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($data));
-        }
-
-        $response = curl_exec($ch);
-        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-        curl_close($ch);
-
-        $result = json_decode((string) $response, true) ?? [];
-
-        if ($httpCode >= 400) {
-            $errorMsg = $result['message'] ?? $result['error'] ?? 'Request failed';
-            throw new Exception("BTCPay Error ({$httpCode}): {$errorMsg}");
-        }
-
-        return $result;
+        return $this->makeHttpRequest($this->baseUrl . $endpoint, $data, $method, $headers);
     }
 }

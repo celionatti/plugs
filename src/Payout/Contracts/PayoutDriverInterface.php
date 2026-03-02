@@ -43,6 +43,14 @@ interface PayoutDriverInterface
     public function createRecipient(array $data): array;
 
     /**
+     * Delete a recipient/beneficiary.
+     *
+     * @param string $recipientCode
+     * @return bool
+     */
+    public function deleteRecipient(string $recipientCode): bool;
+
+    /**
      * Verify the status of an outgoing transfer/withdrawal.
      *
      * @param string $reference

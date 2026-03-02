@@ -4,15 +4,18 @@ declare(strict_types=1);
 
 namespace Plugs\Payment\Drivers;
 
-use Exception;
 use Plugs\Http\Request;
 use Plugs\Payment\Contracts\PaymentDriverInterface;
 use Plugs\Payment\DTO\PaymentResponse;
 use Plugs\Payment\DTO\PaymentVerification;
 use Plugs\Payment\DTO\RefundResponse;
 
+use Plugs\Payment\Traits\HasHttpCalls;
+
 class BTCPayPaymentDriver implements PaymentDriverInterface
 {
+    use HasHttpCalls;
+
     private string $apiKey;
     private string $storeId;
     private string $baseUrl;
@@ -136,35 +139,13 @@ class BTCPayPaymentDriver implements PaymentDriverInterface
         return 'pending';
     }
 
-    private function makeRequest(string $endpoint, array $data = [], string $method = 'GET')
+    protected function makeRequest(string $endpoint, array $data = [], string $method = 'GET')
     {
-        $url = $this->baseUrl . $endpoint;
-        $ch = curl_init($url);
-
         $headers = [
             'Authorization: token ' . $this->apiKey,
             'Content-Type: application/json',
         ];
 
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-        curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
-        curl_setopt($ch, CURLOPT_CUSTOMREQUEST, $method);
-
-        if (in_array($method, ['POST', 'PUT', 'PATCH']) && !empty($data)) {
-            curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($data));
-        }
-
-        $response = curl_exec($ch);
-        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-        curl_close($ch);
-
-        $result = json_decode((string) $response, true) ?? [];
-
-        if ($httpCode >= 400) {
-            $errorMsg = $result['message'] ?? $result['error'] ?? 'Request failed';
-            throw new Exception("BTCPay Error ({$httpCode}): {$errorMsg}");
-        }
-
-        return $result;
+        return $this->makeHttpRequest($this->baseUrl . $endpoint, $data, $method, $headers);
     }
 }

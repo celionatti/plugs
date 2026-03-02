@@ -4,15 +4,18 @@ declare(strict_types=1);
 
 namespace Plugs\Payment\Drivers;
 
-use Exception;
 use Plugs\Http\Request;
 use Plugs\Payment\Contracts\PaymentDriverInterface;
 use Plugs\Payment\DTO\PaymentResponse;
 use Plugs\Payment\DTO\PaymentVerification;
 use Plugs\Payment\DTO\RefundResponse;
 
+use Plugs\Payment\Traits\HasHttpCalls;
+
 class StripePaymentDriver implements PaymentDriverInterface
 {
+    use HasHttpCalls;
+
     private string $secretKey;
     private string $webhookSecret;
     private string $baseUrl = 'https://api.stripe.com/v1';
@@ -194,78 +197,15 @@ class StripePaymentDriver implements PaymentDriverInterface
     }
 
     /**
-     * Make HTTP request to Stripe API
-     *
-     * @param string $endpoint
-     * @param array $data
-     * @param string $method
-     * @return array
-     * @throws Exception
+     * Make HTTP request to Stripe API using shared trait.
      */
-    private function makeRequest(string $endpoint, array $data = [], string $method = 'POST')
+    protected function makeRequest(string $endpoint, array $data = [], string $method = 'POST')
     {
-        $url = $this->baseUrl . $endpoint;
-        $ch = curl_init($url);
-
         $headers = [
             'Authorization: Bearer ' . $this->secretKey,
             'Content-Type: application/x-www-form-urlencoded',
         ];
 
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-        curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
-
-        if ($method === 'POST') {
-            curl_setopt($ch, CURLOPT_POST, true);
-            if (!empty($data)) {
-                curl_setopt($ch, CURLOPT_POSTFIELDS, $this->buildQuery($data));
-            }
-        } elseif ($method === 'DELETE') {
-            curl_setopt($ch, CURLOPT_CUSTOMREQUEST, 'DELETE');
-        } elseif ($method === 'GET') {
-            curl_setopt($ch, CURLOPT_HTTPGET, true);
-        }
-
-        $response = curl_exec($ch);
-        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-        $error = curl_error($ch);
-        curl_close($ch);
-
-        if ($error) {
-            throw new Exception("cURL Error: {$error}");
-        }
-
-        $result = json_decode((string) $response, true) ?? [];
-
-        if ($httpCode >= 400) {
-            $errorMsg = $result['error']['message'] ?? 'Request failed';
-            throw new Exception("Stripe Error ({$httpCode}): {$errorMsg}");
-        }
-
-        return $result;
-    }
-
-    /**
-     * Build URL-encoded query string for nested arrays (Stripe format)
-     *
-     * @param array $data
-     * @param string $prefix
-     * @return string
-     */
-    private function buildQuery(array $data, string $prefix = ''): string
-    {
-        $query = [];
-
-        foreach ($data as $key => $value) {
-            $fullKey = $prefix ? "{$prefix}[{$key}]" : (string) $key;
-
-            if (is_array($value)) {
-                $query[] = $this->buildQuery($value, $fullKey);
-            } else {
-                $query[] = urlencode($fullKey) . '=' . urlencode((string) $value);
-            }
-        }
-
-        return implode('&', $query);
+        return $this->makeHttpRequest($this->baseUrl . $endpoint, $data, $method, $headers);
     }
 }
