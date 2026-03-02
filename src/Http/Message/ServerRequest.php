@@ -66,7 +66,7 @@ class ServerRequest implements ServerRequestInterface
         $body = new Stream(fopen('php://input', 'r'));
         $protocol = self::extractProtocolVersion();
 
-        $request = new self($method, $uri, $headers, $body, $protocol, $_SERVER);
+        $request = new static($method, $uri, $headers, $body, $protocol, $_SERVER);
 
         /** @var self $request */
         $request = $request->withCookieParams($_COOKIE);

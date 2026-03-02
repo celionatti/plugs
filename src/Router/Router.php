@@ -1130,9 +1130,10 @@ class Router
         if ($type instanceof ReflectionNamedType && !$type->isBuiltin()) {
             $typeName = $type->getName();
 
-            // PSR-7 Request injection
+            // Request injection (PSR-7 or specific Plugs Request subclasses)
             if (
                 $typeName === ServerRequestInterface::class ||
+                $typeName === \Plugs\Http\Request::class ||
                 is_subclass_of($typeName, ServerRequestInterface::class)
             ) {
                 return $request;

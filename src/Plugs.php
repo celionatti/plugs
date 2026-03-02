@@ -14,7 +14,7 @@ namespace Plugs;
 */
 
 use Plugs\Bootstrap\ContextType;
-use Plugs\Http\Message\ServerRequest;
+use Plugs\Http\Request;
 use Plugs\Http\MiddlewareDispatcher;
 use Plugs\Kernel\KernelInterface;
 use Psr\Http\Message\ResponseInterface;
@@ -241,7 +241,7 @@ class Plugs
 
     private function createServerRequest(): ServerRequestInterface
     {
-        return ServerRequest::fromGlobals();
+        return Request::fromGlobals();
     }
 
     private function emitResponse(ResponseInterface $response): void
