@@ -33,6 +33,7 @@ use Plugs\Database\Traits\HasSerialization;
 use Plugs\Database\Traits\HasObservability;
 use Plugs\Database\Traits\HasDomainEvents;
 use Plugs\Database\Traits\HasDiagnostics;
+use Plugs\Database\Traits\HasSchema;
 use Plugs\Database\Exceptions\ConcurrencyException;
 use Plugs\AI\Traits\HasAI;
 
@@ -63,6 +64,7 @@ abstract class PlugModel implements \JsonSerializable
         HasObservability,
         HasDomainEvents,
         HasDiagnostics,
+        HasSchema,
         HasAI;
 
     use HasEvents, HasScopes {
@@ -106,6 +108,14 @@ abstract class PlugModel implements \JsonSerializable
             $this->fireModelEvent('retrieved', ['attributes' => $attributes]);
         } else {
             $this->fill($attributes);
+        }
+
+        // Apply schema defaults and hidden fields
+        if (method_exists($this, 'applySchemaDefaults')) {
+            $this->applySchemaDefaults();
+        }
+        if (method_exists($this, 'mergeSchemaHidden')) {
+            $this->mergeSchemaHidden();
         }
 
         if (!$this->table) {

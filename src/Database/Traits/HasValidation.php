@@ -61,11 +61,21 @@ trait HasValidation
     }
 
     /**
-     * Get the validation rules, supporting dynamic rules() method.
+     * Get the validation rules, supporting dynamic rules() method and schema.
      */
     protected function getValidationRules(): array
     {
-        return method_exists($this, 'rules') ? $this->rules() : $this->rules;
+        // Start with schema-derived rules (if schema exists)
+        $schemaRules = [];
+        if (method_exists($this, 'getSchemaRules')) {
+            $schemaRules = $this->getSchemaRules() ?? [];
+        }
+
+        // Get explicit rules (from property or method)
+        $explicitRules = method_exists($this, 'rules') ? $this->rules() : $this->rules;
+
+        // Explicit rules override schema rules for the same field
+        return array_merge($schemaRules, $explicitRules);
     }
 
     /**

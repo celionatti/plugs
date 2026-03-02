@@ -46,6 +46,7 @@ class MakeModelCommand extends Command
             '--all, -a' => 'Create migration, factory, seeder, and controller',
             '--force' => 'Overwrite existing files',
             '--pivot' => 'Create a pivot model',
+            '--schema' => 'Use typed schema instead of fillable/casts arrays',
             '--soft-deletes' => 'Add soft deletes support',
             '--timestamps' => 'Add timestamps (enabled by default)',
             '--no-timestamps' => 'Disable timestamps',
@@ -155,6 +156,7 @@ class MakeModelCommand extends Command
             'casts' => $this->option('casts'),
             'table' => $this->option('table'),
             'connection' => $this->option('connection'),
+            'schema' => $this->hasOption('schema'),
         ];
 
         // Interactive mode if no CLI options
@@ -216,7 +218,8 @@ class MakeModelCommand extends Command
         }
 
         // Load template
-        $template = $this->loadTemplate('model.stub');
+        $templateName = ($options['schema'] ?? false) ? 'model.schema.stub' : 'model.stub';
+        $template = $this->loadTemplate($templateName);
 
         // Replace placeholders
         $content = $this->populateTemplate($template, $name, $options);
@@ -686,6 +689,7 @@ PHP;
     {
         return match ($templateName) {
             'model.stub' => $this->getModelTemplate(),
+            'model.schema.stub' => $this->getSchemaModelTemplate(),
             'migration.stub' => $this->getMigrationTemplate(),
             'migration.pivot.stub' => $this->getPivotMigrationTemplate(),
             'controller.stub' => $this->getControllerTemplate(),
@@ -761,6 +765,75 @@ class {{class}} extends PlugModel
      * @var array
      */
     protected $casts = {{casts}};
+}
+STUB;
+    }
+
+    private function getSchemaModelTemplate(): string
+    {
+        return <<<'STUB'
+<?php
+
+declare(strict_types=1);
+
+namespace App\Models;
+
+{{imports}}
+use Plugs\Base\Model\PlugModel;
+use Plugs\Database\Schema\Fields\StringField;
+use Plugs\Database\Schema\Fields\IntegerField;
+use Plugs\Database\Schema\Fields\BooleanField;
+use Plugs\Database\Schema\Fields\EmailField;
+use Plugs\Database\Schema\Fields\PasswordField;
+use Plugs\Database\Schema\Fields\DateTimeField;
+use Plugs\Database\Schema\Fields\JsonField;
+
+class {{class}} extends PlugModel
+{
+    {{traits}}
+    
+    /**
+     * The table associated with the model.
+     *
+     * @var string
+     */
+    protected $table = '{{table}}';
+
+    /**
+     * The connection name for the model.
+     *
+     * @var string
+     */
+    protected $connection = '{{connection}}';
+
+    /**
+     * Indicates if the model should be timestamped.
+     *
+     * @var bool
+     */
+    public $timestamps = {{timestamps}};
+
+    /**
+     * The typed schema for this model.
+     * Automatically derives fillable, casts, validation rules, and hidden fields.
+     *
+     * @var array
+     */
+    protected array $schema = [];
+
+    public function __construct(array|object $attributes = [], bool $exists = false)
+    {
+        $this->schema = [
+            // Define your schema fields here:
+            // 'name'     => StringField::make()->required()->max(255),
+            // 'email'    => EmailField::make()->required()->unique(),
+            // 'age'      => IntegerField::make()->min(0),
+            // 'is_active'=> BooleanField::make()->default(true),
+            // 'password' => PasswordField::make()->required()->min(8),
+        ];
+
+        parent::__construct($attributes, $exists);
+    }
 }
 STUB;
     }

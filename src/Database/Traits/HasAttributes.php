@@ -100,6 +100,14 @@ trait HasAttributes
 
     protected function isFillable(string $key): bool
     {
+        // Schema-derived fillable takes precedence when no explicit $fillable
+        if (empty($this->fillable) && method_exists($this, 'getSchemaFillable')) {
+            $schemaFillable = $this->getSchemaFillable();
+            if ($schemaFillable !== null) {
+                return in_array($key, $schemaFillable);
+            }
+        }
+
         if (!empty($this->fillable)) {
             return in_array($key, $this->fillable);
         }
@@ -789,11 +797,21 @@ trait HasAttributes
      */
     public function getCasts(): array
     {
+        $casts = $this->casts;
+
         if (method_exists($this, 'casts')) {
-            return array_merge($this->casts, $this->casts());
+            $casts = array_merge($casts, $this->casts());
         }
 
-        return $this->casts;
+        // Merge schema-derived casts (schema casts are base, explicit casts override)
+        if (method_exists($this, 'getSchemaCasts')) {
+            $schemaCasts = $this->getSchemaCasts();
+            if ($schemaCasts !== null) {
+                $casts = array_merge($schemaCasts, $casts);
+            }
+        }
+
+        return $casts;
     }
 
     /**
