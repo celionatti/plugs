@@ -184,14 +184,28 @@ trait HasAttributes
                 throw new \Plugs\Database\Exceptions\LazyLoadingDisabledException(static::class, $key);
             }
 
-            $relation = $this->$key();
+            $monitor = \Plugs\Database\RelationMonitor::getInstance();
+            $monitor->trackLazyLoad($this, $key);
 
-            // Resolve relationship proxies if necessary
-            if (is_object($relation)) {
-                if (method_exists($relation, 'first') && (str_contains(get_class($relation), 'BelongsToProxy') || str_contains(get_class($relation), 'HasOneProxy'))) {
-                    $relation = $relation->first();
-                } elseif (method_exists($relation, 'get') && str_contains(get_class($relation), 'Proxy')) {
-                    $relation = $relation->get();
+            // Use this model's parent query ID as the context for the lazy load
+            if ($this->parentQueryId) {
+                $monitor->pushQueryContext($this->parentQueryId);
+            }
+
+            try {
+                $relation = $this->$key();
+
+                // Resolve relationship proxies if necessary
+                if (is_object($relation)) {
+                    if (method_exists($relation, 'first') && (str_contains(get_class($relation), 'BelongsToProxy') || str_contains(get_class($relation), 'HasOneProxy'))) {
+                        $relation = $relation->first();
+                    } elseif (method_exists($relation, 'get') && str_contains(get_class($relation), 'Proxy')) {
+                        $relation = $relation->get();
+                    }
+                }
+            } finally {
+                if ($this->parentQueryId) {
+                    $monitor->popQueryContext();
                 }
             }
 

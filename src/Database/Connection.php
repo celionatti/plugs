@@ -86,12 +86,12 @@ class Connection
      */
     protected $transactions = 0;
 
-    private function __construct(array $config, string $name = 'default')
+    public function __construct(array $config, string $connectionName = 'default')
     {
-        $this->connectionName = $name;
+        $this->connectionName = $connectionName;
         $this->poolId = bin2hex(random_bytes(16));
         $this->sticky = $config['sticky'] ?? false;
-        self::$config[$name] = $config;
+        self::$config[$connectionName] = $config;
         $this->optimizationManager = new \Plugs\Database\Optimization\OptimizationManager($this, $config['optimizations'] ?? []);
         // Connection deferred until first query (Lazy Loading)
     }
@@ -603,12 +603,27 @@ class Connection
     // Standard connection method (without pooling)
     public static function getInstance(array|null $config = null, string $connectionName = 'default'): self
     {
-        // Resolve actual connection name if 'default' or provided via config
+        // Return existing instance if available (check BEFORE name resolution for 'default' override)
+        if (isset(self::$instances[$connectionName]) && $config === null) {
+            self::$instances[$connectionName]->ensureConnectionHealth();
+            return self::$instances[$connectionName];
+        }
+
+        // Resolve actual connection name if 'default'
+        if ($connectionName === 'default' && $config === null) {
+            $dbConfig = config('database');
+            $connectionName = $dbConfig['default'] ?? 'mysql';
+
+            // Check if the resolved name is already in instances
+            if (isset(self::$instances[$connectionName])) {
+                self::$instances[$connectionName]->ensureConnectionHealth();
+                return self::$instances[$connectionName];
+            }
+        }
+
+        // If no instance, we need config
         if ($config === null) {
             $dbConfig = config('database');
-            if ($connectionName === 'default') {
-                $connectionName = $dbConfig['default'] ?? 'mysql';
-            }
             $config = $dbConfig['connections'][$connectionName] ?? null;
 
             if ($config === null) {
@@ -616,11 +631,7 @@ class Connection
             }
         }
 
-        if (!isset(self::$instances[$connectionName])) {
-            self::$instances[$connectionName] = new self($config, $connectionName);
-        } else {
-            self::$instances[$connectionName]->ensureConnectionHealth();
-        }
+        self::$instances[$connectionName] = new self($config, $connectionName);
 
         return self::$instances[$connectionName];
     }
@@ -672,6 +683,12 @@ class Connection
         $stmt->execute($params);
         $time = microtime(true) - $start;
 
+        $monitor = RelationMonitor::getInstance();
+        $queryId = $monitor->trackQuery($sql, $params, (float) $time);
+
+        // Push context for any nested queries (middleware etc)
+        $monitor->pushQueryContext($queryId);
+
         if (class_exists(QueryAnalyzer::class)) {
             if (QueryAnalyzer::isLoggingEnabled()) {
                 QueryAnalyzer::logQuery($sql, $params, $time, $pdo === $this->pdo ? 'write' : 'read');
@@ -682,6 +699,12 @@ class Connection
         }
 
         $this->recordObservabilityMetrics($sql, $params, $time);
+
+        // If this query is from a lazy load, it should stay as parent for sub-queries
+        // But for standard queries, it's a leaf node. 
+        // Actually, we'll push/pop in RelationMonitor via a surrounding call if needed.
+        // For now, we'll just track.
+        $monitor->popQueryContext();
 
         return $stmt;
     }

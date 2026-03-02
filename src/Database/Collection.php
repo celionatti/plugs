@@ -13,6 +13,7 @@ class Collection implements \ArrayAccess, \Iterator, \Countable, \JsonSerializab
 {
     protected $items = [];
     protected $position = 0;
+    protected ?string $collectionId = null;
 
     protected $_pivotModel = null;
     protected $_pivotRelation = null;
@@ -21,6 +22,38 @@ class Collection implements \ArrayAccess, \Iterator, \Countable, \JsonSerializab
     public function __construct(array $items = [])
     {
         $this->items = $items;
+        $this->collectionId = bin2hex(random_bytes(8));
+    }
+
+    public function setModelsCollectionContext(): void
+    {
+        foreach ($this->items as $item) {
+            if ($item instanceof PlugModel) {
+                $item->setCollectionContext($this->collectionId, $this);
+            }
+        }
+    }
+
+    public function getCollectionId(): ?string
+    {
+        return $this->collectionId;
+    }
+
+    public function predictiveLoad(string $relation): void
+    {
+        $modelsToLoad = [];
+        foreach ($this->items as $item) {
+            if ($item instanceof PlugModel && !$item->relationLoaded($relation)) {
+                $modelsToLoad[] = $item;
+            }
+        }
+
+        if (!empty($modelsToLoad)) {
+            $first = reset($this->items);
+            if ($first instanceof PlugModel) {
+                $first::loadRelations(new Collection($modelsToLoad), $relation);
+            }
+        }
     }
 
     // Iterator methods

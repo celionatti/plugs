@@ -8,6 +8,7 @@ use Exception;
 use PDO;
 use PDOException;
 use Plugs\Database\Collection;
+use Plugs\Database\QueryBuilder;
 use Plugs\Database\Connection;
 use Plugs\Database\Traits\HasAttributes;
 use Plugs\Database\Traits\HasConnection;
@@ -80,6 +81,10 @@ abstract class PlugModel implements \JsonSerializable
     protected bool $allowRawQueries = false;
 
     // Static Query Logging and Caching
+    protected ?string $collectionId = null;
+    protected ?Collection $collection = null;
+    protected ?string $parentQueryId = null;
+
     protected static $queryLog = [];
     protected static $enableQueryLog = false;
     protected static $queryCache = [];
@@ -122,6 +127,56 @@ abstract class PlugModel implements \JsonSerializable
         }
 
         static::trackModelLoading();
+    }
+
+    public function setCollectionContext(string $id, Collection $collection): void
+    {
+        $this->collectionId = $id;
+        $this->collection = $collection;
+    }
+
+    public function getCollectionId(): ?string
+    {
+        return $this->collectionId;
+    }
+
+    public function getCollection(): ?Collection
+    {
+        return $this->collection;
+    }
+
+    public function setParentQueryId(string $id): void
+    {
+        $this->parentQueryId = $id;
+    }
+
+    public function getParentQueryId(): ?string
+    {
+        return $this->parentQueryId;
+    }
+
+    public function getPrimaryKeyName(): string
+    {
+        return $this->primaryKey;
+    }
+
+    /**
+     * Start an AI-assisted query.
+     * 
+     * @param string $prompt Natural language query prompt
+     * @return QueryBuilder
+     */
+    public static function ai(string $prompt): QueryBuilder
+    {
+        $generator = new \Plugs\AI\QueryGenerator();
+        $result = $generator->generate(static::class, $prompt);
+
+        // Optional: Log/Review mode can be implemented here or in Connection
+        if (defined('AI_QUERY_REVIEW') && AI_QUERY_REVIEW) {
+            error_log("AI Generated SQL for " . static::class . ": " . $result['sql']);
+        }
+
+        return static::query()->rawSql($result['sql'], $result['params']);
     }
 
     protected static function boot(): void
@@ -306,7 +361,7 @@ abstract class PlugModel implements \JsonSerializable
     /**
      * Apply all registered global scopes to the query builder.
      */
-    public function applyGlobalScopes(\Plugs\Database\QueryBuilder $builder): \Plugs\Database\QueryBuilder
+    public function applyGlobalScopes(QueryBuilder $builder): QueryBuilder
     {
         foreach ($this->getGlobalScopes() as $scope) {
             if ($scope instanceof \Closure) {

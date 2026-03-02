@@ -31,6 +31,7 @@ class QueryBuilder
     private $select = ['*'];
     private $where = [];
     private $params = [];
+    private $rawSql = null;
     private $orderBy = [];
     private $limit = null;
     private $offset = null;
@@ -42,6 +43,14 @@ class QueryBuilder
     public function __construct(Connection $connection)
     {
         $this->connection = $connection;
+    }
+
+    public function rawSql(string $sql, array $params = []): self
+    {
+        $this->rawSql = $sql;
+        $this->params = $params;
+
+        return $this;
     }
 
     /**
@@ -704,24 +713,44 @@ class QueryBuilder
     public function get(array $columns = ['*']): array|Collection
     {
         return $this->runThroughPipeline(function ($builder) use ($columns) {
-            if ($columns !== ['*']) {
-                $builder->select($columns);
+            if ($builder->rawSql) {
+                $sql = $builder->rawSql;
+            } else {
+                if ($columns !== ['*']) {
+                    $builder->select($columns);
+                }
+                $sql = $builder->buildSelectSql();
             }
 
-            $sql = $builder->buildSelectSql();
             $results = $builder->connection->fetchAll($sql, $builder->params);
 
+            // Get the last query ID from monitor
+            $monitor = RelationMonitor::getInstance();
+            $queries = $monitor->getQueries();
+            $lastQuery = end($queries);
+            $queryId = $lastQuery ? $lastQuery['id'] : null;
+
             if ($builder->model && !empty($results)) {
-                $models = array_map(fn($item) => new $builder->model($item, true), $results);
+                $models = array_map(function ($item) use ($builder, $queryId) {
+                    $model = new $builder->model($item, true);
+                    if ($queryId) {
+                        $model->setParentQueryId($queryId);
+                    }
+                    return $model;
+                }, $results);
 
                 if (!empty($builder->with)) {
                     $collection = new Collection($models);
+                    $collection->setModelsCollectionContext();
                     $builder->model::loadRelations($collection, $builder->with);
 
                     return $collection;
                 }
 
-                return new Collection($models);
+                $collection = new Collection($models);
+                $collection->setModelsCollectionContext();
+
+                return $collection;
             }
 
             return $results;

@@ -46,6 +46,7 @@ Welcome to the official documentation for the **Plugs** framework. Plugs is a li
 
 - [Introduction](file:///docs/database/getting-started.md)
 - [Query Builder](file:///docs/database/query-builder.md)
+- [Smart Relationship Engine](file:///docs/database/smart-relationship-engine.md) (New)
 - [Migrations](file:///docs/database/migrations.md)
 - [Models](file:///docs/database/models.md)
 - [Pagination](file:///docs/database/pagination.md)
@@ -54,6 +55,7 @@ Welcome to the official documentation for the **Plugs** framework. Plugs is a li
 ### 🛡️ Security & Features
 
 - [AI Overview](file:///docs/ai/overview.md) (New)
+  - [AI-Enhanced Query Assistant](file:///docs/ai/query-assistant.md) (New)
   - [AI Performance & SWR](file:///docs/ai/performance.md) (New)
 - [Authentication](file:///docs/features/authentication.md) (Updated)
 - [Validation](file:///docs/features/validation.md) (Updated)
