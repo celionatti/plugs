@@ -27,6 +27,10 @@ class AuthInstallCommand extends Command
             $this->publishPersonalAccessTokensMigration();
         });
 
+        $this->task('Publishing sessions migration', function () {
+            $this->publishSessionsMigration();
+        });
+
         $this->newLine();
         $this->box(
             "Auth scaffolding installed successfully!\n\n" .
@@ -41,7 +45,7 @@ class AuthInstallCommand extends Command
     private function publishUsersMigration(): void
     {
         $migrationFile = 'create_users_table.php';
-        $basePath = base_path('database/Migrations');
+        $basePath = base_path('database/migrations');
 
         if (!is_dir($basePath)) {
             mkdir($basePath, 0755, true);
@@ -68,7 +72,7 @@ class AuthInstallCommand extends Command
     private function publishPasswordResetTokensMigration(): void
     {
         $migrationFile = 'create_password_reset_tokens_table.php';
-        $basePath = base_path('database/Migrations');
+        $basePath = base_path('database/migrations');
 
         if (!is_dir($basePath)) {
             mkdir($basePath, 0755, true);
@@ -95,7 +99,7 @@ class AuthInstallCommand extends Command
     private function publishPersonalAccessTokensMigration(): void
     {
         $migrationFile = 'create_personal_access_tokens_table.php';
-        $basePath = base_path('database/Migrations');
+        $basePath = base_path('database/migrations');
 
         if (!is_dir($basePath)) {
             mkdir($basePath, 0755, true);
@@ -204,6 +208,74 @@ return new class extends Migration {
     public function down(): void
     {
         Schema::dropIfExists('users');
+    }
+};
+EOT;
+    }
+
+    private function publishSessionsMigration(): void
+    {
+        $migrationFile = 'create_sessions_table.php';
+        $basePath = base_path('database/migrations');
+
+        if (!is_dir($basePath)) {
+            mkdir($basePath, 0755, true);
+        }
+
+        // Check if it already exists
+        $files = glob($basePath . '/*_' . $migrationFile);
+        if (!empty($files)) {
+            $this->warning(" Migration [{$migrationFile}] already exists.");
+            return;
+        }
+
+        $timestamp = date('Y_m_d_His');
+        $filename = $timestamp . '_' . $migrationFile;
+        $path = $basePath . '/' . $filename;
+
+        $content = $this->getSessionsMigrationContent();
+        Filesystem::put($path, $content);
+
+        $this->info(" Created migration: {$filename}");
+    }
+
+    private function getSessionsMigrationContent(): string
+    {
+        return <<<'EOT'
+<?php
+
+declare(strict_types=1);
+
+use Plugs\Database\Migration;
+use Plugs\Database\Blueprint;
+use Plugs\Database\Schema;
+
+return new class extends Migration {
+    /**
+     * Run the migrations.
+     */
+    public function up(): void
+    {
+        Schema::create('sessions', function (Blueprint $table) {
+            $table->string('id', 255);
+            $table->primary('id');
+            $table->foreignId('user_id')->nullable();
+            $table->ipAddress('ip_address')->nullable();
+            $table->text('user_agent')->nullable();
+            $table->longText('payload');
+            $table->integer('last_activity');
+
+            $table->index('user_id');
+            $table->index('last_activity');
+        });
+    }
+
+    /**
+     * Reverse the migrations.
+     */
+    public function down(): void
+    {
+        Schema::dropIfExists('sessions');
     }
 };
 EOT;
