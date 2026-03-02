@@ -60,7 +60,7 @@ class SecurityHeadersMiddleware implements MiddlewareInterface
     public function process(ServerRequestInterface $request, RequestHandlerInterface $handler): ResponseInterface
     {
         // Generate and inject nonce if CSP is enabled
-        if (config('security.csp.enabled', false)) {
+        if (config('security.csp.enabled', true)) {
             $nonce = base64_encode(random_bytes(16));
 
             // Inject into ViewEngine

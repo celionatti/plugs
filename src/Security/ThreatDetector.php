@@ -40,7 +40,10 @@ class ThreatDetector
         '/(?:\x00|(?<=\=)\s*\()|(?<=\=)\s*\*/i',
     ];
 
-    private const SCORE_THRESHOLD = 10;
+    private static ?string $consolidatedPattern = null;
+    private static array $requestScanCache = [];
+
+    private const SCORE_THRESHOLD = 5;
     private const CACHE_PREFIX = 'security:threat:';
     private const CACHE_TTL = 3600; // 1 hour
 
@@ -55,6 +58,8 @@ class ThreatDetector
         // Check query params
         foreach ($request->getQueryParams() as $value) {
             $score += self::scanValue($value);
+            if ($score >= self::SCORE_THRESHOLD)
+                return self::handleThresholdReached($ip, $score);
         }
 
         // Check body params
@@ -62,6 +67,8 @@ class ThreatDetector
         if (is_array($body)) {
             foreach ($body as $value) {
                 $score += self::scanValue($value);
+                if ($score >= self::SCORE_THRESHOLD)
+                    return self::handleThresholdReached($ip, $score);
             }
         }
 
@@ -69,6 +76,8 @@ class ThreatDetector
         foreach ($request->getHeaders() as $header) {
             foreach ($header as $value) {
                 $score += self::scanValue($value);
+                if ($score >= self::SCORE_THRESHOLD)
+                    return self::handleThresholdReached($ip, $score);
             }
         }
 
@@ -76,6 +85,8 @@ class ThreatDetector
         $uploadedFiles = $request->getUploadedFiles();
         if (!empty($uploadedFiles)) {
             $score += self::scanUploadedFiles($uploadedFiles);
+            if ($score >= self::SCORE_THRESHOLD)
+                return self::handleThresholdReached($ip, $score);
         }
 
         // Accumulate score for IP
@@ -84,6 +95,15 @@ class ThreatDetector
         }
 
         return self::getScore($ip);
+    }
+
+    /**
+     * Helper to handle when threshold is reached during scanning.
+     */
+    private static function handleThresholdReached(string $ip, int $score): int
+    {
+        self::addScore($ip, $score);
+        return $score;
     }
 
     /**
@@ -120,17 +140,52 @@ class ThreatDetector
 
     private static function scanValue(mixed $value): int
     {
-        if (!is_string($value)) {
+        if (!is_string($value) || empty($value)) {
             return 0;
         }
 
+        // Request-level cache to avoid redundant scans of the same string
+        if (isset(self::$requestScanCache[$value])) {
+            return self::$requestScanCache[$value];
+        }
+
+        if (self::$consolidatedPattern === null) {
+            self::$consolidatedPattern = self::buildConsolidatedPattern();
+        }
+
         $score = 0;
-        foreach (self::$suspiciousPatterns as $pattern) {
-            if (@preg_match($pattern, $value)) {
-                $score += 5; // Each pattern match adds 5 points
+        // Use preg_match_all to find all occurrences in one pass if needed, 
+        // but here we just need to know how many patterns matched.
+        // Actually, the original logic added 5 points PER PATTERN that matched.
+        // To maintain compatibility, we check each capture group or just use the consolidated one.
+
+        // Performance optimization: check if any pattern matches first
+        if (preg_match(self::$consolidatedPattern, $value)) {
+            // If it matches, we go deeper to count matches for scoring
+            foreach (self::$suspiciousPatterns as $pattern) {
+                if (@preg_match($pattern, $value)) {
+                    $score += 5;
+                }
             }
         }
-        return $score;
+
+        return self::$requestScanCache[$value] = $score;
+    }
+
+    /**
+     * Build a single regex from all suspicious patterns.
+     */
+    private static function buildConsolidatedPattern(): string
+    {
+        $patterns = [];
+        foreach (self::$suspiciousPatterns as $pattern) {
+            // Strip the first and last characters (delimiters) and any trailing 'i'
+            // Assumes all patterns use '/' as delimiter and optional 'i' modifier.
+            $inner = preg_replace('/^\/|\/[i]*$/', '', $pattern);
+            $patterns[] = '(?:' . $inner . ')';
+        }
+
+        return '/' . implode('|', $patterns) . '/i';
     }
 
     /**

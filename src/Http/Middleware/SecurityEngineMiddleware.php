@@ -21,7 +21,9 @@ class SecurityEngineMiddleware implements MiddlewareInterface
     public function process(ServerRequestInterface $request, RequestHandlerInterface $handler): ResponseInterface
     {
         // 1. Request Anomaly Detection (SQLi, XSS, Path Traversal, Invalid Shapes)
-        $isLocal = in_array($this->getClientIp($request), ['127.0.0.1', '::1', 'localhost', 'plugs.local']);
+        $clientIp = $this->getClientIp($request);
+        $isLocal = in_array($clientIp, ['127.0.0.1', '::1', 'localhost', 'plugs.local']);
+
         if (!$isLocal && ThreatDetector::isSuspicious($request)) {
             $nonce = base64_encode(random_bytes(16));
             return $this->blockRequest($request, 'Suspicious activity detected. Request blocked by Security Engine.', 403, $nonce);
@@ -29,14 +31,13 @@ class SecurityEngineMiddleware implements MiddlewareInterface
 
         // 2. Strict Rate Limiting (by IP)
         // Hardcoded global limit: e.g. 100 requests per minute
-        $ip = $this->getClientIp($request);
         $container = class_exists(\Plugs\Container\Container::class) ? \Plugs\Container\Container::getInstance() : null;
         $rateLimiter = $container && $container->bound('ratelimiter') ? $container->make('ratelimiter') : new RateLimiter();
-        if (!$isLocal && $rateLimiter->tooManyAttempts($ip, 100)) {
+        if (!$isLocal && $rateLimiter->tooManyAttempts($clientIp, 100)) {
             return $this->blockRequest($request, 'Too many requests. Please try again later.', 429);
         }
         if (!$isLocal) {
-            $rateLimiter->hit($ip, 60);
+            $rateLimiter->hit($clientIp, 60);
         }
 
         // 3. Share the nonce from SecurityHeadersMiddleware with the View Engine if it exists
