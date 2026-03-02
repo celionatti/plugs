@@ -1,10 +1,10 @@
-# Payment Transaction Handler
+# Elite Payment Module
 
-The Payment Transaction Handler is a universal payment gateway integration system that supports multiple payment platforms including Paystack, Flutterwave, Stripe, PayPal, Payoneer, and BTCPay Server. It provides a modern, fluent API for handling payments, subscriptions, transfers, and more.
+The Elite Payment Module provides a standardized, unified interface for handling "Pay-In" operations across multiple gateways like Paystack, Stripe, Flutterwave, and BTCPay Server. It uses a driver-based architecture that returns standardized Data Transfer Objects (DTOs) and handles webhooks with modern PSR-7 request objects.
 
 ## Installation & Configuration
 
-The transaction handler is included in the core framework. To use it, you need to configure your API keys in your `.env` file.
+Configuration is managed via the `payments` config. Ensure your drivers are configured with the necessary API keys and secrets.
 
 ### Environment Variables
 
@@ -13,152 +13,140 @@ Add your credentials to `.env`:
 ```env
 # Default Settings
 DEFAULT_PAYMENT_PLATFORM=paystack
-PAYMENT_CURRENCY=NGN
-PAYMENT_ENVIRONMENT=test
 
 # Paystack
-PAYSTACK_PUBLIC_KEY=pk_test_...
 PAYSTACK_SECRET_KEY=sk_test_...
 PAYSTACK_WEBHOOK_SECRET=...
 
-# Flutterwave
-FLUTTERWAVE_PUBLIC_KEY=FLWPUBK_TEST-...
-FLUTTERWAVE_SECRET_KEY=FLWSECK_TEST-...
-
 # Stripe
-STRIPE_PUBLIC_KEY=pk_test_...
 STRIPE_SECRET_KEY=sk_test_...
 STRIPE_WEBHOOK_SECRET=...
+
+# Flutterwave
+FLUTTERWAVE_SECRET_KEY=FLWSECK_TEST-...
 
 # BTCPay Server
 BTCPAY_API_KEY=...
 BTCPAY_STORE_ID=...
 BTCPAY_BASE_URL=https://btcpay.yourserver.com
+BTCPAY_WEBHOOK_SECRET=...
 ```
 
-## Usage
+## Elite Payment API
 
-### Initializing the Handler
+Instead of passing raw arrays and getting back unstructured data, the Elite API uses the `Payment` facade and DTOs.
 
-Use the `PaymentConfig` helper to create a handler instance:
+### Basic Usage
 
 ```php
-use Plugs\TransactionHandler\PaymentConfig;
+use Plugs\Facades\Payment;
 
-// Uses default platform from .env
-$payment = PaymentConfig::create();
+// Initialize a payment
+$response = Payment::initialize([
+    'amount' => 5000,
+    'currency' => 'NGN',
+    'email' => 'user@example.com',
+    'reference' => 'unique-ref-123',
+    'callback_url' => 'https://app.test/checkout/callback'
+]);
 
-// Or specify a platform
-$stripe = PaymentConfig::create('stripe');
+// Standardized DTO methods
+echo $response->getReference();
+echo $response->getAuthorizationUrl();
+echo $response->getStatus(); // 'pending', 'success', 'failed'
 ```
 
-### Fluent Payment API
+### Verifying Payments
 
-The fluent interface allows you to build a transaction step-by-step:
-
-```php
-$result = $payment->amount(5000)
-    ->currency('NGN')
-    ->email('user@example.com')
-    ->description('Order #1234')
-    ->callback('http://app.test/payment/callback')
-    ->pay();
-
-if ($result->isSuccessful()) {
-    // Redirect user to payment page
-    $url = $result->getData()['authorization_url'];
-    return redirect($url);
-}
-
-return back()->withError($result->getMessage());
-```
-
-### Subscriptions
+Standardized verification regardless of the gateway used:
 
 ```php
-$result = $payment->email('user@example.com')
-    ->amount(1500)
-    ->with(['plan_code' => 'PLN_monthly_basic'])
-    ->subscribe();
-```
+$verification = Payment::verify($reference);
 
-### Verification
-
-Always verify payments on your callback page:
-
-```php
-$reference = $request->query('reference');
-$result = $payment->verify($reference);
-
-if ($result->isSuccessful()) {
-    // Update order status in database
-    $orderId = $result->getData()['metadata']['order_id'];
+if ($verification->isSuccessful()) {
+    // Transaction successful
+    $amount = $verification->getAmount();
+    $metadata = $verification->getMetadata();
 }
 ```
 
-## Handling Webhooks
-
-Webhooks allow your application to receive asynchronous updates from payment gateways.
+### Handling Refunds
 
 ```php
-$payload = $request->all();
-$result = $payment->handleWebhook($payload);
+$refund = Payment::refund($reference, 1000.0, 'Partial refund for item return');
 
-if ($result->isSuccessful()) {
-    $event = $result->getData()['event'];
-    $data = $result->getData()['data'];
-    
-    switch ($event) {
-        case 'payment_successful':
-            // Handle success
-            break;
-        case 'subscription_cancelled':
-            // Handle cancellation
-            break;
+if ($refund->isSuccessful()) {
+    echo "Refunded: " . $refund->getAmount();
+}
+```
+
+## Supported Drivers
+
+The framework includes several native drivers out of the box. You can switch drivers fluently:
+
+```php
+// Use Stripe specifically
+Payment::driver('stripe')->initialize([...]);
+
+// Default driver (from config)
+Payment::initialize([...]);
+```
+
+| Driver      | Identifier    | Notes                                              |
+| ----------- | ------------- | -------------------------------------------------- |
+| Paystack    | `paystack`    | High-fidelity implementation for Nigerian markets. |
+| Stripe      | `stripe`      | Global powerhouse, uses PaymentIntents.            |
+| Flutterwave | `flutterwave` | African & global payments support.                 |
+| BTCPay      | `btcpay`      | Self-hosted crypto payment processor.              |
+
+## Advanced: Smart Routing
+
+You can define rules to automatically choose a gateway based on the payload:
+
+```php
+Payment::addRouteRule(function (array $payload) {
+    if ($payload['currency'] === 'USD') {
+        return 'stripe';
     }
+    return 'paystack';
+});
+
+// Automatically chooses based on currency
+Payment::smart($payload)->initialize($payload);
+```
+
+## Webhook Handling
+
+Elite drivers implement secure, modern webhook signature verification using PSR-7 `Request` objects.
+
+```php
+public function handleWebhook(\Plugs\Http\Request $request)
+{
+    // Secure cryptographic verification
+    if (!Payment::verifyWebhookSignature($request)) {
+        return response('Invalid signature', 400);
+    }
+
+    $payload = $request->all();
+
+    // Process the event
+    Payment::webhook($payload);
+
+    return response('Webhook processed');
 }
 ```
 
-## Processing Standardized Results
+## Standardized DTOs
 
-All payment operations return a `Plugs\TransactionHandler\TransactionResult` object, providing a consistent API:
+Every operation returns a DTO from the `Plugs\Payment\DTO` namespace:
 
-| Method | Description |
-|--------|-------------|
-| `isSuccessful()` | Returns `true` if operation was successful |
-| `getStatus()` | Returns the transaction status (success, failed, pending) |
-| `getReference()`| Returns the platform-specific reference |
-| `getMessage()` | Returns a human-readable message or error |
-| `getData()` | Returns the raw array response from the platform |
-| `getPlatform()`| Returns the platform used (e.g., 'paystack') |
+| DTO                   | Purpose                  | Key Methods                                              |
+| --------------------- | ------------------------ | -------------------------------------------------------- |
+| `PaymentResponse`     | Result of `initialize()` | `getReference()`, `getAuthorizationUrl()`, `getStatus()` |
+| `PaymentVerification` | Result of `verify()`     | `isSuccessful()`, `getAmount()`, `getCurrency()`         |
+| `RefundResponse`      | Result of `refund()`     | `isSuccessful()`, `getStatus()`, `getAmount()`           |
 
-## Logging
+---
 
-The handler automatically logs transaction events if a logger is available. You can find logs in `storage/logs/plugs.log`.
-
-Events logged include:
-- Transaction initiation with details (amount, currency, email)
-- Successful transaction results
-- Failed attempts with error messages
-- Webhook signature verification and processing
-
-## API Reference
-
-### PaymentTransactionHandler Methods
-
-- `amount(float $amount)`: Set transaction amount
-- `currency(string $currency)`: Set currency code
-- `email(string $email)`: Set customer email
-- `reference(string $reference)`: Set manual reference
-- `description(string $desc)`: Set transaction description
-- `metadata(array $data)`: Set custom metadata
-- `callback(string $url)`: Set redirect URL
-- `with(array $data)`: Add extra platform-specific parameters
-- `pay()`: Process the payment
-- `subscribe(array $data)`: Create subscription
-- `verify(string $ref)`: Verify transaction
-- `refund(array $data)`: Process refund
-- `transfer(array $data)`: Build and send transfer
-- `withdraw(array $data)`: Build and send withdrawal
-- `getBalance()`: Get account balance
-- `list(array $filters)`: List recent transactions
+> [!TIP]
+> **Legacy Support**: If you are maintaining older code, the `PaymentTransactionHandler` still works but now acts as a bridge to this Elite Engine. We recommend migrating to the `Payment` facade for new features.

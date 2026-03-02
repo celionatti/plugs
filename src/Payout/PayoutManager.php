@@ -141,6 +141,66 @@ class PayoutManager
     }
 
     /**
+     * Create an instance of the Paystack payout driver.
+     *
+     * @return \Plugs\Payout\Drivers\PaystackPayoutDriver
+     */
+    protected function createPaystackDriver(): \Plugs\Payout\Drivers\PaystackPayoutDriver
+    {
+        return new \Plugs\Payout\Drivers\PaystackPayoutDriver($this->getConfig('paystack'));
+    }
+
+    /**
+     * Create an instance of the Stripe payout driver.
+     *
+     * @return \Plugs\Payout\Drivers\StripePayoutDriver
+     */
+    protected function createStripeDriver(): \Plugs\Payout\Drivers\StripePayoutDriver
+    {
+        return new \Plugs\Payout\Drivers\StripePayoutDriver($this->getConfig('stripe'));
+    }
+
+    /**
+     * Create an instance of the Flutterwave payout driver.
+     *
+     * @return \Plugs\Payout\Drivers\FlutterwavePayoutDriver
+     */
+    protected function createFlutterwaveDriver(): \Plugs\Payout\Drivers\FlutterwavePayoutDriver
+    {
+        return new \Plugs\Payout\Drivers\FlutterwavePayoutDriver($this->getConfig('flutterwave'));
+    }
+
+    /**
+     * Create an instance of the PayPal payout driver.
+     *
+     * @return \Plugs\Payout\Drivers\PayPalPayoutDriver
+     */
+    protected function createPaypalDriver(): \Plugs\Payout\Drivers\PayPalPayoutDriver
+    {
+        return new \Plugs\Payout\Drivers\PayPalPayoutDriver($this->getConfig('paypal'));
+    }
+
+    /**
+     * Create an instance of the Payoneer payout driver.
+     *
+     * @return \Plugs\Payout\Drivers\PayoneerPayoutDriver
+     */
+    protected function createPayoneerDriver(): \Plugs\Payout\Drivers\PayoneerPayoutDriver
+    {
+        return new \Plugs\Payout\Drivers\PayoneerPayoutDriver($this->getConfig('payoneer'));
+    }
+
+    /**
+     * Create an instance of the BTCPay payout driver.
+     *
+     * @return \Plugs\Payout\Drivers\BTCPayPayoutDriver
+     */
+    protected function createBtcpayDriver(): \Plugs\Payout\Drivers\BTCPayPayoutDriver
+    {
+        return new \Plugs\Payout\Drivers\BTCPayPayoutDriver($this->getConfig('btcpay'));
+    }
+
+    /**
      * Call a custom driver creator.
      *
      * @param string $driver
