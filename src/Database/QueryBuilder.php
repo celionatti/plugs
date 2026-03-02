@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Plugs\Database;
 
-use PDO;
 use Closure;
 use Exception;
 use BadMethodCallException;
@@ -38,6 +37,7 @@ class QueryBuilder
     protected $model = null;
     protected $with = [];
     protected $joins = [];
+    protected $middleware = [];
 
     public function __construct(Connection $connection)
     {
@@ -126,10 +126,11 @@ class QueryBuilder
             ];
         } else {
             $placeholder = ':where_' . count($this->params) . '_' . str_replace('.', '_', (string) $column);
+            $wrappedColumn = QueryUtils::wrapIdentifier((string) $column);
 
             $this->where[] = [
                 'type' => 'Basic',
-                'query' => "{$column} {$operator} {$placeholder}",
+                'query' => "{$wrappedColumn} {$operator} {$placeholder}",
                 'boolean' => $boolean,
             ];
 
@@ -396,9 +397,10 @@ class QueryBuilder
 
     public function whereNull(string $column, string $boolean = 'AND'): self
     {
+        $wrappedColumn = QueryUtils::wrapIdentifier($column);
         $this->where[] = [
             'type' => 'Null',
-            'query' => "{$column} IS NULL",
+            'query' => "{$wrappedColumn} IS NULL",
             'boolean' => $boolean,
         ];
 
@@ -407,9 +409,10 @@ class QueryBuilder
 
     public function whereNotNull(string $column, string $boolean = 'AND'): self
     {
+        $wrappedColumn = QueryUtils::wrapIdentifier($column);
         $this->where[] = [
             'type' => 'NotNull',
-            'query' => "{$column} IS NOT NULL",
+            'query' => "{$wrappedColumn} IS NOT NULL",
             'boolean' => $boolean,
         ];
 
@@ -700,52 +703,56 @@ class QueryBuilder
 
     public function get(array $columns = ['*']): array|Collection
     {
-        if ($columns !== ['*']) {
-            $this->select($columns);
-        }
-
-        $sql = $this->buildSelectSql();
-        $results = $this->connection->fetchAll($sql, $this->params);
-
-        if ($this->model && !empty($results)) {
-            $models = array_map(fn($item) => new $this->model($item, true), $results);
-
-            if (!empty($this->with)) {
-                $collection = new Collection($models);
-                $this->model::loadRelations($collection, $this->with);
-
-                return $collection;
+        return $this->runThroughPipeline(function ($builder) use ($columns) {
+            if ($columns !== ['*']) {
+                $builder->select($columns);
             }
 
-            return new Collection($models);
-        }
+            $sql = $builder->buildSelectSql();
+            $results = $builder->connection->fetchAll($sql, $builder->params);
 
-        return $results;
+            if ($builder->model && !empty($results)) {
+                $models = array_map(fn($item) => new $builder->model($item, true), $results);
+
+                if (!empty($builder->with)) {
+                    $collection = new Collection($models);
+                    $builder->model::loadRelations($collection, $builder->with);
+
+                    return $collection;
+                }
+
+                return new Collection($models);
+            }
+
+            return $results;
+        });
     }
 
     public function first(array $columns = ['*']): mixed
     {
-        $this->limit(1);
+        return $this->runThroughPipeline(function ($builder) use ($columns) {
+            $builder->limit(1);
 
-        if ($columns !== ['*']) {
-            $this->select($columns);
-        }
-
-        $sql = $this->buildSelectSql();
-        $result = $this->connection->fetch($sql, $this->params);
-
-        if ($this->model && $result) {
-            $model = new $this->model($result, true);
-
-            if (!empty($this->with)) {
-                $collection = new Collection([$model]);
-                $this->model::loadRelations($collection, $this->with);
+            if ($columns !== ['*']) {
+                $builder->select($columns);
             }
 
-            return $model;
-        }
+            $sql = $builder->buildSelectSql();
+            $result = $builder->connection->fetch($sql, $builder->params);
 
-        return $result;
+            if ($builder->model && $result) {
+                $model = new $builder->model($result, true);
+
+                if (!empty($builder->with)) {
+                    $collection = new Collection([$model]);
+                    $builder->model::loadRelations($collection, $builder->with);
+                }
+
+                return $model;
+            }
+
+            return $result;
+        });
     }
 
     public function find($id, array $columns = ['*']): mixed
@@ -763,7 +770,7 @@ class QueryBuilder
         $result = $this->find($id, $columns);
         if (!$result) {
             if ($this->model) {
-                throw (new \Plugs\Database\Exception\ModelNotFoundException())->setModel($this->model, $id);
+                throw (new \Plugs\Database\Exceptions\ModelNotFoundException())->setModel($this->model, $id);
             }
             throw new Exception("Record not found with ID: " . (is_array($id) ? implode(', ', $id) : (string) $id));
         }
@@ -968,44 +975,53 @@ class QueryBuilder
 
     public function update(array $data): int
     {
-        $sets = [];
-        $params = $this->params;
+        return $this->runThroughPipeline(function ($builder) use ($data) {
+            $sets = [];
+            $params = $builder->params;
 
-        foreach ($data as $column => $value) {
-            $placeholder = ":set_{$column}";
-            $sets[] = "{$column} = {$placeholder}";
-            $params[$placeholder] = $value;
-        }
+            foreach ($data as $column => $value) {
+                $placeholder = ":set_{$column}";
+                $wrappedColumn = QueryUtils::wrapIdentifier($column);
+                $sets[] = "{$wrappedColumn} = {$placeholder}";
+                $params[$placeholder] = $value;
+            }
 
-        $sql = "UPDATE {$this->table} SET " . implode(', ', $sets);
-        $sql .= $this->getWhereClause();
+            $sql = "UPDATE " . QueryUtils::wrapIdentifier($builder->table) . " SET " . implode(', ', $sets);
+            $sql .= $builder->getWhereClause();
 
-        return $this->connection->execute($sql, $params);
+            return $builder->connection->execute($sql, $params);
+        });
     }
 
     public function delete(): int
     {
-        $sql = "DELETE FROM " . QueryUtils::wrapIdentifier($this->table);
-        $sql .= $this->getWhereClause();
+        return $this->runThroughPipeline(function ($builder) {
+            $sql = "DELETE FROM " . QueryUtils::wrapIdentifier($builder->table);
+            $sql .= $builder->getWhereClause();
 
-        return $this->connection->execute($sql, $this->params);
+            return $builder->connection->execute($sql, $builder->params);
+        });
     }
 
     public function count(string $column = '*'): int
     {
-        $sql = "SELECT COUNT({$column}) as count FROM " . QueryUtils::wrapIdentifier($this->table);
+        return $this->runThroughPipeline(function ($builder) use ($column) {
+            $column = $column === '*' ? $column : QueryUtils::wrapIdentifier($column);
+            $sql = "SELECT COUNT({$column}) as count FROM " . QueryUtils::wrapIdentifier($builder->table);
 
-        if (!empty($this->joins)) {
-            foreach ($this->joins as $join) {
-                $sql .= " {$join['type']} JOIN {$join['table']} ON {$join['first']} {$join['operator']} {$join['second']}";
+            if (!empty($builder->joins)) {
+                foreach ($builder->joins as $join) {
+                    $wrappedTable = QueryUtils::wrapIdentifier($join['table']);
+                    $sql .= " {$join['type']} JOIN {$wrappedTable} ON {$join['first']} {$join['operator']} {$join['second']}";
+                }
             }
-        }
 
-        $sql .= $this->getWhereClause();
+            $sql .= $builder->getWhereClause();
 
-        $result = $this->connection->fetch($sql, $this->params);
+            $result = $builder->connection->fetch($sql, $builder->params);
 
-        return (int) ($result['count'] ?? 0);
+            return (int) ($result['count'] ?? 0);
+        });
     }
 
     /**
@@ -1244,7 +1260,9 @@ class QueryBuilder
      */
     public function toSql(): string
     {
-        return $this->buildSelectSql();
+        return $this->runThroughPipeline(function ($builder) {
+            return $builder->buildSelectSql();
+        });
     }
 
     /**
@@ -1253,6 +1271,30 @@ class QueryBuilder
     public function getBindings(): array
     {
         return $this->params;
+    }
+
+    /**
+     * Set the middleware that the query should be sent through.
+     *
+     * @param  array|string|Closure  $middleware
+     * @return $this
+     */
+    public function through($middleware): self
+    {
+        $this->middleware = is_array($middleware) ? $middleware : func_get_args();
+
+        return $this;
+    }
+
+    /**
+     * Run the query through the registered middleware pipeline.
+     *
+     * @param  Closure  $destination
+     * @return mixed
+     */
+    protected function runThroughPipeline(Closure $destination)
+    {
+        return QueryPipeline::send($this, $this->middleware, $destination);
     }
 
     /**

@@ -188,6 +188,17 @@ trait HasQueryBuilder
         return static::query()->where($column, $operator, $value);
     }
 
+    /**
+     * Set the middleware that the query should be sent through.
+     *
+     * @param  array|string|\Closure  $middleware
+     * @return QueryBuilder
+     */
+    public static function through($middleware): QueryBuilder
+    {
+        return static::query()->through(is_array($middleware) ? $middleware : func_get_args());
+    }
+
     public static function whereIn(string $column, array $values): QueryBuilder
     {
         return static::query()->whereIn($column, $values);
