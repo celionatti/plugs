@@ -115,6 +115,8 @@ Payment::addRouteRule(function (array $payload) {
 Payment::smart($payload)->initialize($payload);
 ```
 
+For more advanced routing and failover strategies, see the [Multi-Gateway Guide](file:///c:/xampp/htdocs/plugs/docs/features/multi-gateway.md).
+
 ## Webhook Handling
 
 Elite drivers implement secure, modern webhook signature verification using PSR-7 `Request` objects.

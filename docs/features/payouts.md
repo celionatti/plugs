@@ -121,3 +121,5 @@ Payout::addRouteRule(function (array $payload) {
 
 Payout::smart($payload)->transfer($payload);
 ```
+
+For advanced sequence-based failover and logging, see the [Multi-Gateway Guide](file:///c:/xampp/htdocs/plugs/docs/features/multi-gateway.md).
