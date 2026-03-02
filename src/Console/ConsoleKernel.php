@@ -161,6 +161,7 @@ class ConsoleKernel
         'view:cache' => ViewCacheCommand::class,
         'view:clear' => ViewClearCommand::class,
         'identity:install' => \Plugs\Console\Commands\IdentityInstallCommand::class,
+        'security:install' => \Plugs\Console\Commands\SecurityInstallCommand::class,
     ];
 
 

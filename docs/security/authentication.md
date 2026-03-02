@@ -146,6 +146,22 @@ $user = Auth::guard('jwt')->user();
 
 ---
 
+## Unified Auth Experience
+
+Plugs is designed with a "Unified Auth" philosophy. Whether you are using traditional **Session-based** login or modern **Passwordless (Key-based)** identity, you use the same `Auth` class.
+
+This allows you to write components (like a `NavBar` or `ProfileController`) once, and they will work regardless of how the user authenticated.
+
+- `Auth::check()`: Returns true if the user is authenticated via any enabled guard.
+- `Auth::user()`: Returns the `Authenticatable` user instance.
+- `Auth::logout()`: Clears the session and invalidates the authentication state for the current guard.
+
+### Passwordless Authentication
+
+For detailed information on setting up and using the cryptographic identity system, see the [Passwordless Authentication Guide](./passwordless-auth.md).
+
+---
+
 ## Defining Custom Guards
 
 You can implement entirely custom authentication mechanisms by registering them in a Service Provider using `Auth::extend()`.
