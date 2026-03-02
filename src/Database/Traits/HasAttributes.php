@@ -47,6 +47,12 @@ trait HasAttributes
 
     public function setRawAttributes(array|object $attributes, bool $sync = true): self
     {
+        /** @phpstan-ignore-next-line */
+        if (method_exists($this, 'fireModelEvent')) {
+            /** @phpstan-ignore-next-line */
+            $this->fireModelEvent('beforeHydrate', ['attributes' => $attributes]);
+        }
+
         $this->attributes = $this->parseAttributes($attributes);
 
         if ($sync) {

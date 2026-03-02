@@ -1294,6 +1294,19 @@ class QueryBuilder
      */
     protected function runThroughPipeline(Closure $destination)
     {
+        // Trigger onQueryExecute for all queries
+        if ($this->model && method_exists($this->model, 'query')) {
+            /** @phpstan-ignore-next-line */
+            $instance = new $this->model();
+            if (method_exists($instance, 'fireModelEvent')) {
+                $instance->fireModelEvent('onQueryExecute', ['builder' => $this]);
+            }
+        }
+
+        if (empty($this->middleware)) {
+            return $destination($this);
+        }
+
         return QueryPipeline::send($this, $this->middleware, $destination);
     }
 

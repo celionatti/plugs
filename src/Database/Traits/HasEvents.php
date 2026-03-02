@@ -31,7 +31,9 @@ trait HasEvents
 
     public static function observe($observer): void
     {
-        static::$observers[static::class][] = $observer;
+        $class = static::class;
+        $observer = is_string($observer) ? $observer : $observer;
+        static::$observers[$class][] = $observer;
     }
 
     protected function fireObserverEvent(string $event, array $context = []): bool
@@ -42,6 +44,10 @@ trait HasEvents
         }
 
         foreach (static::$observers[$class] as $observer) {
+            if (is_string($observer)) {
+                $observer = new $observer();
+            }
+
             if (method_exists($observer, $event)) {
                 if ($observer->$event($this, $context) === false) {
                     return false;
@@ -92,14 +98,35 @@ trait HasEvents
 
     /**
      * Register a model event with the dispatcher.
-     *
-     * @param  string  $event
-     * @param  \Closure  $callback
-     * @return void
      */
     protected static function registerModelEvent(string $event, \Closure $callback): void
     {
         static::$eventListeners[static::class][$event][] = $callback;
+    }
+
+    public static function beforeHydrate(\Closure $callback): void
+    {
+        static::registerModelEvent('beforeHydrate', $callback);
+    }
+
+    public static function afterPersist(\Closure $callback): void
+    {
+        static::registerModelEvent('afterPersist', $callback);
+    }
+
+    public static function onRelationAttach(\Closure $callback): void
+    {
+        static::registerModelEvent('onRelationAttach', $callback);
+    }
+
+    public static function onRelationDetach(\Closure $callback): void
+    {
+        static::registerModelEvent('onRelationDetach', $callback);
+    }
+
+    public static function onQueryExecute(\Closure $callback): void
+    {
+        static::registerModelEvent('onQueryExecute', $callback);
     }
 
     /**

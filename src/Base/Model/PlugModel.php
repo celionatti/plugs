@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Plugs\Base\Model;
 
-use BadMethodCallException;
 use Exception;
 use PDO;
 use PDOException;
@@ -17,8 +16,7 @@ use Plugs\Database\Traits\HasFactory;
 use Plugs\Database\Traits\HasQueryBuilder;
 use Plugs\Database\Traits\HasRelationships;
 use Plugs\Database\Traits\HasTimestamps;
-use Plugs\Database\Traits\HasUuids;
-use Plugs\Database\Traits\HasUlids;
+
 use Plugs\Database\Traits\Prunable;
 use Plugs\Database\Traits\HasValidation;
 use Plugs\Database\Traits\Searchable;
@@ -51,6 +49,7 @@ abstract class PlugModel implements \JsonSerializable
         HasQueryBuilder,
         HasAttributes,
         HasRelationships,
+        Prunable,
         HasValidation,
         HasTimestamps,
         SoftDeletes,
@@ -410,6 +409,7 @@ abstract class PlugModel implements \JsonSerializable
 
         if ($saved) {
             $this->fireModelEvent('saved');
+            $this->fireModelEvent('afterPersist');
         }
 
         return $saved;

@@ -103,12 +103,28 @@ class BelongsToManyProxy
             if (!empty($idsToDetach)) {
                 $this->detachPivot($idsToDetach);
                 $changes['detached'] = $idsToDetach;
+
+                if (method_exists($this->parent, 'fireModelEvent')) {
+                    /** @phpstan-ignore-next-line */
+                    $this->parent->fireModelEvent('onRelationDetach', [
+                        'relation' => $this->relationName,
+                        'ids' => $idsToDetach
+                    ]);
+                }
             }
 
             // Attach new relationships
             if (!empty($idsToAttach)) {
                 $this->attachPivot($idsToAttach);
                 $changes['attached'] = $idsToAttach;
+
+                if (method_exists($this->parent, 'fireModelEvent')) {
+                    /** @phpstan-ignore-next-line */
+                    $this->parent->fireModelEvent('onRelationAttach', [
+                        'relation' => $this->relationName,
+                        'ids' => $idsToAttach
+                    ]);
+                }
             }
 
             // Record updated (existing) relationships
@@ -203,6 +219,14 @@ class BelongsToManyProxy
             $count = $this->detachPivot($ids);
 
             $this->parent::commit();
+
+            if (method_exists($this->parent, 'fireModelEvent')) {
+                /** @phpstan-ignore-next-line */
+                $this->parent->fireModelEvent('onRelationDetach', [
+                    'relation' => $this->relationName,
+                    'ids' => $ids
+                ]);
+            }
 
             // Clear cache if enabled
             $this->clearCache();
