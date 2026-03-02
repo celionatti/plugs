@@ -11,19 +11,15 @@ namespace Plugs\TransactionHandler;
 */
 
 use Exception;
-use Plugs\TransactionHandler\Adapter\BTCPayAdapter;
-use Plugs\TransactionHandler\Adapter\FlutterwaveAdapter;
-use Plugs\TransactionHandler\Adapter\PayoneerAdapter;
-use Plugs\TransactionHandler\Adapter\PayPalAdapter;
-use Plugs\TransactionHandler\Adapter\PaystackAdapter;
-use Plugs\TransactionHandler\Adapter\StripeAdapter;
+use Plugs\Facades\Payment;
 use Psr\Log\LoggerInterface;
 
 class PaymentTransactionHandler
 {
     private string $platform;
     private array $config;
-    private PaymentAdapterInterface $adapter;
+    /** @var \Plugs\Payment\Contracts\PaymentDriverInterface */
+    private $adapter;
     private ?LoggerInterface $logger;
 
     // Fluent context
@@ -60,7 +56,7 @@ class PaymentTransactionHandler
     /**
      * Constructor
      *
-     * @param string $platform Payment platform name
+     * @param string $platform The payment platform name
      * @param array $config Platform configuration
      * @param LoggerInterface|null $logger
      */
@@ -77,33 +73,10 @@ class PaymentTransactionHandler
      */
     private function initializeAdapter(): void
     {
-        switch ($this->platform) {
-            case self::PLATFORM_PAYSTACK:
-                $this->adapter = new PaystackAdapter($this->config);
-
-                break;
-            case self::PLATFORM_STRIPE:
-                $this->adapter = new StripeAdapter($this->config);
-
-                break;
-            case self::PLATFORM_PAYPAL:
-                $this->adapter = new PayPalAdapter();
-
-                break;
-            case self::PLATFORM_FLUTTERWAVE:
-                $this->adapter = new FlutterwaveAdapter($this->config);
-
-                break;
-            case self::PLATFORM_PAYONEER:
-                $this->adapter = new PayoneerAdapter();
-
-                break;
-            case self::PLATFORM_BTCPAY:
-                $this->adapter = new BTCPayAdapter($this->config);
-
-                break;
-            default:
-                throw new Exception("Unsupported platform: {$this->platform}");
+        try {
+            $this->adapter = Payment::driver($this->platform);
+        } catch (Exception $e) {
+            throw new Exception("Unsupported platform or configuration error: {$e->getMessage()}");
         }
     }
 
@@ -193,9 +166,19 @@ class PaymentTransactionHandler
         ]);
 
         try {
-            $result = $this->adapter->charge($payload);
+            $response = $this->adapter->initialize($payload);
 
-            $transactionResult = TransactionResult::success($result, self::TYPE_ONE_TIME, $this->platform);
+            $resultData = [
+                'reference' => $response->reference,
+                'authorization_url' => $response->authorization_url,
+                'status' => $response->status,
+                'amount' => $response->amount,
+                'currency' => $response->currency,
+                'message' => $response->message,
+                'metadata' => $response->metadata
+            ];
+
+            $transactionResult = TransactionResult::success($resultData, self::TYPE_ONE_TIME, $this->platform);
 
             $this->logInfo("Payment initiated successfully", ['reference' => $transactionResult->getReference()]);
 
@@ -215,24 +198,7 @@ class PaymentTransactionHandler
      */
     public function subscribe(array $data = []): TransactionResult
     {
-        $payload = array_merge([
-            'email' => $this->email,
-            'amount' => $this->amount,
-            'currency' => $this->currency,
-            'metadata' => $this->metadata,
-        ], $this->extraData, $data);
-
-        $this->validateSubscriptionData($payload);
-
-        try {
-            $result = $this->adapter->createSubscription($payload);
-
-            return TransactionResult::success($result, self::TYPE_SUBSCRIPTION, $this->platform);
-        } catch (Exception $e) {
-            $this->logError("Subscription failed: " . $e->getMessage(), ['payload' => $payload]);
-
-            return TransactionResult::failed($e->getMessage(), self::TYPE_SUBSCRIPTION, $this->platform);
-        }
+        throw new Exception('Subscriptions are currently being migrated to the Elite Unified Subscription Layer. Use $subscriptionFacade->create() instead.');
     }
 
     /**
@@ -243,13 +209,7 @@ class PaymentTransactionHandler
      */
     public function cancel(string $subscriptionId): TransactionResult
     {
-        try {
-            $result = $this->adapter->cancelSubscription($subscriptionId);
-
-            return TransactionResult::success($result, self::TYPE_SUBSCRIPTION, $this->platform);
-        } catch (Exception $e) {
-            return TransactionResult::failed($e->getMessage(), self::TYPE_SUBSCRIPTION, $this->platform);
-        }
+        throw new Exception('Subscriptions are currently being migrated to the Elite Unified Subscription Layer.');
     }
 
     /**
@@ -270,9 +230,19 @@ class PaymentTransactionHandler
         $this->validateTransferData($payload);
 
         try {
-            $result = $this->adapter->transfer($payload);
+            /** @var \Plugs\Payout\DTO\TransferResponse $response */
+            $response = \Plugs\Facades\Payout::driver($this->platform)->transfer($payload);
 
-            return TransactionResult::success($result, self::TYPE_TRANSFER, $this->platform);
+            $resultData = [
+                'reference' => $response->reference,
+                'status' => $response->status,
+                'amount' => $response->amount,
+                'currency' => $response->currency,
+                'message' => $response->message,
+                'metadata' => $response->metadata
+            ];
+
+            return TransactionResult::success($resultData, self::TYPE_TRANSFER, $this->platform);
         } catch (Exception $e) {
             return TransactionResult::failed($e->getMessage(), self::TYPE_TRANSFER, $this->platform);
         }
@@ -295,9 +265,19 @@ class PaymentTransactionHandler
         $this->validateWithdrawalData($payload);
 
         try {
-            $result = $this->adapter->withdraw($payload);
+            /** @var \Plugs\Payout\DTO\WithdrawResponse $response */
+            $response = \Plugs\Facades\Payout::driver($this->platform)->withdraw($payload);
 
-            return TransactionResult::success($result, self::TYPE_WITHDRAWAL, $this->platform);
+            $resultData = [
+                'reference' => $response->reference,
+                'status' => $response->status,
+                'amount' => $response->amount,
+                'currency' => $response->currency,
+                'message' => $response->message,
+                'metadata' => $response->metadata
+            ];
+
+            return TransactionResult::success($resultData, self::TYPE_WITHDRAWAL, $this->platform);
         } catch (Exception $e) {
             return TransactionResult::failed($e->getMessage(), self::TYPE_WITHDRAWAL, $this->platform);
         }
@@ -314,9 +294,22 @@ class PaymentTransactionHandler
         $this->validateRefundData($data);
 
         try {
-            $result = $this->adapter->refund($data);
+            // New Elite Interface expects (string $reference, float $amount)
+            $response = $this->adapter->refund(
+                $data['transaction_id'],
+                (float) ($data['amount'] ?? $this->amount)
+            );
 
-            return TransactionResult::success($result, self::TYPE_REFUND, $this->platform);
+            $resultData = [
+                'reference' => $response->reference,
+                'status' => $response->status,
+                'amount' => $response->amount,
+                'currency' => $response->currency,
+                'message' => $response->message,
+                'metadata' => $response->metadata
+            ];
+
+            return TransactionResult::success($resultData, self::TYPE_REFUND, $this->platform);
         } catch (Exception $e) {
             return TransactionResult::failed($e->getMessage(), self::TYPE_REFUND, $this->platform);
         }
@@ -331,9 +324,18 @@ class PaymentTransactionHandler
     public function verify(string $reference): TransactionResult
     {
         try {
-            $result = $this->adapter->verify($reference);
+            $response = $this->adapter->verify($reference);
 
-            return TransactionResult::success($result, 'verify', $this->platform);
+            $resultData = [
+                'reference' => $response->reference,
+                'status' => $response->status,
+                'amount' => $response->amount,
+                'currency' => $response->currency,
+                'message' => $response->message,
+                'metadata' => $response->metadata
+            ];
+
+            return TransactionResult::success($resultData, 'verify', $this->platform);
         } catch (Exception $e) {
             return TransactionResult::failed($e->getMessage(), 'verify', $this->platform);
         }
@@ -347,7 +349,7 @@ class PaymentTransactionHandler
      */
     public function getTransaction(string $transactionId): array
     {
-        return $this->adapter->getTransaction($transactionId);
+        throw new \Exception('Native GET is deprecated via TransactionHandler. Check your database ledger first.');
     }
 
     /**
@@ -358,7 +360,7 @@ class PaymentTransactionHandler
      */
     public function list(array $filters = []): array
     {
-        return $this->adapter->listTransactions($filters);
+        throw new \Exception('Native List is deprecated. Use your unified transaction ledger.');
     }
 
     /**
@@ -368,7 +370,7 @@ class PaymentTransactionHandler
      */
     public function getBalance(): array
     {
-        return $this->adapter->getBalance();
+        return \Plugs\Facades\Payout::driver($this->platform)->getBalance();
     }
 
     /**
@@ -379,31 +381,18 @@ class PaymentTransactionHandler
      */
     public function createRecipient(array $data): array
     {
-        return $this->adapter->createRecipient($data);
+        return \Plugs\Facades\Payout::driver($this->platform)->createRecipient($data);
     }
 
     /**
      * Webhook handler
      *
-     * @param array $payload Webhook payload
+     * @param array $payload Webhook payload (Legacy payload signature)
      * @return TransactionResult
      */
     public function handleWebhook(array $payload): TransactionResult
     {
-        try {
-            if (!$this->adapter->verifyWebhookSignature($payload)) {
-                throw new Exception('Invalid webhook signature');
-            }
-
-            $result = $this->adapter->processWebhook($payload);
-            $this->logInfo("Webhook processed", ['event' => $result['event'] ?? 'unknown']);
-
-            return TransactionResult::success($result, 'webhook', $this->platform);
-        } catch (Exception $e) {
-            $this->logError("Webhook processing failed: " . $e->getMessage());
-
-            return TransactionResult::failed($e->getMessage(), 'webhook', $this->platform);
-        }
+        throw new \Exception('Calling handleWebhook via the legacy TransactionHandler is deprecated. Please point your webhooks directly to the new Plugs\Payment\WebhookRouter.');
     }
 
     /**
