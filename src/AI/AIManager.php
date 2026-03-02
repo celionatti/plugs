@@ -134,7 +134,11 @@ class AIManager
 
         if (($useCache || $useSwr) && $this->cache) {
             $ttl = is_int($useCache) ? $useCache : 3600;
-            $key = 'ai_prompt_' . md5($template . serialize($data) . serialize($options));
+
+            // Build a stable key from data and options without using serialize() on all of it
+            $dataHash = md5(json_encode($data) ?: '');
+            $optionsHash = md5(json_encode(array_diff_key($options, ['swr' => 1, 'cache' => 1])) ?: '');
+            $key = 'ai_prompt_' . md5($template . $dataHash . $optionsHash);
 
             // SWR: If hit, return cached value and refresh in background
             if ($useSwr && $this->cache->has($key)) {
@@ -191,7 +195,10 @@ class AIManager
 
         if (($useCache || $useSwr) && $this->cache) {
             $ttl = is_int($useCache) ? $useCache : 3600;
-            $key = 'ai_classify_' . md5($text . serialize($categories) . serialize($options));
+
+            $categoriesHash = md5(json_encode($categories) ?: '');
+            $optionsHash = md5(json_encode(array_diff_key($options, ['swr' => 1, 'cache' => 1])) ?: '');
+            $key = 'ai_classify_' . md5($text . $categoriesHash . $optionsHash);
 
             if ($useSwr && $this->cache->has($key)) {
                 $cached = $this->cache->get($key);

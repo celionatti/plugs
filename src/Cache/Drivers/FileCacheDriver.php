@@ -64,7 +64,18 @@ class FileCacheDriver implements CacheDriverInterface
             'created' => time(),
         ];
 
-        $success = file_put_contents($file, serialize($data), LOCK_EX) !== false;
+        try {
+            $serialized = serialize($data);
+        } catch (\Throwable $e) {
+            $type = is_object($value) ? get_class($value) : gettype($value);
+            throw new \RuntimeException(
+                "Cache serialization failed for key [{$key}]. Value type: {$type}. Error: " . $e->getMessage(),
+                0,
+                $e
+            );
+        }
+
+        $success = file_put_contents($file, $serialized, LOCK_EX) !== false;
 
         // Probabilistic Garbage Collection (1% chance)
         if ($success && mt_rand(1, 100) === 42) {

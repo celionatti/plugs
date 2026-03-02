@@ -15,11 +15,18 @@ class PreventRequestsDuringMaintenance implements MiddlewareInterface
 {
     public function process(ServerRequestInterface $request, RequestHandlerInterface $handler): ResponseInterface
     {
-        $maintenanceFile = storage_path('framework/maintenance.json');
+        static $checked = null;
+        static $data = null;
 
-        if (file_exists($maintenanceFile)) {
-            $data = json_decode(file_get_contents($maintenanceFile), true);
+        if ($checked === null) {
+            $maintenanceFile = storage_path('framework/maintenance.json');
+            $checked = file_exists($maintenanceFile);
+            if ($checked) {
+                $data = json_decode(file_get_contents($maintenanceFile), true);
+            }
+        }
 
+        if ($checked) {
             // Bypass check
             if ($this->hasBypassCookie($request, $data)) {
                 return $handler->handle($request);

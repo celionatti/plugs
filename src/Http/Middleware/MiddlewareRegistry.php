@@ -18,14 +18,14 @@ class MiddlewareRegistry
      * These can be used in routes or groups.
      */
     protected array $aliases = [
-        'auth' => \Plugs\Http\Middleware\AuthenticateMiddleware::class,
+        'auth' => AuthenticateMiddleware::class,
         'guest' => \app\Http\Middleware\GuestMiddleware::class,
-        'csrf' => \Plugs\Http\Middleware\CsrfMiddleware::class,
-        'cors' => \Plugs\Http\Middleware\CorsMiddleware::class,
-        'shield' => \Plugs\Http\Middleware\SecurityShieldMiddleware::class,
-        'json' => \Plugs\Http\Middleware\ForceJsonMiddleware::class,
-        'throttle' => \Plugs\Http\Middleware\RateLimitMiddleware::class,
-        'spa' => \Plugs\Http\Middleware\SPAMiddleware::class,
+        'csrf' => CsrfMiddleware::class,
+        'cors' => CorsMiddleware::class,
+        'shield' => SecurityShieldMiddleware::class,
+        'json' => ForceJsonMiddleware::class,
+        'throttle' => RateLimitMiddleware::class,
+        'spa' => SPAMiddleware::class,
     ];
 
     /**
@@ -50,26 +50,26 @@ class MiddlewareRegistry
      * This is the "hardwired" security layer.
      */
     protected array $kernel = [
-        \Plugs\Http\Middleware\PreventRequestsDuringMaintenance::class,
-        \Plugs\Http\Middleware\SecurityHeadersMiddleware::class,
-        \Plugs\Http\Middleware\SPAMiddleware::class,
-        \Plugs\Http\Middleware\FlashMiddleware::class,
-        \Plugs\Http\Middleware\ShareErrorsFromSession::class,
-        \Plugs\Http\Middleware\HandleValidationExceptions::class,
+        PreventRequestsDuringMaintenance::class,
+        SecurityHeadersMiddleware::class,
+        SPAMiddleware::class,
+        FlashMiddleware::class,
+        ShareErrorsFromSession::class,
+        HandleValidationExceptions::class,
     ];
 
     /**
      * Explicit layer assignments for classes (overrides metadata in class).
      */
     protected array $layers = [
-        \Plugs\Http\Middleware\PreventRequestsDuringMaintenance::class => MiddlewareLayer::SECURITY,
-        \Plugs\Http\Middleware\SecurityHeadersMiddleware::class => MiddlewareLayer::SECURITY,
-        \Plugs\Http\Middleware\SecurityShieldMiddleware::class => MiddlewareLayer::SECURITY,
-        \Plugs\Http\Middleware\CsrfMiddleware::class => MiddlewareLayer::SECURITY,
-        \Plugs\Http\Middleware\CorsMiddleware::class => MiddlewareLayer::SECURITY,
-        \Plugs\Http\Middleware\RateLimitMiddleware::class => MiddlewareLayer::SECURITY,
-        \Plugs\Http\Middleware\ProfilerMiddleware::class => MiddlewareLayer::PERFORMANCE,
-        \Plugs\Http\Middleware\SPAMiddleware::class => MiddlewareLayer::BUSINESS,
+        PreventRequestsDuringMaintenance::class => MiddlewareLayer::SECURITY,
+        SecurityHeadersMiddleware::class => MiddlewareLayer::SECURITY,
+        SecurityShieldMiddleware::class => MiddlewareLayer::SECURITY,
+        CsrfMiddleware::class => MiddlewareLayer::SECURITY,
+        CorsMiddleware::class => MiddlewareLayer::SECURITY,
+        RateLimitMiddleware::class => MiddlewareLayer::SECURITY,
+        ProfilerMiddleware::class => MiddlewareLayer::PERFORMANCE,
+        SPAMiddleware::class => MiddlewareLayer::BUSINESS,
     ];
 
     /**
@@ -78,17 +78,17 @@ class MiddlewareRegistry
      * This ensures security middlewares always execute before logic.
      */
     protected array $priority = [
-        \Plugs\Http\Middleware\PreventRequestsDuringMaintenance::class => 5,
-        \Plugs\Http\Middleware\SecurityHeadersMiddleware::class => 10,
-        \Plugs\Http\Middleware\SecurityShieldMiddleware::class => 20,
-        \Plugs\Http\Middleware\SPAMiddleware::class => 30,
-        \Plugs\Http\Middleware\CorsMiddleware::class => 40,
-        \Plugs\Http\Middleware\ForceJsonMiddleware::class => 45,
-        \Plugs\Http\Middleware\CsrfMiddleware::class => 50,
-        \Plugs\Http\Middleware\RateLimitMiddleware::class => 60,
-        \Plugs\Http\Middleware\ShareErrorsFromSession::class => 70,
-        \Plugs\Http\Middleware\HandleValidationExceptions::class => 80,
-        \Plugs\Http\Middleware\AuthenticateMiddleware::class => 100,
+        PreventRequestsDuringMaintenance::class => 5,
+        SecurityHeadersMiddleware::class => 10,
+        SecurityShieldMiddleware::class => 20,
+        SPAMiddleware::class => 30,
+        CorsMiddleware::class => 40,
+        ForceJsonMiddleware::class => 45,
+        CsrfMiddleware::class => 50,
+        RateLimitMiddleware::class => 60,
+        ShareErrorsFromSession::class => 70,
+        HandleValidationExceptions::class => 80,
+        AuthenticateMiddleware::class => 100,
     ];
 
 
@@ -336,6 +336,23 @@ class MiddlewareRegistry
         }
 
         return $orchestrated;
+    }
+    /**
+     * Get a unique cache key for a given middleware stack and context.
+     * 
+     * @param array $middleware
+     * @param \Plugs\Bootstrap\ContextType|null $context
+     * @return string
+     */
+    public function getCacheKey(array $middleware, ?ContextType $context = null): string
+    {
+        $parts = array_map(function ($mw) {
+            return is_string($mw) ? $mw : get_class($mw);
+        }, $middleware);
+
+        sort($parts);
+
+        return 'mw_pipeline:' . md5(implode('|', $parts) . ($context ? $context->value : 'none'));
     }
 
 }

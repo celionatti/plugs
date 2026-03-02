@@ -376,7 +376,7 @@ abstract class PlugModel implements \JsonSerializable
 
     protected function getCacheKey(string $sql, array $bindings): string
     {
-        return md5($sql . serialize($bindings));
+        return md5($sql . (json_encode($bindings) ?: ''));
     }
 
     protected function getFromCache(string $key)

@@ -121,6 +121,7 @@ class Connection
                 $readConfig = array_merge($config, $config['read'] ?? []);
 
                 $this->pdo = $this->createPdo($writeConfig);
+                $this->trackConnection('write', $writeConfig, true);
 
                 // If read and write configs are identical, share the connection
                 if ($writeConfig === $readConfig) {
@@ -131,6 +132,7 @@ class Connection
             } else {
                 $this->pdo = $this->createPdo($config);
                 $this->readPdo = &$this->pdo;
+                $this->trackConnection('write', $config, true);
             }
 
             $this->lastActivityTime = time();
@@ -138,6 +140,22 @@ class Connection
             $this->connectionAttempts = 0;
         } finally {
             $this->isConnecting = false;
+        }
+    }
+
+    private function trackConnection(string $type, array $config, bool $connecting): void
+    {
+        $lb = self::getLoadBalancer($this->connectionName . ($type === 'read' ? '_read' : ''));
+        if (!$lb)
+            return;
+
+        $key = $lb->hostKey(['host' => $config['host'], 'port' => $config['port'] ?? null]);
+        $cacheKey = 'db:lb:health:conns:' . md5($key);
+
+        if ($connecting) {
+            \Plugs\Facades\Cache::increment($cacheKey);
+        } else {
+            \Plugs\Facades\Cache::decrement($cacheKey);
         }
     }
 
@@ -581,6 +599,16 @@ class Connection
 
     public function disconnect(): void
     {
+        // Decrement connection counts before nulling PDOs
+        if ($this->pdo) {
+            $config = self::$config[$this->connectionName]['write'] ?? self::$config[$this->connectionName];
+            $this->trackConnection('write', $config, false);
+        }
+        if ($this->readPdo && $this->readPdo !== $this->pdo) {
+            $config = self::$config[$this->connectionName]['read'] ?? self::$config[$this->connectionName];
+            $this->trackConnection('read', $config, false);
+        }
+
         $this->pdo = null;
         $this->readPdo = null;
         $this->isHealthy = false;

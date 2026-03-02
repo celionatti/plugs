@@ -77,37 +77,55 @@ class MiddlewareDispatcher implements RequestHandlerInterface
      */
     private function compile(): void
     {
-        // 1. Resolve aliases and groups through registry
-        $resolvedRows = [];
-        foreach ($this->middlewareStack as $mw) {
-            if (is_string($mw)) {
-                foreach ($this->registry->resolve($mw) as $resolvedClass) {
-                    $resolvedRows[] = $resolvedClass;
+        $cacheKey = $this->registry->getCacheKey($this->middlewareStack, $this->getCurrentContext());
+        $sorted = \Plugs\Facades\Cache::get($cacheKey);
+
+        if ($sorted === null) {
+            // 1. Resolve aliases and groups through registry
+            $resolvedRows = [];
+            foreach ($this->middlewareStack as $mw) {
+                if (is_string($mw)) {
+                    foreach ($this->registry->resolve($mw) as $resolvedClass) {
+                        $resolvedRows[] = $resolvedClass;
+                    }
+                } else {
+                    $resolvedRows[] = $mw;
                 }
-            } else {
-                $resolvedRows[] = $mw;
             }
-        }
 
-        // 2. Add Kernel (Global) middlewares if they aren't already present
-        $kernel = $this->registry->getKernel();
-        foreach ($kernel as $kmw) {
-            if (!in_array($kmw, $resolvedRows, true)) {
-                array_unshift($resolvedRows, $kmw);
-            }
-        }
-
-        // 3. Sort by priority (Security-First)
-        // 3. Orchestrate by Layer + Priority
-        $orchestrated = $this->registry->orchestrate($resolvedRows);
-
-        // Flatten back to a single list for the closure chain
-        $sorted = [];
-        foreach ($orchestrated as $layerMiddleware) {
-            foreach ($layerMiddleware as $mw) {
-                if (!in_array($mw, $sorted, true)) {
-                    $sorted[] = $mw;
+            // 2. Add Kernel (Global) middlewares if they aren't already present
+            $kernel = $this->registry->getKernel($this->getCurrentContext());
+            foreach ($kernel as $kmw) {
+                if (!in_array($kmw, $resolvedRows, true)) {
+                    array_unshift($resolvedRows, $kmw);
                 }
+            }
+
+            // 3. Orchestrate by Layer + Priority
+            $orchestrated = $this->registry->orchestrate($resolvedRows);
+
+            // Flatten back to a single list for the closure chain
+            $sorted = [];
+            foreach ($orchestrated as $layerMiddleware) {
+                foreach ($layerMiddleware as $mw) {
+                    if (!in_array($mw, $sorted, true)) {
+                        $sorted[] = $mw;
+                    }
+                }
+            }
+
+            // Cache for 24 hours (or until manual clear) - skip if contains non-string items
+            // Closures and objects with state are not safely serializable in all drivers.
+            $isCacheable = true;
+            foreach ($sorted as $mw) {
+                if (!is_string($mw)) {
+                    $isCacheable = false;
+                    break;
+                }
+            }
+
+            if ($isCacheable) {
+                \Plugs\Facades\Cache::set($cacheKey, $sorted, 86400);
             }
         }
 
@@ -122,10 +140,8 @@ class MiddlewareDispatcher implements RequestHandlerInterface
         // Reuse a single Handler wrapper for all PSR-15 middlewares
         $handlerFactory = function ($nextCallable) {
             return new class ($nextCallable) implements RequestHandlerInterface {
-                private $cb;
-                public function __construct($cb)
-                {
-                    $this->cb = $cb; }
+                public function __construct(private $cb)
+                {}
                 public function handle(ServerRequestInterface $request): ResponseInterface
                 {
                     return ($this->cb)($request);
@@ -133,43 +149,52 @@ class MiddlewareDispatcher implements RequestHandlerInterface
             };
         };
 
+        $isProfilerEnabled = $this->profiler && $this->profiler->isEnabled();
+
         foreach (array_reverse($sorted) as $mw) {
-            $next = $this->wrapMiddleware($mw, $next, $handlerFactory);
+            // Pre-parse parameters if available
+            $params = [];
+            if (is_string($mw) && strpos($mw, ':') !== false) {
+                [$mw, $paramString] = explode(':', $mw, 2);
+                $params = explode(',', $paramString);
+            }
+
+            $next = $this->wrapMiddleware($mw, $params, $next, $handlerFactory, $isProfilerEnabled);
         }
 
         $this->compiledPipeline = $next;
     }
 
+    private function getCurrentContext(): ?\Plugs\Bootstrap\ContextType
+    {
+        return function_exists('app_context') ? app_context() : \Plugs\Bootstrap\ContextType::Web;
+    }
+
     /**
      * Wraps a middleware in a closure with optional profiling.
      */
-    private function wrapMiddleware($mw, \Closure $next, \Closure $handlerFactory): \Closure
+    private function wrapMiddleware($mw, array $params, \Closure $next, \Closure $handlerFactory, bool $isProfilerEnabled): \Closure
     {
-        return function (ServerRequestInterface $request) use ($mw, $next, $handlerFactory) {
-            $params = [];
-            $middleware = $mw;
-
-            // Parse parameters if it's a string like "Class:param1,param2"
-            if (is_string($middleware) && strpos($middleware, ':') !== false) {
-                [$middleware, $paramString] = explode(':', $middleware, 2);
-                $params = explode(',', $paramString);
-            }
-
+        return function (ServerRequestInterface $request) use ($mw, $params, $next, $handlerFactory, $isProfilerEnabled) {
             // Lazy load string-based middleware
-            $instance = is_string($middleware) ? app($middleware) : $middleware;
+            $instance = is_string($mw) ? app($mw) : $mw;
 
             // Inject parameters if supported
             if (!empty($params) && method_exists($instance, 'setParameters')) {
                 $instance->setParameters($params);
             }
 
-            if ($this->profiler && $this->profiler->isEnabled()) {
-                $name = is_string($middleware) ? $middleware : get_class($middleware);
-                $label = 'MW: ' . basename(str_replace('\\', '/', $name));
+            if ($isProfilerEnabled) {
+                $name = is_string($mw) ? $mw : get_class($mw);
+                $label = 'MW: ' . basename(str_replace('\\', '/', $name)) . ' (Inclusive)';
 
+                // Start inclusive segment
                 $this->profiler->startSegment('mw_' . $name, $label);
+
                 try {
-                    return $this->execute($instance, $request, $next, $handlerFactory);
+                    // Record start of execution for potential exclusive timing calculation
+                    $response = $this->execute($instance, $request, $next, $handlerFactory);
+                    return $response;
                 } finally {
                     $this->profiler->stopSegment('mw_' . $name);
                 }

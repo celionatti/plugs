@@ -389,9 +389,9 @@ class SecurityShieldMiddleware implements MiddlewareInterface
 
         $cacheKey = "shield:attempts:{$type}:" . md5($identifier);
 
-        // Try cache first
-        if (\Plugs\Facades\Cache::has($cacheKey)) {
-            return (int) \Plugs\Facades\Cache::get($cacheKey);
+        $count = \Plugs\Facades\Cache::get($cacheKey);
+        if ($count !== null) {
+            return (int) $count;
         }
 
         try {
@@ -421,8 +421,9 @@ class SecurityShieldMiddleware implements MiddlewareInterface
 
         $cacheKey = "shield:daily:{$type}:" . md5($identifier);
 
-        if (\Plugs\Facades\Cache::has($cacheKey)) {
-            return (int) \Plugs\Facades\Cache::get($cacheKey);
+        $count = \Plugs\Facades\Cache::get($cacheKey);
+        if ($count !== null) {
+            return (int) $count;
         }
 
         try {
@@ -445,8 +446,9 @@ class SecurityShieldMiddleware implements MiddlewareInterface
     {
         $cacheKey = "shield:endpoint:" . md5($ip . $endpoint);
 
-        if (\Plugs\Facades\Cache::has($cacheKey)) {
-            return (int) \Plugs\Facades\Cache::get($cacheKey);
+        $count = \Plugs\Facades\Cache::get($cacheKey);
+        if ($count !== null) {
+            return (int) $count;
         }
 
         try {
@@ -468,11 +470,13 @@ class SecurityShieldMiddleware implements MiddlewareInterface
     private function recordAttempt(string $ip, string $email, string $endpoint): void
     {
         try {
-            // Write to DB asynchronously if possible, otherwise fast insert
-            $this->db->query(
-                "INSERT INTO security_attempts (identifier, type, endpoint, created_at) VALUES (?, ?, ?, NOW())",
-                [$ip, 'ip', $endpoint]
-            );
+            // Write to DB asynchronously via Queue
+            \Plugs\Facades\Queue::push(\Plugs\Security\Jobs\SecurityLogJob::class, [
+                'job_type' => 'attempt',
+                'identifier' => $ip,
+                'type' => 'ip',
+                'endpoint' => $endpoint
+            ]);
 
             // Invalidate/Increment caches
             $this->incrementCache("shield:attempts:ip:" . md5($ip));
@@ -480,10 +484,12 @@ class SecurityShieldMiddleware implements MiddlewareInterface
             $this->incrementCache("shield:endpoint:" . md5($ip . $endpoint));
 
             if (!empty($email)) {
-                $this->db->query(
-                    "INSERT INTO security_attempts (identifier, type, endpoint, created_at) VALUES (?, ?, ?, NOW())",
-                    [$email, 'email', $endpoint]
-                );
+                \Plugs\Facades\Queue::push(\Plugs\Security\Jobs\SecurityLogJob::class, [
+                    'job_type' => 'attempt',
+                    'identifier' => $email,
+                    'type' => 'email',
+                    'endpoint' => $endpoint
+                ]);
 
                 $this->incrementCache("shield:attempts:email:" . md5($email));
                 $this->incrementCache("shield:daily:email:" . md5($email));
@@ -509,18 +515,15 @@ class SecurityShieldMiddleware implements MiddlewareInterface
         }
 
         try {
-            $this->db->query(
-                "INSERT INTO security_logs (ip, email, endpoint, risk_score, decision, details, created_at) 
-                 VALUES (?, ?, ?, ?, ?, ?, NOW())",
-                [
-                    $requestData['ip'],
-                    $requestData['email'] ?? '',
-                    $requestData['endpoint'],
-                    $decision['risk_score'],
-                    $decision['allowed'] ? 'allowed' : 'denied',
-                    json_encode(['reason' => $decision['reason'], 'checks' => $decision]),
-                ]
-            );
+            \Plugs\Facades\Queue::push(\Plugs\Security\Jobs\SecurityLogJob::class, [
+                'job_type' => 'log',
+                'ip' => $requestData['ip'],
+                'email' => $requestData['email'] ?? '',
+                'endpoint' => $requestData['endpoint'],
+                'risk_score' => $decision['risk_score'],
+                'decision' => $decision['allowed'] ? 'allowed' : 'denied',
+                'details' => json_encode(['reason' => $decision['reason'], 'checks' => $decision]),
+            ]);
         } catch (\Exception $e) {
             // Silent fail
         }
@@ -538,6 +541,12 @@ class SecurityShieldMiddleware implements MiddlewareInterface
 
     private function getConcurrentSessions(string $ip): int
     {
+        $cacheKey = "shield:sessions:" . md5($ip);
+        $count = \Plugs\Facades\Cache::get($cacheKey);
+        if ($count !== null) {
+            return (int) $count;
+        }
+
         try {
             $stmt = $this->db->query(
                 "SELECT COUNT(DISTINCT endpoint) FROM security_attempts 
@@ -545,7 +554,9 @@ class SecurityShieldMiddleware implements MiddlewareInterface
                 [$ip]
             );
 
-            return (int) $stmt->fetchColumn();
+            $count = (int) $stmt->fetchColumn();
+            \Plugs\Facades\Cache::set($cacheKey, $count, 30); // Cache for 30s
+            return $count;
         } catch (\Exception $e) {
             return 1;
         }
@@ -553,6 +564,12 @@ class SecurityShieldMiddleware implements MiddlewareInterface
 
     private function getRequestFrequency(string $ip): int
     {
+        $cacheKey = "shield:frequency:" . md5($ip);
+        $count = \Plugs\Facades\Cache::get($cacheKey);
+        if ($count !== null) {
+            return (int) $count;
+        }
+
         try {
             $stmt = $this->db->query(
                 "SELECT COUNT(*) FROM security_attempts 
@@ -560,7 +577,9 @@ class SecurityShieldMiddleware implements MiddlewareInterface
                 [$ip]
             );
 
-            return (int) $stmt->fetchColumn();
+            $count = (int) $stmt->fetchColumn();
+            \Plugs\Facades\Cache::set($cacheKey, $count, 15); // Cache for 15s
+            return $count;
         } catch (\Exception $e) {
             return 0;
         }

@@ -692,7 +692,7 @@ class AssetManager
 
         $extension = pathinfo($fullPath, PATHINFO_EXTENSION);
         $format = $options['format'] ?? $extension;
-        $hash = substr(md5($fullPath . serialize($options)), 0, 8);
+        $hash = substr(md5($fullPath . (json_encode($options) ?: '')), 0, 8);
         $fileName = pathinfo($fullPath, PATHINFO_FILENAME) . "-{$hash}.{$format}";
         $cachePath = $this->cachePath . 'images' . DIRECTORY_SEPARATOR . $fileName;
         $webPath = 'assets/cache/images/' . $fileName;
