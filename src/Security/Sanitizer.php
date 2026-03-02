@@ -122,16 +122,28 @@ class Sanitizer
      */
     protected static function cleanAttributes(string $html): string
     {
-        // Remove javascript: and data: URIs
-        $html = preg_replace('/(href|src|background)\s*=\s*["\']\s*(javascript|data):/i', '$1="#', $html);
+        // Remove javascript:, data:, vbscript: and similar URIs (including encoded variants)
+        // We look for patterns like j&#x61;vascript: or \s j a v a s c r i p t :
+        $dangerousSchemes = ['javascript', 'data', 'vbscript', 'file'];
+        foreach ($dangerousSchemes as $scheme) {
+            $pattern = '/(href|src|postaction|background|formaction)\s*=\s*["\']\s*(' . implode('\s*|', str_split($scheme)) . '|' . preg_quote($scheme, '/') . '):/i';
+            $html = preg_replace($pattern, '$1="#', $html);
 
-        // Remove event handlers (onmouseover, onclick, etc.)
-        $html = preg_replace('/(\s)on[a-z]+\s*=\s*["\'][^"\']*["\']/i', '$1', $html);
-        $html = preg_replace('/(\s)on[a-z]+\s*=\s*[^\s>]+/i', '$1', $html);
+            // Also handle numeric and hex entities for these schemes
+            // This is a simplified check for common obfuscation
+            $html = preg_replace('/(href|src|postaction|background|formaction)\s*=\s*["\']\s*&[#x][a-f0-9]+;[^"\']*["\']/i', '$1="#', $html);
+        }
 
-        // Remove <meta>, <link>, <style>, <script>, <embed>, <object>, <iframe> tags if somehow they slipped through
-        $html = preg_replace('/<(meta|link|style|script|embed|object|iframe)[^>]*>.*?<\/\1>/is', '', $html);
-        $html = preg_replace('/<(meta|link|style|script|embed|object|iframe)[^>]*>/is', '', $html);
+        // Remove event handlers (onmouseover, onclick, etc.) - more aggressive matching
+        $html = preg_replace('/\s+on[a-z]+\s*=\s*["\'][^"\']*["\']/i', ' ', $html);
+        $html = preg_replace('/\s+on[a-z]+\s*=\s*[^\s>]+/i', ' ', $html);
+
+        // Remove style attributes that contain expression() or behavior: (legacy IE XSS)
+        $html = preg_replace('/style\s*=\s*["\'][^"\']*(expression|behavior|url\s*\()[^"\']*["\']/i', 'style="display:none"', $html);
+
+        // Remove dangerous tags if they somehow slipped through previous layers
+        $html = preg_replace('/<(meta|link|style|script|embed|object|iframe|frame|frameset|applet|video|audio|canvas|svg|math)[^>]*>.*?<\/\1>/is', '', $html);
+        $html = preg_replace('/<(meta|link|style|script|embed|object|iframe|frame|frameset|applet|video|audio|canvas|svg|math)[^>]*>/is', '', $html);
 
         return $html;
     }

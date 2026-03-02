@@ -31,7 +31,33 @@ class RedirectResponse implements ResponseInterface
     {
         $url = $_SERVER['HTTP_REFERER'] ?? $fallback;
 
+        // Open Redirect Protection: Only allow internal URLs for referer-based redirects
+        if (!self::isInternalUrl($url)) {
+            $url = $fallback;
+        }
+
         return new self($url, $status);
+    }
+
+    /**
+     * Determine if a URL is internal to the application.
+     */
+    public static function isInternalUrl(string $url): bool
+    {
+        // If it's a relative path, it's internal
+        if (str_starts_with($url, '/') && !str_starts_with($url, '//')) {
+            return true;
+        }
+
+        $appUrl = config('app.url', '');
+        if (empty($appUrl)) {
+            return false;
+        }
+
+        $appHost = parse_url($appUrl, PHP_URL_HOST);
+        $urlHost = parse_url($url, PHP_URL_HOST);
+
+        return $appHost === $urlHost;
     }
 
     /**

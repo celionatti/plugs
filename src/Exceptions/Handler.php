@@ -629,7 +629,7 @@ class Handler
                     'message' => $e->getMessage(),
                     'exception' => get_class($e),
                     'sql' => $e->getSql(),
-                    'bindings' => $e->getBindings(),
+                    'bindings' => $this->maskSensitiveData($e->getBindings()),
                 ];
             }
 
@@ -670,6 +670,63 @@ class Handler
     protected function getPreviousUrl(ServerRequestInterface $request): string
     {
         return $request->getHeaderLine('Referer') ?: '/';
+    }
+
+    /**
+     * Mask sensitive data in an array.
+     *
+     * @param array $data
+     * @return array
+     */
+    protected function maskSensitiveData(array $data): array
+    {
+        foreach ($data as $key => $value) {
+            if (is_array($value)) {
+                $data[$key] = $this->maskSensitiveData($value);
+            } elseif ($this->isSensitiveKey($key)) {
+                $data[$key] = '********';
+            }
+        }
+
+        return $data;
+    }
+
+    /**
+     * Determine if a key should be considered sensitive.
+     *
+     * @param string|int $key
+     * @return bool
+     */
+    protected function isSensitiveKey($key): bool
+    {
+        if (!is_string($key)) {
+            return false;
+        }
+
+        $sensitivePatterns = [
+            'password',
+            'passwd',
+            'secret',
+            'token',
+            'key',
+            'auth',
+            'api',
+            'credential',
+            'credit_card',
+            'card_number',
+            'cvv',
+            'ssn',
+        ];
+
+        $key = strtolower($key);
+
+        foreach ($sensitivePatterns as $pattern) {
+            if (str_contains($key, $pattern)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /**

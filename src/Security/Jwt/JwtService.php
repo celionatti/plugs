@@ -4,8 +4,6 @@ declare(strict_types=1);
 
 namespace Plugs\Security\Jwt;
 
-use Exception;
-use Plugs\Utils\Arr;
 
 class JwtService
 {
@@ -70,6 +68,11 @@ class JwtService
         $sig = $this->urlSafeB64Decode($cryptob64);
 
         if (!$header || !$payload) {
+            return null;
+        }
+
+        // Verify Algorithm to prevent confusion attacks
+        if (!isset($header['alg']) || $header['alg'] !== 'HS256') {
             return null;
         }
 

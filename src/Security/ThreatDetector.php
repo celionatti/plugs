@@ -228,10 +228,14 @@ class ThreatDetector
 
     private static function getClientIp(ServerRequestInterface $request): string
     {
+        // Use the client_ip attribute if set by TrustedProxyMiddleware
+        $clientIp = $request->getAttribute('client_ip');
+        if ($clientIp && filter_var($clientIp, FILTER_VALIDATE_IP)) {
+            return $clientIp;
+        }
+
         $serverParams = $request->getServerParams();
-        return $serverParams['HTTP_X_FORWARDED_FOR']
-            ?? $serverParams['REMOTE_ADDR']
-            ?? '0.0.0.0';
+        return $serverParams['REMOTE_ADDR'] ?? '0.0.0.0';
     }
 
     /**

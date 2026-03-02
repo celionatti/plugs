@@ -389,6 +389,16 @@ class QueryBuilder
 
     public function join(string $table, string $first, string $operator, string $second, string $type = 'INNER'): self
     {
+        // Sanitize identifiers
+        QueryUtils::sanitizeColumn($table);
+        QueryUtils::sanitizeColumn($first);
+        QueryUtils::sanitizeColumn($second);
+
+        // Wrap identifiers
+        $table = QueryUtils::wrapIdentifier($table);
+        $first = QueryUtils::wrapIdentifier($first);
+        $second = QueryUtils::wrapIdentifier($second);
+
         $this->joins[] = compact('table', 'first', 'operator', 'second', 'type');
 
         return $this;

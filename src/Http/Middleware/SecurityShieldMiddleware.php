@@ -318,29 +318,14 @@ class SecurityShieldMiddleware implements MiddlewareInterface
 
     private function getClientIP(ServerRequestInterface $request): string
     {
-        $headers = [
-            'HTTP_CF_CONNECTING_IP',
-            'HTTP_X_FORWARDED_FOR',
-            'HTTP_X_REAL_IP',
-            'HTTP_CLIENT_IP',
-            'REMOTE_ADDR',
-        ];
-
-        $serverParams = $request->getServerParams();
-
-        foreach ($headers as $header) {
-            if (!empty($serverParams[$header])) {
-                $ip = $serverParams[$header];
-                if (strpos($ip, ',') !== false) {
-                    $ips = explode(',', $ip);
-                    $ip = trim($ips[0]);
-                }
-                if (filter_var($ip, FILTER_VALIDATE_IP)) {
-                    return $ip;
-                }
-            }
+        // Use the client_ip attribute if set by TrustedProxyMiddleware
+        $clientIp = $request->getAttribute('client_ip');
+        if ($clientIp && filter_var($clientIp, FILTER_VALIDATE_IP)) {
+            return $clientIp;
         }
 
+        // Fallback for non-proxied environments or if attribute is missing
+        $serverParams = $request->getServerParams();
         return $serverParams['REMOTE_ADDR'] ?? '0.0.0.0';
     }
 
