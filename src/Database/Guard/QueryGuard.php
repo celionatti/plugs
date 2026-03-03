@@ -21,6 +21,11 @@ class QueryGuard
             $message = "DANGEROUS QUERY DETECTED (Suspicious sleep payload): " . trim($sql);
         } elseif (preg_match('/(\bunion\b.*\bselect\b)/i', $sql)) {
             $message = "DANGEROUS QUERY DETECTED (UNION SELECT payload): " . trim($sql);
+        } elseif (str_contains($sql, ';') && preg_match('/;\s*[a-z]/i', $sql)) {
+            $message = "DANGEROUS QUERY DETECTED (Multi-statement injection): " . trim($sql);
+        } elseif (preg_match('/(--|\/\*|(?<!:)\#)/', $sql)) {
+            // Allow # if it's part of a color or specific string constant, but flag comment indicators
+            $message = "DANGEROUS QUERY DETECTED (Suspicious SQL comments): " . trim($sql);
         }
 
         if ($message !== null) {

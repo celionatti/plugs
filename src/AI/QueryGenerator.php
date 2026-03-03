@@ -60,7 +60,14 @@ class QueryGenerator
         }
 
         $context = "Table: " . $model->getTable() . "\nColumns:\n";
+        $sensitive = method_exists($model, 'getSensitiveAttributes') ? $model->getSensitiveAttributes() : [];
+
         foreach ($definition->getFields() as $name => $field) {
+            // Security: Never show sensitive columns (passwords, tokens, etc.) to the AI
+            if (in_array($name, $sensitive)) {
+                continue;
+            }
+
             $type = basename(str_replace('\\', '/', get_class($field)));
             $context .= "- {$name} ({$type})\n";
         }
@@ -95,6 +102,16 @@ class QueryGenerator
         // Security check: Only allow SELECT queries
         if (!preg_match('/^\s*SELECT\b/i', $sql)) {
             throw new Exception("Security Violation: AI generated a non-SELECT query. For safety, only read operations are permitted via the AI assistant.");
+        }
+
+        // Security check: Prevent multi-statement queries (semicolon injection)
+        if (str_contains($sql, ';')) {
+            throw new Exception("Security Violation: Multi-statement SQL query detected in AI response.");
+        }
+
+        // Security check: Prevent SQL comments (obfuscation)
+        if (str_contains($sql, '--') || str_contains($sql, '/*')) {
+            throw new Exception("Security Violation: SQL comments detected in AI response.");
         }
 
         return [

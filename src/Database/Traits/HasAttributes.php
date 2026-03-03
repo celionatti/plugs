@@ -269,6 +269,22 @@ trait HasAttributes
     }
 
     /**
+     * Determine if an attribute is marked as sensitive.
+     */
+    public function isSensitiveAttribute(string $key): bool
+    {
+        return in_array($key, $this->sensitive);
+    }
+
+    /**
+     * Get the list of sensitive attributes.
+     */
+    public function getSensitiveAttributes(): array
+    {
+        return $this->sensitive;
+    }
+
+    /**
      * Cast a value for storage in the database.
      */
     protected function castForStorage(string $key, $value)
