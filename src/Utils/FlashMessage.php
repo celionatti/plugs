@@ -408,7 +408,7 @@ CSS;
         } else {
             $_SESSION[self::SESSION_KEY] = array_filter(
                 $_SESSION[self::SESSION_KEY],
-                fn($flash) => $flash['type'] !== $type
+                fn ($flash) => $flash['type'] !== $type
             );
             $_SESSION[self::SESSION_KEY] = array_values($_SESSION[self::SESSION_KEY]);
         }
@@ -455,6 +455,7 @@ CSS;
         }
 
         $nonceAttr = $nonce ? ' nonce="' . $nonce . '"' : '';
+
         return str_replace('<style>', "<style{$nonceAttr}>", self::$defaultStyles);
     }
 
@@ -729,7 +730,7 @@ CSS;
 
         return count(array_filter(
             $_SESSION[self::SESSION_KEY],
-            fn($flash) => $flash['type'] === $type
+            fn ($flash) => $flash['type'] === $type
         ));
     }
 

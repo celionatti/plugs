@@ -245,6 +245,7 @@ class Skeleton
     public static function styles(?string $nonce = null): string
     {
         $nonceAttr = $nonce ? ' nonce="' . $nonce . '"' : '';
+
         return '
         <style' . $nonceAttr . '>
             .plugs-skeleton {

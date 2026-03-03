@@ -4,22 +4,22 @@ declare(strict_types=1);
 
 /**
  * Example Article Admin Controller
- * 
+ *
  * This file demonstrates a workflow for AI-assisted blogging.
  */
 
 namespace Examples;
 
 use Plugs\Base\Controller\Controller;
-use Plugs\Facades\AI;
-use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Message\ResponseInterface;
+use Psr\Http\Message\ServerRequestInterface;
 
 class ArticleAdminController extends Controller
 {
     public function dashboard(): ResponseInterface
     {
         $topics = Article::suggestTopics('Modern PHP');
+
         return $this->view('admin/articles/ai-dashboard', ['topics' => $topics]);
     }
 

@@ -4,15 +4,15 @@ declare(strict_types=1);
 
 /**
  * Example Article Model
- * 
+ *
  * This file demonstrates how to use the Plugs HasAI trait.
  * To use this in your app, move it to app/Models and adjust the namespace.
  */
 
 namespace Examples;
 
-use Plugs\Base\Model\PlugModel;
 use Plugs\AI\Traits\HasAI;
+use Plugs\Base\Model\PlugModel;
 
 class Article extends PlugModel
 {
