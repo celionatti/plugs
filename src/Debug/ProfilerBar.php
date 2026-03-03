@@ -323,6 +323,13 @@ class ProfilerBar
             <span class="pbar-label">HTTP:</span>
             <span class="pbar-value ' . $statusClass . '">' . $statusCode . '</span>
         </div>
+
+        <div class="pbar-item">
+            <button class="pbar-link" onclick="document.querySelector(\'.plugs-dbg-tab-btn[data-tab=tab-config]\')?.click(); document.getElementById(\'plugs-profiler-toggle\')?.click();" title="View Configuration">
+                <span class="pbar-label">Config:</span>
+                <span class="pbar-value" style="color: #f59e0b;">⚙️</span>
+            </button>
+        </div>
     </div>
     
     <div class="pbar-right">

@@ -380,7 +380,6 @@ class Dumper
     /* Logo section layout for profiler header */
     .plugs-logo-section { display: flex; align-items: center; gap: 16px; }
 </style>
-</style>
 HTML;
         return $css;
     }

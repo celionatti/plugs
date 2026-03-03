@@ -102,7 +102,7 @@ function getMethodClass($method)
                         d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4m0 5c0 2.21-3.582 4-8 4s-8-1.79-8-4">
                     </path>
                 </svg>
-                DATABASE_QUERIES_SPAN
+                Database Queries
                 <span class="plugs-dbg-tab-badge"><?= count($profile['database']['most_frequent'] ?? []) ?></span>
             </button>
             <button class="plugs-dbg-tab-btn" data-tab="params">
