@@ -3,26 +3,29 @@ $__extends = 'debug.layout';
 /** @var array<string, mixed> $profiles */
 ?>
 <?php
-function getMethodClass($method)
-{
-    $method = strtoupper($method);
-
-    return 'plugs-dbg-method-' . $method;
+if (!function_exists('getMethodClass')) {
+    function getMethodClass($method)
+    {
+        $method = strtoupper($method);
+        return 'plugs-dbg-method-' . $method;
+    }
 }
 
-function getStatusBadge($code)
-{
-    if ($code >= 200 && $code < 300) {
-        return 'plugs-dbg-status-success';
-    }
-    if ($code >= 300 && $code < 400) {
-        return 'plugs-dbg-status-info';
-    }
-    if ($code >= 400 && $code < 500) {
-        return 'plugs-dbg-status-warning';
-    }
+if (!function_exists('getStatusBadge')) {
+    function getStatusBadge($code)
+    {
+        if ($code >= 200 && $code < 300) {
+            return 'plugs-dbg-status-success';
+        }
+        if ($code >= 300 && $code < 400) {
+            return 'plugs-dbg-status-info';
+        }
+        if ($code >= 400 && $code < 500) {
+            return 'plugs-dbg-status-warning';
+        }
 
-    return 'plugs-dbg-status-danger';
+        return 'plugs-dbg-status-danger';
+    }
 }
 ?>
 
@@ -36,8 +39,12 @@ function getStatusBadge($code)
             </svg>
             Recent Requests
         </h2>
-        <div style="font-size: 0.85rem; color: var(--text-muted);">
-            Showing last <?= count($profiles) ?> captures
+        <div style="font-size: 0.85rem; color: var(--text-muted); display: flex; align-items: center; gap: 1rem;">
+            <span>Showing last <?= count($profiles) ?> captures</span>
+            <button onclick="clearAllProfiles()" class="plugs-dbg-btn"
+                style="background: var(--danger); color: white; border: none; padding: 0.4rem 0.8rem; font-size: 0.75rem;">
+                Clear All
+            </button>
         </div>
     </div>
 
@@ -74,19 +81,19 @@ function getStatusBadge($code)
                 <?php endif; ?>
 
                 <?php foreach ($profiles as $p): ?>
-                    <tr class="plugs-dbg-profile-row" data-href="/debug/performance/<?= $p['id'] ?>">
+                    <tr class="plugs-dbg-profile-row" data-href="/plugs/profiler/<?= $p['id'] ?>">
                         <td>
-                            <span class="plugs-dbg-method-label <?= getMethodClass($p['request']['method']) ?>">
-                                <?= $p['request']['method'] ?>
+                            <span class="plugs-dbg-method-label <?= getMethodClass($p['request']['method'] ?? 'GET') ?>">
+                                <?= $p['request']['method'] ?? '???' ?>
                             </span>
                             <div style="max-width: 400px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-family: 'JetBrains Mono', monospace; font-size: 0.9rem;"
-                                title="<?= $p['request']['uri'] ?>">
-                                <?= $p['request']['path'] ?>
+                                title="<?= $p['request']['uri'] ?? '' ?>">
+                                <?= $p['request']['path'] ?? '/' ?>
                             </div>
                         </td>
                         <td>
-                            <span class="plugs-dbg-status-badge <?= getStatusBadge($p['request']['status_code']) ?>">
-                                <?= $p['request']['status_code'] ?>
+                            <span class="plugs-dbg-status-badge <?= getStatusBadge($p['request']['status_code'] ?? 0) ?>">
+                                <?= $p['request']['status_code'] ?? '???' ?>
                             </span>
                         </td>
                         <td class="plugs-dbg-hide-mobile">
@@ -97,7 +104,7 @@ function getStatusBadge($code)
                             </span>
                         </td>
                         <td class="plugs-dbg-hide-mobile" style="color: var(--text-secondary); font-size: 0.9rem;">
-                            <?= $p['memory_peak_formatted'] ?>
+                            <?= $p['memory']['peak_formatted'] ?? '???' ?>
                         </td>
                         <td class="plugs-dbg-hide-tablet">
                             <div style="font-size: 0.85rem; color: var(--text-primary);">
@@ -247,3 +254,23 @@ function getStatusBadge($code)
         }
     }
 </style>
+
+<script>
+    function clearAllProfiles() {
+        if (!confirm('Are you sure you want to clear all profiles?')) return;
+
+        fetch('/plugs/profiler/clear', {
+            method: 'POST',
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest',
+                'X-CSRF-TOKEN': '<?= csrf_token() ?>'
+            }
+        }).then(res => res.json()).then(data => {
+            if (data.success) {
+                window.location.reload();
+            } else {
+                alert('Failed to clear profiles: ' + data.message);
+            }
+        });
+    }
+</script>

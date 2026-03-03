@@ -151,6 +151,7 @@ class Profiler
                 'uri' => $_SERVER['REQUEST_URI'] ?? '',
                 'path' => parse_url($_SERVER['REQUEST_URI'] ?? '', PHP_URL_PATH) ?: '/',
                 'ip' => $_SERVER['REMOTE_ADDR'] ?? 'unknown',
+                'status_code' => 0,
                 'headers' => $this->getHeaders(),
                 'cookies' => $_COOKIE,
                 'session' => $_SESSION ?? [],

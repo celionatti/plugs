@@ -25,7 +25,7 @@ class ProfilerController
 
         $profiles = Profiler::getProfiles(50);
 
-        return view('debug.profiler.index', ['profiles' => $profiles]);
+        return $this->renderInternal('debug.profiler.index', ['profiles' => $profiles]);
     }
 
     /**
@@ -42,7 +42,24 @@ class ProfilerController
             abort(404, 'Profile not found');
         }
 
-        return view('debug.profiler.show', ['profile' => $profile]);
+        return $this->renderInternal('debug.profiler.show', ['profile' => $profile]);
+    }
+
+    /**
+     * Render an internal framework view
+     */
+    private function renderInternal(string $view, array $data = [])
+    {
+        $engine = new \Plugs\View\PlugViewEngine(
+            dirname(__DIR__) . DIRECTORY_SEPARATOR . 'View',
+            config('app.paths.cache'),
+            app(\Plugs\Container\Container::class),
+            true
+        );
+
+        $viewInstance = new \Plugs\View\View($engine, $view, $data);
+
+        return ResponseFactory::html($viewInstance->render());
     }
 
     /**
@@ -73,13 +90,18 @@ class ProfilerController
         ]);
     }
 
-    /**
-     * Get profile data as JSON (for toolbar)
-     */
     public function latest(ServerRequestInterface $request)
     {
+        if (!config('app.debug', false)) {
+            abort(403, 'Profiler is disabled in production.');
+        }
+
         $profiles = Profiler::getProfiles(1);
 
-        return ResponseFactory::json($profiles[0] ?? null);
+        if (empty($profiles)) {
+            return ResponseFactory::redirect('/plugs/profiler');
+        }
+
+        return ResponseFactory::redirect('/plugs/profiler/' . $profiles[0]['id']);
     }
 }

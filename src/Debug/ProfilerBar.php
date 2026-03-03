@@ -339,6 +339,13 @@ class ProfilerBar
             </svg>
             <span>Profiler</span>
         </button>
+
+        <a href="' . route('profiler.index') . '" target="_blank" class="pbar-link" title="Open Full Dashboard">
+            <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/>
+            </svg>
+            <span>Dashboard</span>
+        </a>
         
         <button id="plugs-profiler-close" class="pbar-close" title="Close">
             <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -403,7 +410,10 @@ class ProfilerBar
         }
 
         echo '</div>'; // End Logo Section
-        echo '<div class="plugs-dbg-header-controls"><button id="plugs-profiler-modal-close" class="plugs-dbg-action-btn">Close ✕</button></div></div>';
+        echo '<div class="plugs-dbg-header-controls">';
+        echo '<a href="' . route('profiler.index') . '" target="_blank" class="plugs-dbg-action-btn" style="margin-right: 8px; text-decoration: none; display: inline-flex; align-items: center; gap: 4px;">Dashboard ↗</a>';
+        echo '<button id="plugs-profiler-modal-close" class="plugs-dbg-action-btn">Close ✕</button>';
+        echo '</div></div>';
 
         echo '<div class="plugs-dbg-tabs-nav">';
         echo '<button class="plugs-dbg-tab-btn active" data-tab="tab-overview">📊 Overview</button>';

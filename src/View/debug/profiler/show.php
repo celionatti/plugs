@@ -2,14 +2,16 @@
 <?php /** @var array $profile */ ?>
 
 <?php
-function getMethodClass($method)
-{
-    return 'plugs-dbg-method-' . strtoupper($method);
+if (!function_exists('getMethodClass')) {
+    function getMethodClass($method)
+    {
+        return 'plugs-dbg-method-' . strtoupper($method);
+    }
 }
 ?>
 
 <div class="plugs-dbg-animate-fade-up">
-    <a href="/debug/performance" class="plugs-dbg-btn plugs-dbg-btn-glass" style="margin-bottom: 2rem;">
+    <a href="/plugs/profiler" class="plugs-dbg-btn plugs-dbg-btn-glass" style="margin-bottom: 2rem;">
         <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18">
             </path>
@@ -22,29 +24,34 @@ function getMethodClass($method)
             style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 1.5rem;">
             <div style="flex: 1; min-width: 300px;">
                 <div style="display: flex; align-items: center; gap: 1rem; margin-bottom: 1rem;">
-                    <span class="plugs-dbg-method-label <?= getMethodClass($profile['request']['method']) ?>"
+                    <span class="plugs-dbg-method-label <?= getMethodClass($profile['request']['method'] ?? 'GET') ?>"
                         style="font-size: 1rem; padding: 0.4rem 0.8rem;">
-                        <?= $profile['request']['method'] ?>
+                        <?= $profile['request']['method'] ?? '???' ?>
                     </span>
                     <span style="font-size: 0.9rem; color: var(--text-muted);"><?= $profile['datetime'] ?></span>
                 </div>
                 <h1
                     style="font-size: 2rem; letter-spacing: -0.02em; word-break: break-all; margin-bottom: 0.5rem; font-family: 'JetBrains Mono', monospace;">
-                    <?= $profile['request']['path'] ?>
+                    <?= $profile['request']['path'] ?? '/' ?>
                 </h1>
                 <div style="display: flex; gap: 1.5rem; color: var(--text-secondary); font-size: 0.9rem;">
-                    <span>IP: <code style="color: var(--info);"><?= $profile['request']['ip'] ?></code></span>
+                    <span>IP: <code
+                            style="color: var(--info);"><?= $profile['request']['ip'] ?? 'unknown' ?></code></span>
                     <?php if (!empty($profile['request']['route'])): ?>
                         <span>Route: <code style="color: var(--accent);"><?= $profile['request']['route'] ?></code></span>
                     <?php endif; ?>
                 </div>
             </div>
 
-            <div style="text-align: right;">
-                <div class="plugs-dbg-status-badge <?= $profile['request']['status_code'] < 400 ? 'plugs-dbg-status-success' : 'plugs-dbg-status-danger' ?>"
+            <div style="text-align: right; display: flex; flex-direction: column; align-items: flex-end; gap: 1rem;">
+                <div class="plugs-dbg-status-badge <?= ($profile['request']['status_code'] ?? 0) < 400 && ($profile['request']['status_code'] ?? 0) > 0 ? 'plugs-dbg-status-success' : 'plugs-dbg-status-danger' ?>"
                     style="font-size: 1.5rem; padding: 0.5rem 1.5rem; border: 1px solid var(--border-glass); border-radius: 12px; background: rgba(0,0,0,0.2);">
-                    <?= $profile['request']['status_code'] ?>
+                    <?= $profile['request']['status_code'] ?? '???' ?>
                 </div>
+                <button onclick="deleteThisProfile('<?= $profile['id'] ?>')" class="plugs-dbg-btn"
+                    style="background: rgba(239, 68, 68, 0.1); color: var(--danger); border: 1px solid rgba(239, 68, 68, 0.2); font-size: 0.8rem; padding: 0.4rem 0.8rem;">
+                    Delete Profile
+                </button>
             </div>
         </div>
     </div>
@@ -73,7 +80,7 @@ function getMethodClass($method)
                 </svg>
             </div>
             <div>
-                <div class="plugs-dbg-stat-val"><?= $profile['memory_peak_formatted'] ?></div>
+                <div class="plugs-dbg-stat-val"><?= $profile['memory']['peak_formatted'] ?? '???' ?></div>
                 <div class="plugs-dbg-stat-lab">Peak Memory</div>
             </div>
         </div>
@@ -399,7 +406,48 @@ function getMethodClass($method)
         });
     }
 
+    function deleteThisProfile(id) {
+        if (!confirm('Are you sure you want to delete this profile?')) return;
+
+        fetch('/plugs/profiler/' + id, {
+            method: 'DELETE',
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest',
+                'X-CSRF-TOKEN': '<?= csrf_token() ?>'
+            }
+        }).then(res => res.json()).then(data => {
+            if (data.success) {
+                window.location.href = '/plugs/profiler';
+            } else {
+                alert('Failed to delete profile: ' + data.message);
+            }
+        });
+    }
+
     document.addEventListener('DOMContentLoaded', () => {
+        // Tab switching logic
+        const tabBtns = document.querySelectorAll('.plugs-dbg-tab-btn');
+        const tabContents = document.querySelectorAll('.plugs-dbg-tab-content');
+
+        tabBtns.forEach(btn => {
+            btn.addEventListener('click', () => {
+                const target = btn.getAttribute('data-tab');
+
+                // Update buttons
+                tabBtns.forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+
+                // Update content
+                tabContents.forEach(content => {
+                    if (content.id === target) {
+                        content.classList.add('active');
+                    } else {
+                        content.classList.remove('active');
+                    }
+                });
+            });
+        });
+
         document.querySelectorAll('[data-action="show-sql"]').forEach(btn => {
             btn.addEventListener('click', (e) => {
                 const sql = btn.getAttribute('data-sql');
@@ -422,6 +470,57 @@ function getMethodClass($method)
 </script>
 
 <style>
+    .plugs-dbg-tab-content {
+        display: none;
+    }
+
+    .plugs-dbg-tab-content.active {
+        display: block;
+    }
+
+    .plugs-dbg-tab-btn.active {
+        color: var(--accent);
+        background: rgba(168, 85, 247, 0.1);
+        border-bottom: 2px solid var(--accent);
+    }
+
+    .plugs-dbg-tabs-header {
+        display: flex;
+        border-bottom: 1px solid var(--border-glass);
+        background: rgba(0, 0, 0, 0.2);
+    }
+
+    .plugs-dbg-tab-btn {
+        padding: 1rem 1.5rem;
+        background: none;
+        border: none;
+        border-bottom: 2px solid transparent;
+        color: var(--text-secondary);
+        font-family: 'Outfit', sans-serif;
+        font-weight: 600;
+        font-size: 0.9rem;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        gap: 0.6rem;
+        transition: all 0.2s;
+        white-space: nowrap;
+    }
+
+    .plugs-dbg-tab-btn:hover {
+        color: var(--text-primary);
+        background: rgba(255, 255, 255, 0.05);
+    }
+
+    .plugs-dbg-tab-icon {
+        opacity: 0.7;
+    }
+
+    .plugs-dbg-tab-btn.active .plugs-dbg-tab-icon {
+        opacity: 1;
+        color: var(--accent);
+    }
+
     .plugs-dbg-btn-view-full {
         position: absolute;
         right: 0.5rem;

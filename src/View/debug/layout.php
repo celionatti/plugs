@@ -362,7 +362,7 @@
 <body>
     <div class="plugs-dbg-container">
         <header class="plugs-dbg-header plugs-dbg-animate-fade-up">
-            <a href="/debug/performance" class="plugs-dbg-brand">
+            <a href="/plugs/profiler" class="plugs-dbg-brand">
                 <div class="plugs-dbg-brand-logo">
                     <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
                         stroke-linecap="round" stroke-linejoin="round" style="color: white;">
@@ -372,14 +372,14 @@
                 <span class="plugs-dbg-brand-name">Plugs Profiler</span>
             </a>
             <nav class="plugs-dbg-nav-actions">
-                <a href="/debug/performance" class="plugs-dbg-btn plugs-dbg-btn-glass">
+                <a href="/plugs/profiler" class="plugs-dbg-btn plugs-dbg-btn-glass">
                     <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                             d="M4 6h16M4 10h16M4 14h16M4 18h16"></path>
                     </svg>
                     Requests
                 </a>
-                <a href="/debug/performance/latest" class="plugs-dbg-btn plugs-dbg-btn-primary">
+                <a href="/plugs/profiler/latest" class="plugs-dbg-btn plugs-dbg-btn-primary">
                     <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                             d="M13 10V3L4 14h7v7l9-11h-7z"></path>
