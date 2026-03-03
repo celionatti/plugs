@@ -38,9 +38,7 @@ class KeyUserProvider implements UserProviderInterface
      */
     public function retrieveById(mixed $identifier): ?Authenticatable
     {
-        $model = $this->createModel();
-
-        $user = $model::find($identifier);
+        $user = ($this->model)::find($identifier);
 
         return ($user instanceof KeyAuthenticatable) ? $user : null;
     }
@@ -71,8 +69,7 @@ class KeyUserProvider implements UserProviderInterface
             return null;
         }
 
-        $model = $this->createModel();
-        $user = $model::where('email', '=', $credentials['email'])->first();
+        $user = ($this->model)::where('email', '=', $credentials['email'])->first();
 
         return ($user instanceof KeyAuthenticatable) ? $user : null;
     }

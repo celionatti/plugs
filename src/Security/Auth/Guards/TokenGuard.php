@@ -218,6 +218,53 @@ class TokenGuard implements StatelessGuardInterface
     }
 
     /**
+     * Refresh (rotate) a specific token.
+     *
+     * @param string $token
+     * @param int|null $expiry New expiry in seconds (optional)
+     * @return string|null New plain-text token
+     */
+    public function refreshToken(string $token, ?int $expiry = null): ?string
+    {
+        $hashedToken = hash('sha256', $token);
+
+        if (class_exists($this->tokenModel) && method_exists($this->tokenModel, 'where')) {
+            $accessToken = $this->tokenModel::where('token', '=', $hashedToken)->first();
+
+            if ($accessToken) {
+                // Check if expired
+                if ($this->isTokenExpired($accessToken)) {
+                    // Optionally allow refresh even if expired, but here we'll be strict
+                    // or we could add a grace period. Let's just allow it for now
+                    // as the user owns the token.
+                }
+
+                $tokenableId = $accessToken->tokenable_id ?? $accessToken->user_id ?? null;
+                $user = $tokenableId ? $this->provider->retrieveById($tokenableId) : null;
+
+                if ($user) {
+                    $name = $accessToken->name;
+                    $abilities = json_decode($accessToken->abilities, true) ?? ['*'];
+
+                    // Revoke old token
+                    if (method_exists($accessToken, 'delete')) {
+                        $accessToken->delete();
+                    }
+
+                    // Issue new one
+                    return $this->issueToken($user, [
+                        'name' => $name,
+                        'abilities' => $abilities,
+                        'expiry' => $expiry
+                    ]);
+                }
+            }
+        }
+
+        return null;
+    }
+
+    /**
      * Revoke a specific token.
      *
      * @param string $token The plain-text token

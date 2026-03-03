@@ -197,6 +197,43 @@ class JwtGuard implements StatelessGuardInterface
     }
 
     /**
+     * Refresh the current token.
+     *
+     * @param string|null $token
+     * @param int $gracePeriod seconds after expiration that a token can still be refreshed
+     * @return string|null The new JWT token
+     */
+    public function refresh(?string $token = null, int $gracePeriod = 300): ?string
+    {
+        $token = $token ?: $this->getTokenForRequest();
+
+        if (empty($token)) {
+            return null;
+        }
+
+        // Decode ignoring expiration to allow refresh of recently expired tokens
+        $payload = $this->jwt->decode($token, true);
+
+        if (!$payload || !isset($payload['sub'])) {
+            return null;
+        }
+
+        // Ensure token isn't excessively old (prevent permanent refresh cycles if desired)
+        // Here we just check the grace period against 'exp'
+        if (isset($payload['exp']) && (time() - $payload['exp']) > $gracePeriod) {
+            return null;
+        }
+
+        $user = $this->provider->retrieveById($payload['sub']);
+
+        if (!$user) {
+            return null;
+        }
+
+        return $this->issueToken($user);
+    }
+
+    /**
      * Revoke a JWT token.
      *
      * JWT tokens are stateless and cannot be revoked without a blacklist.

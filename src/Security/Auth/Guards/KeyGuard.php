@@ -13,6 +13,7 @@ use Plugs\Security\Auth\Events\IdentityAuthenticated;
 use Plugs\Security\Auth\GuardInterface;
 use Plugs\Security\Identity\KeyDerivationService;
 use Plugs\Security\Identity\NonceService;
+use Plugs\Session\Session;
 
 /**
  * KeyGuard
@@ -36,6 +37,7 @@ class KeyGuard implements GuardInterface
     protected KeyDerivationService $keyService;
     protected NonceService $nonceService;
     protected ?DispatcherInterface $events;
+    protected ?Session $session;
     protected ?Authenticatable $user = null;
 
     public function __construct(
@@ -44,12 +46,14 @@ class KeyGuard implements GuardInterface
         KeyDerivationService $keyService,
         NonceService $nonceService,
         ?DispatcherInterface $events = null,
+        ?Session $session = null,
     ) {
         $this->name = $name;
         $this->provider = $provider;
         $this->keyService = $keyService;
         $this->nonceService = $nonceService;
         $this->events = $events;
+        $this->session = $session;
     }
 
     // -------------------------------------------------------------------------
@@ -155,6 +159,11 @@ class KeyGuard implements GuardInterface
      */
     public function login(Authenticatable $user, bool $remember = false): void
     {
+        if ($this->session) {
+            $this->session->set($this->getName(), $user->getAuthIdentifier());
+            $this->session->regenerate();
+        }
+
         $this->user = $user;
     }
 
@@ -234,6 +243,11 @@ class KeyGuard implements GuardInterface
     public function getGuardName(): string
     {
         return $this->name;
+    }
+
+    protected function getName(): string
+    {
+        return 'login_' . $this->name . '_' . sha1(static::class);
     }
 
     /**

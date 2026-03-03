@@ -51,9 +51,11 @@ class JwtService
     /**
      * Decode and verify a JWT token.
      *
+     * @param string $token
+     * @param bool $ignoreExpiration Whether to ignore the 'exp' claim (useful for refresh)
      * @return array|null The payload if valid, null otherwise.
      */
-    public function decode(string $token): ?array
+    public function decode(string $token, bool $ignoreExpiration = false): ?array
     {
         $parts = explode('.', $token);
 
@@ -82,7 +84,7 @@ class JwtService
         }
 
         // Verify Expiration
-        if (isset($payload['exp']) && time() >= $payload['exp']) {
+        if (!$ignoreExpiration && isset($payload['exp']) && time() >= $payload['exp']) {
             return null;
         }
 

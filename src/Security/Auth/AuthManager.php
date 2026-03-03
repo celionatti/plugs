@@ -207,6 +207,9 @@ class AuthManager
             $keyService,
             $nonceService,
             $this->events,
+            $this->container->has(Session::class)
+            ? $this->container->make(Session::class)
+            : new Session(),
         );
     }
 
