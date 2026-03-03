@@ -394,11 +394,6 @@ class QueryBuilder
         QueryUtils::sanitizeColumn($first);
         QueryUtils::sanitizeColumn($second);
 
-        // Wrap identifiers
-        $table = QueryUtils::wrapIdentifier($table);
-        $first = QueryUtils::wrapIdentifier($first);
-        $second = QueryUtils::wrapIdentifier($second);
-
         $this->joins[] = compact('table', 'first', 'operator', 'second', 'type');
 
         return $this;
@@ -1049,9 +1044,12 @@ class QueryBuilder
             $sql = "SELECT COUNT({$column}) as count FROM " . QueryUtils::wrapIdentifier($builder->table);
 
             if (!empty($builder->joins)) {
+                $driver = $builder->connection->getConfig()['driver'] ?? 'mysql';
                 foreach ($builder->joins as $join) {
-                    $wrappedTable = QueryUtils::wrapIdentifier($join['table']);
-                    $sql .= " {$join['type']} JOIN {$wrappedTable} ON {$join['first']} {$join['operator']} {$join['second']}";
+                    $wrappedTable = QueryUtils::wrapIdentifier($join['table'], $driver);
+                    $wrappedFirst = QueryUtils::wrapIdentifier($join['first'], $driver);
+                    $wrappedSecond = QueryUtils::wrapIdentifier($join['second'], $driver);
+                    $sql .= " {$join['type']} JOIN {$wrappedTable} ON {$wrappedFirst} {$join['operator']} {$wrappedSecond}";
                 }
             }
 
@@ -1266,12 +1264,17 @@ class QueryBuilder
 
     public function buildSelectSql(): string
     {
-        $columns = array_map([QueryUtils::class, 'wrapIdentifier'], $this->select);
-        $sql = "SELECT " . implode(', ', $columns) . " FROM " . QueryUtils::wrapIdentifier($this->table);
+        $driver = $this->connection->getConfig()['driver'] ?? 'mysql';
+        $columns = array_map(fn($col) => QueryUtils::wrapIdentifier((string) $col, $driver), $this->select);
+        $sql = "SELECT " . implode(', ', $columns) . " FROM " . QueryUtils::wrapIdentifier($this->table, $driver);
 
         if (!empty($this->joins)) {
+            $driver = $this->connection->getConfig()['driver'] ?? 'mysql';
             foreach ($this->joins as $join) {
-                $sql .= " {$join['type']} JOIN {$join['table']} ON {$join['first']} {$join['operator']} {$join['second']}";
+                $wrappedTable = QueryUtils::wrapIdentifier($join['table'], $driver);
+                $wrappedFirst = QueryUtils::wrapIdentifier($join['first'], $driver);
+                $wrappedSecond = QueryUtils::wrapIdentifier($join['second'], $driver);
+                $sql .= " {$join['type']} JOIN {$wrappedTable} ON {$wrappedFirst} {$join['operator']} {$wrappedSecond}";
             }
         }
 

@@ -18,9 +18,9 @@ class Article extends PlugModel
 {
     use HasAI;
 
-    protected string $table = 'articles';
+    protected $table = 'articles';
 
-    protected array $fillable = [
+    protected $fillable = [
         'title',
         'slug',
         'content',
@@ -28,6 +28,9 @@ class Article extends PlugModel
         'status',
         'seo_keywords',
     ];
+
+    /** @var string|null */
+    public $summary;
 
     /**
      * Get suggested topics from AI.

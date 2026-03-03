@@ -83,7 +83,7 @@ class AuthManager
     {
         $this->container = $container ?: Container::getInstance();
         $this->events = $events;
-        $this->defaultGuard = config('auth.defaults.guard', 'session');
+        $this->defaultGuard = config('auth.defaults.guard', 'web');
     }
 
     // -------------------------------------------------------------------------

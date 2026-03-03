@@ -26,6 +26,7 @@ class Seo
         if (mb_strlen($text) < $minLength && !empty($fallback)) {
             $text = $fallback . ' - ' . $text;
         }
+
         return static::truncateText($text, $maxLength, "");
     }
 
@@ -56,13 +57,16 @@ class Seo
     public static function truncateText(string $text, int $maxLength, string $suffix = '...'): string
     {
         $text = trim($text);
-        if (mb_strlen($text) <= $maxLength)
+        if (mb_strlen($text) <= $maxLength) {
             return $text;
+        }
         $truncated = mb_substr($text, 0, $maxLength);
         $lastSpace = mb_strrpos($truncated, ' ');
         $threshold = max(20, (int) ($maxLength * 0.7));
-        if ($lastSpace !== false && $lastSpace > $threshold)
+        if ($lastSpace !== false && $lastSpace > $threshold) {
             $truncated = mb_substr($truncated, 0, $lastSpace);
+        }
+
         return rtrim($truncated, ".,!?;:-") . $suffix;
     }
 
@@ -73,6 +77,7 @@ class Seo
     {
         $text = strip_tags($html);
         $text = html_entity_decode($text, ENT_QUOTES | ENT_HTML5, 'UTF-8');
+
         return preg_replace('/\s+/', ' ', trim($text));
     }
 
@@ -85,6 +90,7 @@ class Seo
         $text = preg_replace('/[^\p{L}\p{N}\s-]/u', ' ', $text);
         $words = preg_split('/\s+/', $text, -1, PREG_SPLIT_NO_EMPTY);
         $stopWords = ['the', 'a', 'an', 'and', 'or', 'but', 'in', 'on', 'at', 'to', 'for', 'of', 'with', 'by', 'from', 'is', 'are', 'was', 'were', 'it', 'this', 'that'];
+
         return array_filter($words, fn($w) => mb_strlen($w) >= 3 && !in_array($w, $stopWords));
     }
 }

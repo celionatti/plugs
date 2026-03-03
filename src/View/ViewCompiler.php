@@ -525,6 +525,8 @@ class ViewCompiler
         $content = $this->compileFormHelpers($content);
         $content = $this->compileOnce($content);
         $content = $this->compileWait($content);
+        $content = $this->compileStream($content);
+        $content = $this->compileErrorDirectives($content);
 
         // Phase 6: Components & UI Elements Compilation
         $content = $this->compileProps($content);
@@ -533,6 +535,7 @@ class ViewCompiler
         $content = $this->compileCacheBlocks($content);
         $content = $this->compileLazy($content);
         $content = $this->compileAware($content);
+        $content = $this->compileId($content);
         $content = $this->compileSanitize($content);
         $content = $this->compileEntangle($content);
         $content = $this->compileActive($content);

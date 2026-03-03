@@ -20,6 +20,6 @@ if (!function_exists('ai')) {
      */
     function ai(): AIManager
     {
-        return app(AIManager::class);
+        return app('ai');
     }
 }
