@@ -78,7 +78,10 @@ class MiddlewareDispatcher implements RequestHandlerInterface
     private function compile(): void
     {
         $cacheKey = $this->registry->getCacheKey($this->middlewareStack, $this->getCurrentContext());
-        $sorted = \Plugs\Facades\Cache::get($cacheKey);
+        $sorted = null;
+        if (class_exists(\Plugs\Facades\Cache::class) && \Plugs\Container\Container::getInstance()->bound('cache')) {
+            $sorted = \Plugs\Facades\Cache::get($cacheKey);
+        }
 
         if ($sorted === null) {
             // 1. Resolve aliases and groups through registry
@@ -125,7 +128,9 @@ class MiddlewareDispatcher implements RequestHandlerInterface
             }
 
             if ($isCacheable) {
-                \Plugs\Facades\Cache::set($cacheKey, $sorted, 86400);
+                if (class_exists(\Plugs\Facades\Cache::class) && \Plugs\Container\Container::getInstance()->bound('cache')) {
+                    \Plugs\Facades\Cache::set($cacheKey, $sorted, 86400);
+                }
             }
         }
 
@@ -186,17 +191,30 @@ class MiddlewareDispatcher implements RequestHandlerInterface
 
             if ($isProfilerEnabled) {
                 $name = is_string($mw) ? $mw : get_class($mw);
-                $label = 'MW: ' . basename(str_replace('\\', '/', $name)) . ' (Inclusive)';
+                $label = 'MW: ' . basename(str_replace('\\', '/', $name));
 
                 // Start inclusive segment
                 $this->profiler->startSegment('mw_' . $name, $label);
+                $start = microtime(true);
+                $nextDuration = 0;
 
                 try {
-                    // Record start of execution for potential exclusive timing calculation
-                    $response = $this->execute($instance, $request, $next, $handlerFactory);
+                    // We wrap the next handler to measure its duration
+                    $wrappedNext = function (ServerRequestInterface $req) use ($next, &$nextDuration) {
+                        $nStart = microtime(true);
+                        try {
+                            return $next($req);
+                        } finally {
+                            $nextDuration += (microtime(true) - $nStart) * 1000;
+                        }
+                    };
+
+                    $response = $this->execute($instance, $request, $wrappedNext, $handlerFactory);
                     return $response;
                 } finally {
-                    $this->profiler->stopSegment('mw_' . $name);
+                    $totalDuration = (microtime(true) - $start) * 1000;
+                    $exclusiveDuration = max(0, $totalDuration - $nextDuration);
+                    $this->profiler->stopSegment('mw_' . $name, $exclusiveDuration);
                 }
             }
 

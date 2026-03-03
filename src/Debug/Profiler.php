@@ -231,7 +231,7 @@ class Profiler
     /**
      * Stop a named timeline segment
      */
-    public function stopSegment(string $name): void
+    public function stopSegment(string $name, ?float $exclusiveDuration = null): void
     {
         if (!$this->enabled || !isset($this->timeline[$name])) {
             return;
@@ -243,6 +243,10 @@ class Profiler
         $this->timeline[$name]['end'] = $endTime;
         $this->timeline[$name]['duration'] = ($endTime - $start) * 1000;
         $this->timeline[$name]['memory_end'] = memory_get_usage(false);
+
+        if ($exclusiveDuration !== null) {
+            $this->timeline[$name]['exclusive_duration'] = $exclusiveDuration;
+        }
     }
 
     /**

@@ -191,12 +191,7 @@ class SecurityShieldMiddleware implements MiddlewareInterface
         $email = $requestData['email'] ?? '';
         $endpoint = $requestData['endpoint'];
 
-        $limits = [
-            'ip_attempts' => $this->getAttemptCount($ip, 'ip'),
-            'email_attempts' => $email ? $this->getAttemptCount($email, 'email') : 0,
-            'ip_daily' => $this->getDailyCount($ip, 'ip'),
-            'endpoint_rate' => $this->getEndpointRate($ip, $endpoint),
-        ];
+        $limits = $this->getConsolidatedLimits($ip, $email, $endpoint);
 
         // Check endpoint-specific rate limit
         if ($limits['endpoint_rate'] >= $this->config['rate_limits']['endpoint_limit']) {
@@ -366,90 +361,67 @@ class SecurityShieldMiddleware implements MiddlewareInterface
 
     // ==================== DATABASE OPERATIONS ====================
 
+    /**
+     * Get consolidated limits in a single query to reduce database overhead.
+     */
+    private function getConsolidatedLimits(string $ip, string $email, string $endpoint): array
+    {
+        $cacheKey = "shield:limits:" . md5($ip . $email . $endpoint);
+        $cached = \Plugs\Facades\Cache::get($cacheKey);
+        if ($cached !== null && is_array($cached)) {
+            return $cached;
+        }
+
+        $now = date('Y-m-d H:i:s');
+        $window = $this->config['rate_limits']['login_window'];
+
+        $sql = "
+            SELECT 
+                SUM(CASE WHEN identifier = ? AND type = 'ip' AND created_at > DATE_SUB(?, INTERVAL ? SECOND) THEN 1 ELSE 0 END) as ip_attempts,
+                SUM(CASE WHEN identifier = ? AND type = 'ip' AND created_at > DATE_SUB(?, INTERVAL 24 HOUR) THEN 1 ELSE 0 END) as ip_daily,
+                SUM(CASE WHEN identifier = ? AND endpoint = ? AND created_at > DATE_SUB(?, INTERVAL 60 SECOND) THEN 1 ELSE 0 END) as endpoint_rate";
+
+        $params = [$ip, $now, $window, $ip, $now, $ip, $endpoint, $now];
+
+        if (!empty($email)) {
+            $sql .= ", SUM(CASE WHEN identifier = ? AND type = 'email' AND created_at > DATE_SUB(?, INTERVAL ? SECOND) THEN 1 ELSE 0 END) as email_attempts";
+            $params[] = $email;
+            $params[] = $now;
+            $params[] = $window;
+        }
+
+        $sql .= " FROM security_attempts WHERE (identifier IN (?, ?) OR (identifier = ? AND endpoint = ?)) AND created_at > DATE_SUB(?, INTERVAL 24 HOUR)";
+        $params[] = $ip;
+        $params[] = $email ?: $ip;
+        $params[] = $ip;
+        $params[] = $endpoint;
+        $params[] = $now;
+
+        try {
+            $stmt = $this->db->query($sql, $params);
+            $row = $stmt->fetch();
+
+            $limits = [
+                'ip_attempts' => (int) ($row['ip_attempts'] ?? 0),
+                'email_attempts' => (int) ($row['email_attempts'] ?? 0),
+                'ip_daily' => (int) ($row['ip_daily'] ?? 0),
+                'endpoint_rate' => (int) ($row['endpoint_rate'] ?? 0),
+            ];
+
+            // Cache for a very short time to prevent redundant queries within the same request 
+            // or across near-simultaneous requests.
+            \Plugs\Facades\Cache::set($cacheKey, $limits, 5);
+
+            return $limits;
+        } catch (\Exception $e) {
+            return ['ip_attempts' => 0, 'email_attempts' => 0, 'ip_daily' => 0, 'endpoint_rate' => 0];
+        }
+    }
+
     private function getAttemptCount(string $identifier, string $type): int
     {
-        if (empty($identifier)) {
-            return 0;
-        }
-
-        $cacheKey = "shield:attempts:{$type}:" . md5($identifier);
-
-        $count = \Plugs\Facades\Cache::get($cacheKey);
-        if ($count !== null) {
-            return (int) $count;
-        }
-
-        try {
-            $window = $this->config['rate_limits']['login_window'];
-            $stmt = $this->db->query(
-                "SELECT COUNT(*) FROM security_attempts 
-                 WHERE identifier = ? AND type = ? AND created_at > DATE_SUB(NOW(), INTERVAL ? SECOND)",
-                [$identifier, $type, $window]
-            );
-
-            $count = (int) $stmt->fetchColumn();
-
-            // Cache for short duration (e.g. 10s) to reduce Db hits during bursts
-            \Plugs\Facades\Cache::set($cacheKey, $count, 10);
-
-            return $count;
-        } catch (\Exception $e) {
-            return 0;
-        }
-    }
-
-    private function getDailyCount(string $identifier, string $type): int
-    {
-        if (empty($identifier)) {
-            return 0;
-        }
-
-        $cacheKey = "shield:daily:{$type}:" . md5($identifier);
-
-        $count = \Plugs\Facades\Cache::get($cacheKey);
-        if ($count !== null) {
-            return (int) $count;
-        }
-
-        try {
-            $stmt = $this->db->query(
-                "SELECT COUNT(*) FROM security_attempts 
-                 WHERE identifier = ? AND type = ? AND created_at > DATE_SUB(NOW(), INTERVAL 24 HOUR)",
-                [$identifier, $type]
-            );
-
-            $count = (int) $stmt->fetchColumn();
-            \Plugs\Facades\Cache::set($cacheKey, $count, 60); // Cache for 1 minute
-
-            return $count;
-        } catch (\Exception $e) {
-            return 0;
-        }
-    }
-
-    private function getEndpointRate(string $ip, string $endpoint): int
-    {
-        $cacheKey = "shield:endpoint:" . md5($ip . $endpoint);
-
-        $count = \Plugs\Facades\Cache::get($cacheKey);
-        if ($count !== null) {
-            return (int) $count;
-        }
-
-        try {
-            $stmt = $this->db->query(
-                "SELECT COUNT(*) FROM security_attempts 
-                 WHERE identifier = ? AND endpoint = ? AND created_at > DATE_SUB(NOW(), INTERVAL 60 SECOND)",
-                [$ip, $endpoint]
-            );
-
-            $count = (int) $stmt->fetchColumn();
-            \Plugs\Facades\Cache::set($cacheKey, $count, 15); // Cache for 15s
-
-            return $count;
-        } catch (\Exception $e) {
-            return 0;
-        }
+        $limits = $this->getConsolidatedLimits($type === 'ip' ? $identifier : '', $type === 'email' ? $identifier : '', '');
+        return $type === 'ip' ? $limits['ip_attempts'] : $limits['email_attempts'];
     }
 
     private function recordAttempt(string $ip, string $email, string $endpoint): void

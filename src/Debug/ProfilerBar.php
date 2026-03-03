@@ -48,20 +48,22 @@ class ProfilerBar
 
         $nonceAttr = $nonce ? ' nonce="' . $nonce . '"' : '';
 
-        // Calculate true middleware overhead
-        $controllerTime = $profile['timeline']['controller']['duration'] ?? 0;
-        $middlewareTime = max(0, $duration - $controllerTime);
-
-        // Find slowest middleware
+        // Calculate true middleware overhead (sum of exclusive times)
+        $middlewareTime = 0;
         $slowestMwName = '';
         $slowestMwTime = 0;
+
         foreach ($profile['timeline'] as $key => $segment) {
-            if (str_starts_with($key, 'mw_') && ($segment['duration'] ?? 0) > $slowestMwTime) {
-                $slowestMwTime = $segment['duration'];
-                // Clean up name: mw_Plugs\Http\Middleware\SecurityShieldMiddleware -> SecurityShield
-                $parts = explode('\\', substr($key, 3));
-                $slowestMwName = end($parts);
-                $slowestMwName = str_replace('Middleware', '', $slowestMwName);
+            if (str_starts_with($key, 'mw_')) {
+                $exclusive = $segment['exclusive_duration'] ?? 0;
+                $middlewareTime += $exclusive;
+
+                if ($exclusive > $slowestMwTime) {
+                    $slowestMwTime = $exclusive;
+                    $parts = explode('\\', substr($key, 3));
+                    $slowestMwName = end($parts);
+                    $slowestMwName = str_replace('Middleware', '', $slowestMwName);
+                }
             }
         }
 
@@ -764,13 +766,23 @@ JS;
             $relativeStart = ($segment['start'] - ($profile['timeline']['total']['start'] ?? $segment['start'])) * 1000;
             $offsetPercent = min(100, ($relativeStart / $totalDuration) * 100);
 
+            $isMiddleware = str_contains(strtolower($name), 'middleware');
+            $displayDuration = ($isMiddleware && isset($segment['exclusive_duration']))
+                ? $segment['exclusive_duration']
+                : $segment['duration'];
+
             $color = '#8b5cf6';
-            if (str_contains(strtolower($name), 'middleware'))
+            if ($isMiddleware)
                 $color = '#f59e0b';
             if (str_contains(strtolower($name), 'routing'))
                 $color = '#3b82f6';
             if (str_contains(strtolower($name), 'view'))
                 $color = '#10b981';
+
+            $label = htmlspecialchars($segment['label']);
+            if ($isMiddleware && isset($segment['exclusive_duration'])) {
+                $label .= ' <span style="opacity:0.6; font-size:0.9em;">(Self)</span>';
+            }
 
             $html .= sprintf('<div class="timeline-row" style="display:flex; align-items:center; gap:16px; padding: 8px 12px; border-radius: 8px; background: rgba(255,255,255,0.01);">
                 <div style="width:220px; font-size:12px;"><span style="color:#f8fafc; font-weight:500;">%s</span></div>
@@ -778,7 +790,7 @@ JS;
                     <div style="position:absolute; height:100%%; background:%s; border-radius:8px; width:%s%%; left:%s%%; box-shadow:0 0 10px %s33;"></div>
                 </div>
                 <div style="width:60px; font-size:11px; color:#94a3b8; text-align:right;">%s ms</div>
-            </div>', htmlspecialchars($segment['label']), $color, number_format($percentage, 2), number_format($offsetPercent, 2), substr($color, 1), number_format($segment['duration'], 2));
+            </div>', $label, $color, number_format($percentage, 2), number_format($offsetPercent, 2), substr($color, 1), number_format($displayDuration, 2));
         }
 
         return $html . '</div>';
