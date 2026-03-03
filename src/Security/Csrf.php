@@ -451,7 +451,7 @@ class Csrf
             'expires' => time() + self::$config['token_lifetime'],
             'path' => '/',
             'domain' => '',
-            'secure' => isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on',
+            'secure' => \Plugs\Http\Utils\HttpUtils::isSecure(),
             'httponly' => false,
             'samesite' => 'Lax',
         ]);

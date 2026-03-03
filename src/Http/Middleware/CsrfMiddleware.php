@@ -229,7 +229,7 @@ class CsrfMiddleware implements MiddlewareInterface
     {
         $data = [
             'timestamp' => date('Y-m-d H:i:s'),
-            'ip' => $this->getClientIp($request),
+            'ip' => \Plugs\Http\Utils\HttpUtils::getClientIp($request),
             'method' => $request->getMethod(),
             'uri' => (string) $request->getUri(),
             'user_agent' => $request->getHeaderLine('User-Agent'),
@@ -247,40 +247,6 @@ class CsrfMiddleware implements MiddlewareInterface
 
         // If you have a custom logger, use it here
         // Example: Logger::warning('CSRF validation failed', $data);
-    }
-
-    /**
-     * Get client IP address
-     *
-     * @param ServerRequestInterface $request The request
-     * @return string The client IP
-     */
-    private function getClientIp(ServerRequestInterface $request): string
-    {
-        $serverParams = $request->getServerParams();
-
-        $headers = [
-            'HTTP_CF_CONNECTING_IP',
-            'HTTP_X_FORWARDED_FOR',
-            'HTTP_X_REAL_IP',
-            'HTTP_CLIENT_IP',
-            'REMOTE_ADDR',
-        ];
-
-        foreach ($headers as $header) {
-            if (!empty($serverParams[$header])) {
-                $ip = $serverParams[$header];
-                if (strpos($ip, ',') !== false) {
-                    $ips = explode(',', $ip);
-                    $ip = trim($ips[0]);
-                }
-                if (filter_var($ip, FILTER_VALIDATE_IP)) {
-                    return $ip;
-                }
-            }
-        }
-
-        return $serverParams['REMOTE_ADDR'] ?? '0.0.0.0';
     }
 
     /**

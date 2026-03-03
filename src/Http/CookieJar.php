@@ -39,12 +39,13 @@ class CookieJar
     {
         $this->encrypter = $encrypter;
 
-        // Auto-detect secure flag based on HTTPS
-        $this->defaults['secure'] = $this->isSecureConnection();
+        // Auto-detect secure flag based on connection
+        $this->defaults['secure'] = \Plugs\Http\Utils\HttpUtils::isSecure();
 
-        // Read from config if available
+        // Read from config if available (check both security.cookie and just cookie)
         if (function_exists('config')) {
-            $this->defaults = array_merge($this->defaults, config('security.session', []));
+            $config = config('security.cookie') ?? config('cookie') ?? [];
+            $this->defaults = array_merge($this->defaults, $config);
         }
     }
 
@@ -126,14 +127,5 @@ class CookieJar
     {
         $this->set($name, null, -2628000, ['path' => $path, 'domain' => $domain, 'encrypt' => false]);
         unset($_COOKIE[$name]);
-    }
-
-    /**
-     * Check if the current connection is secure.
-     */
-    protected function isSecureConnection(): bool
-    {
-        return (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off')
-            || (isset($_SERVER['SERVER_PORT']) && $_SERVER['SERVER_PORT'] == 443);
     }
 }
