@@ -26,6 +26,7 @@ class DefaultConfig
             'seo' => self::seo(),
             'opcache' => self::opcache(),
             'view' => self::view(),
+            'billing' => self::billing(),
             default => [],
         };
     }
@@ -545,6 +546,52 @@ class DefaultConfig
             'paths' => [
                 'views' => env('VIEW_PATH', resource_path('views')),
                 'cache' => storage_path('framework/views'),
+            ],
+        ];
+    }
+
+    private static function billing(): array
+    {
+        return [
+            /*
+            |--------------------------------------------------------------------------
+            | Default Tax Settings
+            |--------------------------------------------------------------------------
+            |
+            | This value is used when no specific tax rate is provided.
+            |
+            */
+            'tax_rate' => 0,
+
+            /*
+            |--------------------------------------------------------------------------
+            | Regional Tax Rates
+            |--------------------------------------------------------------------------
+            |
+            | You can define specific tax rates for different regions.
+            |
+            */
+            'regional_tax_rates' => [
+                'NG' => 7.5, // Nigeria VAT
+                'US-NY' => 8.875, // New York
+                'default' => 0,
+            ],
+
+            /*
+            |--------------------------------------------------------------------------
+            | Fee Settings
+            |--------------------------------------------------------------------------
+            |
+            | Configuration for various fee calculators.
+            |
+            */
+            'fees' => [
+                'paystack' => [
+                    'waive_fixed_under' => 2500,
+                    'fixed_fee' => 100,
+                    'percentage_fee' => 0.015,
+                    'cap' => 2000,
+                ],
             ],
         ];
     }

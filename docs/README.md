@@ -61,6 +61,7 @@ Welcome to the official documentation for the **Plugs** framework. Plugs is a li
 - [Validation](file:///docs/features/validation.md) (Updated)
 - [Payments (Elite)](file:///docs/features/payments.md) (New)
 - [Payouts (Elite)](file:///docs/features/payouts.md) (New)
+- [Billing & Tax](file:///docs/features/billing.md) (New)
 - [Payment Adapters](file:///docs/features/payment-adapters.md) (New)
 - [Caching](file:///docs/features/caching.md) (Updated)
 - [CSRF Protection](file:///docs/security/csrf-protection.md)
