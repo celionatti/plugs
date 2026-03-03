@@ -124,9 +124,10 @@ if (!function_exists('public_path')) {
 if (!function_exists('view')) {
     function view(string $view, array $data = []): string
     {
-        $engine = new \Plugs\View\ViewEngine(
+        $engine = new \Plugs\View\PlugViewEngine(
             base_path('views'),
             storage_path('views'),
+            app(),
             !env('APP_DEBUG', false)
         );
 

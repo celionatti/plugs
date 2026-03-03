@@ -93,7 +93,7 @@ class IdentityManager
             $userData['prompt_ids'] = json_encode($promptIds);
         }
 
-        /** @var KeyAuthenticatable $user */
+        /** @var KeyAuthenticatable|null $user */
         $user = null;
 
         if (method_exists($this->userModel, 'create')) {

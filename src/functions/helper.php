@@ -212,14 +212,10 @@ if (!function_exists('data_get')) {
                     return value($default);
                 }
             } elseif (is_object($target)) {
-                if (isset($target->{$segment})) {
-                    $target = $target->{$segment};
-                } else {
-                    return value($default);
-                }
-            } elseif ($target instanceof \ArrayAccess) {
-                if (isset($target[$segment])) {
+                if ($target instanceof \ArrayAccess && isset($target[$segment])) {
                     $target = $target[$segment];
+                } elseif (isset($target->{$segment})) {
+                    $target = $target->{$segment};
                 } else {
                     return value($default);
                 }

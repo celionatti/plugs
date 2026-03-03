@@ -17,6 +17,9 @@ use Plugs\Console\Support\Output;
 
 abstract class Command implements CommandInterface
 {
+    public const SUCCESS = 0;
+    public const FAILURE = 1;
+
     protected string $name;
     protected string $description = '';
     protected Input $input;
@@ -153,6 +156,11 @@ abstract class Command implements CommandInterface
     protected function warning(string $text): void
     {
         $this->output->warning($text);
+    }
+
+    protected function warn(string $text): void
+    {
+        $this->warning($text);
     }
 
     protected function error(string $text): void

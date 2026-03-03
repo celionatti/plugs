@@ -31,6 +31,13 @@ trait HasSchema
     protected static array $schemaDefinitions = [];
 
     /**
+     * The model's schema definition.
+     *
+     * @var array<string, \Plugs\Database\Schema\Fields\Field>
+     */
+    protected array $schema = [];
+
+    /**
      * Boot the HasSchema trait.
      * Schema resolution is deferred to first access to avoid recursion.
      */

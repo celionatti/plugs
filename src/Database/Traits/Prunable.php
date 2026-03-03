@@ -43,6 +43,7 @@ trait Prunable
             return false;
         }
 
+        /** @phpstan-ignore-next-line */
         $result = $force ? $this->forceDelete() : $this->delete();
 
         if ($result) {

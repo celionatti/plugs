@@ -18,7 +18,7 @@ class PathTenantResolver implements TenantResolver
         $path = $request->getUri()->getPath();
         $parts = explode('/', trim($path, '/'));
 
-        if (empty($parts)) {
+        if ($parts[0] === '') {
             return null;
         }
 

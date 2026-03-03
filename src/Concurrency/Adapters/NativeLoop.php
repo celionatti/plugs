@@ -51,16 +51,22 @@ class NativeLoop implements LoopInterface
 
         // Handle I/O
         if (!empty($this->readStreams) || !empty($this->writeStreams)) {
-            $read = array_keys($this->readStreams);
-            $write = array_keys($this->writeStreams);
+            $read = array_map(fn($item) => $item['stream'], $this->readStreams);
+            $write = array_map(fn($item) => $item['stream'], $this->writeStreams);
             $except = null;
 
             if (@stream_select($read, $write, $except, 0, 10000) > 0) {
                 foreach ($read as $stream) {
-                    ($this->readStreams[(int) $stream])($stream);
+                    $id = (int) $stream;
+                    if (isset($this->readStreams[$id])) {
+                        ($this->readStreams[$id]['callback'])($stream);
+                    }
                 }
                 foreach ($write as $stream) {
-                    ($this->writeStreams[(int) $stream])($stream);
+                    $id = (int) $stream;
+                    if (isset($this->writeStreams[$id])) {
+                        ($this->writeStreams[$id]['callback'])($stream);
+                    }
                 }
             }
         } else {
@@ -109,12 +115,12 @@ class NativeLoop implements LoopInterface
 
     public function addReadStream($stream, callable $callback): void
     {
-        $this->readStreams[(int) $stream] = $callback;
+        $this->readStreams[(int) $stream] = ['stream' => $stream, 'callback' => $callback];
     }
 
     public function addWriteStream($stream, callable $callback): void
     {
-        $this->writeStreams[(int) $stream] = $callback;
+        $this->writeStreams[(int) $stream] = ['stream' => $stream, 'callback' => $callback];
     }
 
     public function removeReadStream($stream): void

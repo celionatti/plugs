@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Plugs\Http\Server;
 
-use Plugs\Concurrency\LoopManager;
+
 
 class WebSocketServer extends HttpServer
 {
@@ -12,7 +12,7 @@ class WebSocketServer extends HttpServer
 
     public function start(\Closure $handler): void
     {
-        parent::start(function ($request) use ($handler) {
+        parent::start(function ($request) {
             // Check for upgrade header
             if (str_contains(strtolower($request->getHeaderLine('Upgrade')), 'websocket')) {
                 // Return switching protocols response

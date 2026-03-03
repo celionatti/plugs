@@ -19,7 +19,6 @@ namespace Plugs\Http\Middleware;
 |   ->middleware('throttle')            // Default: 60 requests per minute
 */
 
-use Plugs\Exceptions\RateLimitException;
 use Plugs\Security\RateLimitConfig;
 use Plugs\Security\RateLimiter;
 use Psr\Http\Message\ResponseInterface;
@@ -114,10 +113,7 @@ class RateLimitMiddleware implements MiddlewareInterface
 
             if ($rateLimiter->tooManyAttempts($key, $config->maxAttempts)) {
                 $retryAfter = $rateLimiter->availableIn($key);
-                throw new RateLimitException(
-                    'Too many requests. Please try again in ' . $retryAfter . ' seconds.',
-                    $retryAfter
-                );
+                throw new \Plugs\Exceptions\RateLimitException(statusCode: 429, message: 'Too many requests. Please try again in ' . $retryAfter . ' seconds.', retryAfter: $retryAfter);
             }
 
             // Increment the counter immediately
@@ -135,10 +131,9 @@ class RateLimitMiddleware implements MiddlewareInterface
         $rateLimiter = $this->getRateLimiterInstance();
         $key = 'throttle:' . $this->resolveRequestIdentifier($request);
         $windowSeconds = $this->perMinutes * 60;
-
         if ($rateLimiter->tooManyAttempts($key, $this->maxRequests)) {
             $retryAfter = $rateLimiter->availableIn($key);
-            throw new RateLimitException('Too many requests', $retryAfter);
+            throw new \Plugs\Exceptions\RateLimitException(statusCode: 429, message: 'Too many requests', retryAfter: $retryAfter);
         }
 
         $response = $handler->handle($request);

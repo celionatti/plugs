@@ -96,12 +96,19 @@ class TokenGuard implements StatelessGuardInterface
                     }
 
                     // Update last used timestamp
-                    if (method_exists($accessToken, 'save')) {
+                    if (is_object($accessToken) && property_exists($accessToken, 'last_used_at')) {
                         $accessToken->last_used_at = date('Y-m-d H:i:s');
-                        $accessToken->save();
+                        if (method_exists($accessToken, 'save')) {
+                            $accessToken->save();
+                        }
                     }
 
-                    $tokenableId = $accessToken->tokenable_id ?? $accessToken->user_id ?? null;
+                    $tokenableId = null;
+                    if (isset($accessToken->tokenable_id)) {
+                        $tokenableId = $accessToken->tokenable_id;
+                    } elseif (isset($accessToken->user_id)) {
+                        $tokenableId = $accessToken->user_id;
+                    }
 
                     if ($tokenableId) {
                         $this->user = $this->provider->retrieveById($tokenableId);

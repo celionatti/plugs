@@ -67,8 +67,8 @@ class SessionManager
             session_set_save_handler($handler, true);
         } elseif ($this->config['save_path'] !== null) {
             // Fallback: use file driver with custom save path
-            if (!is_dir($this->config['save_path'] ?? '')) {
-                mkdir($this->config['save_path'] ?? '', 0755, true);
+            if (!is_dir($this->config['save_path'])) {
+                mkdir($this->config['save_path'], 0755, true);
             }
             session_save_path($this->config['save_path']);
         }

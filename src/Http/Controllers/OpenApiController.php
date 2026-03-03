@@ -135,7 +135,7 @@ class OpenApiController
         $parts = explode('/', trim($uri, '/'));
 
         // Skip version prefixes
-        if (preg_match('/^v\d+$/', $parts[0] ?? '')) {
+        if (preg_match('/^v\d+$/', $parts[0])) {
             array_shift($parts);
         }
 

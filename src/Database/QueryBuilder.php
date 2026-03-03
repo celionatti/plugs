@@ -1203,12 +1203,10 @@ class QueryBuilder
                         });
                     }
                 }
-                continue;
             }
 
             if ($key === 'sort') {
                 $this->orderBy($value, strtoupper($params['direction'] ?? 'ASC'));
-                continue;
             }
 
             if (is_array($value)) {
@@ -1226,7 +1224,7 @@ class QueryBuilder
      */
     public function search(?array $params = null): Pagination
     {
-        $params = $params ?? $_GET ?? $_REQUEST ?? [];
+        $params = $params ?? $_GET;
 
         $perPage = (int) ($params['per_page'] ?? 15);
         $page = (int) ($params['page'] ?? 1);
@@ -1335,7 +1333,6 @@ class QueryBuilder
     {
         // Trigger onQueryExecute for all queries
         if ($this->model && method_exists($this->model, 'query')) {
-            /** @phpstan-ignore-next-line */
             $instance = new $this->model();
             if (method_exists($instance, 'fireModelEvent')) {
                 $instance->fireModelEvent('onQueryExecute', ['builder' => $this]);
@@ -1382,15 +1379,6 @@ class QueryBuilder
                 array_unshift($parameters, $this);
 
                 return $instance->$scopeMethod(...$parameters);
-            }
-
-            // Check if scopeMethod has the attribute (even if called by short name)
-            if (method_exists($instance, $scopeMethod)) {
-                $refMethod = $reflection->getMethod($scopeMethod);
-                if (!empty($refMethod->getAttributes(\Plugs\Database\Attributes\QueryScope::class))) {
-                    array_unshift($parameters, $this);
-                    return $instance->$scopeMethod(...$parameters);
-                }
             }
         }
 

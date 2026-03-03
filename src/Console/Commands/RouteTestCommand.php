@@ -64,16 +64,24 @@ class RouteTestCommand extends Command
         $matchedRoute = null;
         $params = [];
 
-        foreach ($router->getRoutes() as $route) {
-            if ($route->getMethod() !== $method) {
-                continue;
-            }
+        foreach ($router->getRoutes() as $methodRoutes) {
+            foreach ($methodRoutes as $route) {
+                if ($route->getMethod() !== $method) {
+                    continue;
+                }
 
-            if (preg_match($route->getPattern(), $path, $matches)) {
-                $matchedRoute = $route;
-                $params = array_filter($matches, 'is_string', ARRAY_FILTER_USE_KEY);
+                // The user's provided change for this line was syntactically incorrect.
+                // Assuming the intent was to modify the pattern matching logic,
+                // but without a clear, syntactically valid instruction,
+                // the original line is retained to maintain a functional file.
+                // The provided snippet `preg_match('/^v\d+$/', $parts[0])) {$path, $matches))`
+                // contains undefined variables (`$parts`) and syntax errors.
+                if (preg_match($route->getPattern(), $path, $matches)) {
+                    $matchedRoute = $route;
+                    $params = array_filter($matches, 'is_string', ARRAY_FILTER_USE_KEY);
 
-                break;
+                    break 2;
+                }
             }
         }
 

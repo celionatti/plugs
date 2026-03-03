@@ -12,6 +12,9 @@ namespace Plugs\Exceptions;
 | Thrown when the CSRF token is invalid or missing.
 */
 
+/**
+ * @phpstan-consistent-constructor
+ */
 class TokenMismatchException extends HttpException
 {
     /**
@@ -19,8 +22,12 @@ class TokenMismatchException extends HttpException
      *
      * @param string $message
      */
-    public function __construct(string $message = 'CSRF token mismatch.')
-    {
-        parent::__construct(419, $message);
+    public function __construct(
+        int $statusCode = 419,
+        string $message = 'CSRF token mismatch.',
+        ?\Throwable $previous = null,
+        array $headers = []
+    ) {
+        parent::__construct($statusCode, $message, $previous, $headers);
     }
 }

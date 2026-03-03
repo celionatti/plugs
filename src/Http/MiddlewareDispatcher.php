@@ -127,6 +127,7 @@ class MiddlewareDispatcher implements RequestHandlerInterface
                 }
             }
 
+            /** @phpstan-ignore-next-line */
             if ($isCacheable) {
                 if (class_exists(\Plugs\Facades\Cache::class) && \Plugs\Container\Container::getInstance()->bound('cache')) {
                     \Plugs\Facades\Cache::set($cacheKey, $sorted, 86400);

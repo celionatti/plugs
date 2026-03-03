@@ -80,7 +80,7 @@ class IndexSuggester
             foreach ($matches as $match) {
                 $table = trim($match[1], '`');
                 $onClause = $match[2];
-                preg_match_all('/' . preg_quote($table) . '\.([a-z0-9_`]+)/i', $onClause, $colMatches);
+                preg_match_all('/' . preg_quote($table, '/') . '\.([a-z0-9_`]+)/i', $onClause, $colMatches);
                 if (!empty($colMatches[1])) {
                     $joins[$table] = array_unique(array_map(fn($c) => trim($c, '`'), $colMatches[1]));
                 }

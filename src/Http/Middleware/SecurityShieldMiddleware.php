@@ -52,8 +52,6 @@ class SecurityShieldMiddleware implements MiddlewareInterface
         // Connection is lazy, so this doesn't connect yet
         $this->db = Connection::getInstance();
         $this->config = array_merge($this->getDefaultConfig(), $config);
-        $this->whitelistedIps = [];
-        $this->blacklistedIps = [];
         $this->initializeRules();
 
         $this->botDetector = new \Plugs\Security\BotDetector($this->config);

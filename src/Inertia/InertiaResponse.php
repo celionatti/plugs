@@ -168,7 +168,7 @@ class InertiaResponse
         // Try using the framework's view function if available
         if (function_exists('view')) {
             try {
-                return view($this->rootView, [
+                return (string) view($this->rootView, [
                     'page' => $pageData,
                     'inertiaHead' => $this->generateInertiaHead($pageData),
                 ]);

@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace Plugs\Worker;
 
 use Plugs\EventBus\EventBusManager;
-use Plugs\EventBus\EventBusInterface;
 
 /**
  * Lightweight worker for consuming messages from event bus.
@@ -178,8 +177,12 @@ class Worker
     private function registerSignalHandlers(): void
     {
         if (function_exists('pcntl_signal')) {
-            pcntl_signal(SIGTERM, fn() => $this->stop());
-            pcntl_signal(SIGINT, fn() => $this->stop());
+            if (defined('SIGTERM')) {
+                pcntl_signal(SIGTERM, fn() => $this->stop());
+            }
+            if (defined('SIGINT')) {
+                pcntl_signal(SIGINT, fn() => $this->stop());
+            }
         }
     }
 

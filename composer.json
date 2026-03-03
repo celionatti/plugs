@@ -16,7 +16,8 @@
       "src/functions/redirect.php",
       "src/functions/http.php",
       "src/functions/dump.php",
-      "src/functions/abort.php"
+      "src/functions/abort.php",
+      "src/functions/ai.php"
     ]
   },
   "autoload-dev": {

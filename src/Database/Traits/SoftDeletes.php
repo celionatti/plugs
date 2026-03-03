@@ -13,7 +13,7 @@ trait SoftDeletes
     protected $softDelete = false;
     protected $deletedAtColumn = 'deleted_at';
 
-    public function restore(): bool
+    public function restore(): int|false
     {
         if (!$this->softDelete || !$this->exists()) {
             return false;
@@ -39,7 +39,7 @@ trait SoftDeletes
     /**
      * Perform the actual delete query.
      */
-    protected function performDelete(): bool
+    protected function performDelete(): int|bool
     {
         if ($this->softDelete) {
             $this->attributes[$this->deletedAtColumn] = date('Y-m-d H:i:s');
@@ -59,7 +59,7 @@ trait SoftDeletes
         return static::query();
     }
 
-    public static function restoreAll(): bool
+    public static function restoreAll(): int|false
     {
         /** @phpstan-ignore new.static */
         $instance = new static();
@@ -72,7 +72,7 @@ trait SoftDeletes
             ->update([$instance->deletedAtColumn => null]);
     }
 
-    public static function forceDeleteAll(): bool
+    public static function forceDeleteAll(): int|false
     {
         /** @phpstan-ignore new.static */
         $instance = new static();

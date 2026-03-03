@@ -16,11 +16,11 @@ class BelongsToManyProxy
 {
     protected PlugModel $parent;
     protected string $relationName;
-    /** @var array{pivotTable: string, foreignPivotKey: string, relatedPivotKey: string, parentKey: string} */
+    /** @var array{relatedClass: string, pivotTable: string, foreignPivotKey: string, relatedPivotKey: string, parentKey: string} */
     protected array $config;
 
     /**
-     * @param array{pivotTable: string, foreignPivotKey: string, relatedPivotKey: string, parentKey: string} $config
+     * @param array{relatedClass: string, pivotTable: string, foreignPivotKey: string, relatedPivotKey: string, parentKey: string} $config
      */
     public function __construct(PlugModel $parent, string $relationName, array $config)
     {

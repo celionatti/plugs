@@ -87,8 +87,9 @@ class ErrorAnalyzer
 
     protected function findSimilarVariableInFile(string $target, string $file): ?string
     {
-        if (!file_exists($file))
+        if (!is_file($file)) {
             return null;
+        }
 
         $content = file_get_contents($file);
         $tokens = token_get_all($content);
@@ -136,8 +137,8 @@ class ErrorAnalyzer
 
     protected function findSimilarFunction(string $target): ?string
     {
-        $functions = get_defined_functions()['internal'] ?? [];
-        $functions = array_merge($functions, get_defined_functions()['user'] ?? []);
+        $functions = get_defined_functions()['internal'];
+        $functions = array_merge($functions, get_defined_functions()['user']);
         return $this->getClosestMatch($target, $functions);
     }
 

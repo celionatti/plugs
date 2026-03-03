@@ -133,7 +133,7 @@ class DatabaseSessionDriver implements SessionDriverInterface
         // Match both integer (i:123;) and string (s:3:"123";) IDs
         if (preg_match('/login_[a-zA-Z0-9_]+\|(?:i:(\d+)|s:\d+:"(\d+)")/', $data, $matches)) {
             // Return whichever group matched
-            return isset($matches[2]) && $matches[2] !== '' ? (int) $matches[2] : (int) $matches[1];
+            return isset($matches[2]) ? (int) $matches[2] : (int) $matches[1];
         }
 
         return null;

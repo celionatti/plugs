@@ -95,7 +95,7 @@ class OrchestratorCommand extends Command
             // Check if process is still running
             $status = proc_get_status($info['process']);
 
-            if ($status && !$status['running']) {
+            if ($status && !$status['running']) { // @phpstan-ignore-line
                 $this->warn("Worker {$name} exited. Restarting...");
                 unset($this->workerProcesses[$name]);
                 $this->spawnWorker($info['queue'], count($this->workerProcesses));
@@ -162,8 +162,12 @@ class OrchestratorCommand extends Command
     private function registerSignalHandlers(): void
     {
         if (function_exists('pcntl_signal')) {
-            pcntl_signal(SIGTERM, fn() => $this->running = false);
-            pcntl_signal(SIGINT, fn() => $this->running = false);
+            if (defined('SIGTERM')) {
+                pcntl_signal(SIGTERM, fn() => $this->running = false);
+            }
+            if (defined('SIGINT')) {
+                pcntl_signal(SIGINT, fn() => $this->running = false);
+            }
         }
     }
 }

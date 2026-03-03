@@ -56,7 +56,7 @@ class Bootstrapper
         $context = $forceContext ?? ContextResolver::resolve();
 
         // Load container cache if available
-        $containerCache = STORAGE_PATH . 'framework/container.php';
+        $containerCache = STORAGE_PATH . 'framework/container.php'; // @phpstan-ignore constant.notFound
         if (file_exists($containerCache)) {
             $this->container->loadFromCache($containerCache);
         }

@@ -28,7 +28,7 @@ if (!function_exists('skeleton_styles')) {
         $nonce = null;
         try {
             $container = \Plugs\Container\Container::getInstance();
-            if ($container && $container->bound('view')) {
+            if ($container->bound('view')) {
                 $viewEngine = $container->make('view');
                 if (method_exists($viewEngine, 'getCspNonce')) {
                     $nonce = $viewEngine->getCspNonce();

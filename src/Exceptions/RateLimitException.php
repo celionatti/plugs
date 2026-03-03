@@ -13,6 +13,9 @@ namespace Plugs\Exceptions;
 | Extends HttpException with status 429 and Retry-After header support.
 */
 
+/**
+ * @phpstan-consistent-constructor
+ */
 class RateLimitException extends HttpException
 {
     /**
@@ -28,13 +31,20 @@ class RateLimitException extends HttpException
      * @param string $message
      * @param int|null $retryAfter
      */
-    public function __construct(string $message = 'Too Many Requests', ?int $retryAfter = null)
-    {
+    public function __construct(
+        int $statusCode = 429,
+        string $message = 'Too Many Requests',
+        ?\Throwable $previous = null,
+        array $headers = [],
+        ?int $retryAfter = null
+    ) {
         $this->retryAfter = $retryAfter;
 
-        $headers = $retryAfter ? ['Retry-After' => (string) $retryAfter] : [];
+        if ($retryAfter) {
+            $headers['Retry-After'] = (string) $retryAfter;
+        }
 
-        parent::__construct(429, $message, null, $headers);
+        parent::__construct($statusCode, $message, $previous, $headers);
     }
 
     /**

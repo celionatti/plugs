@@ -723,7 +723,7 @@ class Output
         $json = preg_replace_callback(
             '/(".*?")(\s*:)|(".*?")|(\b\d+\b)|(true|false|null)/',
             function ($matches) {
-                if (!empty($matches[1]) && !empty($matches[2])) {
+                if (!empty($matches[1])) {
                     // Key
                     return self::BRIGHT_CYAN . $matches[1] . self::RESET . $matches[2];
                 } elseif (!empty($matches[3])) {

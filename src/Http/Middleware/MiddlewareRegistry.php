@@ -19,7 +19,7 @@ class MiddlewareRegistry
      */
     protected array $aliases = [
         'auth' => AuthenticateMiddleware::class,
-        'guest' => \app\Http\Middleware\GuestMiddleware::class,
+        'guest' => \App\Http\Middleware\GuestMiddleware::class,
         'csrf' => CsrfMiddleware::class,
         'cors' => CorsMiddleware::class,
         'shield' => SecurityShieldMiddleware::class,

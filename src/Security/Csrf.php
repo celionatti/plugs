@@ -400,6 +400,9 @@ class Csrf
 
         // Convert hex token back to binary for masking
         $binaryToken = hex2bin($token);
+        if ($binaryToken === false) {
+            return $token; // Return unmasked if conversion fails
+        }
 
         // XOR the binary token with the mask
         $masked = $binaryToken ^ $mask;

@@ -855,6 +855,7 @@ class PlugViewEngine implements ViewEngineInterface
             }
 
             if ($this->suppressLayout) {
+                /** @phpstan-ignore-next-line */
                 return $this->buildSuppressedOutput($childContent, $__sections, $__stacks, $__extends ?? null);
             }
 
@@ -894,7 +895,6 @@ class PlugViewEngine implements ViewEngineInterface
             $__sections = $localVars['__sections'] ?? [];
             $__stacks = $localVars['__stacks'] ?? [];
 
-            /** @phpstan-ignore-next-line */
             if (isset($__extends) && $__extends && !$this->suppressLayout) {
                 return (string) $this->renderParentDirect(
                     $__extends,
@@ -1997,7 +1997,6 @@ class PlugViewEngine implements ViewEngineInterface
 
         if ($e instanceof ViewException) {
             $frameworkCode = $e->getFrameworkCode();
-            // Avoid repeating "Error rendering view" etc.
             if (str_contains($message, $context)) {
                 return $e;
             }

@@ -16,7 +16,7 @@ class ContainerCacheCommand extends Command
         $this->title('Container Cache Generator');
 
         $container = Container::getInstance();
-        $cachePath = STORAGE_PATH . 'framework/container.php';
+        $cachePath = STORAGE_PATH . 'framework/container.php'; // @phpstan-ignore constant.notFound
 
         $this->task('Caching container metadata', function () use ($container, $cachePath) {
             try {

@@ -48,7 +48,7 @@ class RouteListCommand extends Command
         $routes = $router->getRoutes();
 
         // Flatten nested routes array if necessary (method => [routes])
-        if (!empty($routes) && is_array(reset($routes))) {
+        if (is_array(reset($routes))) {
             $routes = array_merge(...array_values($routes));
         }
 

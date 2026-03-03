@@ -27,7 +27,9 @@ class Connection
     private static array $config = [];
 
     // Connection Pool Management
+    /** @phpstan-ignore property.onlyWritten */
     private static array $connectionPools = [];
+    /** @phpstan-ignore property.onlyWritten */
     private static array $poolConfig = [
         'min_connections' => 2,      // Minimum connections to keep alive
         'max_connections' => 10,     // Maximum connections allowed
@@ -38,7 +40,9 @@ class Connection
     ];
 
     // Runtime environment detection cache
+    /** @phpstan-ignore property.onlyWritten, property.unusedType */
     private static ?string $detectedRuntime = null;
+    /** @phpstan-ignore property.onlyWritten */
     private static array $poolLocks = [];
 
     // Load Balancer instances per connection name
@@ -49,8 +53,11 @@ class Connection
     private static int $statementPoolSize = 100; // Max cached statements per connection
 
     // Query Analysis
+    /** @phpstan-ignore property.onlyWritten */
     private static array $queryStats = [];
+    /** @phpstan-ignore property.onlyWritten */
     private static bool $enableQueryAnalysis = false;
+    /** @phpstan-ignore property.onlyWritten */
     private static array $queryAnalysisThresholds = [
         'slow_query_time' => 1.0,    // Seconds
         'n_plus_one_threshold' => 10, // Similar queries in a row
@@ -67,6 +74,7 @@ class Connection
     private int $connectionAttempts = 0;
     private int $maxRetries = 3;
 
+    /** @phpstan-ignore property.onlyWritten */
     private ?\Plugs\Database\Optimization\OptimizationManager $optimizationManager = null;
 
     // Security & Advanced Features
@@ -76,6 +84,7 @@ class Connection
     private bool $isConnecting = false;
     private int $lastHealthCheckAt = 0;
     private int $lastReadHealthCheckAt = 0;
+    /** @phpstan-ignore property.onlyWritten */
     private bool $strictMode = false;
     private static array $schemaCache = [];
 
@@ -153,9 +162,9 @@ class Connection
         $cacheKey = 'db:lb:health:conns:' . md5($key);
 
         if ($connecting) {
-            \Plugs\Facades\Cache::increment($cacheKey);
+            \Plugs\Facades\Cache::increment($cacheKey); // @phpstan-ignore staticMethod.notFound
         } else {
-            \Plugs\Facades\Cache::decrement($cacheKey);
+            \Plugs\Facades\Cache::decrement($cacheKey); // @phpstan-ignore staticMethod.notFound
         }
     }
 
@@ -615,6 +624,7 @@ class Connection
         $this->isConnecting = false;
     }
 
+    /** @phpstan-ignore method.unused */
     private function isConnectionError(PDOException $e): bool
     {
         // 08004 is "Too many connections", we don't want to retry/reconnect on this

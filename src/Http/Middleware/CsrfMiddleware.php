@@ -197,7 +197,7 @@ class CsrfMiddleware implements MiddlewareInterface
             return call_user_func($this->errorHandler, $request);
         }
 
-        throw new \Plugs\Exceptions\TokenMismatchException('CSRF token mismatch. Please refresh the page.');
+        throw new \Plugs\Exceptions\TokenMismatchException(message: 'CSRF token mismatch. Please refresh the page.');
     }
 
     /**

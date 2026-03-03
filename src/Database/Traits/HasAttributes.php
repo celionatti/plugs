@@ -146,7 +146,7 @@ trait HasAttributes
 
         // Check for Attribute object (Modern Laravel Style)
         if ($attribute = $this->getAttributeFromObject($key)) {
-            return $attribute->get ? ($attribute->get)($this->attributes[$key] ?? null, $this->attributes) : ($this->attributes[$key] ?? null);
+            return is_callable($attribute->get) ? ($attribute->get)($this->attributes[$key] ?? null, $this->attributes) : ($this->attributes[$key] ?? null);
         }
 
         // Check for accessor method (getXxxAttribute)
@@ -179,7 +179,6 @@ trait HasAttributes
     protected function getRelationValue(string $key)
     {
         if (!isset($this->relations) || !array_key_exists($key, $this->relations)) {
-            /** @phpstan-ignore-next-line */
             if (property_exists($this, 'preventLazyLoading') && static::$preventLazyLoading) {
                 throw new \Plugs\Database\Exceptions\LazyLoadingDisabledException(static::class, $key);
             }
@@ -219,7 +218,7 @@ trait HasAttributes
     {
         // Check for Attribute object (Modern Laravel Style)
         if ($attribute = $this->getAttributeFromObject($key)) {
-            if ($attribute->set) {
+            if (is_callable($attribute->set)) {
                 $value = ($attribute->set)($value, $this->attributes);
 
                 if (is_array($value)) {
@@ -322,8 +321,8 @@ trait HasAttributes
                 return $value;
 
             default:
-                if (is_string($castType) && enum_exists($castType) && !is_object($value)) {
-                    return $value instanceof \UnitEnum ? $value->value ?? $value->name : $value;
+                if (is_string($castType) && enum_exists($castType)) {
+                    return $value instanceof \UnitEnum ? ($value instanceof \BackedEnum ? $value->value : $value->name) : $value;
                 }
 
                 return $value;

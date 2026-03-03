@@ -666,7 +666,8 @@ abstract class PlugModel implements \JsonSerializable
      */
     public static function transaction(\Closure $callback, int $attempts = 1)
     {
-        return static::connection(static::$connectionName)->transaction($callback, $attempts);
+        $connection = Connection::getInstance(null, static::$connectionName);
+        return $connection->transaction($callback, $attempts);
     }
 
     // ==================== RAW & BATCH OPERATIONS ====================

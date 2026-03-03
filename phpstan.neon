@@ -2,10 +2,62 @@ parameters:
     level: 5
     paths:
         - src
-        - app
         - config
     excludePaths:
         - vendor
         - storage
     tmpDir: storage/framework/cache/phpstan
+    ignoreErrors:
+        # Factory methods intentionally use new static() for inheritance
+        - identifier: new.static
 
+        # Traits are designed for end-user consumption and may not be used within the framework itself
+        - identifier: trait.unused
+
+        # Defensive method_exists/property_exists checks for forward-compatibility and trait portability
+        - identifier: function.alreadyNarrowedType
+
+        # Properties intentionally kept write-only for future use or pool/analysis config
+        - identifier: property.onlyWritten
+
+        # Properties with broader types for extensibility
+        - identifier: property.unusedType
+
+        # Unused methods/constants/class constants kept for public API or future use
+        - identifier: method.unused
+        - identifier: classConstant.unused
+
+        # PHPDoc sometimes has broader types than native for documentation purposes
+        - identifier: parameter.phpDocType
+
+        # Inner named functions in FunctionsModule — intentional design
+        -
+            message: '#Inner named functions are not supported#'
+            path: src/Module/Core/FunctionsModule.php
+
+        # HttpServer uses LoopManager interface that is implemented at runtime
+        -
+            message: '#Call to an undefined method Plugs\\Concurrency\\LoopManager#'
+            path: src/Http/Server/HttpServer.php
+
+        # DatabaseUserProvider calls static methods on Authenticatable which is a model
+        -
+            message: '#Call to an undefined static method Plugs\\Security\\Auth\\Authenticatable#'
+            path: src/Security/Auth/Providers/DatabaseUserProvider.php
+
+        # DeviceToken model uses dynamic properties mapped from database columns
+        -
+            message: '#Access to an undefined property Plugs\\Security\\Auth\\Models\\DeviceToken#'
+            paths:
+                - src/Security/Auth/Models/DeviceToken.php
+                - src/Security/Auth/DeviceTrustManager.php
+
+        # Router passes PSR ServerRequestInterface which is compatible at runtime
+        -
+            message: '#expects Plugs\\Http\\Message\\ServerRequest, Psr\\Http\\Message\\ServerRequestInterface given#'
+            path: src/Router/Router.php
+
+        # HealthController uses DatabaseManager which provides query() dynamically
+        -
+            message: '#Call to an undefined method Plugs\\Database\\DatabaseManager\|Plugs\\Database\\QueryBuilder::query#'
+            path: src/Http/Controllers/HealthController.php

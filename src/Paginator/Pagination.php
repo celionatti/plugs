@@ -426,7 +426,7 @@ class Pagination implements \IteratorAggregate, \Countable, \ArrayAccess, \JsonS
     public function links(?string $view = null, array $data = []): string
     {
         if ($view) {
-            return view($view, array_merge([
+            return (string) view($view, array_merge([
                 'paginator' => $this,
                 'elements' => $this->elements(),
             ], $data));

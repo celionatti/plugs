@@ -129,7 +129,7 @@ class KeyDerivationService
     {
         $signatureRaw = base64_decode($signature);
 
-        if ($signatureRaw === false || strlen($signatureRaw) !== SODIUM_CRYPTO_SIGN_BYTES) {
+        if (!is_string($signatureRaw) || strlen($signatureRaw) !== SODIUM_CRYPTO_SIGN_BYTES) {
             return false;
         }
 
