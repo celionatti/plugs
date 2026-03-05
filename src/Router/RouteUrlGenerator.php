@@ -77,17 +77,19 @@ class RouteUrlGenerator
     {
         $path = $route->getPath();
 
-        // 1. Substitute path parameters '{param}' and '{param?}'
+        // 1. Substitute path parameters '{param}', '{param:key}' and '{param?}'
         foreach ($parameters as $key => $value) {
-            $path = str_replace('{' . $key . '}', (string) $value, $path);
+            // Handle {param} and {param:key}
+            $path = preg_replace('/\{' . preg_quote($key, '/') . '(?::[a-zA-Z0-9_]+)?\}/', (string) $value, $path);
+            // Handle {param?}
             $path = str_replace('{' . $key . '?}', (string) $value, $path);
         }
 
         // 2. Remove remaining optional parameters '{param?}'
         $path = preg_replace('/\/?\{[^}]+\?\}/', '', $path);
 
-        // 3. Check for any unresolved required parameters
-        preg_match_all('/\{([^}?]+)\}/', $path, $matches);
+        // 3. Check for any unresolved required parameters (handling {param:key})
+        preg_match_all('/\{([^}:?]+)(?::[^}]+)?\}/', $path, $matches);
         if (!empty($matches[1])) {
             throw new MissingRouteParameterException(
                 $route->getName() ?? 'unnamed',

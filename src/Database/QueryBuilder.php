@@ -121,7 +121,9 @@ class QueryBuilder
         }
 
         // Handle standard where: where('col', 'val') or where('col', null)
-        if ($value === null && $operator !== null && !in_array(strtoupper((string) $operator), ['=', '<', '>', '<=', '>=', '<>', '!=', 'LIKE', 'IN', 'IS', 'BETWEEN', 'NOT IN', 'IS NOT'])) {
+        // Handle standard where: where('col', 'val') or where('col', null)
+        $operators = ['=', '<', '>', '<=', '>=', '<>', '!=', 'LIKE', 'IN', 'IS', 'BETWEEN', 'NOT IN', 'IS NOT'];
+        if ($value === null && ($operator === null || !in_array(strtoupper((string) $operator), $operators))) {
             $value = $operator;
             $operator = '=';
         }
