@@ -101,6 +101,12 @@ abstract class PlugModel implements \JsonSerializable
 
     public function __construct(array|object $attributes = [], bool $exists = false)
     {
+        // Auto-resolve schema from defineSchema() if defined.
+        // This allows models to declare their schema without overriding the constructor.
+        if (method_exists($this, 'defineSchema')) {
+            $this->schema = $this->defineSchema();
+        }
+
         $this->bootIfNotBooted();
         $this->exists = $exists;
 

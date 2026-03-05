@@ -19,6 +19,31 @@ use Plugs\Database\Schema\Fields\BooleanField;
 class User extends PlugModel
 {
     protected $table = 'users';
+
+    protected function defineSchema(): array
+    {
+        return [
+            'name'      => StringField::make()->required()->min(2)->max(100),
+            'email'     => EmailField::make()->required()->unique(),
+            'age'       => IntegerField::make()->min(18),
+            'password'  => PasswordField::make()->required()->min(8)->strong(),
+            'is_active' => BooleanField::make()->default(true),
+        ];
+    }
+}
+```
+
+> [!TIP]
+> The `defineSchema()` method is the recommended approach. The framework automatically calls it during construction — no need to override the constructor!
+
+### Alternative: Constructor-Based Schema
+
+You can also populate `$schema` inside the constructor. This approach is still fully supported:
+
+```php
+class User extends PlugModel
+{
+    protected $table = 'users';
     protected array $schema = [];
 
     public function __construct(array|object $attributes = [], bool $exists = false)
@@ -26,9 +51,6 @@ class User extends PlugModel
         $this->schema = [
             'name'      => StringField::make()->required()->min(2)->max(100),
             'email'     => EmailField::make()->required()->unique(),
-            'age'       => IntegerField::make()->min(18),
-            'password'  => PasswordField::make()->required()->min(8)->strong(),
-            'is_active' => BooleanField::make()->default(true),
         ];
 
         parent::__construct($attributes, $exists);
@@ -37,7 +59,7 @@ class User extends PlugModel
 ```
 
 > [!IMPORTANT]
-> The `$schema` array **must** be populated inside the constructor **before** calling `parent::__construct()`. This is because the parent constructor resolves the schema and applies defaults during boot.
+> When using the constructor approach, the `$schema` array **must** be populated **before** calling `parent::__construct()`. The parent constructor resolves the schema and applies defaults during boot.
 
 ---
 
