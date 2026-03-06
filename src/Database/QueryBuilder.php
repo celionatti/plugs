@@ -33,6 +33,9 @@ class QueryBuilder
     private $params = [];
     private $rawSql = null;
     private $orderBy = [];
+    private $groupBy = [];
+    private $having = [];
+    private $distinct = false;
     private $limit = null;
     private $offset = null;
     protected $model = null;
@@ -85,6 +88,13 @@ class QueryBuilder
         return $this;
     }
 
+    public function distinct(): self
+    {
+        $this->distinct = true;
+
+        return $this;
+    }
+
     public function setModel(string $model): self
     {
         $this->model = $model;
@@ -99,6 +109,13 @@ class QueryBuilder
 
     public function where($column, $operator = null, $value = null, $boolean = 'AND'): self
     {
+        if (is_array($column)) {
+            foreach ($column as $key => $val) {
+                $this->where($key, '=', $val, $boolean);
+            }
+            return $this;
+        }
+
         // Handle closure for nested query
         if ($column instanceof Closure) {
             $query = new static($this->connection);
@@ -120,7 +137,40 @@ class QueryBuilder
             return $this;
         }
 
-        // Handle standard where: where('col', 'val') or where('col', null)
+        // Handle subquery as value
+        if ($value instanceof Closure || $value instanceof self) {
+            if ($value instanceof Closure) {
+                // IMPORTANT: Pass connection to subquery
+                $subQuery = new static($this->connection);
+                $value($subQuery);
+            } else {
+                $subQuery = $value;
+            }
+
+            $sql = $subQuery->buildSelectSql();
+
+            // But we need to avoid collisions.
+            foreach ($subQuery->getParams() as $key => $val) {
+                if (!is_string($key))
+                    continue;
+                $cleanKey = ltrim($key, ':');
+                $newKey = ':' . $cleanKey . '_sub';
+                $this->params[$newKey] = $val;
+
+                // We must search and replace in the SQL string
+                $sql = str_replace($key, $newKey, $sql);
+            }
+
+            $wrappedColumn = QueryUtils::wrapIdentifier((string) $column);
+            $this->where[] = [
+                'type' => 'Subquery',
+                'query' => "{$wrappedColumn} {$operator} ({$sql})",
+                'boolean' => $boolean,
+            ];
+
+            return $this;
+        }
+
         // Handle standard where: where('col', 'val') or where('col', null)
         $operators = ['=', '<', '>', '<=', '>=', '<>', '!=', 'LIKE', 'IN', 'IS', 'BETWEEN', 'NOT IN', 'IS NOT'];
         if ($value === null && ($operator === null || !in_array(strtoupper((string) $operator), $operators))) {
@@ -389,8 +439,49 @@ class QueryBuilder
         return $this->whereDoesntHave($relation, $callback, 'OR');
     }
 
-    public function join(string $table, string $first, string $operator, string $second, string $type = 'INNER'): self
+    public function join($table, $first, $operator = null, $second = null, string $type = 'INNER'): self
     {
+        if ($table instanceof Closure || $table instanceof self) {
+            if ($table instanceof Closure) {
+                $subQuery = new static($this->connection);
+                $table($subQuery);
+            } else {
+                $subQuery = $table;
+            }
+
+            $sql = $subQuery->buildSelectSql();
+            $alias = $first;
+
+            // Subquery params
+            foreach ($subQuery->getParams() as $key => $val) {
+                if (!is_string($key))
+                    continue;
+                $cleanKey = ltrim($key, ':');
+                $newKey = ':' . $cleanKey . '_sub';
+                $this->params[$newKey] = $val;
+
+                $sql = str_replace($key, $newKey, $sql);
+            }
+
+            $tableSql = "({$sql}) AS " . QueryUtils::wrapIdentifier($alias);
+
+            $joinFirst = $operator;
+            $joinOperator = func_num_args() >= 5 ? $second : '=';
+            $joinSecond = func_num_args() >= 5 ? $type : $second;
+            $joinType = func_num_args() >= 6 ? func_get_arg(5) : 'INNER';
+
+            $this->joins[] = [
+                'table' => $tableSql,
+                'first' => QueryUtils::wrapIdentifier($joinFirst),
+                'operator' => $joinOperator,
+                'second' => QueryUtils::wrapIdentifier($joinSecond),
+                'type' => strtoupper($joinType),
+                'isRaw' => true,
+            ];
+
+            return $this;
+        }
+
         // Sanitize identifiers
         QueryUtils::sanitizeColumn($table);
         QueryUtils::sanitizeColumn($first);
@@ -693,6 +784,40 @@ class QueryBuilder
         return $this;
     }
 
+    public function groupBy(...$columns): self
+    {
+        $columns = is_array($columns[0]) ? $columns[0] : $columns;
+
+        foreach ($columns as $column) {
+            QueryUtils::sanitizeColumn($column);
+            $this->groupBy[] = QueryUtils::wrapIdentifier($column);
+        }
+
+        return $this;
+    }
+
+    public function having(string $column, string $operator, $value, string $boolean = 'AND'): self
+    {
+        QueryUtils::sanitizeColumn($column);
+        $placeholder = ":having_" . count($this->params) . "_" . str_replace('.', '_', $column);
+
+        $this->having[] = [
+            'column' => QueryUtils::wrapIdentifier($column),
+            'operator' => $operator,
+            'value' => $placeholder,
+            'boolean' => $boolean,
+        ];
+
+        $this->params[$placeholder] = $value;
+
+        return $this;
+    }
+
+    public function orHaving(string $column, string $operator, $value): self
+    {
+        return $this->having($column, $operator, $value, 'OR');
+    }
+
     public function latest(string $column = 'created_at'): self
     {
         return $this->orderBy($column, 'DESC');
@@ -834,6 +959,41 @@ class QueryBuilder
         return $this->get($columns);
     }
 
+    public function pluck(string $column, ?string $key = null): array
+    {
+        $results = $this->get([$column, $key ?: $column]);
+        $data = $results instanceof Collection ? $results->all() : $results;
+
+        if (empty($data)) {
+            return [];
+        }
+
+        $plucked = [];
+        foreach ($data as $row) {
+            $value = is_object($row) ? $row->$column : $row[$column];
+
+            if ($key) {
+                $keyValue = is_object($row) ? $row->$key : $row[$key];
+                $plucked[$keyValue] = $value;
+            } else {
+                $plucked[] = $value;
+            }
+        }
+
+        return $plucked;
+    }
+
+    public function value(string $column)
+    {
+        $result = $this->first([$column]);
+
+        if (!$result) {
+            return null;
+        }
+
+        return is_object($result) ? $result->$column : $result[$column];
+    }
+
     public function exists(): bool
     {
         return $this->first() !== null;
@@ -971,6 +1131,11 @@ class QueryBuilder
      */
     public function upsert(array $values, array $uniqueBy, array $update = null): int
     {
+        $driver = $this->connection->getConfig()['driver'] ?? 'mysql';
+        if ($driver !== 'mysql') {
+            throw new Exception("upsert() is currently only supported for MySQL. Use updateOrInsert() for cross-platform support.");
+        }
+
         if (empty($values)) {
             return 0;
         }
@@ -1009,6 +1174,21 @@ class QueryBuilder
         return $this->connection->execute($sql, $params);
     }
 
+    public function updateOrInsert(array $attributes, array $values = []): bool
+    {
+        $exists = (clone $this)->where($attributes)->exists();
+
+        if (!$exists) {
+            return (clone $this)->insert(array_merge($attributes, $values));
+        }
+
+        if (empty($values)) {
+            return true;
+        }
+
+        return (clone $this)->where($attributes)->limit(1)->update($values) > 0;
+    }
+
     public function update(array $data): int
     {
         return $this->runThroughPipeline(function ($builder) use ($data) {
@@ -1027,6 +1207,33 @@ class QueryBuilder
 
             return $builder->connection->execute($sql, $params);
         });
+    }
+
+    public function increment(string $column, $amount = 1, array $extra = []): int
+    {
+        return $this->runThroughPipeline(function ($builder) use ($column, $amount, $extra) {
+            $wrappedColumn = QueryUtils::wrapIdentifier($column);
+            $placeholder = ":inc_{$column}";
+            $params = array_merge($builder->params, ["{$placeholder}" => $amount]);
+
+            $sets = ["{$wrappedColumn} = {$wrappedColumn} + {$placeholder}"];
+
+            foreach ($extra as $extraColumn => $value) {
+                $extraPlaceholder = ":set_{$extraColumn}";
+                $sets[] = QueryUtils::wrapIdentifier($extraColumn) . " = {$extraPlaceholder}";
+                $params[$extraPlaceholder] = $value;
+            }
+
+            $sql = "UPDATE " . QueryUtils::wrapIdentifier($builder->table) . " SET " . implode(', ', $sets);
+            $sql .= $builder->getWhereClause();
+
+            return $builder->connection->execute($sql, $params);
+        });
+    }
+
+    public function decrement(string $column, $amount = 1, array $extra = []): int
+    {
+        return $this->increment($column, -$amount, $extra);
     }
 
     public function delete(): int
@@ -1048,10 +1255,14 @@ class QueryBuilder
             if (!empty($builder->joins)) {
                 $driver = $builder->connection->getConfig()['driver'] ?? 'mysql';
                 foreach ($builder->joins as $join) {
-                    $wrappedTable = QueryUtils::wrapIdentifier($join['table'], $driver);
-                    $wrappedFirst = QueryUtils::wrapIdentifier($join['first'], $driver);
-                    $wrappedSecond = QueryUtils::wrapIdentifier($join['second'], $driver);
-                    $sql .= " {$join['type']} JOIN {$wrappedTable} ON {$wrappedFirst} {$join['operator']} {$wrappedSecond}";
+                    if (isset($join['isRaw']) && $join['isRaw']) {
+                        $sql .= " {$join['type']} JOIN {$join['table']} ON {$join['first']} {$join['operator']} {$join['second']}";
+                    } else {
+                        $wrappedTable = QueryUtils::wrapIdentifier($join['table'], $driver);
+                        $wrappedFirst = QueryUtils::wrapIdentifier($join['first'], $driver);
+                        $wrappedSecond = QueryUtils::wrapIdentifier($join['second'], $driver);
+                        $sql .= " {$join['type']} JOIN {$wrappedTable} ON {$wrappedFirst} {$join['operator']} {$wrappedSecond}";
+                    }
                 }
             }
 
@@ -1060,6 +1271,41 @@ class QueryBuilder
             $result = $builder->connection->fetch($sql, $builder->params);
 
             return (int) ($result['count'] ?? 0);
+        });
+    }
+
+    public function sum(string $column)
+    {
+        return $this->aggregate('SUM', $column);
+    }
+
+    public function avg(string $column)
+    {
+        return $this->aggregate('AVG', $column);
+    }
+
+    public function min(string $column)
+    {
+        return $this->aggregate('MIN', $column);
+    }
+
+    public function max(string $column)
+    {
+        return $this->aggregate('MAX', $column);
+    }
+
+    protected function aggregate(string $function, string $column)
+    {
+        QueryUtils::sanitizeColumn($column);
+        $wrappedColumn = QueryUtils::wrapIdentifier($column);
+
+        return $this->runThroughPipeline(function ($builder) use ($function, $wrappedColumn) {
+            $sql = "SELECT {$function}({$wrappedColumn}) as aggregate FROM " . QueryUtils::wrapIdentifier($builder->table);
+            $sql .= $builder->getWhereClause();
+
+            $result = $builder->connection->fetch($sql, $builder->params);
+
+            return $result['aggregate'] ?? 0;
         });
     }
 
@@ -1268,19 +1514,36 @@ class QueryBuilder
     {
         $driver = $this->connection->getConfig()['driver'] ?? 'mysql';
         $columns = array_map(fn($col) => QueryUtils::wrapIdentifier((string) $col, $driver), $this->select);
-        $sql = "SELECT " . implode(', ', $columns) . " FROM " . QueryUtils::wrapIdentifier($this->table, $driver);
+        $distinct = $this->distinct ? 'DISTINCT ' : '';
+        $sql = "SELECT {$distinct}" . implode(', ', $columns) . " FROM " . QueryUtils::wrapIdentifier($this->table, $driver);
 
         if (!empty($this->joins)) {
-            $driver = $this->connection->getConfig()['driver'] ?? 'mysql';
             foreach ($this->joins as $join) {
-                $wrappedTable = QueryUtils::wrapIdentifier($join['table'], $driver);
-                $wrappedFirst = QueryUtils::wrapIdentifier($join['first'], $driver);
-                $wrappedSecond = QueryUtils::wrapIdentifier($join['second'], $driver);
-                $sql .= " {$join['type']} JOIN {$wrappedTable} ON {$wrappedFirst} {$join['operator']} {$wrappedSecond}";
+                $type = strtoupper($join['type'] ?? 'INNER');
+                if (isset($join['isRaw']) && $join['isRaw']) {
+                    $sql .= " {$type} JOIN {$join['table']} ON {$join['first']} {$join['operator']} {$join['second']}";
+                } else {
+                    $wrappedTable = QueryUtils::wrapIdentifier($join['table'], $driver);
+                    $wrappedFirst = QueryUtils::wrapIdentifier($join['first'], $driver);
+                    $wrappedSecond = QueryUtils::wrapIdentifier($join['second'], $driver);
+                    $sql .= " {$type} JOIN {$wrappedTable} ON {$wrappedFirst} {$join['operator']} {$wrappedSecond}";
+                }
             }
         }
 
         $sql .= $this->getWhereClause();
+
+        if (!empty($this->groupBy)) {
+            $sql .= " GROUP BY " . implode(', ', $this->groupBy);
+        }
+
+        if (!empty($this->having)) {
+            $sql .= " HAVING ";
+            foreach ($this->having as $index => $condition) {
+                $boolean = $index === 0 ? '' : " {$condition['boolean']} ";
+                $sql .= "{$boolean}{$condition['column']} {$condition['operator']} {$condition['value']}";
+            }
+        }
 
         if (!empty($this->orderBy)) {
             $sql .= " ORDER BY " . implode(', ', $this->orderBy);

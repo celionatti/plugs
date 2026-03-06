@@ -39,6 +39,23 @@ $user = DB::table('users')->findOrFail(1);
 $users = DB::table('users')->findMany([1, 2, 3]);
 ```
 
+### Retrieving A Single Value (Pluck & Value)
+
+If you need a single column's value from the first row, you can use the `value` method:
+
+```php
+$email = DB::table('users')->where('name', 'John')->value('email');
+```
+
+If you would like to retrieve an array containing the values of a single column, you may use the `pluck` method:
+
+```php
+$titles = DB::table('roles')->pluck('title');
+
+// With custom keys
+$roles = DB::table('roles')->pluck('title', 'name');
+```
+
 ````
 
 ## Aggregates
@@ -49,6 +66,8 @@ The query builder also provides a variety of methods for retrieving aggregate va
 $users = DB::table('users')->count();
 
 $price = DB::table('orders')->max('price');
+
+$total = DB::table('orders')->where('status', 'completed')->sum('price');
 ````
 
 ## Select Statements
@@ -57,6 +76,14 @@ $price = DB::table('orders')->max('price');
 $users = DB::table('users')
             ->select('name', 'email as user_email')
             ->get();
+```
+
+### Distinct Results
+
+The `distinct` method allows you to force the query to return distinct results:
+
+```php
+$users = DB::table('users')->distinct()->get();
 ```
 
 ## Where Clauses
@@ -120,6 +147,20 @@ $users = DB::table('users')
 - `whereNull` / `whereNotNull`
 - `whereDate` / `whereMonth` / `whereDay` / `whereYear`
 
+### Subquery Where Clauses
+
+Sometimes you may need to construct a where clause that compares the results of a subquery. You may achieve this by passing a Closure to the `where` method:
+
+```php
+$users = DB::table('users')
+            ->where('id', 'IN', function ($query) {
+                $query->select('user_id')
+                      ->from('orders')
+                      ->where('amount', '>', 100);
+            })
+            ->get();
+```
+
 ## Joins
 
 ### Inner Join Clause
@@ -147,7 +188,23 @@ $users = DB::table('users')
             ->get();
 ```
 
+### Join Subqueries
+
+You may use the `join`, `leftJoin`, and `rightJoin` methods to join to a subquery. First, pass a Closure (or a QueryBuilder instance) that constructs the subquery, followed by an alias name, and finally the constraints:
+
+```php
+$users = DB::table('users')
+    ->join(function ($query) {
+        $query->select('user_id', DB::raw('SUM(amount) as total'))
+              ->from('orders')
+              ->groupBy('user_id');
+    }, 'o', 'users.id', '=', 'o.user_id')
+    ->get();
+```
+
 ## Ordering, Grouping, Limit & Offset
+
+### Ordering
 
 ```php
 $users = DB::table('users')
@@ -161,7 +218,31 @@ $user = DB::table('users')
 $user = DB::table('users')
                 ->oldest()
                 ->first();
+```
 
+### Grouping and Having
+
+The `groupBy` and `having` methods may be used to group the query results. The `having` method's signature is similar to that of the `where` method:
+
+```php
+$users = DB::table('users')
+                ->groupBy('account_id')
+                ->having('account_id', '>', 100)
+                ->get();
+```
+
+You may pass multiple arguments to the `groupBy` method to group by multiple columns:
+
+```php
+$users = DB::table('users')
+                ->groupBy('first_name', 'status')
+                ->having('status', '=', 'active')
+                ->get();
+```
+
+### Limit and Offset
+
+```php
 $users = DB::table('users')
                 ->skip(10)
                 ->take(5)
@@ -222,6 +303,29 @@ DB::table('users')->insert([
 DB::table('users')
     ->where('id', 1)
     ->update(['votes' => 1]);
+```
+
+### Update Or Insert
+
+Sometimes you may want to update an existing record in the database or create it if no matching record exists. In this scenario, the `updateOrInsert` method may be used:
+
+```php
+DB::table('users')->updateOrInsert(
+    ['email' => 'john@example.com', 'name' => 'John'],
+    ['votes' => 2]
+);
+```
+
+### Increment & Decrement
+
+The query builder also provides convenient methods for incrementing or decrementing the value of a given column. Both methods accept at least one argument: the column to modify. A second argument may optionally be passed to specify the amount.
+
+```php
+DB::table('users')->increment('votes');
+
+DB::table('users')->increment('votes', 5, ['updated_at' => date('Y-m-d H:i:s')]);
+
+DB::table('users')->decrement('votes');
 ```
 
 ### Delete

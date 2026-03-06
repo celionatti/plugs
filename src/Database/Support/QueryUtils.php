@@ -43,7 +43,7 @@ class QueryUtils
      */
     public static function sanitizeColumn(string $column): string
     {
-        if (!preg_match('/^[a-zA-Z0-9_\.\*]+$/', $column)) {
+        if (!preg_match('/^[a-zA-Z0-9_\.\*\(\) ]+$/', $column)) {
             throw new \Exception("Invalid column name: {$column}");
         }
 
