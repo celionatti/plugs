@@ -59,6 +59,19 @@ class ViewManager
     }
 
     /**
+     * Create a new View instance using the default driver.
+     * Provides an intuitive, Laravel-like API for creating views.
+     *
+     * @param string $view
+     * @param array $data
+     * @return \Plugs\View\View
+     */
+    public function make(string $view, array $data = []): \Plugs\View\View
+    {
+        return new \Plugs\View\View($this->driver(), $view, $data);
+    }
+
+    /**
      * Create a new driver instance.
      *
      * @param string $driver

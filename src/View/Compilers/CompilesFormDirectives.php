@@ -37,24 +37,6 @@ trait CompilesFormDirectives
         );
     }
 
-    protected function compileStyle(string $content): string
-    {
-        $balanced = '([^()]*+(?:\((?1)\)[^()]*+)*+)';
-
-        return preg_replace_callback(
-            '/@style\s*\(' . $balanced . '\)/s',
-            function ($matches) {
-                return sprintf(
-                    '<?php echo \'style="\' . implode(\'; \', array_filter(array_map(function($k, $v) {
-                    return is_int($k) ? $v : ($v ? $k : null);
-                }, array_keys(%s), array_values(%s)))) . \'"\'; ?>',
-                    $matches[1],
-                    $matches[1]
-                );
-            },
-            $content
-        );
-    }
 
     protected function compileOnce(string $content): string
     {
@@ -171,21 +153,6 @@ trait CompilesFormDirectives
         );
     }
 
-    protected function compileClass(string $content): string
-    {
-        $balanced = '([^()]*+(?:\((?1)\)[^()]*+)*+)';
-
-        return preg_replace_callback(
-            '/@class\s*\(' . $balanced . '\)/s',
-            function ($matches) {
-                return sprintf(
-                    '<?php echo \'class="\' . \Plugs\Utils\Arr::toCssClasses(%s) . \'"\'; ?>',
-                    $matches[1]
-                );
-            },
-            $content
-        );
-    }
 
     protected function compileCustomDirectives(string $content): string
     {

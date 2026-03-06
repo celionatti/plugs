@@ -40,13 +40,23 @@ class ErrorRenderer
     }
 
     /**
-     * Render a generic error for production mode
+     * Cache for production error HTML
+     */
+    private static ?string $productionErrorCache = null;
+
+    /**
+     * Render a generic error for production mode.
+     * Caches the result statically for maximum performance on subsequent errors.
      *
      * @return string HTML
      */
     private static function renderProductionError(): string
     {
-        return <<<HTML
+        if (self::$productionErrorCache !== null) {
+            return self::$productionErrorCache;
+        }
+
+        self::$productionErrorCache = <<<HTML
         <div style="display: flex; align-items: center; justify-content: center; min-height: 100vh; background: #0f172a; color: #f8fafc; font-family: 'Outfit', sans-serif; text-align: center; padding: 2rem;">
             <div style="background: rgba(30, 41, 59, 0.7); backdrop-filter: blur(24px); padding: 3rem; border-radius: 32px; border: 1px solid rgba(255, 255, 255, 0.1); max-width: 500px; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);">
                 <h1 style="font-size: 4rem; margin-bottom: 1rem; color: #10b981; font-weight: 800;">500</h1>
@@ -56,6 +66,8 @@ class ErrorRenderer
             </div>
         </div>
         HTML;
+
+        return self::$productionErrorCache;
     }
 
     /**

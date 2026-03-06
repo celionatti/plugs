@@ -48,12 +48,14 @@ VIEW_PATH=/path/to/your/custom/views
 
 ### From Controllers
 
-Use the global `view()` helper:
+Use the global `view()` helper or the `ViewManager` API:
 
 ```php
-return view('welcome', [
-    'name' => 'John Doe'
-]);
+// Using the helper
+return view('welcome', ['name' => 'John Doe']);
+
+// Using the ViewManager instance (e.g. injected or from container)
+return $viewManager->make('welcome', ['name' => 'John Doe']);
 ```
 
 ### Fluent Data Binding

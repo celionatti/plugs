@@ -33,13 +33,16 @@ cache/views/
 
 ### Fast Cache Mode
 
-For production environments, enable fast cache to skip modification time checks:
+For production environments, enable fast cache to skip modification time (`filemtime`) checks entirely once a view is compiled.
 
 ```php
 $viewEngine->setFastCache(true);
 ```
 
-> **Warning:** With fast cache enabled, you must clear the cache manually when deploying new views.
+When `fastCache` is enabled and the application is in production mode, the engine assumes that compiled views are up-to-date and will only recompile if the compiled file is physically missing. This significantly reduces disk I/O.
+
+> [!WARNING]
+> With fast cache enabled, you must clear the cache manually when deploying new views (typically via `php artisan view:clear`).
 
 ### Clearing the Cache
 
@@ -211,10 +214,10 @@ echo "Warmed $count admin views";
 public function handle()
 {
     $this->info('Warming view cache...');
-    
+
     $engine = app(ViewEngine::class);
     $count = $engine->warmCache();
-    
+
     $this->info("Warmed $count views.");
 }
 ```
@@ -278,12 +281,12 @@ $viewEngine->preload([
 
 ### 4. Set Appropriate TTLs
 
-| Content Type | Recommended TTL |
-|--------------|-----------------|
-| Static content | 86400 (24h) |
-| Navigation menus | 3600 (1h) |
-| User dashboards | 300 (5m) |
-| Real-time data | Don't cache |
+| Content Type     | Recommended TTL |
+| ---------------- | --------------- |
+| Static content   | 86400 (24h)     |
+| Navigation menus | 3600 (1h)       |
+| User dashboards  | 300 (5m)        |
+| Real-time data   | Don't cache     |
 
 ### 5. Clear Cache on Deploy
 
@@ -388,4 +391,3 @@ $stats = $viewEngine->getPerformanceStats();
 //     'opcache_hit_rate' => 98.5,
 // ]
 ```
-

@@ -152,6 +152,78 @@ final class ComponentAttributes implements ArrayAccess, IteratorAggregate, Count
         unset($this->attributes[$offset]);
     }
 
+    /**
+     * Resolve a CSS class string from an array of conditionally applied classes.
+     *
+     * @param string|array $classList
+     * @return string
+     */
+    public static function resolveClass(string|array $classList): string
+    {
+        if (is_string($classList)) {
+            return $classList;
+        }
+
+        $classes = [];
+
+        foreach ($classList as $class => $condition) {
+            if (is_numeric($class)) {
+                $classes[] = $condition;
+            } elseif ($condition) {
+                $classes[] = $class;
+            }
+        }
+
+        return implode(' ', $classes);
+    }
+
+    /**
+     * Escape a CSS class string.
+     *
+     * @param string $class
+     * @return string
+     */
+    public static function escapeClass(string $class): string
+    {
+        return htmlspecialchars($class, ENT_QUOTES, 'UTF-8');
+    }
+
+    /**
+     * Resolve an inline CSS style string from an array of conditionally applied styles.
+     *
+     * @param string|array $styleList
+     * @return string
+     */
+    public static function resolveStyle(string|array $styleList): string
+    {
+        if (is_string($styleList)) {
+            return $styleList;
+        }
+
+        $styles = [];
+
+        foreach ($styleList as $style => $condition) {
+            if (is_numeric($style)) {
+                $styles[] = $condition;
+            } elseif ($condition) {
+                $styles[] = $style;
+            }
+        }
+
+        return implode('; ', $styles);
+    }
+
+    /**
+     * Escape an inline CSS style string.
+     *
+     * @param string $style
+     * @return string
+     */
+    public static function escapeStyle(string $style): string
+    {
+        return htmlspecialchars($style, ENT_QUOTES, 'UTF-8');
+    }
+
     // IteratorAggregate Implementation
     public function getIterator(): \Traversable
     {

@@ -797,8 +797,11 @@ class PlugViewEngine implements ViewEngineInterface
         // Optimization: In production, we can skip the filemtime check if fastCache is enabled
         $needsRecompile = !$this->fileExistsCached($compiled);
 
-        if (!$needsRecompile && !($this->fastCache && \Plugs\Plugs::isProduction())) {
-            if (filemtime($viewFile) > filemtime($compiled)) {
+        if (!$needsRecompile) {
+            // If fast cache is enabled in production, skip file modification time checks entirely
+            $isFastProduction = $this->fastCache && class_exists(\Plugs\Plugs::class) && \Plugs\Plugs::isProduction();
+
+            if (!$isFastProduction && filemtime($viewFile) > filemtime($compiled)) {
                 $needsRecompile = true;
             }
         }

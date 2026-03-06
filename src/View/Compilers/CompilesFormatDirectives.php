@@ -674,4 +674,83 @@ trait CompilesFormatDirectives
             $content
         );
     }
+
+    /**
+     * Compile the class statements in the given string.
+     * Support for dynamic class merging like: @class(['p-4', 'font-bold' => $isBold])
+     *
+     * @param  string  $content
+     * @return string
+     */
+    protected function compileClass(string $content): string
+    {
+        $balanced = '([^()]*+(?:\((?1)\)[^()]*+)*+)';
+
+        return preg_replace_callback(
+            '/@class\s*\(' . $balanced . '\)/s',
+            function ($matches) {
+                $expression = $matches[1];
+
+                return "<?php echo \Plugs\View\ComponentAttributes::escapeClass(
+                    \Plugs\View\ComponentAttributes::resolveClass($expression)
+                ); ?>";
+            },
+            $content
+        );
+    }
+
+    /**
+     * Compile the style statements in the given string.
+     * Support for dynamic style merging like: @style(['background: red', 'font-weight: bold' => $isActive])
+     *
+     * @param  string  $content
+     * @return string
+     */
+    protected function compileStyle(string $content): string
+    {
+        $balanced = '([^()]*+(?:\((?1)\)[^()]*+)*+)';
+
+        return preg_replace_callback(
+            '/@style\s*\(' . $balanced . '\)/s',
+            function ($matches) {
+                $expression = $matches[1];
+
+                return "<?php echo \Plugs\View\ComponentAttributes::escapeStyle(
+                    \Plugs\View\ComponentAttributes::resolveStyle($expression)
+                ); ?>";
+            },
+            $content
+        );
+    }
+
+    /**
+     * Compile the use statements in the given string.
+     * Translates @use(App\Models\User) -> <?php use App\Models\User; ?>
+     * 
+     * @param  string  $content
+     * @return string
+     */
+    protected function compileUse(string $content): string
+    {
+        $balanced = '([^()]*+(?:\((?1)\)[^()]*+)*+)';
+
+        return preg_replace_callback(
+            '/@use\s*\(' . $balanced . '\)/s',
+            function ($matches) {
+                $head = trim($matches[1]);
+
+                // Allow specifying as e.g. @use('App\Models\User', 'UserAlias') -> use App\Models\User as UserAlias;
+                $parts = preg_split('/\s*,\s*/', $head, 2);
+                $class = trim($parts[0], ' "\'');
+
+                if (isset($parts[1])) {
+                    $alias = trim($parts[1], ' "\'');
+                    return sprintf("<?php use %s as %s; ?>", $class, $alias);
+                }
+
+                return sprintf("<?php use %s; ?>", $class);
+            },
+            $content
+        );
+    }
 }

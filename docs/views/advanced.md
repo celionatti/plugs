@@ -271,8 +271,11 @@ When `APP_DEBUG=true`, detailed errors are shown:
 When `APP_DEBUG=false`:
 
 - Errors are logged
-- Generic error message shown
 - No stack traces exposed
+
+### Production Error Static Caching
+
+In production mode (`APP_DEBUG=false`), the Plugs framework uses a static HTML cache for the generic 500 error page. This ensures that even under heavy load or cascading failures, the overhead of rendering the error page is virtually zero, as it bypasses template re-allocation.
 
 ### Custom Error Handling
 
@@ -364,6 +367,15 @@ $viewEngine->setCspNonce($nonce);
 <script nonce="{{ $view->getCspNonce() }}">
     // Inline script
 </script>
+
+#### Auto-CSP Injection
+
+The Plugs `ViewCompiler` supports **Auto-CSP Injection**. When enabled, the compiler automatically analyzes your templates for `<script>` and `<style>` tags that lack a `nonce` attribute and injects one automatically.
+
+This ensures that inline scripts and styles are always secure without requiring manual `nonce` attributes everywhere.
+
+> [!NOTE]
+> Auto-injection only targets inline tags or scripts without a `src` attribute (unless marked as `inline`).
 ```
 
 ---

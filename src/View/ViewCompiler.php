@@ -180,6 +180,9 @@ class ViewCompiler
             'sanitize' => '/@sanitize\s*\((.+?)\)/s',
             'entangle' => '/@entangle\s*\([\'"](.+?)[\'"]\)/s',
             'raw' => '/@raw\s*\((.+?)\)/s',
+            'class' => '/@class\s*\((.+?)\)/s',
+            'style' => '/@style\s*\((.+?)\)/s',
+            'use' => '/@use\s*\((.+?)\)/s',
 
             // RBAC patterns
             'can' => '/@can\s*\(([^()]*+(?:\((?1)\)[^()]*+)*+)\)/s',
@@ -555,6 +558,9 @@ class ViewCompiler
         $content = $this->compileWordCount($content);
         $content = $this->compileCustomDirectives($content);
         $content = $this->compileShortAttributes($content);
+        $content = $this->compileClass($content);
+        $content = $this->compileStyle($content);
+        $content = $this->compileUse($content);
         $content = $this->compileRawEchos($content);
         $content = $this->compileEscapedEchos($content);
 
@@ -589,6 +595,31 @@ class ViewCompiler
         $content = $this->compileFormTags($content);        // <csrf>, <method>, <error>, etc.
         $content = $this->compileComponentTags($content);   // <fragment>, <teleport>, <auth>, etc.
         $content = $this->compileMarkdownTag($content);    // <markdown>
+        $content = $this->compileAutoCsp($content);        // Auto-inject CSP nonces
+        return $content;
+    }
+
+    /**
+     * Automatically inject CSP nonce into <script> and <style> tags if they lack one
+     */
+    protected function compileAutoCsp(string $content): string
+    {
+        // Add nonce to <script> tags safely avoiding those that already have a nonce
+        $content = preg_replace_callback('/<script(?![^>]*\bnonce=)([^>]*)>/i', function ($matches) {
+            $attributes = $matches[1];
+            // Only inject if there's no src attribute or it's an inline script
+            if (stripos($attributes, ' src=') === false || stripos($attributes, 'inline') !== false) {
+                return sprintf('<script nonce="<?php echo $view->getCspNonce(); ?>"%s>', $attributes);
+            }
+            return $matches[0];
+        }, $content);
+
+        // Add nonce to <style> tags safely avoiding those that already have a nonce
+        $content = preg_replace_callback('/<style(?![^>]*\bnonce=)([^>]*)>/i', function ($matches) {
+            $attributes = $matches[1];
+            return sprintf('<style nonce="<?php echo $view->getCspNonce(); ?>"%s>', $attributes);
+        }, $content);
+
         return $content;
     }
 

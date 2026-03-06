@@ -207,6 +207,58 @@ Plugs uses a context-aware escaping engine to prevent XSS. The `{{ $var }}` dire
 <input @required($isRequired)>
 ```
 
+### Dynamic Attributes
+
+#### @class
+
+The `@class` directive conditionally compiles a CSS class string. It accepts an array of classes where the array key contains the class(es) you wish to add, while the value is a boolean expression. If the array element has a numeric key, it will always be included in the rendered class list:
+
+```blade
+@php($isBold = true)
+
+<div @class([
+    'p-4',
+    'font-bold' => $isBold,
+    'text-gray-500' => !$isBold,
+    'bg-red-500' => false,
+])></div>
+
+{{-- Output: <div class="p-4 font-bold"></div> --}}
+```
+
+#### @style
+
+The `@style` directive may be used to conditionally add inline CSS styles to an HTML element. Like the `@class` directive, it accepts an array of styles where the array key contains the style and the value is a boolean expression:
+
+```blade
+@php($isActive = true)
+
+<div @style([
+    'background-color: red',
+    'font-weight: bold' => $isActive,
+])></div>
+
+{{-- Output: <div style="background-color: red; font-weight: bold;"></div> --}}
+```
+
+---
+
+## PHP & Namespace Helpers
+
+### @use
+
+The `@use` directive allows you to import PHP classes into the view scope, similar to the PHP `use` statement. This is cleaner than using `@php(use App\Models\User)`.
+
+```blade
+@use(App\Models\User)
+@use('App\Models\Post', 'PostAlias')
+
+@php
+    $user = User::first();
+    $post = PostAlias::find(1);
+@endphp
+```
+
 ---
 
 ## Props & Component Data
