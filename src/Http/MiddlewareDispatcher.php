@@ -77,60 +77,35 @@ class MiddlewareDispatcher implements RequestHandlerInterface
      */
     private function compile(): void
     {
-        $cacheKey = $this->registry->getCacheKey($this->middlewareStack, $this->getCurrentContext());
-        $sorted = null;
-        if (class_exists(\Plugs\Facades\Cache::class) && \Plugs\Container\Container::getInstance()->bound('cache')) {
-            $sorted = \Plugs\Facades\Cache::get($cacheKey);
+        // 1. Resolve aliases and groups through registry
+        $resolvedRows = [];
+        foreach ($this->middlewareStack as $mw) {
+            if (is_string($mw)) {
+                foreach ($this->registry->resolve($mw) as $resolvedClass) {
+                    $resolvedRows[] = $resolvedClass;
+                }
+            } else {
+                $resolvedRows[] = $mw;
+            }
         }
 
-        if ($sorted === null) {
-            // 1. Resolve aliases and groups through registry
-            $resolvedRows = [];
-            foreach ($this->middlewareStack as $mw) {
-                if (is_string($mw)) {
-                    foreach ($this->registry->resolve($mw) as $resolvedClass) {
-                        $resolvedRows[] = $resolvedClass;
-                    }
-                } else {
-                    $resolvedRows[] = $mw;
-                }
+        // 2. Add Kernel (Global) middlewares if they aren't already present
+        $kernel = $this->registry->getKernel($this->getCurrentContext());
+        foreach ($kernel as $kmw) {
+            if (!in_array($kmw, $resolvedRows, true)) {
+                array_unshift($resolvedRows, $kmw);
             }
+        }
 
-            // 2. Add Kernel (Global) middlewares if they aren't already present
-            $kernel = $this->registry->getKernel($this->getCurrentContext());
-            foreach ($kernel as $kmw) {
-                if (!in_array($kmw, $resolvedRows, true)) {
-                    array_unshift($resolvedRows, $kmw);
-                }
-            }
+        // 3. Orchestrate by Layer + Priority
+        $orchestrated = $this->registry->orchestrate($resolvedRows);
 
-            // 3. Orchestrate by Layer + Priority
-            $orchestrated = $this->registry->orchestrate($resolvedRows);
-
-            // Flatten back to a single list for the closure chain
-            $sorted = [];
-            foreach ($orchestrated as $layerMiddleware) {
-                foreach ($layerMiddleware as $mw) {
-                    if (!in_array($mw, $sorted, true)) {
-                        $sorted[] = $mw;
-                    }
-                }
-            }
-
-            // Cache for 24 hours (or until manual clear) - skip if contains non-string items
-            // Closures and objects with state are not safely serializable in all drivers.
-            $isCacheable = true;
-            foreach ($sorted as $mw) {
-                if (!is_string($mw)) {
-                    $isCacheable = false;
-                    break;
-                }
-            }
-
-            /** @phpstan-ignore-next-line */
-            if ($isCacheable) {
-                if (class_exists(\Plugs\Facades\Cache::class) && \Plugs\Container\Container::getInstance()->bound('cache')) {
-                    \Plugs\Facades\Cache::set($cacheKey, $sorted, 86400);
+        // Flatten back to a single list for the closure chain
+        $sorted = [];
+        foreach ($orchestrated as $layerMiddleware) {
+            foreach ($layerMiddleware as $mw) {
+                if (!in_array($mw, $sorted, true)) {
+                    $sorted[] = $mw;
                 }
             }
         }
@@ -181,7 +156,9 @@ class MiddlewareDispatcher implements RequestHandlerInterface
      */
     private function wrapMiddleware($mw, array $params, \Closure $next, \Closure $handlerFactory, bool $isProfilerEnabled): \Closure
     {
-        return function (ServerRequestInterface $request) use ($mw, $params, $next, $handlerFactory, $isProfilerEnabled) {
+        $nextHandler = $handlerFactory($next);
+
+        return function (ServerRequestInterface $request) use ($mw, $params, $next, $nextHandler, $handlerFactory, $isProfilerEnabled) {
             // Lazy load string-based middleware
             $instance = is_string($mw) ? app($mw) : $mw;
 
@@ -210,7 +187,8 @@ class MiddlewareDispatcher implements RequestHandlerInterface
                         }
                     };
 
-                    $response = $this->execute($instance, $request, $wrappedNext, $handlerFactory);
+                    $wrappedNextHandler = $handlerFactory($wrappedNext);
+                    $response = $this->execute($instance, $request, $wrappedNext, $wrappedNextHandler);
                     return $response;
                 } finally {
                     $totalDuration = (microtime(true) - $start) * 1000;
@@ -219,7 +197,7 @@ class MiddlewareDispatcher implements RequestHandlerInterface
                 }
             }
 
-            return $this->execute($instance, $request, $next, $handlerFactory);
+            return $this->execute($instance, $request, $next, $nextHandler);
         };
     }
 
@@ -227,10 +205,10 @@ class MiddlewareDispatcher implements RequestHandlerInterface
     /**
      * Executes a single middleware instance.
      */
-    private function execute($mw, ServerRequestInterface $request, \Closure $next, \Closure $handlerFactory): ResponseInterface
+    private function execute($mw, ServerRequestInterface $request, \Closure $next, RequestHandlerInterface $nextHandler): ResponseInterface
     {
         if ($mw instanceof MiddlewareInterface) {
-            return $mw->process($request, $handlerFactory($next));
+            return $mw->process($request, $nextHandler);
         }
 
         if (is_callable($mw)) {
