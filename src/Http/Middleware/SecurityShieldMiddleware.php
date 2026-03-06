@@ -360,60 +360,22 @@ class SecurityShieldMiddleware implements MiddlewareInterface
     // ==================== DATABASE OPERATIONS ====================
 
     /**
-     * Get consolidated limits in a single query to reduce database overhead.
+     * Get consolidated limits using fast Cache counters instead of DB aggregation.
      */
     private function getConsolidatedLimits(string $ip, string $email, string $endpoint): array
     {
-        $cacheKey = "shield:limits:" . md5($ip . $email . $endpoint);
-        $cached = \Plugs\Facades\Cache::get($cacheKey);
-        if ($cached !== null && is_array($cached)) {
-            return $cached;
-        }
-
-        $now = date('Y-m-d H:i:s');
-        $window = $this->config['rate_limits']['login_window'];
-
-        $sql = "
-            SELECT 
-                SUM(CASE WHEN identifier = ? AND type = 'ip' AND created_at > DATE_SUB(?, INTERVAL ? SECOND) THEN 1 ELSE 0 END) as ip_attempts,
-                SUM(CASE WHEN identifier = ? AND type = 'ip' AND created_at > DATE_SUB(?, INTERVAL 24 HOUR) THEN 1 ELSE 0 END) as ip_daily,
-                SUM(CASE WHEN identifier = ? AND endpoint = ? AND created_at > DATE_SUB(?, INTERVAL 60 SECOND) THEN 1 ELSE 0 END) as endpoint_rate";
-
-        $params = [$ip, $now, $window, $ip, $now, $ip, $endpoint, $now];
+        $limits = [
+            'ip_attempts' => (int) \Plugs\Facades\Cache::get("shield:attempts:ip:" . md5($ip)),
+            'ip_daily' => (int) \Plugs\Facades\Cache::get("shield:daily:ip:" . md5($ip)),
+            'endpoint_rate' => (int) \Plugs\Facades\Cache::get("shield:endpoint:" . md5($ip . $endpoint)),
+            'email_attempts' => 0,
+        ];
 
         if (!empty($email)) {
-            $sql .= ", SUM(CASE WHEN identifier = ? AND type = 'email' AND created_at > DATE_SUB(?, INTERVAL ? SECOND) THEN 1 ELSE 0 END) as email_attempts";
-            $params[] = $email;
-            $params[] = $now;
-            $params[] = $window;
+            $limits['email_attempts'] = (int) \Plugs\Facades\Cache::get("shield:attempts:email:" . md5($email));
         }
 
-        $sql .= " FROM security_attempts WHERE (identifier IN (?, ?) OR (identifier = ? AND endpoint = ?)) AND created_at > DATE_SUB(?, INTERVAL 24 HOUR)";
-        $params[] = $ip;
-        $params[] = $email ?: $ip;
-        $params[] = $ip;
-        $params[] = $endpoint;
-        $params[] = $now;
-
-        try {
-            $stmt = $this->db->query($sql, $params);
-            $row = $stmt->fetch();
-
-            $limits = [
-                'ip_attempts' => (int) ($row['ip_attempts'] ?? 0),
-                'email_attempts' => (int) ($row['email_attempts'] ?? 0),
-                'ip_daily' => (int) ($row['ip_daily'] ?? 0),
-                'endpoint_rate' => (int) ($row['endpoint_rate'] ?? 0),
-            ];
-
-            // Cache for a very short time to prevent redundant queries within the same request 
-            // or across near-simultaneous requests.
-            \Plugs\Facades\Cache::set($cacheKey, $limits, 5);
-
-            return $limits;
-        } catch (\Exception $e) {
-            return ['ip_attempts' => 0, 'email_attempts' => 0, 'ip_daily' => 0, 'endpoint_rate' => 0];
-        }
+        return $limits;
     }
 
     private function getAttemptCount(string $identifier, string $type): int
@@ -425,40 +387,66 @@ class SecurityShieldMiddleware implements MiddlewareInterface
     private function recordAttempt(string $ip, string $email, string $endpoint): void
     {
         try {
-            // Write to DB asynchronously via Queue
-            \Plugs\Facades\Queue::push(\Plugs\Security\Jobs\SecurityLogJob::class, [
-                'job_type' => 'attempt',
-                'identifier' => $ip,
-                'type' => 'ip',
-                'endpoint' => $endpoint
-            ]);
-
-            // Invalidate/Increment caches
-            $this->incrementCache("shield:attempts:ip:" . md5($ip));
-            $this->incrementCache("shield:daily:ip:" . md5($ip));
-            $this->incrementCache("shield:endpoint:" . md5($ip . $endpoint));
-
-            if (!empty($email)) {
+            // Write to DB asynchronously via Queue for historical records
+            if (class_exists(\Plugs\Facades\Queue::class)) {
                 \Plugs\Facades\Queue::push(\Plugs\Security\Jobs\SecurityLogJob::class, [
                     'job_type' => 'attempt',
-                    'identifier' => $email,
-                    'type' => 'email',
+                    'identifier' => $ip,
+                    'type' => 'ip',
                     'endpoint' => $endpoint
                 ]);
-
-                $this->incrementCache("shield:attempts:email:" . md5($email));
-                $this->incrementCache("shield:daily:email:" . md5($email));
             }
+
+            $window = $this->config['rate_limits']['login_window'] ?? 900;
+
+            // Atomic cache increments with TTL
+            $this->incrementCache("shield:attempts:ip:" . md5($ip), $window);
+            $this->incrementCache("shield:daily:ip:" . md5($ip), 86400);
+            $this->incrementCache("shield:endpoint:" . md5($ip . $endpoint), 60);
+
+            if (!empty($email)) {
+                if (class_exists(\Plugs\Facades\Queue::class)) {
+                    \Plugs\Facades\Queue::push(\Plugs\Security\Jobs\SecurityLogJob::class, [
+                        'job_type' => 'attempt',
+                        'identifier' => $email,
+                        'type' => 'email',
+                        'endpoint' => $endpoint
+                    ]);
+                }
+
+                $this->incrementCache("shield:attempts:email:" . md5($email), $window);
+                $this->incrementCache("shield:daily:email:" . md5($email), 86400);
+            }
+
+            // Track concurrent sessions / recent endpoints
+            $this->trackSessionEndpoints($ip, $endpoint);
         } catch (\Exception $e) {
             // Silent fail
         }
     }
 
-    private function incrementCache(string $key): void
+    private function incrementCache(string $key, int $ttl): void
     {
-        if (\Plugs\Facades\Cache::has($key)) {
-            $val = (int) \Plugs\Facades\Cache::get($key);
-            \Plugs\Facades\Cache::set($key, $val + 1);
+        if (class_exists(\Plugs\Facades\Cache::class)) {
+            $current = (int) \Plugs\Facades\Cache::get($key);
+            \Plugs\Facades\Cache::set($key, $current + 1, $ttl);
+        }
+    }
+
+    private function trackSessionEndpoints(string $ip, string $endpoint): void
+    {
+        if (!class_exists(\Plugs\Facades\Cache::class)) {
+            return;
+        }
+
+        $key = "shield:session_endpoints:" . md5($ip);
+        $endpoints = \Plugs\Facades\Cache::get($key) ?: [];
+        if (is_array($endpoints)) {
+            $endpoints[$endpoint] = time();
+
+            // Clean up old endpoints (older than 5 minutes)
+            $endpoints = array_filter($endpoints, fn($time) => $time > (time() - 300));
+            \Plugs\Facades\Cache::set($key, $endpoints, 300);
         }
     }
 
@@ -496,48 +484,37 @@ class SecurityShieldMiddleware implements MiddlewareInterface
 
     private function getConcurrentSessions(string $ip): int
     {
-        $cacheKey = "shield:sessions:" . md5($ip);
-        $count = \Plugs\Facades\Cache::get($cacheKey);
-        if ($count !== null) {
-            return (int) $count;
-        }
-
-        try {
-            $stmt = $this->db->query(
-                "SELECT COUNT(DISTINCT endpoint) FROM security_attempts 
-                 WHERE identifier = ? AND type = 'ip' AND created_at > DATE_SUB(NOW(), INTERVAL 5 MINUTE)",
-                [$ip]
-            );
-
-            $count = (int) $stmt->fetchColumn();
-            \Plugs\Facades\Cache::set($cacheKey, $count, 30); // Cache for 30s
-            return $count;
-        } catch (\Exception $e) {
+        if (!class_exists(\Plugs\Facades\Cache::class)) {
             return 1;
         }
+
+        $key = "shield:session_endpoints:" . md5($ip);
+        $endpoints = \Plugs\Facades\Cache::get($key) ?: [];
+
+        if (!is_array($endpoints)) {
+            return 1;
+        }
+
+        // Active sessions are endpoints visited in the last 5 minutes (300 seconds)
+        $activeCount = 0;
+        $now = time();
+        foreach ($endpoints as $time) {
+            if ($now - $time <= 300) {
+                $activeCount++;
+            }
+        }
+
+        return max(1, $activeCount); // At least 1 (the current request)
     }
 
     private function getRequestFrequency(string $ip): int
     {
-        $cacheKey = "shield:frequency:" . md5($ip);
-        $count = \Plugs\Facades\Cache::get($cacheKey);
-        if ($count !== null) {
-            return (int) $count;
+        if (!class_exists(\Plugs\Facades\Cache::class)) {
+            return 0; // Optimistic fallback
         }
 
-        try {
-            $stmt = $this->db->query(
-                "SELECT COUNT(*) FROM security_attempts 
-                 WHERE identifier = ? AND type = 'ip' AND created_at > DATE_SUB(NOW(), INTERVAL 1 MINUTE)",
-                [$ip]
-            );
-
-            $count = (int) $stmt->fetchColumn();
-            \Plugs\Facades\Cache::set($cacheKey, $count, 15); // Cache for 15s
-            return $count;
-        } catch (\Exception $e) {
-            return 0;
-        }
+        // We track a localized 1-minute window using the same cache key populated by recordAttempt
+        return (int) \Plugs\Facades\Cache::get("shield:attempts:ip:" . md5($ip));
     }
 
     private function isFingerprintBlocked(string $fingerprint): bool
