@@ -226,6 +226,10 @@ The `@class` directive conditionally compiles a CSS class string. It accepts an 
 {{-- Output: <div class="p-4 font-bold"></div> --}}
 ```
 
+**Attribute Syntax:**
+Alternatively, you can use the `:class` attribute directly on any tag:
+`<div :class="['p-4', 'font-bold' => \$isBold]"></div>`
+
 #### @style
 
 The `@style` directive may be used to conditionally add inline CSS styles to an HTML element. Like the `@class` directive, it accepts an array of styles where the array key contains the style and the value is a boolean expression:
@@ -240,6 +244,10 @@ The `@style` directive may be used to conditionally add inline CSS styles to an 
 
 {{-- Output: <div style="background-color: red; font-weight: bold;"></div> --}}
 ```
+
+**Attribute Syntax:**
+Alternatively, you can use the `:style` attribute directly on any tag:
+`<div :style="['background-color: red', 'font-weight: bold' => \$isActive]"></div>`
 
 ---
 

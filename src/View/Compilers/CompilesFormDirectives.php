@@ -331,6 +331,17 @@ trait CompilesFormDirectives
         // <csrf />
         $content = preg_replace('/<csrf\s*\/?>/is', '@csrf', $content);
 
+        // <use class="..." [as="..."] />
+        $content = preg_replace_callback('/<use' . $attrRegex . '\/?>/is', function ($m) {
+            $attrs = $this->parseAttributes($m[1]);
+            if (isset($attrs['class'])) {
+                $class = $attrs['class']['value'];
+                $as = isset($attrs['as']) ? ", '{$attrs['as']['value']}'" : "";
+                return "@use('{$class}'{$as})";
+            }
+            return $m[0];
+        }, $content);
+
         // 2. <method type="..." />
         $content = preg_replace_callback('/<method' . $attrRegex . '\/?>/is', function ($m) {
             $attrs = $this->parseAttributes($m[1]);

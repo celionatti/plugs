@@ -595,7 +595,40 @@ class ViewCompiler
         $content = $this->compileFormTags($content);        // <csrf>, <method>, <error>, etc.
         $content = $this->compileComponentTags($content);   // <fragment>, <teleport>, <auth>, etc.
         $content = $this->compileMarkdownTag($content);    // <markdown>
+        $content = $this->compileAttributeDirectives($content); // :class, :style
         $content = $this->compileAutoCsp($content);        // Auto-inject CSP nonces
+        return $content;
+    }
+
+    /**
+     * Compile :class and :style attributes on any HTML tag.
+     */
+    protected function compileAttributeDirectives(string $content): string
+    {
+        // 1. Support :class="..."
+        $content = preg_replace_callback('/<([a-zA-Z0-9-]+)(\s+[^>]*?):class=(["\'])(.*?)\3([^>]*?)>/is', function ($matches) {
+            $tagName = $matches[1];
+            $before = $matches[2];
+            $expression = $matches[4];
+            $after = $matches[5];
+
+            $compiledClass = "class=\"<?php echo \Plugs\View\ComponentAttributes::escapeClass(\Plugs\View\ComponentAttributes::resolveClass($expression)); ?>\"";
+
+            return "<{$tagName}{$before} {$compiledClass}{$after}>";
+        }, $content);
+
+        // 2. Support :style="..."
+        $content = preg_replace_callback('/<([a-zA-Z0-9-]+)(\s+[^>]*?):style=(["\'])(.*?)\3([^>]*?)>/is', function ($matches) {
+            $tagName = $matches[1];
+            $before = $matches[2];
+            $expression = $matches[4];
+            $after = $matches[5];
+
+            $compiledStyle = "style=\"<?php echo \Plugs\View\ComponentAttributes::escapeStyle(\Plugs\View\ComponentAttributes::resolveStyle($expression)); ?>\"";
+
+            return "<{$tagName}{$before} {$compiledStyle}{$after}>";
+        }, $content);
+
         return $content;
     }
 

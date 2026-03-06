@@ -61,10 +61,12 @@ Clean HTML tags for security tokens and method spoofing.
 <style :map="['color' => 'red', 'font-weight' => 'bold']" />
 ```
 
-| Tag                        | Attribute | Description                                    |
-| :------------------------- | :-------- | :--------------------------------------------- |
-| **`<class :map="..." />`** | `:map`    | Renders a `class` attribute from an array/map. |
-| **`<style :map="..." />`** | `:map`    | Renders a `style` attribute from an array/map. |
+| **`<class :map="..." />`** | `:map` | Renders a `class` attribute from an array/map. |
+| **`<style :map="..." />`** | `:map` | Renders a `style` attribute from an array/map. |
+
+> [!TIP]
+> You can also use **Attribute Directives** directly on any HTML tag:
+> `<div :class="['p-4', 'active' => $active]">...</div>`
 
 ---
 
@@ -112,6 +114,7 @@ The `<loop>` tag provides a `$loop` variable just like `@foreach`.
 | Tag                             | Attribute       | Description                                   |
 | :------------------------------ | :-------------- | :-------------------------------------------- |
 | **`<include view="..." />`**    | `view`, `:data` | Include a partial view.                       |
+| **`<use class="..." />`**       | `class`, `as`   | Import a PHP class into the view scope.       |
 | **`<push:name>`**               | -               | Push content to a stack (scripts/styles).     |
 | **`<pushOnce:name key="...">`** | `key`           | Push content to a stack only once (keyed).    |
 | **`<stack:name />`**            | -               | Render a stack.                               |

@@ -691,9 +691,9 @@ trait CompilesFormatDirectives
             function ($matches) {
                 $expression = $matches[1];
 
-                return "<?php echo \Plugs\View\ComponentAttributes::escapeClass(
+                return "class=\"<?php echo \Plugs\View\ComponentAttributes::escapeClass(
                     \Plugs\View\ComponentAttributes::resolveClass($expression)
-                ); ?>";
+                ); ?>\"";
             },
             $content
         );
@@ -715,9 +715,9 @@ trait CompilesFormatDirectives
             function ($matches) {
                 $expression = $matches[1];
 
-                return "<?php echo \Plugs\View\ComponentAttributes::escapeStyle(
+                return "style=\"<?php echo \Plugs\View\ComponentAttributes::escapeStyle(
                     \Plugs\View\ComponentAttributes::resolveStyle($expression)
-                ); ?>";
+                ); ?>\"";
             },
             $content
         );
