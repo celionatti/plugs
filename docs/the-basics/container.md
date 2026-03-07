@@ -86,3 +86,19 @@ app()->call([$controller, 'update'], ['id' => 1]);
 ## Lifecycle Management
 
 In long-running environments, the `AbstractKernel::terminate()` method automatically calls `$container->forgetScoped()`, ensuring a clean slate for the next request.
+
+## Container Caching
+
+To maximize performance in production, you can cache the container's reflection data and aliases. This prevents the framework from having to use expensive PHP Reflection on every request.
+
+```bash
+php theplugs container:cache
+```
+
+This command generates a `storage/framework/container.php` file that the framework will automatically load during bootstrapping.
+
+To clear the container cache:
+
+```bash
+php theplugs container:clear
+```

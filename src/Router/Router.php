@@ -204,14 +204,8 @@ class Router
      */
     public function view(string $uri, string $view, array $data = []): Route
     {
-        return $this->get($uri, function () use ($view, $data) {
-            if (function_exists('view')) {
-                return view($view, $data);
-            }
-
-            // Fallback if view helper is missing
-            return ResponseFactory::html("View: {$view}");
-        });
+        return $this->get($uri, [\Plugs\Http\Controllers\ViewController::class, 'handle'])
+            ->defaults(['viewName' => $view, 'data' => $data]);
     }
 
     /**
@@ -535,8 +529,6 @@ class Router
         $this->namedRoutes[$name] = $route;
     }
 
-
-
     /**
      * Get the URL generator pointing to this Router instance.
      * 
@@ -644,11 +636,27 @@ class Router
             if ($m === $method) {
                 continue;
             }
-            foreach ($mRoutes as $route) {
-                if ($route->matches($m, $path)) {
-                    $allowedMethods[] = $m;
 
-                    break;
+            // 1. Check static routes first
+            if (isset($this->staticRoutes[$m][$path])) {
+                $allowedMethods[] = $m;
+                continue;
+            }
+
+            // 2. Check compiled dynamic routes
+            $compiled = $this->getCompiledRoutes($m);
+            if ($compiled && @preg_match($compiled['regex'], $path)) {
+                $allowedMethods[] = $m;
+                continue;
+            }
+
+            // 3. Fallback to individual checks only if regex failed to compile
+            if ($compiled === null || preg_last_error() !== PREG_NO_ERROR) {
+                foreach ($mRoutes as $route) {
+                    if ($route->matchesPath($path)) {
+                        $allowedMethods[] = $m;
+                        break;
+                    }
                 }
             }
         }

@@ -260,13 +260,13 @@ public function unsubscribe(Request $request)
 Scanning all your controllers for attributes or parsing large route files on every request can be expensive. To speed up your application, you can cache your routes using the CLI:
 
 ```bash
-php plg route:cache
+php theplugs route:cache
 ```
 
-This command will serialize all your routes into a single file in the `storage/framework` directory. On subsequent requests, the framework will load this simple file instead of parsing your source code.
+This command will serialize all your routes (including `Route::view` and Attribute-based routes) into a single fast-loading file, enabling **O(1) route matching**. On subsequent requests, the framework will load this file instead of parsing your source code, significantly reducing render time.
 
 To clear the route cache:
 
 ```bash
-php plg route:clear
+php theplugs route:clear
 ```

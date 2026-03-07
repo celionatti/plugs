@@ -35,6 +35,7 @@ use Plugs\Console\Commands\MakeServiceCommand;
 use Plugs\Console\Commands\MakeSpaAssetCommand;
 use Plugs\Console\Commands\MakeEditorAssetCommand;
 use Plugs\Console\Commands\MakePlugsAssetsCommand;
+use Plugs\Console\Commands\MakeLangCommand;
 use Plugs\Console\Commands\MigrateCommand;
 use Plugs\Console\Commands\MigrateFreshCommand;
 use Plugs\Console\Commands\MigrateResetCommand;
@@ -113,6 +114,7 @@ class ConsoleKernel
         'make:notification' => MakeNotificationCommand::class,
         'make:ai-migration' => MakeAiMigrationCommand::class,
         'make:module' => \Plugs\Console\Commands\MakeModuleCommand::class,
+        'make:lang' => MakeLangCommand::class,
 
         'db:backup' => DatabaseBackupCommand::class,
         'db:restore' => DatabaseRestoreCommand::class,
@@ -131,6 +133,8 @@ class ConsoleKernel
         'optimize' => \Plugs\Console\Commands\OptimizeCommand::class,
         'opcache:clear' => \Plugs\Console\Commands\OpCacheClearCommand::class,
         'opcache:status' => \Plugs\Console\Commands\OpCacheStatusCommand::class,
+        'container:cache' => \Plugs\Console\Commands\ContainerCacheCommand::class,
+        'container:clear' => \Plugs\Console\Commands\ContainerClearCommand::class,
 
         'migrate' => MigrateCommand::class,
         'migrate:rollback' => MigrateRollbackCommand::class,
@@ -154,6 +158,14 @@ class ConsoleKernel
         'ai:agent' => AIAgentCommand::class,
         'ai:think' => AIThinkCommand::class,
         'ai:index-docs' => \Plugs\Console\Commands\AIIndexDocsCommand::class,
+
+        'shield:list' => \Plugs\Console\Commands\ShieldCommand::class,
+        'shield:unblock' => \Plugs\Console\Commands\ShieldCommand::class,
+        'shield:block' => \Plugs\Console\Commands\ShieldCommand::class,
+        'shield:clear' => \Plugs\Console\Commands\ShieldCommand::class,
+        'shield:stats' => \Plugs\Console\Commands\ShieldCommand::class,
+        'security:install' => \Plugs\Console\Commands\SecurityInstallCommand::class,
+        'security:scan' => \Plugs\Console\Commands\SecurityScanCommand::class,
         'make:ai-test' => MakeAiTestCommand::class,
         'db:analyze' => DatabaseAnalyzeCommand::class,
         'framework:scan-security' => SecurityScanCommand::class,
@@ -162,7 +174,6 @@ class ConsoleKernel
         'view:cache' => ViewCacheCommand::class,
         'view:clear' => ViewClearCommand::class,
         'identity:install' => \Plugs\Console\Commands\IdentityInstallCommand::class,
-        'security:install' => \Plugs\Console\Commands\SecurityInstallCommand::class,
     ];
 
 
@@ -191,6 +202,7 @@ class ConsoleKernel
         'g:lis' => 'make:listener',
         'g:not' => 'make:notification',
         'g:mod' => 'make:module',
+        'g:lang' => 'make:lang',
         'seed' => 'db:seed',
         'routes' => 'route:list',
         'route:show' => 'route:list',
@@ -237,6 +249,7 @@ class ConsoleKernel
             'make:notification',
             'make:ai-migration',
             'make:module',
+            'make:lang',
         ],
         'Routes' => ['route:list', 'route:cache', 'route:clear', 'route:test'],
         'Utility' => ['serve', 'cache:clear', 'logs:clear', 'view:cache', 'view:clear', 'config:cache', 'optimize', 'opcache:clear', 'opcache:status', 'queue:work', 'queue:failed', 'queue:retry', 'health', 'storage:link', 'type:gen', 'ai:chat', 'ai:fix', 'ai:audit', 'make:ai-test', 'ai:agent', 'ai:think', 'framework:scan-security', 'auth:install', 'identity:install'],

@@ -29,10 +29,17 @@ Plugs automatically discovers and registers your application's Service Providers
 
 ## 3. Deployment Optimization
 
-For production, you can cache your configuration to eliminate filesystem hits:
+For production, you can cache your configuration to eliminate filesystem hits and `.env` parsing overhead:
 
 ```bash
 # Compile defaults and .env into a single cache file
+php theplugs config:cache
+```
+
+You can also use the all-in-one optimization command:
+
+```bash
+# Optimizes routes, container, and configuration
 php theplugs optimize
 ```
 

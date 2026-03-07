@@ -1,10 +1,10 @@
 # Caching & Performance
 
-Plugs implements a high-performance **Tiered Caching** system that ensures your application stays snappy even under heavy load.
+Plugs implements a high-performance **Multi-Layer Caching** system that ensures your application stays snappy even under heavy load.
 
-## 1. Tiered Cache (L1/L2)
+## 1. Tiered Application Cache (L1/L2)
 
-The framework can use multiple cache layers simultaneously:
+The framework can use multiple cache layers simultaneously for your application data:
 
 - **L1 (Local)**: Fast in-memory/APC cache for hot data.
 - **L2 (Distributed)**: Redis or Memcached for shared data across nodes.
@@ -28,22 +28,48 @@ Cache::tags(['people', 'authors'])->put('John', $user, $seconds);
 Cache::tags('people')->flush();
 ```
 
-## 3. Cache Warmer
+## 3. Framework Optimization Caches
+
+Eliminate bootstrap overhead in production by freezing your application state. These caches are critical for achieving sub-100ms render times.
+
+### Route Caching
+
+Serializes all your routes into a single fast-loading file, enabling **O(1)** route matching.
+
+```bash
+php theplugs route:cache
+```
+
+### Container Caching
+
+Caches the dependency injection container's reflection data and aliases.
+
+```bash
+php theplugs container:cache
+```
+
+### Configuration Caching
+
+Compiles all configuration files and `.env` variables into a single array for instant loading.
+
+```bash
+php theplugs config:cache
+```
+
+### All-in-One Optimization
+
+```bash
+# Compile everything for maximum speed
+php theplugs optimize
+```
+
+## 4. Cache Warmer
 
 Proactively warm your cache before users hit the application.
 
 ```bash
 # Invoke your custom warmers
 php theplugs cache:warm
-```
-
-## 4. Route & Config Caching
-
-Eliminate bootstrap overhead in production by freezing your application state.
-
-```bash
-# Compile everything for maximum speed
-php theplugs optimize
 ```
 
 ---

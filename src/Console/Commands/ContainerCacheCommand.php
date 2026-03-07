@@ -4,32 +4,55 @@ declare(strict_types=1);
 
 namespace Plugs\Console\Commands;
 
+/*
+|--------------------------------------------------------------------------
+| ContainerCacheCommand Class
+|--------------------------------------------------------------------------
+*/
+
 use Plugs\Console\Command;
-use Plugs\Container\Container;
 
 class ContainerCacheCommand extends Command
 {
-    protected string $description = 'Cache the container reflection metadata';
+    protected string $description = 'Create a container cache file for faster dependency resolutions';
+
+    protected function defineOptions(): array
+    {
+        return [
+            '--path=PATH' => 'Custom cache file path',
+        ];
+    }
 
     public function handle(): int
     {
         $this->title('Container Cache Generator');
 
-        $container = Container::getInstance();
-        $cachePath = STORAGE_PATH . 'framework/container.php'; // @phpstan-ignore constant.notFound
+        // Check if container exists
+        if (!function_exists('app')) {
+            $this->error('Application not found. Make sure the application is bootstrapped.');
+            return 1;
+        }
 
-        $this->task('Caching container metadata', function () use ($container, $cachePath) {
+        $this->task('Caching application container', function () {
             try {
-                return $container->cache($cachePath);
+                // Determine Cache path
+                $basePath = defined('STORAGE_PATH') ? STORAGE_PATH : '';
+                $cachePath = $this->option('path', $basePath . 'framework/container.php');
+
+                $container = app(\Plugs\Container\Container::class);
+                $container->cache($cachePath);
+
+                return true;
             } catch (\Exception $e) {
                 $this->error($e->getMessage());
+
                 return false;
             }
         });
 
         $this->box(
             "Container cache created successfully!\n\n" .
-            "Reflection overhead is now minimized for production.",
+            "Your service container is now optimized for production performances.",
             "✅ Success",
             "success"
         );

@@ -19,14 +19,18 @@ class RouteClearCommand extends Command
 
     public function handle(): int
     {
-        $this->title('Clear Route Cache');
+        $this->title('Route Cache Terminator');
 
-        $router = app(Router::class);
-
-        $this->task('Removing route cache', function () use ($router) {
-            $router->clearCache(true);
-
-            return true;
+        $this->task('Clearing route cache', function () {
+            try {
+                /** @var Router $router */
+                $router = app('router');
+                $router->clearCache(true); // true means physical deletion
+                return true;
+            } catch (\Exception $e) {
+                $this->error($e->getMessage());
+                return false;
+            }
         });
 
         $this->success('Route cache cleared successfully!');

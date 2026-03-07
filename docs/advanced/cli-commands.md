@@ -153,6 +153,23 @@ php theplugs make:component [name]
 
 **Alias:** `g:comp`
 
+### Translation Files
+
+Scaffold translation files for a new locale with pre-filled common translations:
+
+```bash
+php theplugs make:lang [locale]
+```
+
+**Options:**
+
+- `--force, -f`: Overwrite existing translation files.
+- `--groups`: Comma-separated list of groups to create (default: `messages,validation,auth`).
+
+**Pre-filled locales:** `en`, `fr`, `es`, `de`, `pt`, `zh`, `ar`.
+
+**Alias:** `g:lang`
+
 ### SPA Bridge (New)
 
 Generate the Plugs SPA Bridge asset for your application:
@@ -221,6 +238,69 @@ Run the scheduled tasks that are due:
 
 ```bash
 php theplugs schedule:run
+```
+
+### Optimization (New)
+
+Caching your framework state is the best way to achieve maximum performance in production. These commands eliminate filesystem hits and expensive parsing.
+
+#### Caching Everything
+
+The `optimize` command is a shortcut to cache routes, container reflection, and configuration all at once.
+
+```bash
+php theplugs optimize
+```
+
+To remove all optimization caches:
+
+```bash
+php theplugs optimize:clear
+```
+
+#### Route Caching
+
+Specifically caches your application routes for O(1) matching speed.
+
+```bash
+php theplugs route:cache
+php theplugs route:clear
+```
+
+#### Container Caching
+
+Specifically caches the dependency injection container's reflection data.
+
+```bash
+php theplugs container:cache
+php theplugs container:clear
+```
+
+#### Configuration Caching
+
+Specifically caches your configuration files and environment variables.
+
+```bash
+php theplugs config:cache
+php theplugs config:clear
+```
+
+#### Security Shield Management (New)
+
+Manage automatic blocks and monitor security logs:
+
+```bash
+# List all blocked IPs and fingerprints
+php theplugs shield:list
+
+# Unblock a specific IP or fingerprint
+php theplugs shield:unblock 192.168.1.1
+
+# Clear all blocks and security logs
+php theplugs shield:clear
+
+# Display security statistics
+php theplugs shield:stats
 ```
 
 ## Creating Custom Commands
