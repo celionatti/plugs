@@ -153,6 +153,7 @@ class ConsoleKernel
         'ai:audit' => AiAuditCommand::class,
         'ai:agent' => AIAgentCommand::class,
         'ai:think' => AIThinkCommand::class,
+        'ai:index-docs' => \Plugs\Console\Commands\AIIndexDocsCommand::class,
         'make:ai-test' => MakeAiTestCommand::class,
         'db:analyze' => DatabaseAnalyzeCommand::class,
         'framework:scan-security' => SecurityScanCommand::class,

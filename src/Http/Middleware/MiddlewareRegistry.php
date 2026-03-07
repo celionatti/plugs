@@ -26,6 +26,7 @@ class MiddlewareRegistry
         'json' => ForceJsonMiddleware::class,
         'throttle' => RateLimitMiddleware::class,
         'spa' => SPAMiddleware::class,
+        'ai.moderate' => AIContentModerationMiddleware::class,
     ];
 
     /**

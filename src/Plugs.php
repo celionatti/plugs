@@ -70,6 +70,8 @@ class Plugs
         $this->container = \Plugs\Container\Container::getInstance();
         $this->container->instance('app', $this->container);
         $this->container->instance(self::class, $this);
+        $this->container->instance(\Plugs\Container\Container::class, $this->container);
+        $this->container->instance(\Psr\Container\ContainerInterface::class, $this->container);
 
         $this->dispatcher = new MiddlewareDispatcher();
 
@@ -89,6 +91,46 @@ class Plugs
     public function getContainer(): \Plugs\Container\Container
     {
         return $this->container;
+    }
+
+    /**
+     * Resolve a class from the container.
+     */
+    public function make(string $abstract, array $parameters = [])
+    {
+        return $this->container->make($abstract, $parameters);
+    }
+
+    /**
+     * Check if a binding exists.
+     */
+    public function bound(string $abstract): bool
+    {
+        return $this->container->bound($abstract);
+    }
+
+    /**
+     * Bind a singleton (shared instance).
+     */
+    public function singleton(string $abstract, $concrete = null): void
+    {
+        $this->container->singleton($abstract, $concrete);
+    }
+
+    /**
+     * Bind a class or interface to an implementation.
+     */
+    public function bind(string $abstract, $concrete = null, bool $shared = false): void
+    {
+        $this->container->bind($abstract, $concrete, $shared);
+    }
+
+    /**
+     * Bind an existing instance.
+     */
+    public function instance(string $abstract, $instance): void
+    {
+        $this->container->instance($abstract, $instance);
     }
 
     /**

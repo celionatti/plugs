@@ -58,4 +58,12 @@ abstract class AIBaseDriver implements AIDriverInterface
     {
         throw new \RuntimeException(sprintf('Embedding is not supported by the [%s] driver.', class_basename(static::class)));
     }
+
+    /**
+     * @inheritDoc
+     */
+    public function analyze(string $prompt, array $mediaPaths, array $options = []): string
+    {
+        throw new \RuntimeException(sprintf('Multi-modal analysis is not supported by the [%s] driver.', class_basename(static::class)));
+    }
 }

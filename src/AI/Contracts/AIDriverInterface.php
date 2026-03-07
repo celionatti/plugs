@@ -57,4 +57,14 @@ interface AIDriverInterface
      * @return array
      */
     public function embed(string $text): array;
+
+    /**
+     * Analyze media files with a prompt.
+     *
+     * @param string $prompt
+     * @param array $mediaPaths
+     * @param array $options
+     * @return string
+     */
+    public function analyze(string $prompt, array $mediaPaths, array $options = []): string;
 }

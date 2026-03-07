@@ -103,4 +103,44 @@ class GeminiDriver extends AIBaseDriver
             throw new RuntimeException("Gemini Embedding Error: " . $e->getMessage(), (int) $e->getCode(), $e);
         }
     }
+
+    /**
+     * @inheritDoc
+     */
+    public function analyze(string $prompt, array $mediaPaths, array $options = []): string
+    {
+        $parts = [['text' => $prompt]];
+
+        foreach ($mediaPaths as $path) {
+            if (!file_exists($path)) {
+                throw new RuntimeException("Media file not found: {$path}");
+            }
+
+            $mimeType = mime_content_type($path) ?: 'application/octet-stream';
+            $data = base64_encode(file_get_contents($path));
+
+            $parts[] = [
+                'inline_data' => [
+                    'mime_type' => $mimeType,
+                    'data' => $data
+                ]
+            ];
+        }
+
+        try {
+            $response = $this->client->post($this->getUrl('generateContent'), [
+                'json' => [
+                    'contents' => [
+                        ['parts' => $parts]
+                    ]
+                ],
+            ]);
+
+            $data = json_decode($response->getBody()->getContents(), true);
+
+            return $data['candidates'][0]['content']['parts'][0]['text'] ?? '';
+        } catch (\Exception $e) {
+            throw new RuntimeException("Gemini Multi-Modal Error: " . $e->getMessage(), (int) $e->getCode(), $e);
+        }
+    }
 }

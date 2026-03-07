@@ -25,6 +25,7 @@ class AIChatCommand extends Command
             'driver' => 'Specify the AI driver to use (openai, anthropic, gemini)',
             'model' => 'Specify the model to use',
             'interactive' => 'Start an interactive chat session',
+            'aware' => 'Make the AI aware of the framework documentation (RAG)',
         ];
     }
 
@@ -36,6 +37,7 @@ class AIChatCommand extends Command
         $model = $this->option('model');
         $prompt = $this->argument('prompt');
         $interactive = $this->hasOption('interactive');
+        $aware = $this->hasOption('aware');
 
         /** @var AIManager $ai */
         $ai = app('ai');
@@ -65,7 +67,7 @@ class AIChatCommand extends Command
             }
 
             if ($interactive || !$prompt) {
-                $this->startInteractiveSession($driver);
+                $this->startInteractiveSession($driver, $aware);
             }
 
         } catch (Throwable $e) {
@@ -76,9 +78,12 @@ class AIChatCommand extends Command
         return 0;
     }
 
-    protected function startInteractiveSession($driver): void
+    protected function startInteractiveSession($driver, bool $aware = false): void
     {
         $this->info("Starting interactive session. Type 'exit' or 'quit' to end.");
+        if ($aware) {
+            $this->warning("Context-Aware mode enabled (RAG).");
+        }
         $this->divider();
 
         $messages = [];
@@ -95,7 +100,14 @@ class AIChatCommand extends Command
                 continue;
             }
 
-            $messages[] = ['role' => 'user', 'content' => $input];
+            $currentPrompt = $input;
+
+            if ($aware) {
+                $context = app('ai')->searchDocs($input);
+                $currentPrompt = "Context:\n{$context}\n\nUser Question: {$input}";
+            }
+
+            $messages[] = ['role' => 'user', 'content' => $currentPrompt];
 
             $response = $this->loading('AI is thinking...', function () use ($driver, $messages) {
                 return $driver->chat($messages);

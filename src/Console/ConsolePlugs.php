@@ -185,7 +185,71 @@ class ConsolePlugs
             $output->note("Run with --debug or --verbose for detailed stack trace");
         }
 
+        $this->consultAiForFix($output, $e, $input);
+
         $output->line();
+    }
+
+    private function consultAiForFix(Output $output, Throwable $e, $input): void
+    {
+        // Don't consult AI if we are already in an AI command or if no driver is configured
+        if (str_starts_with($input->commandName() ?? '', 'ai:') || !isset($GLOBALS['app'])) {
+            return;
+        }
+
+        try {
+            $ai = $GLOBALS['app']->make(\Plugs\AI\AIManager::class);
+            if (!$ai->getDefaultDriver()) {
+                return;
+            }
+        } catch (Throwable $err) {
+            return;
+        }
+
+        if ($output->confirm("\n  \033[93m💡 Would you like me to consult the AI for a potential fix?\033[0m", true)) {
+            $output->newLine();
+            $output->spinner("Consulting AI expert...", function () use ($output, $e, $ai) {
+                $prompt = <<<PROMPT
+You are an expert debugger for the Plugs PHP Framework.
+A command failed with the following error:
+
+Error: {$e->getMessage()}
+File: {$e->getFile()}
+Line: {$e->getLine()}
+
+Stack Trace snippet:
+{$this->getCondensedTrace($e)}
+
+Please provide:
+1. A concise explanation of why this happened.
+2. A specific code fix or CLI command to solve it.
+3. Keep it brief and actionable.
+PROMPT;
+
+                try {
+                    $suggestion = $ai->prompt($prompt);
+                    $output->newLine();
+                    $output->box($suggestion, "🤖 AI Suggested Fix", "warning");
+                    return true;
+                } catch (Throwable $err) {
+                    $output->error("AI Consultation failed: " . $err->getMessage());
+                    return true;
+                }
+            });
+        }
+    }
+
+    private function getCondensedTrace(Throwable $e): string
+    {
+        $trace = '';
+        foreach (array_slice($e->getTrace(), 0, 5) as $index => $item) {
+            $file = $item['file'] ?? 'unknown';
+            $line = $item['line'] ?? 0;
+            $class = $item['class'] ?? '';
+            $function = $item['function'] ?? 'unknown';
+            $trace .= "#{$index} {$file}({$line}): {$class}{$function}\n";
+        }
+        return $trace;
     }
 
     private function formatTime(float $seconds): string

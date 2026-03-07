@@ -221,7 +221,7 @@ class DefaultConfig
                 'csrf_config' => [
                     'token_lifetime' => 3600,
                     'use_per_request_tokens' => true,
-                    'strict_mode' => true,
+                    'strict_mode' => env('CSRF_STRICT_MODE', true),
                     'use_masking' => true,
                     'context_bound' => false,
                 ],

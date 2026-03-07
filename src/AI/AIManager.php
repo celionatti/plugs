@@ -289,4 +289,27 @@ class AIManager
         return app(VectorManager::class);
     }
 
+    /**
+     * Search documentation for relevant context (RAG).
+     */
+    public function searchDocs(string $query, int $limit = 5): string
+    {
+        $results = $this->vector()->search($query, $limit);
+
+        $context = "Relevant Documentation Context:\n\n";
+        foreach ($results as $result) {
+            $context .= "--- Source: {$result['metadata']['source']} ---\n";
+            $context .= $result['text'] . "\n\n";
+        }
+
+        return $context;
+    }
+
+    /**
+     * Analyze media files (images, audio) using the AI.
+     */
+    public function analyze(string $prompt, array $mediaPaths, array $options = []): string
+    {
+        return $this->driver()->analyze($prompt, $mediaPaths, $options);
+    }
 }
