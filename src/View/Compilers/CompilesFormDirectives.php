@@ -117,16 +117,6 @@ trait CompilesFormDirectives
         return $content;
     }
 
-    protected function compileJson(string $content): string
-    {
-        $balanced = '([^()]*+(?:\((?1)\)[^()]*+)*+)';
-
-        return preg_replace(
-            '/@json\s*\(' . $balanced . '\)/',
-            '<?php echo json_encode($1, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT); ?>',
-            $content
-        );
-    }
 
     protected function compileJsonScript(string $content): string
     {
