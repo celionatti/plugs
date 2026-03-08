@@ -35,6 +35,8 @@ class Pagination implements \IteratorAggregate, \Countable, \ArrayAccess, \JsonS
     protected array $query = [];
     protected $presenter;
     protected ?string $nonce = null; // Added for CSP nonce
+    protected static array $globalOptions = [];
+    protected static ?string $defaultView = null;
     protected array $options = [
         // Display options
         'show_numbers' => true,
@@ -81,6 +83,10 @@ class Pagination implements \IteratorAggregate, \Countable, \ArrayAccess, \JsonS
         // New Features
         'show_goto' => false,
         'goto_text' => 'Go to page',
+        'infinite_scroll_enabled' => false,
+        'infinite_scroll_sentinel' => 'pagination-sentinel',
+        'page_size_options' => [15, 30, 50, 100],
+        'page_size_label' => 'Items per page',
     ];
 
     /**
@@ -88,6 +94,7 @@ class Pagination implements \IteratorAggregate, \Countable, \ArrayAccess, \JsonS
      */
     public function __construct(array|Collection $items, int|string $perPage = 15, int|string $currentPage = 1, int|string|null $total = null)
     {
+        $this->options = array_merge($this->options, self::$globalOptions);
         $this->items = $items instanceof Collection ? $items->all() : $items;
         $this->perPage = max(1, (int) $perPage);
         $this->currentPage = max(1, (int) $currentPage);
@@ -156,6 +163,39 @@ class Pagination implements \IteratorAggregate, \Countable, \ArrayAccess, \JsonS
         $this->options = array_merge($this->options, $options);
 
         return $this;
+    }
+
+    /**
+     * Set global encryption/styling options for all instances
+     */
+    public static function setGlobalOptions(array $options): void
+    {
+        self::$globalOptions = array_merge(self::$globalOptions, $options);
+    }
+
+    /**
+     * Set the default view for all paginators
+     */
+    public static function defaultView(string $view): void
+    {
+        self::$defaultView = $view;
+    }
+
+    /**
+     * Quickly configure for Tailwind CSS
+     */
+    public static function useTailwind(): void
+    {
+        self::defaultView('pagination.tailwind');
+        self::setGlobalOptions(['ajax_enabled' => true]);
+    }
+
+    /**
+     * Quickly configure for Bootstrap
+     */
+    public static function useBootstrap(): void
+    {
+        self::defaultView('pagination.bootstrap');
     }
 
     /**
@@ -411,6 +451,10 @@ class Pagination implements \IteratorAggregate, \Countable, \ArrayAccess, \JsonS
     {
         if (isset($this->presenter)) {
             return ($this->presenter)($this);
+        }
+
+        if (self::$defaultView) {
+            return $this->links(self::$defaultView);
         }
 
         return $this->renderWithEllipsis();
@@ -670,6 +714,59 @@ class Pagination implements \IteratorAggregate, \Countable, \ArrayAccess, \JsonS
         }
 
         $html .= '</div>';
+
+        return $html;
+    }
+
+    /**
+     * Render infinite scroll pagination
+     * (Scroll-triggered automatic loading)
+     */
+    public function renderInfinite(): string
+    {
+        if (!$this->hasPages()) {
+            return '';
+        }
+
+        $html = '<div class="' . $this->options['container_class'] . ' pagination-infinite">';
+
+        if ($this->hasNextPage()) {
+            $nextUrl = $this->url($this->nextPage());
+            $loadingText = $this->options['loading_text'];
+
+            $html .= sprintf(
+                '<div class="%s" data-url="%s" data-page="%d" data-container="%s"></div>',
+                $this->options['infinite_scroll_sentinel'],
+                $nextUrl,
+                $this->nextPage(),
+                $this->options['ajax_container']
+            );
+            $html .= sprintf('<div class="loading-indicator" style="display:none;">%s</div>', $loadingText);
+        }
+
+        $html .= '</div>';
+
+        return $html;
+    }
+
+    /**
+     * Render Page Size Selector
+     */
+    public function renderPageSizeSelector(): string
+    {
+        $options = $this->options['page_size_options'];
+        $label = $this->options['page_size_label'];
+
+        $html = '<div class="plugs-pagination-per-page">';
+        $html .= '<span>' . $label . ':</span>';
+        $html .= '<select onchange="const url = new URL(window.location.href); url.searchParams.set(\'per_page\', this.value); url.searchParams.delete(\'page\'); window.location.href = url.toString();">';
+
+        foreach ($options as $option) {
+            $selected = $this->perPage === (int) $option ? ' selected' : '';
+            $html .= sprintf('<option value="%d"%s>%d</option>', $option, $selected, $option);
+        }
+
+        $html .= '</select></div>';
 
         return $html;
     }
@@ -1004,6 +1101,35 @@ class Pagination implements \IteratorAggregate, \Countable, \ArrayAccess, \JsonS
     filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.05));
 }
 
+/* Page Size Selector */
+.plugs-pagination-per-page {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.875rem;
+    color: #6b7280;
+}
+
+.plugs-pagination-per-page select {
+    padding: 0.25rem 1.5rem 0.25rem 0.5rem;
+    border: 1px solid #d1d5db;
+    border-radius: 0.25rem;
+    background-color: white;
+    cursor: pointer;
+    font-size: 0.875rem;
+    outline: none;
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%236B7280'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 0.5rem center;
+    background-size: 1rem;
+}
+
+.plugs-pagination-per-page select:focus {
+    border-color: #2d6a4f;
+    ring: 2px solid rgba(45, 106, 79, 0.2);
+}
+
 /* SVG Icon alignment */
 .page-link svg {
     display: block;
@@ -1067,6 +1193,57 @@ document.addEventListener('DOMContentLoaded', function() {
                 this.style.display = 'block';
             });
     });
+
+    // Infinite Scroll Implementation
+    const sentinel = document.querySelector('.pagination-sentinel');
+    if (sentinel) {
+        let loading = false;
+        const observer = new IntersectionObserver((entries) => {
+            if (entries[0].isIntersecting && !loading) {
+                const url = sentinel.dataset.url;
+                const container = document.querySelector(sentinel.dataset.container);
+                const loader = document.querySelector('.loading-indicator');
+
+                if (!url || !container) return;
+
+                loading = true;
+                if (loader) loader.style.display = 'block';
+
+                fetch(url)
+                    .then(response => response.text())
+                    .then(html => {
+                        const parser = new DOMParser();
+                        const doc = parser.parseFromString(html, 'text/html');
+                        const newItemsContainer = doc.querySelector(sentinel.dataset.container);
+                        
+                        if (newItemsContainer) {
+                            container.insertAdjacentHTML('beforeend', newItemsContainer.innerHTML);
+                            
+                            const nextSentinel = doc.querySelector('.pagination-sentinel');
+                            if (nextSentinel) {
+                                sentinel.dataset.url = nextSentinel.dataset.url;
+                                sentinel.dataset.page = nextSentinel.dataset.page;
+                            } else {
+                                sentinel.remove();
+                                if (container.parentElement) {
+                                    container.insertAdjacentHTML('afterend', '<div class="no-more-results">No more results</div>');
+                                }
+                            }
+                        }
+                        
+                        loading = false;
+                        if (loader) loader.style.display = 'none';
+                    })
+                    .catch(error => {
+                        console.error('Infinite scroll error:', error);
+                        loading = false;
+                        if (loader) loader.style.display = 'none';
+                    });
+            }
+        }, { threshold: 0.1 });
+
+        observer.observe(sentinel);
+    }
 });
 </script>
 JS;

@@ -62,6 +62,7 @@ To use the built-in themes (Green, Floating, etc.), you **must** include the pag
 ```
 
 This outputs a `<style>` block containing all the necessary CSS classes for:
+
 - The Default Green Theme
 - Floating / Glassmorphism Style
 - Animations & Rounding
@@ -72,6 +73,7 @@ This outputs a `<style>` block containing all the necessary CSS classes for:
 Plugs comes with several built-in pagination styles to fit your application's design.
 
 ### Standard (Green Theme)
+
 The default `render()` method outputs a full pagination list with a modern "Green" theme that includes numbers, previous/next buttons, and ellipses for large ranges.
 
 ```php
@@ -79,6 +81,7 @@ The default `render()` method outputs a full pagination list with a modern "Gree
 ```
 
 ### Simple Pagination
+
 If you only need "Previous" and "Next" buttons, use `renderSimple()`. This is useful for simpler interfaces where exact page numbers matter less.
 
 ```php
@@ -86,6 +89,7 @@ If you only need "Previous" and "Next" buttons, use `renderSimple()`. This is us
 ```
 
 ### Load More Button
+
 For a "Load More" style experience (popular in mobile apps or infinite scroll-like interfaces), use `renderLoadMore()`.
 
 ```php
@@ -102,19 +106,79 @@ $users->setOptions([
 echo $users->renderLoadMore();
 ```
 
+### Infinite Scroll
+
+For a modern, automatic loading experience as the user scrolls, use `renderInfinite()`. This uses the `IntersectionObserver` API.
+
+```php
+$users->setOptions([
+    'ajax_enabled' => true,
+    'ajax_container' => '#results-container'
+]);
+
+echo $users->renderInfinite();
+echo $users->getAjaxScript();
+```
+
+### Page Size Selector
+
+To allow users to change the number of items per page, use `renderPageSizeSelector()`.
+
+```php
+<?= $users->renderPageSizeSelector() ?>
+```
+
+The selector automatically updates the `per_page` query parameter and resets the current page.
+
 ### Floating Pagination
+
 For a modern, centered, and floating appearance (glassmorphism style), use `renderFloating()`.
 
 ```php
 <?= $users->renderFloating() ?>
 ```
 
+## Global Configuration & Design Integration
+
+Plugs allows you to configure pagination once for your entire application, making it easy to integrate with your existing CSS design.
+
+### Setting Global Defaults
+
+In your application's bootstrapper or service provider:
+
+```php
+use Plugs\Paginator\Paginator;
+
+// Quickly set to Tailwind or Bootstrap
+Paginator::useTailwind();
+Paginator::useBootstrap();
+
+// Or map your custom CSS classes globally
+Paginator::setGlobalOptions([
+    'container_class' => 'my-pagination',
+    'item_class'      => 'page-item',
+    'link_class'      => 'page-link',
+    'active_class'    => 'is-active'
+]);
+```
+
+### Preventing Style Overrides
+
+If you already have a CSS file with pagination styles, simply **do not call** `$users->getStyles()`. The paginator will generate the HTML with your classes, and your existing CSS will handle the styling.
+
+```php
+// Standard render using your global custom classes
+<?= $users->render() ?>
+```
+
 ## Framework Support
 
 ### Bootstrap
+
 The default HTML structure and classes (`page-item`, `page-link`, `pagination`) are fully compatible with **Twitter Bootstrap 4 & 5**. If you have Bootstrap loaded, the pagination will automatically pick up Bootstrap's styling (though you may want to override the `green` theme colors if they conflict).
 
 ### Tailwind CSS
+
 To use Tailwind CSS, you can either customize the classes using `setOptions` or, for full control, use a custom view.
 
 **Option 1: Custom View (Recommended)**
@@ -126,6 +190,7 @@ Create a view file (e.g., `resources/views/pagination/tailwind.php`) and render 
 ```
 
 **Example Tailwind View (`pagination/tailwind.php`):**
+
 ```php
 <?php if ($paginator->hasPages()): ?>
     <nav role="navigation" aria-label="Pagination" class="flex items-center justify-between">
@@ -205,7 +270,7 @@ class UserRepository
 
 The `Pagination` class implements the `JsonSerializable` interface and exposes the `toJson` method, so it's very easy to convert your pagination results to JSON. You may also convert a paginator instance to JSON by returning it from a route or controller action:
 
-```php
+````php
 use App\Models\User;
 
 ### API Pagination Responses
@@ -216,7 +281,7 @@ When building APIs, you may use the `paginateResponse()` method to return a stan
 use App\Models\User;
 
 return User::paginateResponse(15);
-```
+````
 
 For more advanced search scenarios combining filtering and pagination, use `searchResponse()`:
 

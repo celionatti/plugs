@@ -47,6 +47,38 @@ class Paginator
     }
 
     /**
+     * Set global configuration for all paginators
+     */
+    public static function setGlobalOptions(array $options): void
+    {
+        Pagination::setGlobalOptions($options);
+    }
+
+    /**
+     * Set the default view for all paginators
+     */
+    public static function defaultView(string $view): void
+    {
+        Pagination::defaultView($view);
+    }
+
+    /**
+     * Quickly configure for Tailwind CSS
+     */
+    public static function useTailwind(): void
+    {
+        Pagination::useTailwind();
+    }
+
+    /**
+     * Quickly configure for Bootstrap
+     */
+    public static function useBootstrap(): void
+    {
+        Pagination::useBootstrap();
+    }
+
+    /**
      * Create simple paginator (no total count)
      */
     public static function simple(array $items, int|string $perPage = 15, int|string $currentPage = 1): self
@@ -228,6 +260,22 @@ class Paginator
     public function renderSimple(): string
     {
         return $this->pagination->renderSimple();
+    }
+
+    /**
+     * Render infinite scroll pagination
+     */
+    public function renderInfinite(): string
+    {
+        return $this->pagination->renderInfinite();
+    }
+
+    /**
+     * Render page size selector
+     */
+    public function renderPageSizeSelector(): string
+    {
+        return $this->pagination->renderPageSizeSelector();
     }
 
     /**
