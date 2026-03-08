@@ -74,17 +74,17 @@ class SecurityShieldMiddleware implements MiddlewareInterface
         $requestData = $this->extractRequestData($request);
 
         // Run security checks
-        $isLocal = in_array($requestData['ip'], ['127.0.0.1', '::1', 'localhost', 'plugs.local']);
+        $isLocal = $this->isLocalRequest($requestData['ip']);
         $decision = $isLocal ? ['allowed' => true, 'risk_score' => 0, 'challenge_required' => false] : $this->protect($requestData);
 
         // Handle security decision
         if (!$decision['allowed']) {
-            return $this->createSecurityResponse($decision);
+            return $this->createSecurityResponse($request, $decision);
         }
 
         // If challenge required, return challenge response
         if ($decision['challenge_required']) {
-            return $this->createChallengeResponse($decision);
+            return $this->createChallengeResponse($request, $decision);
         }
 
         // Add security attributes to request for downstream use
@@ -322,8 +322,18 @@ class SecurityShieldMiddleware implements MiddlewareInterface
         return $serverParams['REMOTE_ADDR'] ?? '0.0.0.0';
     }
 
-    private function createSecurityResponse(array $decision): ResponseInterface
+    private function createSecurityResponse(ServerRequestInterface $request, array $decision): ResponseInterface
     {
+        $acceptHeader = $request->getHeaderLine('Accept');
+
+        if (strpos($acceptHeader, 'text/html') !== false) {
+            $html = $this->getErrorTemplate(403, 'Access Denied', $decision['reason']);
+            return ResponseFactory::html($html, 403, [
+                'X-Security-Decision' => 'denied',
+                'X-Risk-Score' => (string) $decision['risk_score'],
+            ]);
+        }
+
         return ResponseFactory::json([
             'error' => 'Security validation failed',
             'reason' => $decision['reason'],
@@ -335,9 +345,18 @@ class SecurityShieldMiddleware implements MiddlewareInterface
         ]);
     }
 
-    private function createChallengeResponse(array $decision): ResponseInterface
+    private function createChallengeResponse(ServerRequestInterface $request, array $decision): ResponseInterface
     {
         $challengeType = $decision['challenge_type'] ?? 'captcha';
+        $acceptHeader = $request->getHeaderLine('Accept');
+
+        if (strpos($acceptHeader, 'text/html') !== false) {
+            $html = $this->getChallengeTemplate($challengeType, $decision['risk_score']);
+            return ResponseFactory::html($html, 429, [
+                'X-Challenge-Type' => $challengeType,
+                'Retry-After' => '60',
+            ]);
+        }
 
         return ResponseFactory::json([
             'challenge_required' => true,
@@ -481,6 +500,36 @@ class SecurityShieldMiddleware implements MiddlewareInterface
             isset($requestData['endpoint']);
     }
 
+    private function isLocalRequest(string $ip): bool
+    {
+        $localIps = ['127.0.0.1', '::1', 'localhost', 'plugs.local'];
+        if (in_array($ip, $localIps)) {
+            return true;
+        }
+
+        // Check for common private network ranges (RFC 1918)
+        // 10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16
+        $ipLong = ip2long($ip);
+        if ($ipLong === false) {
+            return false;
+        }
+
+        $privateRanges = [
+            ['min' => ip2long('10.0.0.0'), 'max' => ip2long('10.255.255.255')],
+            ['min' => ip2long('172.16.0.0'), 'max' => ip2long('172.31.255.255')],
+            ['min' => ip2long('192.168.0.0'), 'max' => ip2long('192.168.255.255')],
+            ['min' => ip2long('169.254.0.0'), 'max' => ip2long('169.254.255.255')], // APIPA
+        ];
+
+        foreach ($privateRanges as $range) {
+            if ($ipLong >= $range['min'] && $ipLong <= $range['max']) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
 
     private function getConcurrentSessions(string $ip): int
     {
@@ -599,6 +648,178 @@ class SecurityShieldMiddleware implements MiddlewareInterface
         } catch (\Exception $e) {
             // Silent fail
         }
+    }
+
+    // ==================== HTML TEMPLATES ====================
+
+    private function getChallengeTemplate(string $type, float $score): string
+    {
+        $scorePercent = round($score * 100);
+        $title = $type === 'multi_factor' ? 'Verification Required' : 'Security Check';
+        $icon = $type === 'multi_factor' ? '🔒' : '🛡️';
+
+        return "
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <title>{$title} | Plugs Security</title>
+            <meta charset='utf-8'>
+            <meta name='viewport' content='width=device-width, initial-scale=1'>
+            <style>
+                * { margin: 0; padding: 0; box-sizing: border-box; }
+                body { 
+                    font-family: 'Outfit', -apple-system, sans-serif;
+                    background: #0f172a;
+                    color: #f8fafc;
+                    min-height: 100vh;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    padding: 20px;
+                }
+                .shield-container {
+                    background: #1e293b;
+                    padding: 40px;
+                    border-radius: 24px;
+                    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+                    max-width: 480px;
+                    width: 100%;
+                    text-align: center;
+                    border: 1px solid #334155;
+                    animation: fadeIn 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+                }
+                @keyframes fadeIn { from { opacity: 0; transform: translateY(20px); } }
+                .icon { font-size: 64px; margin-bottom: 24px; display: block; }
+                h1 { font-size: 28px; font-weight: 700; margin-bottom: 12px; color: #fff; }
+                p { color: #94a3b8; line-height: 1.6; margin-bottom: 32px; }
+                .risk-indicator {
+                    background: #0f172a;
+                    padding: 12px 20px;
+                    border-radius: 12px;
+                    display: inline-flex;
+                    align-items: center;
+                    gap: 12px;
+                    margin-bottom: 32px;
+                    font-size: 14px;
+                    border: 1px solid #334155;
+                }
+                .risk-dot { width: 8px; height: 8px; border-radius: 50%; background: #fbbf24; }
+                .captcha-placeholder {
+                    background: #334155;
+                    height: 200px;
+                    border-radius: 16px;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    margin-bottom: 32px;
+                    border: 2px dashed #475569;
+                    cursor: pointer;
+                    transition: 0.2s;
+                }
+                .captcha-placeholder:hover { background: #475569; }
+                .btn {
+                    display: block;
+                    width: 100%;
+                    padding: 14px;
+                    background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+                    color: white;
+                    text-decoration: none;
+                    border-radius: 12px;
+                    font-weight: 600;
+                    transition: 0.2s;
+                    border: none;
+                    cursor: pointer;
+                }
+                .btn:hover { transform: translateY(-2px); box-shadow: 0 10px 15px -3px rgba(37, 99, 235, 0.4); }
+                .footer { margin-top: 32px; font-size: 12px; color: #64748b; }
+            </style>
+        </head>
+        <body>
+            <div class='shield-container'>
+                <span class='icon'>{$icon}</span>
+                <h1>{$title}</h1>
+                <p>Our security shield detected unusual activity from your IP. Please complete this quick check to continue.</p>
+                
+                <div class='risk-indicator'>
+                    <div class='risk-dot'></div>
+                    <span>Risk Analysis: {$scorePercent}%</span>
+                </div>
+
+                <div class='captcha-placeholder' onclick='this.innerHTML=\"<span style=\\\"color:#22c55e\\\">✓ Verification Complete</span>\"; setTimeout(()=>window.location.reload(), 800)'>
+                    <span style='color: #cbd5e1'>Click to verify you are human</span>
+                </div>
+
+                <button class='btn' onclick='window.location.reload()'>Submit & Continue</button>
+                
+                <div class='footer'>Powered by Plugs Security Shield</div>
+            </div>
+        </body>
+        </html>";
+    }
+
+    private function getErrorTemplate(int $code, string $title, string $reason): string
+    {
+        return "
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <title>{$title} | Plugs Security</title>
+            <meta charset='utf-8'>
+            <meta name='viewport' content='width=device-width, initial-scale=1'>
+            <style>
+                * { margin: 0; padding: 0; box-sizing: border-box; }
+                body { 
+                    font-family: 'Outfit', -apple-system, sans-serif;
+                    background: #0f172a;
+                    color: #f8fafc;
+                    min-height: 100vh;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    padding: 20px;
+                }
+                .denied-container {
+                    background: #1e293b;
+                    padding: 40px;
+                    border-radius: 24px;
+                    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+                    max-width: 480px;
+                    width: 100%;
+                    text-align: center;
+                    border: 1px solid #ef4444;
+                }
+                .icon { font-size: 64px; margin-bottom: 24px; display: block; color: #ef4444; }
+                h1 { font-size: 28px; font-weight: 700; margin-bottom: 12px; color: #fff; }
+                .code { color: #ef4444; font-weight: 700; font-size: 14px; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px; display: block; }
+                p { color: #94a3b8; line-height: 1.6; margin-bottom: 32px; }
+                .reason-box {
+                    background: #0f172a;
+                    padding: 16px;
+                    border-radius: 12px;
+                    color: #cbd5e1;
+                    font-family: monospace;
+                    font-size: 13px;
+                    margin-bottom: 32px;
+                    border: 1px solid #334155;
+                }
+                .footer { font-size: 12px; color: #64748b; }
+            </style>
+        </head>
+        <body>
+            <div class='denied-container'>
+                <span class='code'>Security Event {$code}</span>
+                <span class='icon'>🚫</span>
+                <h1>Access Suspended</h1>
+                <p>Your access has been temporarily restricted due to security policy violations.</p>
+                
+                <div class='reason-box'>Event: {$reason}</div>
+
+                <p style='font-size:14px'>If you believe this is an error, please contact the site administrator with your IP address.</p>
+                
+                <div class='footer'>Plugs Security Shield Protection</div>
+            </div>
+        </body>
+        </html>";
     }
 
     // ==================== CONFIGURATION ====================
