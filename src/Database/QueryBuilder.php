@@ -88,6 +88,14 @@ class QueryBuilder
         return $this;
     }
 
+    public function selectRaw(string $expression, array $bindings = []): self
+    {
+        $this->select[] = new \Plugs\Database\Raw($expression);
+        $this->params = array_merge($this->params, $bindings);
+
+        return $this;
+    }
+
     public function distinct(): self
     {
         $this->distinct = true;
@@ -1513,7 +1521,13 @@ class QueryBuilder
     public function buildSelectSql(): string
     {
         $driver = $this->connection->getConfig()['driver'] ?? 'mysql';
-        $columns = array_map(fn($col) => QueryUtils::wrapIdentifier((string) $col, $driver), $this->select);
+        $columns = array_map(function ($col) use ($driver) {
+            if ($col instanceof \Plugs\Database\Raw) {
+                return (string) $col;
+            }
+            return QueryUtils::wrapIdentifier((string) $col, $driver);
+        }, $this->select);
+
         $distinct = $this->distinct ? 'DISTINCT ' : '';
         $sql = "SELECT {$distinct}" . implode(', ', $columns) . " FROM " . QueryUtils::wrapIdentifier($this->table, $driver);
 
@@ -1622,6 +1636,131 @@ class QueryBuilder
     public function scoped(): ScopeProxy
     {
         return new ScopeProxy($this);
+    }
+
+    public function withCount($relations): self
+    {
+        if (!$this->model) {
+            throw new Exception("withCount requires a model to be set on the builder.");
+        }
+
+        $relations = is_string($relations) ? func_get_args() : $relations;
+
+        $modelInstance = new $this->model();
+
+        foreach ($relations as $relation) {
+            if (!method_exists($modelInstance, $relation)) {
+                throw new Exception("Relationship [{$relation}] not found on model [" . get_class($modelInstance) . "].");
+            }
+
+            $proxy = $modelInstance->$relation();
+            $reflection = new \ReflectionObject($proxy);
+
+            $relatedBuilder = null;
+            $foreignKey = null;
+            $localKey = null;
+            $pivotTable = null;
+            $foreignPivotKey = null;
+            $relatedPivotKey = null;
+            $morphType = null;
+            $morphClass = null;
+
+            if ($reflection->hasProperty('builder')) {
+                $prop = $reflection->getProperty('builder');
+                $prop->setAccessible(true);
+                $relatedBuilder = $prop->getValue($proxy);
+            }
+
+            if ($reflection->hasProperty('foreignKey')) {
+                $prop = $reflection->getProperty('foreignKey');
+                $prop->setAccessible(true);
+                $foreignKey = $prop->getValue($proxy);
+            }
+
+            if ($reflection->hasProperty('localKey')) {
+                $prop = $reflection->getProperty('localKey');
+                $prop->setAccessible(true);
+                $localKey = $prop->getValue($proxy);
+            }
+
+            if ($reflection->hasProperty('ownerKey')) {
+                $prop = $reflection->getProperty('ownerKey');
+                $prop->setAccessible(true);
+                $localKey = $prop->getValue($proxy);
+            }
+
+            if ($reflection->hasProperty('config')) {
+                $prop = $reflection->getProperty('config');
+                $prop->setAccessible(true);
+                $config = $prop->getValue($proxy);
+
+                if (isset($config['pivotTable'])) {
+                    $pivotTable = $config['pivotTable'];
+                    $foreignPivotKey = $config['foreignPivotKey'];
+                    $relatedPivotKey = $config['relatedPivotKey'];
+                    $relatedClass = $config['relatedClass'];
+                    $relatedBuilder = $relatedClass::query();
+                    $localKey = $config['parentKey'];
+
+                    if (isset($config['isMorph']) && $config['isMorph']) {
+                        $morphType = $config['morphType'];
+                        $morphClass = $config['morphClass'];
+                    }
+                }
+            }
+
+            if (!$relatedBuilder) {
+                throw new Exception("Could not resolve relationship builder for [{$relation}].");
+            }
+
+            $relatedTable = $relatedBuilder->getTable();
+            $parentTable = $this->table;
+
+            $subQuery = new static($this->connection);
+            $subQuery->table($relatedTable);
+            $subQuery->select = []; // Clear default '*'
+            $subQuery->selectRaw('COUNT(*)');
+
+            if ($pivotTable) {
+                $subQuery->join($pivotTable, "{$pivotTable}.{$relatedPivotKey}", '=', "{$relatedTable}.id");
+                $subQuery->where("{$pivotTable}.{$foreignPivotKey}", '=', new \Plugs\Database\Raw("{$parentTable}.{$localKey}"));
+
+                if ($morphType && $morphClass) {
+                    $subQuery->where("{$pivotTable}.{$morphType}", '=', $morphClass);
+                }
+            } else {
+                if ($localKey === null) {
+                    $localKey = 'id';
+                }
+
+                // For MorphMany, handle the morph type constraint
+                if (str_contains(get_class($proxy), 'HasManyProxy') || str_contains(get_class($proxy), 'HasOneProxy')) {
+                    if ($reflection->hasProperty('morphType') && $reflection->hasProperty('morphClass')) {
+                        $mTypeProp = $reflection->getProperty('morphType');
+                        $mTypeProp->setAccessible(true);
+                        $mClassProp = $reflection->getProperty('morphClass');
+                        $mClassProp->setAccessible(true);
+
+                        $mType = $mTypeProp->getValue($proxy);
+                        $mClass = $mClassProp->getValue($proxy);
+
+                        if ($mType && $mClass) {
+                            $subQuery->where("{$relatedTable}.{$mType}", '=', $mClass);
+                        }
+                    } else if (method_exists($proxy, 'getMorphType')) {
+                        // Check if it's a polymorphic relation via specific method if needed
+                    }
+                }
+
+                $subQuery->where("{$relatedTable}.{$foreignKey}", '=', new \Plugs\Database\Raw("{$parentTable}.{$localKey}"));
+            }
+
+            $sql = $subQuery->buildSelectSql();
+
+            $this->selectRaw("({$sql}) AS " . QueryUtils::wrapIdentifier("{$relation}_count"), $subQuery->getParams());
+        }
+
+        return $this;
     }
 
     public function __call($method, $parameters)

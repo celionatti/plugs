@@ -22,6 +22,12 @@ class QueryUtils
             return $value;
         }
 
+        // Handle AS keyword
+        if (stripos($value, ' as ') !== false) {
+            $parts = preg_split('/ as /i', $value);
+            return self::wrapIdentifier(trim($parts[0]), $driver) . ' AS ' . self::wrapIdentifier(trim($parts[1]), $driver);
+        }
+
         // Split by dots for table.column notation
         if (str_contains($value, '.')) {
             $parts = explode('.', $value);

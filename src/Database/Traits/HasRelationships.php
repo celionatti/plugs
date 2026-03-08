@@ -127,6 +127,60 @@ trait HasRelationships
         return $this->hasManyThrough($related, $through, $firstKey, $secondKey, $localKey, $secondLocalKey)->limit(1);
     }
 
+    /**
+     * Define a polymorphic many-to-many relationship.
+     */
+    protected function morphToMany(string $related, string $name, ?string $table = null, ?string $foreignPivotKey = null, ?string $relatedPivotKey = null, ?string $parentKey = null, ?string $relatedKey = null)
+    {
+        $instance = new $related();
+        $table = $table ?? $this->getPivotTableName($this, $related);
+
+        $foreignPivotKey = $foreignPivotKey ?? $name . '_id';
+        $relatedPivotKey = $relatedPivotKey ?? strtolower(class_basename($related)) . '_id';
+        $parentKey = $parentKey ?? $this->primaryKey;
+        $relatedKey = $relatedKey ?? $instance->primaryKey;
+
+        $config = [
+            'pivotTable' => $table,
+            'foreignPivotKey' => $foreignPivotKey,
+            'relatedPivotKey' => $relatedPivotKey,
+            'parentKey' => $parentKey,
+            'relatedClass' => $related,
+            'morphType' => $name . '_type',
+            'morphClass' => static::class,
+            'isMorph' => true
+        ];
+
+        return new BelongsToManyProxy($this, debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS, 2)[1]['function'], $config);
+    }
+
+    /**
+     * Define the inverse of a polymorphic many-to-many relationship.
+     */
+    protected function morphedByMany(string $related, string $name, ?string $table = null, ?string $foreignPivotKey = null, ?string $relatedPivotKey = null, ?string $parentKey = null, ?string $relatedKey = null)
+    {
+        $instance = new $related();
+        $table = $table ?? $this->getPivotTableName($this, $related);
+
+        $foreignPivotKey = $foreignPivotKey ?? strtolower(class_basename(static::class)) . '_id';
+        $relatedPivotKey = $relatedPivotKey ?? $name . '_id';
+        $parentKey = $parentKey ?? $this->primaryKey;
+        $relatedKey = $relatedKey ?? $instance->primaryKey;
+
+        $config = [
+            'pivotTable' => $table,
+            'foreignPivotKey' => $foreignPivotKey,
+            'relatedPivotKey' => $relatedPivotKey,
+            'parentKey' => $parentKey,
+            'relatedClass' => $related,
+            'morphType' => $name . '_type',
+            'morphClass' => $related,
+            'isMorph' => true
+        ];
+
+        return new BelongsToManyProxy($this, debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS, 2)[1]['function'], $config);
+    }
+
     // ==================== POLYMORPHIC RELATIONSHIPS ====================
 
     public static function morphMap(array $map): void
@@ -555,6 +609,10 @@ trait HasRelationships
             ->select(["{$related::getTableName()}.*", "{$pivotTable}.{$foreignPivotKey} as pivot_{$foreignPivotKey}"])
             ->join($pivotTable, "{$pivotTable}.{$relatedPivotKey}", '=', "{$related::getTableName()}.id")
             ->whereIn("{$pivotTable}.{$foreignPivotKey}", $ids);
+
+        if (isset($config['isMorph']) && $config['isMorph']) {
+            $query->where("{$pivotTable}.{$config['morphType']}", '=', $config['morphClass']);
+        }
 
         if (!empty($nested)) {
             $query->with($nested);

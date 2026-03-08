@@ -340,6 +340,11 @@ class BelongsToManyProxy
         $sql = "UPDATE {$pivotTable} SET " . implode(', ', $setClauses) .
             " WHERE {$foreignPivotKey} = ? AND {$relatedPivotKey} = ?";
 
+        if (isset($this->config['isMorph']) && $this->config['isMorph']) {
+            $sql .= " AND {$this->config['morphType']} = ?";
+            $bindings[] = $this->config['morphClass'];
+        }
+
         try {
             $this->executeQuery($sql, $bindings);
             $this->clearCache();
@@ -358,7 +363,7 @@ class BelongsToManyProxy
      * Get current pivot IDs
      * @return array<int>
      */
-    private function getCurrentPivotIds(): array
+    protected function getCurrentPivotIds(): array
     {
         $pivotTable = $this->config['pivotTable'];
         $foreignPivotKey = $this->config['foreignPivotKey'];
@@ -368,7 +373,14 @@ class BelongsToManyProxy
         $parentId = $this->parent->getAttribute($parentKey);
 
         $sql = "SELECT {$relatedPivotKey} FROM {$pivotTable} WHERE {$foreignPivotKey} = ?";
-        $stmt = $this->executeQuery($sql, [$parentId]);
+        $bindings = [$parentId];
+
+        if (isset($this->config['isMorph']) && $this->config['isMorph']) {
+            $sql .= " AND {$this->config['morphType']} = ?";
+            $bindings[] = $this->config['morphClass'];
+        }
+
+        $stmt = $this->executeQuery($sql, $bindings);
         $results = $stmt->fetchAll(PDO::FETCH_COLUMN);
 
         return array_map('intval', $results);
@@ -379,7 +391,7 @@ class BelongsToManyProxy
      * @param array<int> $ids
      * @param array<string, mixed> $attributes
      */
-    private function attachPivot(array $ids, array $attributes = [], bool $touch = true): void
+    protected function attachPivot(array $ids, array $attributes = [], bool $touch = true): void
     {
         if (empty($ids)) {
             return;
@@ -393,6 +405,11 @@ class BelongsToManyProxy
         $parentId = $this->parent->getAttribute($parentKey);
         $records = [];
         $now = date('Y-m-d H:i:s');
+
+        // Add morph type to pivot attributes if polymorphic
+        if (isset($this->config['isMorph']) && $this->config['isMorph']) {
+            $attributes[$this->config['morphType']] = $this->config['morphClass'];
+        }
 
         foreach ($ids as $id) {
             $record = array_merge($attributes, [
@@ -431,7 +448,7 @@ class BelongsToManyProxy
      * Detach pivot records
      * @param array<int>|null $ids
      */
-    private function detachPivot(?array $ids = null): int
+    protected function detachPivot(?array $ids = null): int
     {
         $pivotTable = $this->config['pivotTable'];
         $foreignPivotKey = $this->config['foreignPivotKey'];
@@ -455,6 +472,11 @@ class BelongsToManyProxy
             $bindings = array_merge([$parentId], $ids);
         }
 
+        if (isset($this->config['isMorph']) && $this->config['isMorph']) {
+            $sql .= " AND {$this->config['morphType']} = ?";
+            $bindings[] = $this->config['morphClass'];
+        }
+
         $stmt = $this->executeQuery($sql, $bindings);
 
         return $stmt->rowCount();
@@ -465,7 +487,7 @@ class BelongsToManyProxy
      * @param array<mixed> $bindings
      * @return \PDOStatement
      */
-    private function executeQuery(string $sql, array $bindings = []): \PDOStatement
+    protected function executeQuery(string $sql, array $bindings = []): \PDOStatement
     {
         // Use reflection to call protected method
         $reflection = new \ReflectionMethod($this->parent, 'executeQuery');
@@ -477,7 +499,7 @@ class BelongsToManyProxy
     /**
      * Clear cache if enabled
      */
-    private function clearCache(): void
+    protected function clearCache(): void
     {
         $reflection = new \ReflectionProperty(get_class($this->parent), 'cacheEnabled');
         $reflection->setAccessible(true);

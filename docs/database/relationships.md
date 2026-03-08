@@ -202,6 +202,35 @@ class Post extends PlugModel
         return $this->morphMany(Comment::class, 'commentable');
     }
 }
+}
+```
+
+### Many To Many (Polymorphic)
+
+In addition to traditional polymorphic relations, you may also define "many-to-many" polymorphic relations. For example, a `Post` model and a `Video` model could share a polymorphic relation to a `Tag` model.
+
+```php
+class Post extends PlugModel
+{
+    public function tags()
+    {
+        // 1st param: The related model
+        // 2nd param: The relationship name
+        // 3rd param: The pivot table name (optional)
+        return $this->morphToMany(Tag::class, 'taggable');
+    }
+}
+
+class Tag extends PlugModel
+{
+    public function posts()
+    {
+        // 1st param: The related model
+        // 2nd param: The relationship name
+        // 3rd param: The pivot table name (optional)
+        return $this->morphedByMany(Post::class, 'taggable');
+    }
+}
 ```
 
 ---
@@ -271,4 +300,20 @@ $books = Book::all();
 if ($loadAuthors) {
     $books->load('author');
 }
+```
+
+### Eager Loading Relationship Counts
+
+If you only need to count the number of related models without actually loading them, you may use the `withCount` method. This method will efficiently place a `{relation}_count` column on your resulting models using a subquery.
+
+```php
+// Prevent N+1 queries by eager loading all posts counts
+$users = User::withCount('posts')->get();
+
+foreach ($users as $user) {
+    echo $user->posts_count;
+}
+
+// Eager loading multiple relationship counts
+$users = User::withCount('posts', 'comments')->get();
 ```
