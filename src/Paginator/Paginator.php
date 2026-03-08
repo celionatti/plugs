@@ -47,6 +47,26 @@ class Paginator
     }
 
     /**
+     * Create simple paginator from query builder (Performance: skips COUNT(*))
+     */
+    public static function simplePaginate($query, int|string $perPage = 15, int|string $currentPage = 1): self
+    {
+        $pagination = Pagination::fromQuery($query, $perPage, $currentPage, true);
+        $instance = new self([], $perPage, $currentPage, null);
+        $instance->pagination = $pagination;
+
+        return $instance;
+    }
+
+    /**
+     * Set the maximum number of items allowed per page (Security)
+     */
+    public static function setMaxPerPage(int $max): void
+    {
+        Pagination::setGlobalOptions(['max_per_page' => $max]);
+    }
+
+    /**
      * Set global configuration for all paginators
      */
     public static function setGlobalOptions(array $options): void

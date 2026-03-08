@@ -314,4 +314,55 @@ The response will follow a consistent structure:
 }
 ```
 
+## Security Considerations
+
+### Preventing Denial of Service (DoS)
+
+Malicious users may attempt to crash your server or database by requesting a very large number of items per page (e.g., `?per_page=1000000`). To prevent this, Plugs allows you to set a `max_per_page` limit.
+
+By default, the limit is **100**. You can change this globally:
+
+```php
+use Plugs\Paginator\Paginator;
+
+Paginator::setMaxPerPage(500); // Allow up to 500 items per page
+```
+
+## Performance Tips
+
+### Avoiding N+1 Issues
+
+N+1 issues occur when you loop through paginated results and then fetch a relationship for each item in the loop. This causes one query for the items, plus "N" queries for the relationships.
+
+**Bad (N+1):**
+
+```php
+$posts = Post::paginate(15);
+foreach ($posts as $post) {
+    echo $post->user->name; // Triggering a new query for EVERY post
+}
+```
+
+**Good (Eager Loading):**
+Always use the `with()` method to eager load relationships _before_ calling `paginate()`:
+
+```php
+$posts = Post::with('user')->paginate(15);
+foreach ($posts as $post) {
+    echo $post->user->name; // All users are already loaded in ONE query
+}
+```
+
+### Simple Pagination (Efficient Paging)
+
+For extremely large database tables (millions of rows), the standard `count(*)` query used to calculate the total number of pages can be very slow.
+
+If you only need "Previous" and "Next" links and don't care about the total page count, use `simplePaginate()`:
+
+```php
+$users = User::simplePaginate(15);
+```
+
+This method is **significantly faster** on large datasets because it skips the total count query and instead fetches one extra record (`per_page + 1`) to determine if there is a next page.
+
 ## Collections

@@ -87,6 +87,8 @@ class Pagination implements \IteratorAggregate, \Countable, \ArrayAccess, \JsonS
         'infinite_scroll_sentinel' => 'pagination-sentinel',
         'page_size_options' => [15, 30, 50, 100],
         'page_size_label' => 'Items per page',
+        'max_per_page' => 100, // Security: prevent DoS
+        'simple_mode' => false, // Performance: skip COUNT(*)
     ];
 
     /**
@@ -96,20 +98,35 @@ class Pagination implements \IteratorAggregate, \Countable, \ArrayAccess, \JsonS
     {
         $this->options = array_merge($this->options, self::$globalOptions);
         $this->items = $items instanceof Collection ? $items->all() : $items;
-        $this->perPage = max(1, (int) $perPage);
+
+        // Apply max_per_page limit
+        $perPageInt = (int) $perPage;
+        if (isset($this->options['max_per_page']) && $perPageInt > $this->options['max_per_page']) {
+            $perPageInt = $this->options['max_per_page'];
+        }
+
+        $this->perPage = max(1, $perPageInt);
         $this->currentPage = max(1, (int) $currentPage);
-        $this->total = $total !== null ? (int) $total : count($this->items);
-        $this->lastPage = (int) ceil($this->total / $this->perPage);
+
+        if ($this->options['simple_mode']) {
+            // In simple mode, total is null or unknown
+            $this->total = $total !== null ? (int) $total : 0;
+            $this->lastPage = 1; // Not applicable
+        } else {
+            $this->total = $total !== null ? (int) $total : count($this->items);
+            $this->lastPage = (int) ceil($this->total / $this->perPage);
+        }
+
         $this->currentPage = min($this->currentPage, max(1, $this->lastPage));
 
         $offset = ($this->currentPage - 1) * $this->perPage;
 
-        if ($total === null) {
+        if ($total === null && !$this->options['simple_mode']) {
             $this->items = array_slice($this->items, $offset, $this->perPage);
         }
 
         $this->from = $this->total > 0 ? $offset + 1 : 0;
-        $this->to = min($offset + count($this->items), $this->total);
+        $this->to = min($offset + count($this->items), $this->total ?: $offset + count($this->items));
 
         $this->path = $this->getCurrentPath();
         $this->query = $this->getCurrentQuery();
@@ -118,10 +135,30 @@ class Pagination implements \IteratorAggregate, \Countable, \ArrayAccess, \JsonS
     /**
      * Create paginator from PlugModel query
      */
-    public static function fromQuery($query, int|string $perPage = 15, int|string $currentPage = 1): self
+    public static function fromQuery($query, int|string $perPage = 15, int|string $currentPage = 1, bool $simple = false): self
     {
         $perPage = (int) $perPage;
         $currentPage = (int) $currentPage;
+
+        if ($simple) {
+            $offset = ($currentPage - 1) * $perPage;
+            // Fetch perPage + 1 to check if there's a next page
+            $collection = $query->offset($offset)->limit($perPage + 1)->get();
+            $items = $collection->all();
+
+            $hasMore = count($items) > $perPage;
+            if ($hasMore) {
+                array_pop($items);
+            }
+
+            $paginator = new self($items, $perPage, $currentPage, null);
+            $paginator->setOptions(['simple_mode' => true]);
+
+            // Manually override next page check since we don't have total
+            $paginator->setSimpleHasMore($hasMore);
+
+            return $paginator;
+        }
 
         $total = $query->count();
         $lastPage = (int) ceil($total / $perPage);
@@ -131,6 +168,13 @@ class Pagination implements \IteratorAggregate, \Countable, \ArrayAccess, \JsonS
         $collection = $query->offset($offset)->limit($perPage)->get();
 
         return new self($collection, $perPage, $currentPage, $total);
+    }
+
+    protected bool $simpleHasMore = false;
+
+    public function setSimpleHasMore(bool $hasMore): void
+    {
+        $this->simpleHasMore = $hasMore;
     }
 
     /**
@@ -304,6 +348,10 @@ class Pagination implements \IteratorAggregate, \Countable, \ArrayAccess, \JsonS
 
     public function hasNextPage(): bool
     {
+        if ($this->options['simple_mode']) {
+            return $this->simpleHasMore;
+        }
+
         return $this->currentPage < $this->lastPage;
     }
 
@@ -423,6 +471,15 @@ class Pagination implements \IteratorAggregate, \Countable, \ArrayAccess, \JsonS
      */
     public function renderInfo(): string
     {
+        if ($this->options['simple_mode']) {
+            return sprintf(
+                '<div class="%s">Showing %d to %d</div>',
+                $this->options['info_class'],
+                $this->from,
+                $this->to
+            );
+        }
+
         if ($this->total === 0) {
             return sprintf(
                 '<div class="%s">%s</div>',
@@ -668,11 +725,20 @@ class Pagination implements \IteratorAggregate, \Countable, \ArrayAccess, \JsonS
         $html .= '<ul class="' . $this->options['pagination_class'] . '">';
 
         $html .= $this->renderPrevLink();
-        $html .= sprintf(
-            '<li class="page-item"><span class="page-link">Page %d of %d</span></li>',
-            $this->currentPage,
-            $this->lastPage
-        );
+
+        if (!$this->options['simple_mode']) {
+            $html .= sprintf(
+                '<li class="page-item"><span class="page-link">Page %d of %d</span></li>',
+                $this->currentPage,
+                $this->lastPage
+            );
+        } else {
+            $html .= sprintf(
+                '<li class="page-item"><span class="page-link">Page %d</span></li>',
+                $this->currentPage
+            );
+        }
+
         $html .= $this->renderNextLink();
 
         $html .= '</ul></nav></div>';
