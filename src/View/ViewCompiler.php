@@ -196,6 +196,15 @@ class ViewCompiler
             'id' => '/@id\s*\((.+?)\)/s',
             'stream' => '/@stream\s*\((.+?)\)/s',
             'error' => '/@error\s*\((.+?)\)/s',
+            'json' => '/@json\s*\((.+?)\)/s',
+            'js' => '/@js\s*\((.+?)\)/s',
+            't' => '/@t\s*\((.+?)\)/s',
+            'debug' => '/@debug/s',
+            'selected' => '/@selected\s*\((.+?)\)/s',
+            'checked' => '/@checked\s*\((.+?)\)/s',
+            'disabled' => '/@disabled\s*\((.+?)\)/s',
+            'readonly' => '/@readonly\s*\((.+?)\)/s',
+            'required' => '/@required\s*\((.+?)\)/s',
         ];
     }
 

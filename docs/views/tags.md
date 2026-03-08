@@ -63,6 +63,10 @@ Clean HTML tags for security tokens and method spoofing.
 
 | **`<class :map="..." />`** | `:map` | Renders a `class` attribute from an array/map. |
 | **`<style :map="..." />`** | `:map` | Renders a `style` attribute from an array/map. |
+| **`<checked :when="..." />`** | `:when` | Renders a `checked` attribute if condition is true. |
+| **`<selected :when="..." />`** | `:when` | Renders a `selected` attribute if condition is true. |
+| **`<disabled :when="..." />`** | `:when` | Renders a `disabled` attribute if condition is true. |
+| **`<readonly :when="..." />`** | `:when` | Renders a `readonly` attribute if condition is true. |
 
 > [!TIP]
 > You can also use **Attribute Directives** directly on any HTML tag:

@@ -753,4 +753,70 @@ trait CompilesFormatDirectives
             $content
         );
     }
+
+    /**
+     * Compile the json statements in the given string.
+     *
+     * @param  string  $content
+     * @return string
+     */
+    protected function compileJson(string $content): string
+    {
+        return preg_replace_callback(
+            '/@json\s*\((.+?)\)/s',
+            function ($matches) {
+                return "<?php echo json_encode({$matches[1]}, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT); ?>";
+            },
+            $content
+        );
+    }
+
+    /**
+     * Compile the js statements in the given string.
+     *
+     * @param  string  $content
+     * @return string
+     */
+    protected function compileJs(string $content): string
+    {
+        return preg_replace_callback(
+            '/@js\s*\((.+?)\)/s',
+            function ($matches) {
+                return "<?php echo \Plugs\Support\Js::from({$matches[1]}); ?>";
+            },
+            $content
+        );
+    }
+
+    /**
+     * Compile the translation statements in the given string.
+     *
+     * @param  string  $content
+     * @return string
+     */
+    protected function compileT(string $content): string
+    {
+        return preg_replace_callback(
+            '/@t\s*\((.+?)\)/s',
+            function ($matches) {
+                return "<?php echo (function_exists('__') ? __({$matches[1]}) : {$matches[1]}); ?>";
+            },
+            $content
+        );
+    }
+
+    /**
+     * Compile the debug statements in the given string.
+     *
+     * @param  string  $content
+     * @return string
+     */
+    protected function compileDebug(string $content): string
+    {
+        return preg_replace(
+            '/@debug/s',
+            '<?php var_dump(get_defined_vars()); ?>',
+            $content
+        );
+    }
 }

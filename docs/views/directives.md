@@ -205,6 +205,12 @@ Plugs uses a context-aware escaping engine to prevent XSS. The `{{ $var }}` dire
 <input @disabled($isReadOnly)>
 <input @readonly($isLocked)>
 <input @required($isRequired)>
+
+### Tag-Based Syntax (Alternative)
+You can also use HTML-like tags for form attributes:
+`<input type="checkbox" <checked :when="$isActive" />>`
+`<option <selected :when="$isDefault" />>Option</option>`
+`<button <disabled :when="$isLoading" />>Submit</button>`
 ```
 
 ### Dynamic Attributes
@@ -399,12 +405,15 @@ For large views or long-running processes, use `@stream` to send the response in
 
 ## Utility Directives
 
-### JSON Output
+### JSON & JS Output
 
 ```blade
 <script>
     const data = @json($data);
     const config = @json($config, JSON_PRETTY_PRINT);
+
+    // Use @js for a JS-safe representation of data
+    const settings = @js($settings);
 </script>
 ```
 
@@ -592,4 +601,37 @@ Calculate estimated reading time for blog content:
 @inject('metrics', 'App\Services\MetricsService')
 
 {{ $metrics->getVisitorCount() }}
+```
+
+---
+
+## Localization
+
+### Translation
+
+The `@t` directive is a shorthand for the translation helper.
+
+```blade
+<h1>@t('messages.welcome')</h1>
+<p>@t('auth.failed', ['user' => $username])</p>
+```
+
+---
+
+## Debugging
+
+### @debug
+
+Dumps all currently defined variables in the view's scope.
+
+```blade
+@debug
+```
+
+### @dump
+
+Dumps a specific variable (only in debug mode).
+
+```blade
+@dump($user)
 ```

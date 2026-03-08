@@ -28,6 +28,20 @@ Hardened HTML sanitization that strips dangerous event handlers (e.g., `onclick`
 - **Usage:** `@sanitize($userBio)`
 - **Purpose:** Provides a safe way to render user-provided HTML without risking XSS.
 
+### `js($var)`
+
+Safe JS encoding helper.
+
+- **Usage:** `@js($data)`
+- **Purpose:** Converts PHP data to a JS-safe representation.
+
+### `@json`
+
+Safe JSON encoding.
+
+- **Usage:** `@json($data)`
+- **Purpose:** Encodes data as JSON with hex escaping for tags and quotes.
+
 ---
 
 ## 🚀 Performance & Streaming
@@ -69,3 +83,21 @@ Streamlined way to display validation error messages.
 - **Tag:** `<error field="email">...</error>`
 - **Variable:** Inside the block, a `$message` variable is automatically available.
 - **Purpose:** Reduces boilerplate when displaying form validation feedback.
+
+### `@t`
+
+Translation shorthand.
+
+- **Usage:** `@t('key', ['param' => 'value'])`
+- **Purpose:** Shorthand for translating strings.
+
+---
+
+## 🛠️ Debugging
+
+### `@debug`
+
+Instantly dump all variables in the current view scope.
+
+- **Usage:** `@debug`
+- **Purpose:** Quick debugging of view data.
