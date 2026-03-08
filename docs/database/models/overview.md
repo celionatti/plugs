@@ -10,13 +10,13 @@ php theplugs make:model Product
 
 ### Generator Flags
 
-| Flag               | Short | Description                                |
-| ------------------ | ----- | ------------------------------------------ |
-| `--migration`      | `-m`  | Scaffold a table migration                 |
-| `--controller`     | `-c`  | Scaffold a resource controller             |
-| `--factory`        | `-f`  | Scaffold a model factory                   |
-| `--all`            | `-a`  | Generate migration, controller, factory, and seeder |
-| `--schema`         |       | Use the Typed Schema pattern (recommended) |
+| Flag           | Short | Description                                         |
+| -------------- | ----- | --------------------------------------------------- |
+| `--migration`  | `-m`  | Scaffold a table migration                          |
+| `--controller` | `-c`  | Scaffold a resource controller                      |
+| `--factory`    | `-f`  | Scaffold a model factory                            |
+| `--all`        | `-a`  | Generate migration, controller, factory, and seeder |
+| `--schema`     |       | Use the Typed Schema pattern (recommended)          |
 
 ```bash
 # Generate model + migration + schema
@@ -251,29 +251,29 @@ $user->resource();
 
 PlugModel ships with a rich set of composable traits. Each is documented separately:
 
-| Trait               | Purpose                                      |
-| ------------------- | -------------------------------------------- |
-| `HasAttributes`     | Mass assignment, casting, accessors/mutators  |
-| `HasRelationships`  | One-to-many, belongs-to, many-to-many, etc.  |
-| `HasValidation`     | Auto-validate on save                        |
-| `HasTimestamps`     | `created_at` / `updated_at` management       |
-| `SoftDeletes`       | Trash and restore records                    |
-| `HasSchema`         | Typed Model Schema system                    |
-| `HasFactory`        | Model factory support                        |
-| `HasEvents`         | Model lifecycle events                       |
-| `HasScopes`         | Global and local query scopes                |
-| `HasDomainRules`    | Domain-level update / delete restrictions    |
-| `HasDomainEvents`   | Domain event dispatching                     |
-| `HasTenancy`        | Multi-tenant scoping                         |
-| `Authorizable`      | Policy-based authorisation                   |
-| `HasImmutability`   | `#[Immutable]` attribute support             |
-| `HasVersioning`     | Optimistic concurrency (`#[Versioned]`)      |
-| `HasSerialization`  | Serialisation profiles (`#[Serialized]`)     |
-| `HasObservability`  | Event observation                            |
-| `HasDiagnostics`    | Performance diagnostics                      |
-| `Searchable`        | Full-text search support                     |
-| `Prunable`          | Automatic record pruning                     |
-| `HasAI`             | AI-assisted queries                          |
+| Trait              | Purpose                                      |
+| ------------------ | -------------------------------------------- |
+| `HasAttributes`    | Mass assignment, casting, accessors/mutators |
+| `HasRelationships` | One-to-many, belongs-to, many-to-many, etc.  |
+| `HasValidation`    | Auto-validate on save                        |
+| `HasTimestamps`    | `created_at` / `updated_at` management       |
+| `SoftDeletes`      | Trash and restore records                    |
+| `HasSchema`        | Typed Model Schema system                    |
+| `HasFactory`       | Model factory support                        |
+| `HasEvents`        | Model lifecycle events                       |
+| `HasScopes`        | Global and local query scopes                |
+| `HasDomainRules`   | Domain-level update / delete restrictions    |
+| `HasDomainEvents`  | Domain event dispatching                     |
+| `HasTenancy`       | Multi-tenant scoping                         |
+| `Authorizable`     | Policy-based authorisation                   |
+| `HasImmutability`  | `#[Immutable]` attribute support             |
+| `HasVersioning`    | Optimistic concurrency (`#[Versioned]`)      |
+| `HasSerialization` | Serialisation profiles (`#[Serialized]`)     |
+| `HasObservability` | Event observation                            |
+| `HasDiagnostics`   | Performance diagnostics                      |
+| `Searchable`       | Full-text search support                     |
+| `Prunable`         | Automatic record pruning                     |
+| `HasAI`            | AI-assisted queries                          |
 
 ---
 
@@ -282,4 +282,4 @@ PlugModel ships with a rich set of composable traits. Each is documented separat
 - [Typed Model Schema](schema-overview.md) — replace `$fillable` + `$casts` + `$rules` with a single `$schema` declaration.
 - [Schema Field Reference](schema-fields.md) — every field type and its API.
 - [Query Builder](../query-builder.md) — fluent queries.
-- [Relationships](../smart-relationship-engine.md) — defining and using relationships.
+- [Relationships](../relationships.md) — defining and using relationships.
