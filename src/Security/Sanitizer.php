@@ -111,10 +111,23 @@ class Sanitizer
         // Remove multiple consecutive separators
         $path = preg_replace('/' . preg_quote(DIRECTORY_SEPARATOR, '/') . '{2,}/', DIRECTORY_SEPARATOR, $path);
 
-        // Simple protection against ../ (more robust check is in the driver)
-        $path = str_replace('..' . DIRECTORY_SEPARATOR, '', $path);
+        // Robust protection against traversal: split, filter, and rejoin
+        // We do this in a loop to handle cases like "....//"
+        $parts = explode(DIRECTORY_SEPARATOR, $path);
 
-        return trim($path, DIRECTORY_SEPARATOR);
+        do {
+            $count = count($parts);
+            $safeParts = [];
+            foreach ($parts as $part) {
+                if ($part === '.' || $part === '..' || $part === '') {
+                    continue;
+                }
+                $safeParts[] = $part;
+            }
+            $parts = $safeParts;
+        } while (count($parts) !== $count && !empty($parts));
+
+        return implode(DIRECTORY_SEPARATOR, $parts);
     }
 
     /**
@@ -123,25 +136,24 @@ class Sanitizer
     protected static function cleanAttributes(string $html): string
     {
         // Remove javascript:, data:, vbscript: and similar URIs (including encoded variants)
-        // We look for patterns like j&#x61;vascript: or \s j a v a s c r i p t :
         $dangerousSchemes = ['javascript', 'data', 'vbscript', 'file'];
         foreach ($dangerousSchemes as $scheme) {
+            // Match scheme with optional whitespace and entities
             $pattern = '/(href|src|postaction|background|formaction)\s*=\s*["\']\s*(' . implode('\s*|', str_split($scheme)) . '|' . preg_quote($scheme, '/') . '):/i';
             $html = preg_replace($pattern, '$1="#', $html);
 
-            // Also handle numeric and hex entities for these schemes
-            // This is a simplified check for common obfuscation
+            // Handle numeric and hex entities for these schemes more broadly
             $html = preg_replace('/(href|src|postaction|background|formaction)\s*=\s*["\']\s*&[#x][a-f0-9]+;[^"\']*["\']/i', '$1="#', $html);
         }
 
-        // Remove event handlers (onmouseover, onclick, etc.) - more aggressive matching
+        // Remove event handlers (onmouseover, onclick, etc.)
         $html = preg_replace('/\s+on[a-z]+\s*=\s*["\'][^"\']*["\']/i', ' ', $html);
         $html = preg_replace('/\s+on[a-z]+\s*=\s*[^\s>]+/i', ' ', $html);
 
-        // Remove style attributes that contain expression() or behavior: (legacy IE XSS)
+        // Remove style attributes that contain dangerous directives (expression, behavior, url)
         $html = preg_replace('/style\s*=\s*["\'][^"\']*(expression|behavior|url\s*\()[^"\']*["\']/i', 'style="display:none"', $html);
 
-        // Remove dangerous tags if they somehow slipped through previous layers
+        // Remove dangerous tags if they somehow slipped through
         $html = preg_replace('/<(meta|link|style|script|embed|object|iframe|frame|frameset|applet|video|audio|canvas|svg|math)[^>]*>.*?<\/\1>/is', '', $html);
         $html = preg_replace('/<(meta|link|style|script|embed|object|iframe|frame|frameset|applet|video|audio|canvas|svg|math)[^>]*>/is', '', $html);
 

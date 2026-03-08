@@ -78,7 +78,17 @@ class TrustedProxyMiddleware implements MiddlewareInterface
 
         foreach ($this->trustedProxies as $proxy) {
             if ($proxy === '*') {
-                return true;
+                // Security: Only allow wildcard trust in development mode
+                $env = $_ENV['APP_ENV'] ?? getenv('APP_ENV') ?? 'production';
+                if ($env === 'local' || $env === 'development') {
+                    return true;
+                }
+
+                // Log a warning in production and don't trust
+                if (function_exists('error_log')) {
+                    error_log('SECURITY WARNING: Global wildcard trusted proxy detected in non-development environment. This is a severe IP spoofing vulnerability and has been ignored.');
+                }
+                continue;
             }
 
             if ($proxy === $remoteAddr) {

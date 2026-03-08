@@ -1440,6 +1440,10 @@ class QueryBuilder
         }
 
         $instance = $this->model ? new $this->model() : null;
+        $allowedFilters = null;
+        if ($instance && method_exists($instance, 'getFilterableColumns')) {
+            $allowedFilters = $instance->getFilterableColumns();
+        }
 
         foreach ($params as $key => $value) {
             if ($value === null || $value === '' || in_array($key, ['page', 'per_page', 'direction'])) {
@@ -1457,10 +1461,17 @@ class QueryBuilder
                         });
                     }
                 }
+                continue;
             }
 
             if ($key === 'sort') {
                 $this->orderBy($value, strtoupper($params['direction'] ?? 'ASC'));
+                continue;
+            }
+
+            // Security check: Only allow filtering by allowed columns if specified
+            if ($allowedFilters !== null && !in_array($key, $allowedFilters, true)) {
+                continue;
             }
 
             if (is_array($value)) {
