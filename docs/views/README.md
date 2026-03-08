@@ -17,6 +17,7 @@ If you're new to Plugs, start with the basics of rendering and data binding.
 
 - **[Components](components.md)**: Reusable PascalCase UI elements with props and slots.
 - **[HTMX Integration](htmx-integration.md)**: Build fast, reactive interfaces with fragments and OOB swaps.
+- **[Themes & Customization](themes.md)**: Override views and components for multi-tenancy or white-labeling.
 - **[Caching](caching.md)**: High-performance fragment and view caching.
 
 ---
