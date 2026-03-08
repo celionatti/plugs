@@ -70,6 +70,7 @@
   },
   "suggest": {
     "dompdf/dompdf": "Required to generate PDF documents (^3.1).",
+    "predis/predis": "Required to use the Predis cache driver (^2.3).",
     "symfony/mailer": "Required to send emails using the Mail service (^7.3)."
   },
   "require-dev": {

@@ -17,7 +17,59 @@ $data = Cache::remember('users.count', 3600, fn() => User::count());
 Cache::rememberForever('settings', fn() => Setting::all());
 ```
 
-## 2. Tagged Caching
+## 2. Redis Cache Setup
+
+Plugs supports Redis through two primary methods: the native **phpredis** extension (fastest) and the **Predis** Composer package (easiest to install).
+
+### Option A: Native Extension (phpredis)
+
+Recommended for production environments.
+
+1. **Install phpredis**:
+   ```bash
+   sudo apt-get install php-redis
+   ```
+2. **Configure `.env`**:
+   ```env
+   CACHE_DRIVER=redis
+   ```
+3. **Registration** (if manual):
+   ```php
+   use Plugs\Cache\Drivers\RedisCacheDriver;
+   Cache::extend('redis', fn() => new RedisCacheDriver());
+   ```
+
+### Option B: Composer Package (Predis)
+
+Ideal for environments where you cannot install PHP extensions.
+
+1. **Install Predis**:
+   ```bash
+   composer require predis/predis
+   ```
+2. **Configure `.env`**:
+   ```env
+   CACHE_DRIVER=predis
+   ```
+3. **Registration**:
+   ```php
+   use Plugs\Cache\Drivers\PredisCacheDriver;
+   Cache::extend('predis', fn() => new PredisCacheDriver());
+   ```
+
+### Common Redis Configuration
+
+Both drivers use the same environment variables for connection:
+
+```env
+REDIS_HOST=127.0.0.1
+REDIS_PORT=6379
+REDIS_PASSWORD=null
+REDIS_CACHE_DB=1
+CACHE_PREFIX=plugs_cache:
+```
+
+## 3. Tagged Caching
 
 Group related cache entries and invalidate them all at once.
 

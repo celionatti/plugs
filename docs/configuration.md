@@ -20,6 +20,22 @@ Most common settings are mapped directly to environment variables:
 | **Views**       | `VIEW_STREAMING`   | `false` |
 | **Views Flush** | `VIEW_AUTO_FLUSH`  | `50`    |
 
+### Redis Cache Setup
+
+For high-performance distributed caching, Plugs supports Redis through two methods:
+
+- **Option A (Native)**: Use the `phpredis` extension (`CACHE_DRIVER=redis`).
+- **Option B (Composer)**: Install `predis/predis` (`CACHE_DRIVER=predis`).
+
+1. **Configure `.env`**:
+   ```env
+   CACHE_DRIVER=redis # or predis
+   REDIS_HOST=127.0.0.1
+   ```
+2. **Registration**: In `AppServiceProvider.php`, use `Cache::extend('redis', fn() => new RedisCacheDriver())` or `Cache::extend('predis', fn() => new PredisCacheDriver())`.
+
+See full [Caching Feature Guide](./features/caching.md) for more details.
+
 ## 2. Auto-Discovery
 
 Plugs automatically discovers and registers your application's Service Providers.
