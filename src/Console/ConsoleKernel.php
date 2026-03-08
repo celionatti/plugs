@@ -11,6 +11,7 @@ use Plugs\Console\Commands\HelpCommand;
 use Plugs\Console\Commands\ExplainCommand;
 use Plugs\Console\Commands\InspireCommand;
 use Plugs\Console\Commands\MakeActionCommand;
+use Plugs\Console\Commands\ConfigPublishCommand;
 use Plugs\Console\Commands\MakeApiRequestCommand;
 use Plugs\Console\Commands\MakeCommandCommand;
 use Plugs\Console\Commands\MakeComponentCommand;
@@ -128,6 +129,7 @@ class ConsoleKernel
         'serve' => ServeCommand::class,
         'cache:clear' => CacheClearCommand::class,
         'logs:clear' => LogClearCommand::class,
+        'config:publish' => ConfigPublishCommand::class,
         'config:cache' => \Plugs\Console\Commands\ConfigCacheCommand::class,
         'config:clear' => \Plugs\Console\Commands\ConfigClearCommand::class,
         'optimize' => \Plugs\Console\Commands\OptimizeCommand::class,
@@ -252,7 +254,7 @@ class ConsoleKernel
             'make:lang',
         ],
         'Routes' => ['route:list', 'route:cache', 'route:clear', 'route:test'],
-        'Utility' => ['serve', 'cache:clear', 'logs:clear', 'view:cache', 'view:clear', 'config:cache', 'optimize', 'opcache:clear', 'opcache:status', 'queue:work', 'queue:failed', 'queue:retry', 'health', 'storage:link', 'type:gen', 'ai:chat', 'ai:fix', 'ai:audit', 'make:ai-test', 'ai:agent', 'ai:think', 'framework:scan-security', 'auth:install', 'identity:install'],
+        'Utility' => ['serve', 'cache:clear', 'logs:clear', 'view:cache', 'view:clear', 'config:publish', 'config:cache', 'optimize', 'opcache:clear', 'opcache:status', 'queue:work', 'queue:failed', 'queue:retry', 'health', 'storage:link', 'type:gen', 'ai:chat', 'ai:fix', 'ai:audit', 'make:ai-test', 'ai:agent', 'ai:think', 'framework:scan-security', 'auth:install', 'identity:install'],
 
         'Scheduling' => ['schedule:run', 'schedule:list'],
         'Database' => ['migrate', 'migrate:rollback', 'migrate:status', 'migrate:fresh', 'migrate:validate', 'migrate:reset', 'make:migration', 'db:seed', 'db:analyze', 'db:backup', 'db:restore', 'tenant:migrate'],

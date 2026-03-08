@@ -43,9 +43,52 @@ You can also use the all-in-one optimization command:
 php theplugs optimize
 ```
 
-## 4. Manual Overrides
+## 4. Exporting Configuration
 
-To override a default that isn't in `.env`, create a corresponding file in `config/`. The framework will **recursively merge** your settings into the defaults.
+While the framework works perfectly with zero configuration, you might want to have the files handy for more granular customization. Use the `config:publish` command to export the default settings to your `config/` directory.
+
+### Publish Specific File
+
+```bash
+# Export only the database configuration
+php theplugs config:publish database
+```
+
+### Publish All Files
+
+```bash
+# Export all available framework configurations
+php theplugs config:publish --all
+```
+
+The command will automatically format the defaults into standard PHP arrays using modern `[]` syntax.
+
+### Available Configuration Modules
+
+You can publish any of the following configuration modules:
+
+- `ai`: Artificial Intelligence provider settings (OpenAI, Gemini, etc.)
+- `app`: Core application settings (name, env, providers, paths)
+- `assets`: Asset pipeline settings (minification, versioning)
+- `auth`: Authentication settings (user model, tables, OAuth)
+- `billing`: Tax and fee calculations
+- `cache`: Cache drivers and path settings
+- `database`: DB connections, pooling, and load balancing
+- `filesystems`: Storage disks (local, public, s3)
+- `hash`: Password hashing algorithms (Argon2, Bcrypt)
+- `logging`: Log channels and handlers
+- `mail`: SMTP and mail driver settings
+- `middleware`: Global and group middleware aliases
+- `opcache`: PHP OpCache optimization settings
+- `queue`: Queue connections (sync, database, redis)
+- `security`: CSRF, CSP, CORS, and Security Shield settings
+- `seo`: Default meta tags, titles, and robots settings
+- `services`: Third-party service credentials (GitHub, Google)
+- `view`: Template engine and view path settings
+
+## 5. Manual Overrides
+
+To override a default that isn't in `.env`, create a corresponding file in `config/` (or publish it using the command above). The framework will **recursively merge** your settings into the defaults.
 
 **Example: `config/mail.php`**
 
