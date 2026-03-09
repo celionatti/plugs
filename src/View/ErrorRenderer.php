@@ -104,346 +104,370 @@ class ErrorRenderer
 
         return <<<HTML
 <!DOCTYPE html>
-<html lang="en" data-theme="dark">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Plugs Error: {$message}</title>
-    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
     <style>
-        :root {
-            --bg: #0f172a;
-            --card: #1e293b;
-            --primary: #10b981;
-            --primary-glow: rgba(16, 185, 129, 0.4);
-            --accent: #06b6d4;
-            --danger: #ef4444;
-            --text: #f8fafc;
-            --text-muted: #94a3b8;
-            --border: rgba(255, 255, 255, 0.08);
-            --glass: rgba(15, 23, 42, 0.8);
-            --glass-light: rgba(255, 255, 255, 0.03);
-        }
-
-        * { box-sizing: border-box; }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        ::selection { background: rgba(139,92,246,0.3); color: #fff; }
 
         body {
-            background: var(--bg);
-            background-image: radial-gradient(circle at 0% 0%, rgba(16, 185, 129, 0.05) 0%, transparent 50%),
-                              radial-gradient(circle at 100% 100%, rgba(6, 182, 212, 0.05) 0%, transparent 50%);
-            color: var(--text);
-            font-family: 'Outfit', sans-serif;
-            margin: 0;
-            padding: 0;
+            background: #0c0f1a;
+            color: #e2e8f0;
+            font-family: "Outfit", sans-serif;
+            min-height: 100vh;
             line-height: 1.6;
+        }
+
+        /* ── Two-Column Shell ── */
+        .shell {
+            display: grid;
+            grid-template-columns: 380px 1fr;
             min-height: 100vh;
         }
 
-        .container {
-            max-width: 1400px;
-            margin: 0 auto;
-            padding: 1.5rem;
-            animation: fadeIn 0.6s cubic-bezier(0.16, 1, 0.3, 1);
-        }
-
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(10px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-
-        .glass-card {
-            background: var(--glass);
-            backdrop-filter: blur(20px);
-            -webkit-backdrop-filter: blur(20px);
-            border: 1px solid var(--border);
-            border-radius: 28px;
-            padding: 0;
-            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
-            overflow: hidden;
+        /* ── LEFT PANEL ── */
+        .left {
+            background: #111827;
+            border-right: 1px solid rgba(139,92,246,0.12);
             display: flex;
             flex-direction: column;
+            overflow-y: auto;
         }
 
-        header {
-            padding: 2.5rem;
-            background: linear-gradient(to bottom, var(--glass-light), transparent);
-            border-bottom: 1px solid var(--border);
+        .left-header {
+            padding: 2rem 1.75rem 1.5rem;
+            border-bottom: 1px solid rgba(255,255,255,0.06);
         }
 
-        .error-badge {
+        .brand {
+            font-family: "Outfit", sans-serif;
+            font-size: 1.5rem;
+            font-weight: 800;
+            background: linear-gradient(135deg, #a78bfa, #60a5fa);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            letter-spacing: -0.02em;
+        }
+
+        .error-type {
+            margin-top: 1.5rem;
+            font-size: 0.7rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            color: #ef4444;
+            display: flex;
+            align-items: center;
+            gap: 0.4rem;
+        }
+
+        .error-msg {
+            margin-top: 0.75rem;
+            font-size: 1.15rem;
+            font-weight: 700;
+            color: #f8fafc;
+            line-height: 1.4;
+            word-break: break-word;
+        }
+
+        /* Info Sections */
+        .info-section {
+            padding: 1.25rem 1.75rem;
+            border-bottom: 1px solid rgba(255,255,255,0.04);
+        }
+
+        .info-label {
+            font-size: 0.65rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            color: #64748b;
+            margin-bottom: 0.6rem;
+        }
+
+        .info-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.4rem 0;
+            font-size: 0.8rem;
+        }
+
+        .info-row .key { color: #94a3b8; }
+        .info-row .val { color: #e2e8f0; font-family: "Fira Code", monospace; font-size: 0.75rem; }
+
+        .file-path {
+            font-family: "Fira Code", monospace;
+            font-size: 0.75rem;
+            color: #94a3b8;
+            word-break: break-all;
+            line-height: 1.5;
+        }
+
+        .file-path .line-num { color: #ef4444; font-weight: 700; }
+
+        .view-badge {
+            display: inline-block;
+            background: rgba(96,165,250,0.1);
+            border: 1px solid rgba(96,165,250,0.25);
+            color: #60a5fa;
+            padding: 0.2rem 0.6rem;
+            border-radius: 6px;
+            font-family: "Fira Code", monospace;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+
+        .open-editor {
             display: inline-flex;
             align-items: center;
-            padding: 0.35rem 1rem;
-            background: rgba(239, 68, 68, 0.1);
-            color: var(--danger);
-            border-radius: 100px;
+            gap: 0.5rem;
+            margin-top: 0.75rem;
+            padding: 0.5rem 1rem;
+            background: rgba(139,92,246,0.15);
+            border: 1px solid rgba(139,92,246,0.3);
+            border-radius: 8px;
+            color: #a78bfa;
             font-size: 0.75rem;
-            font-weight: 700;
-            text-transform: uppercase;
-            letter-spacing: 0.05em;
-            margin-bottom: 1rem;
-            border: 1px solid rgba(239, 68, 68, 0.2);
+            font-weight: 600;
+            text-decoration: none;
+            transition: all 0.2s;
         }
 
-        h1 {
-            margin: 0;
-            font-size: clamp(1.5rem, 5vw, 2.75rem);
-            font-weight: 800;
-            letter-spacing: -0.02em;
-            line-height: 1.2;
-            color: var(--text);
+        .open-editor:hover {
+            background: rgba(139,92,246,0.25);
+            color: #c4b5fd;
         }
 
-        .location-path {
-            margin-top: 1.25rem;
+        .data-dump {
+            background: rgba(0,0,0,0.3);
+            border: 1px solid rgba(255,255,255,0.05);
+            border-radius: 8px;
+            padding: 1rem;
+            font-family: "Fira Code", monospace;
+            font-size: 0.7rem;
+            color: #6ee7b7;
+            max-height: 200px;
+            overflow: auto;
+            white-space: pre-wrap;
+            word-break: break-all;
+        }
+
+        .left-footer {
+            margin-top: auto;
+            padding: 1rem 1.75rem;
+            border-top: 1px solid rgba(255,255,255,0.04);
+            font-size: 0.7rem;
+            color: #475569;
+            text-align: center;
+        }
+
+        /* ── RIGHT PANEL ── */
+        .right {
+            display: flex;
+            flex-direction: column;
+            overflow-y: auto;
+            background: #0c0f1a;
+        }
+
+        .right-header {
+            padding: 1.25rem 2rem;
+            border-bottom: 1px solid rgba(255,255,255,0.06);
             display: flex;
             align-items: center;
-            gap: 0.75rem;
-            color: var(--text-muted);
-            font-family: 'Fira Code', monospace;
-            font-size: 0.9rem;
-            overflow-wrap: anywhere;
+            justify-content: space-between;
+            flex-shrink: 0;
         }
 
-        .location-path .line {
-            color: var(--danger);
+        .right-header h2 {
+            font-size: 0.85rem;
             font-weight: 700;
-        }
-
-        .main-pane {
-            padding: 2rem;
-        }
-
-        .section-header {
-            display: flex;
-            align-items: center;
-            gap: 1rem;
-            margin-bottom: 1.5rem;
-            color: var(--primary);
-            font-weight: 700;
-            font-size: 1.1rem;
+            color: #a78bfa;
             text-transform: uppercase;
             letter-spacing: 0.05em;
         }
 
-        .section-header::after {
-            content: '';
-            flex: 1;
-            height: 1px;
-            background: linear-gradient(to right, var(--border), transparent);
-        }
-
-        /* Code Box */
         .code-container {
-            border-radius: 16px;
-            background: #0b1120;
-            border: 1px solid var(--border);
-            box-shadow: inset 0 2px 4px rgba(0,0,0,0.3);
-            margin-bottom: 2.5rem;
-            overflow: hidden;
-        }
-
-        .code-filename {
-            padding: 0.75rem 1.25rem;
-            background: rgba(255, 255, 255, 0.03);
-            border-bottom: 1px solid var(--border);
-            font-family: 'Fira Code', monospace;
-            font-size: 0.8rem;
-            color: var(--text-muted);
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-        }
-
-        .code-viewport {
-            padding: 1rem 0;
+            border-radius: 0;
+            background: #080b14;
             overflow-x: auto;
+            flex-shrink: 0;
         }
 
         .code-row {
             display: flex;
-            position: relative;
-        }
-
-        .code-row:hover {
-            background: rgba(255, 255, 255, 0.02);
+            font-family: "Fira Code", monospace;
+            font-size: 13px;
+            line-height: 1.7;
         }
 
         .code-row.active {
-            background: rgba(239, 68, 68, 0.08);
-        }
-
-        .code-row.active::before {
-            content: '';
-            position: absolute;
-            left: 0;
-            top: 0;
-            bottom: 0;
-            width: 3px;
-            background: var(--danger);
-            box-shadow: 0 0 10px var(--danger);
+            background: rgba(239, 68, 68, 0.12);
+            border-left: 3px solid #ef4444;
         }
 
         .line-no {
-            width: 60px;
-            min-width: 60px;
+            width: 55px;
+            min-width: 55px;
             text-align: right;
-            padding-right: 1.5rem;
-            color: #4b5563;
+            padding: 0 1rem 0 0;
+            color: #334155;
             user-select: none;
-            font-family: 'Fira Code', monospace;
-            font-size: 0.85rem;
         }
 
-        .active .line-no { color: var(--danger); font-weight: 700; }
+        .active .line-no { color: #ef4444; font-weight: 700; }
 
         .line-content {
-            font-family: 'Fira Code', monospace;
-            font-size: 0.9rem;
-            color: #e5e7eb;
+            padding-left: 1rem;
             white-space: pre;
+            color: #cbd5e1;
+            border-left: 1px solid rgba(255,255,255,0.04);
         }
 
-        /* Stack Trace */
-        .stack-list {
-            display: flex;
-            flex-direction: column;
-            gap: 0.75rem;
+        .token-keyword { color: #c084fc; font-weight: 600; }
+        .token-string { color: #4ade80; }
+        .token-var { color: #60a5fa; }
+        .token-comment { color: #475569; font-style: italic; }
+
+        /* Stack */
+        .stack-section {
+            padding: 1.5rem 2rem;
+            flex: 1;
+        }
+
+        .stack-section h3 {
+            font-size: 0.75rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            color: #64748b;
+            margin-bottom: 1rem;
         }
 
         .stack-item {
+            padding: 0.7rem 0.9rem;
             background: rgba(255,255,255,0.02);
-            border: 1px solid var(--border);
-            border-radius: 12px;
-            padding: 1rem;
-            transition: all 0.2s;
+            border: 1px solid rgba(255,255,255,0.04);
+            border-radius: 8px;
+            margin-bottom: 0.5rem;
+            transition: all 0.15s;
+            font-size: 0.8rem;
         }
 
         .stack-item:hover {
-            background: rgba(255,255,255,0.04);
-            border-color: rgba(255,255,255,0.15);
-            transform: translateX(4px);
+            background: rgba(139,92,246,0.06);
+            border-color: rgba(139,92,246,0.15);
+            transform: translateX(3px);
         }
 
         .stack-call {
-            color: var(--accent);
-            font-family: 'Fira Code', monospace;
-            font-weight: 600;
-            display: block;
-            margin-bottom: 0.35rem;
+            color: #60a5fa;
+            font-family: "Fira Code", monospace;
+            font-size: 0.75rem;
+            font-weight: 500;
         }
 
         .stack-file {
-            color: var(--text-muted);
-            font-size: 0.8rem;
-            font-family: 'Fira Code', monospace;
-            opacity: 0.8;
-            word-break: break-all;
-        }
-
-        /* Tables & Lists */
-        .meta-table {
-            width: 100%;
-            border-collapse: collapse;
-            font-size: 0.9rem;
-        }
-
-        .meta-table th {
-            text-align: left;
-            padding: 0.75rem 0;
-            font-weight: 500;
-            color: var(--text-muted);
-            border-bottom: 1px solid var(--border);
-        }
-
-        .meta-table td {
-            text-align: right;
-            padding: 0.75rem 0;
-            color: var(--text);
-            border-bottom: 1px solid var(--border);
-            word-break: break-all;
-        }
-
-        .badge-pill {
-            padding: 0.2rem 0.6rem;
-            border-radius: 6px;
+            color: #475569;
+            font-family: "Fira Code", monospace;
             font-size: 0.7rem;
-            font-weight: 700;
-            text-transform: uppercase;
-            background: var(--primary);
-            color: white;
+            margin-top: 0.15rem;
+            word-break: break-all;
         }
 
-        .data-dump {
-            background: #000;
-            padding: 1rem;
-            border-radius: 12px;
-            font-size: 0.8rem;
-            font-family: 'Fira Code', monospace;
-            overflow-x: auto;
-            max-height: 400px;
-            color: #6ee7b7;
-            border: 1px solid var(--border);
+        /* ── Responsive ── */
+        @media (max-width: 900px) {
+            .shell {
+                grid-template-columns: 1fr;
+                grid-template-rows: auto 1fr;
+            }
+            .left {
+                border-right: none;
+                border-bottom: 1px solid rgba(139,92,246,0.12);
+                max-height: 50vh;
+            }
+            .left-footer { display: none; }
         }
 
-        footer {
-            margin-top: 3rem;
-            text-align: center;
-            padding: 2rem;
-            color: var(--text-muted);
-            font-size: 0.85rem;
+        @media (max-width: 480px) {
+            .left-header { padding: 1.5rem 1.25rem 1.25rem; }
+            .info-section { padding: 1rem 1.25rem; }
+            .stack-section { padding: 1.25rem; }
+            .right-header { padding: 1rem 1.25rem; }
         }
-
-        /* Syntax colors */
-        .token-keyword { color: #f472b6; font-weight: 600; }
-        .token-string { color: #34d399; }
-        .token-var { color: #93c5fd; }
-        .token-comment { color: #6b7280; font-style: italic; }
     </style>
 </head>
 <body>
-    <div class="container">
-        <div class="glass-card">
-            <header>
-                <div class="error-badge">{$class}</div>
-                <h1>{$message}</h1>
-                <div class="location-path">
-                    {$file} <span class="line">:{$line}</span>
-                </div>
-            </header>
+    <div class="shell">
+        <!-- LEFT PANEL -->
+        <aside class="left">
+            <div class="left-header">
+                <div class="brand">⚡ Plugs</div>
 
-            <div class="main-pane">
-                <div class="section-header">Execution Snippet</div>
-                <div class="code-container">
-                    <div class="code-filename">{$file}</div>
-                    <div class="code-viewport">
-                        {$codeSnippet}
-                    </div>
+                <div class="error-type">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0zM12 9v4m0 4h.01"/></svg>
+                    {$class}
                 </div>
-
-                <div class="section-header">Trace Stack</div>
-                <div class="stack-list">
-                    {$traceHtml}
-                </div>
-
-                <div class="section-header" style="margin-top: 3rem;">Environment</div>
-                <table class="meta-table">
-                    <tr><th>PHP</th><td>{$phpVersion}</td></tr>
-                    <tr><th>System</th><td>{$os}</td></tr>
-                    <tr><th>Memory</th><td>{$memory}</td></tr>
-                    <tr><th>Debug</th><td><span class="badge-pill" style="background: var(--accent);">Enabled</span></td></tr>
-                </table>
-
-                <div class="section-header" style="margin-top: 3rem;">View Data</div>
-                <div class="data-dump">
-                    <pre>{$dataHtml}</pre>
-                </div>
+                <div class="error-msg">{$message}</div>
             </div>
-        </div>
 
-        <footer>
-            &copy; <?php echo date('Y'); ?> Plugs Framework &bull; Built for Plugs by Celio Natti
-        </footer>
+            <div class="info-section">
+                <div class="info-label">📄 Source</div>
+                <div class="file-path">{$file} <span class="line-num">:{$line}</span></div>
+                <a href="vscode://file/{$file}:{$line}" class="open-editor">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4"/></svg>
+                    Open in Editor
+                </a>
+            </div>
+
+            <div class="info-section">
+                <div class="info-label">🖼️ Template</div>
+                <span class="view-badge">{$viewDisplay}</span>
+            </div>
+
+            <div class="info-section">
+                <div class="info-label">🌐 Request</div>
+                <div class="info-row"><span class="key">Method</span><span class="val">{$method}</span></div>
+                <div class="info-row"><span class="key">URL</span><span class="val">{$uri}</span></div>
+            </div>
+
+            <div class="info-section">
+                <div class="info-label">⚙️ Environment</div>
+                <div class="info-row"><span class="key">PHP</span><span class="val">{$phpVersion}</span></div>
+                <div class="info-row"><span class="key">OS</span><span class="val">{$os}</span></div>
+                <div class="info-row"><span class="key">Memory</span><span class="val">{$memory}</span></div>
+            </div>
+
+            <div class="info-section">
+                <div class="info-label">📦 View Data</div>
+                <div class="data-dump">{$dataHtml}</div>
+            </div>
+
+            <div class="left-footer">
+                &copy; <?php echo date('Y'); ?> Plugs Framework
+            </div>
+        </aside>
+
+        <!-- RIGHT PANEL -->
+        <main class="right">
+            <div class="right-header">
+                <h2>Execution Snippet</h2>
+                <span style="font-family:'Fira Code',monospace; font-size:0.7rem; color:#475569;">Line {$line}</span>
+            </div>
+
+            <div class="code-container">
+                {$codeSnippet}
+            </div>
+
+            <div class="stack-section">
+                <h3>Stack Trace</h3>
+                {$traceHtml}
+            </div>
+        </main>
     </div>
 </body>
 </html>

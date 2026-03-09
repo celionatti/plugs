@@ -307,63 +307,148 @@ class HtmlErrorRenderer
         .token-var { color: #60a5fa; }
         .token-comment { color: #64748b; font-style: italic; }
 
-        .suggestions-box {
-            background: rgba(139, 92, 246, 0.05);
-            border: 1px solid rgba(139, 92, 246, 0.2);
-            padding: 2rem;
-            margin-top: 2.5rem;
-            border-radius: 24px;
-            position: relative;
-            overflow: hidden;
+        .error-banner {
+            padding: 3rem 2.5rem;
+            border-bottom: 1px solid var(--border);
+            background: linear-gradient(to bottom, rgba(139, 92, 246, 0.05), transparent);
         }
 
-        .suggestions-box::before {
-            content: "";
-            position: absolute;
-            top: 0; left: 0; width: 4px; height: 100%;
-            background: var(--primary);
+        .exception-message {
+            font-size: 2.2rem;
+            font-weight: 850;
+            margin: 1rem 0 1.5rem;
+            line-height: 1.2;
+            letter-spacing: -0.03em;
+            word-break: break-word;
+            background: linear-gradient(135deg, #fff 60%, rgba(255,255,255,0.7));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
         }
 
-        .file-location-bar {
+        /* Tabs System */
+        .tabs-nav {
+            display: flex;
+            gap: 0.5rem;
+            padding: 0 2.5rem;
+            margin-top: -1px;
+            border-bottom: 1px solid var(--border);
+            background: rgba(15, 23, 42, 0.4);
+        }
+
+        .tab-btn {
+            padding: 1rem 1.5rem;
+            background: transparent;
+            border: none;
+            border-bottom: 2px solid transparent;
+            color: var(--text-muted);
+            font-family: inherit;
+            font-weight: 600;
+            font-size: 0.9rem;
+            cursor: pointer;
+            transition: all 0.2s;
             display: flex;
             align-items: center;
-            justify-content: space-between;
-            background: rgba(0,0,0,0.3);
-            padding: 1.25rem 1.75rem;
-            border-radius: 16px;
-            border: 1px solid var(--border);
-            font-family: "Fira Code", monospace;
-            font-size: 0.9rem;
-            flex-wrap: wrap;
-            gap: 1rem;
+            gap: 0.5rem;
         }
 
-        .vscode-btn {
-            display: inline-flex;
+        .tab-btn:hover {
+            color: var(--text);
+            background: rgba(255,255,255,0.03);
+        }
+
+        .tab-btn.active {
+            color: var(--primary);
+            border-bottom-color: var(--primary);
+            background: rgba(139, 92, 246, 0.05);
+        }
+
+        .tab-content {
+            display: none;
+            padding: 2.5rem;
+            animation: fadeIn 0.3s ease-out;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        .data-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.85rem;
+            background: rgba(0,0,0,0.2);
+            border-radius: 12px;
+            overflow: hidden;
+            border: 1px solid var(--border);
+        }
+
+        .data-table th, .data-table td {
+            padding: 0.85rem 1rem;
+            text-align: left;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .data-table th {
+            background: rgba(255,255,255,0.03);
+            color: var(--text-muted);
+            font-weight: 600;
+            width: 30%;
+        }
+
+        .data-table td {
+            font-family: "Fira Code", monospace;
+            color: var(--text);
+            word-break: break-all;
+        }
+
+        .data-table tr:last-child th, .data-table tr:last-child td {
+            border-bottom: none;
+        }
+
+        .stack-item {
+            padding: 1rem 1.25rem;
+            background: rgba(255,255,255,0.02);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            margin-bottom: 0.75rem;
+            cursor: pointer;
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .stack-item.active {
+            background: rgba(139, 92, 246, 0.1);
+            border-color: var(--primary);
+            box-shadow: 0 4px 12px rgba(139, 92, 246, 0.1);
+        }
+
+        .stack-item:hover:not(.active) {
+            background: rgba(255,255,255,0.05);
+            transform: translateX(4px);
+        }
+
+        .stack-item.internal {
+            opacity: 0.5;
+            font-size: 0.85rem;
+        }
+
+        .section-title {
+            font-size: 1.1rem;
+            font-weight: 700;
+            margin-bottom: 1.25rem;
+            color: var(--primary);
+            display: flex;
             align-items: center;
             gap: 0.6rem;
-            background: var(--primary);
-            color: white;
-            padding: 0.75rem 1.5rem;
-            border-radius: 12px;
-            font-size: 0.85rem;
-            text-decoration: none;
-            font-weight: 700;
-            transition: all 0.2s;
-            box-shadow: 0 4px 12px rgba(167, 139, 250, 0.3);
-        }
-
-        .vscode-btn:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 6px 20px rgba(167, 139, 250, 0.4);
-            filter: brightness(1.1);
         }
 
         @media (max-width: 768px) {
             .container { padding: 1rem; }
             header.header { padding: 1.5rem; }
-            .error-banner { padding: 2rem 1.5rem; }
-            .main-content { padding: 2rem 1.5rem; }
+            .error-banner { padding: 2.5rem 1.5rem; }
+            .tab-content { padding: 1.5rem; }
+            .tabs-nav { padding: 0 1rem; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+            .tab-btn { padding: 0.85rem 1rem; white-space: nowrap; }
+            .exception-message { font-size: 1.75rem; }
             .file-location-bar { flex-direction: column; align-items: flex-start; }
             .vscode-btn { width: 100%; justify-content: center; }
             .stack-item:hover { transform: none; }
@@ -421,8 +506,27 @@ class HtmlErrorRenderer
         }
 
         $html .= '</div>
-            <div class="main-content">
-                <div class="section-header">Execution Snippet</div>
+            <div class="tabs-nav">
+                <button class="tab-btn active" data-tab="trace">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M4 6h16M4 12h16M4 18h7"/></svg>
+                    Trace
+                </button>
+                <button class="tab-btn" data-tab="request">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 12H3m0 0l3.5 3.5M3 12l3.5-3.5"/></svg>
+                    Request
+                </button>
+                <button class="tab-btn" data-tab="app">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+                    App
+                </button>
+                <button class="tab-btn" data-tab="env">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+                    Environment
+                </button>
+            </div>
+
+            <div id="tab-trace" class="tab-content active">
+                <div class="section-title">Execution Snippet</div>
                 <div class="code-viewer-container">';
         foreach ($frames as $index => $frame) {
             $active = $index === 0 ? 'active' : '';
@@ -433,14 +537,16 @@ class HtmlErrorRenderer
         }
         $html .= '</div>
 
-                <div class="section-header" style="margin-top: 3rem;">Stack Trace</div>
+                <div class="section-title" style="margin-top: 3rem;">Stack Trace</div>
                 <ul class="stack-list">';
         foreach ($frames as $index => $frame) {
             $active = $index === 0 ? 'active' : '';
             $f = $frame['file'] ?? '{internal}';
             $l = $frame['line'] ?? '-';
             $method = ($frame['class'] ?? '') . ($frame['type'] ?? '') . $frame['function'];
-            $html .= '<li class="stack-item ' . $active . '" data-index="' . $index . '" data-file="' . htmlspecialchars(basename($f)) . '" data-full-file="' . htmlspecialchars($f) . '" data-line="' . $l . '">
+            $isInternal = !isset($frame['file']) || str_contains($f, 'vendor') || str_contains($f, 'src\Debug');
+
+            $html .= '<li class="stack-item ' . $active . ' ' . ($isInternal ? 'internal' : '') . '" data-index="' . $index . '" data-file="' . htmlspecialchars(basename($f)) . '" data-full-file="' . htmlspecialchars($f) . '" data-line="' . $l . '">
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.25rem;">
                     <span style="font-family: Fira Code; font-size: 0.85rem; color: var(--accent); font-weight: 600;">' . htmlspecialchars($method) . '()</span>
                     <span style="font-size: 0.75rem; color: var(--text-muted);">' . htmlspecialchars(basename($f)) . ':' . $l . '</span>
@@ -448,6 +554,56 @@ class HtmlErrorRenderer
             </li>';
         }
         $html .= '</ul>
+            </div>
+
+            <div id="tab-request" class="tab-content">
+                <div class="section-title">Request Information</div>
+                <table class="data-table">
+                    <tr><th>Method</th><td>' . ($_SERVER['REQUEST_METHOD'] ?? 'N/A') . '</td></tr>
+                    <tr><th>URL</th><td>' . ($_SERVER['REQUEST_URI'] ?? 'N/A') . '</td></tr>
+                    <tr><th>IP Address</th><td>' . ($_SERVER['REMOTE_ADDR'] ?? 'N/A') . '</td></tr>
+                    <tr><th>User Agent</th><td>' . ($_SERVER['HTTP_USER_AGENT'] ?? 'N/A') . '</td></tr>
+                </table>
+
+                <div class="section-title" style="margin-top: 2rem;">Headers</div>
+                <table class="data-table">';
+        $headers = function_exists('getallheaders') ? getallheaders() : [];
+        foreach ($headers as $name => $value) {
+            $html .= '<tr><th>' . htmlspecialchars($name) . '</th><td>' . htmlspecialchars($value) . '</td></tr>';
+        }
+        $html .= '</table>';
+
+        if (!empty($_POST)) {
+            $html .= '<div class="section-title" style="margin-top: 2rem;">Post Data</div>
+                <table class="data-table">';
+            foreach ($_POST as $key => $value) {
+                $val = is_array($value) ? json_encode($value) : $value;
+                $html .= '<tr><th>' . htmlspecialchars($key) . '</th><td>' . htmlspecialchars($val) . '</td></tr>';
+            }
+            $html .= '</table>';
+        }
+
+        $html .= '</div>
+
+            <div id="tab-app" class="tab-content">
+                <div class="section-title">Application Snapshot</div>
+                <table class="data-table">
+                    <tr><th>Environment</th><td>' . (defined('APP_ENV') ? APP_ENV : 'development') . '</td></tr>
+                    <tr><th>Debug Mode</th><td>' . (defined('APP_DEBUG') && APP_DEBUG ? 'Enabled' : 'Disabled') . '</td></tr>
+                    <tr><th>Base Path</th><td>' . htmlspecialchars(realpath(__DIR__ . '/../../') ?: 'N/A') . '</td></tr>
+                </table>
+            </div>
+
+            <div id="tab-env" class="tab-content">
+                <div class="section-title">Server Environment</div>
+                <table class="data-table">
+                    <tr><th>PHP Version</th><td>' . PHP_VERSION . '</td></tr>
+                    <tr><th>SAPI</th><td>' . PHP_SAPI . '</td></tr>
+                    <tr><th>OS</th><td>' . PHP_OS . '</td></tr>
+                    <tr><th>Server Software</th><td>' . ($_SERVER['SERVER_SOFTWARE'] ?? 'N/A') . '</td></tr>
+                    <tr><th>Memory Limit</th><td>' . ini_get('memory_limit') . '</td></tr>
+                    <tr><th>Max Execution Time</th><td>' . ini_get('max_execution_time') . 's</td></tr>
+                </table>
             </div>
         </div>
     </div>';
@@ -484,6 +640,21 @@ class HtmlErrorRenderer
                 } else {
                     btn.style.display = "none";
                 }
+            });
+        });
+
+        // Tab Switching Logic
+        document.querySelectorAll(".tab-btn").forEach(btn => {
+            btn.addEventListener("click", function() {
+                const tabId = this.getAttribute("data-tab");
+                
+                // Update buttons
+                document.querySelectorAll(".tab-btn").forEach(b => b.classList.remove("active"));
+                this.classList.add("active");
+                
+                // Update content
+                document.querySelectorAll(".tab-content").forEach(c => c.classList.remove("active"));
+                document.getElementById("tab-" + tabId).classList.add("active");
             });
         });
         </script></body></html>';
