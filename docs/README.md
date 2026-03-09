@@ -64,6 +64,7 @@ Welcome to the official documentation for the **Plugs** framework. Plugs is a li
 - [Billing & Tax](file:///docs/features/billing.md) (New)
 - [Payment Adapters](file:///docs/features/payment-adapters.md) (New)
 - [Caching](file:///docs/features/caching.md) (Updated)
+- [Sitemap Generation](file:///docs/features/sitemap-generation.md) (New)
 - [CSRF Protection](file:///docs/security/csrf-protection.md)
 - [Security Shield](file:///docs/security/security-shield.md)
 - [Rate Limiting](file:///docs/security/rate-limiting.md) (New)
