@@ -82,7 +82,8 @@ class JwtGuard implements StatelessGuardInterface
         if (!empty($token)) {
             $payload = $this->jwt->decode($token);
 
-            if ($payload && isset($payload['sub'])) {
+            // only allow access tokens for login, not refresh tokens
+            if ($payload && isset($payload['sub']) && ($payload['type'] ?? 'access') === 'access') {
                 $this->user = $this->provider->retrieveById($payload['sub']);
             }
         }
@@ -185,6 +186,7 @@ class JwtGuard implements StatelessGuardInterface
     {
         $payload = [
             'sub' => $user->getAuthIdentifier(),
+            'type' => $options['type'] ?? 'access',
         ];
 
         if (isset($options['claims'])) {
@@ -197,30 +199,52 @@ class JwtGuard implements StatelessGuardInterface
     }
 
     /**
-     * Refresh the current token.
+     * Issue a new token pair (Access Token & Refresh Token)
      *
-     * @param string|null $token
-     * @param int $gracePeriod seconds after expiration that a token can still be refreshed
-     * @return string|null The new JWT token
+     * @param Authenticatable $user
+     * @return array{access_token: string, refresh_token: string, expires_in: int}
      */
-    public function refresh(?string $token = null, int $gracePeriod = 300): ?string
+    public function issueTokenPair(Authenticatable $user): array
     {
-        $token = $token ?: $this->getTokenForRequest();
+        $ttl = (int) config('jwt.ttl', 900); // 15 mins default access token
+        $refreshTtl = (int) config('jwt.refresh_ttl', 604800); // 7 days default refresh
+
+        $accessToken = $this->issueToken($user, [
+            'expiry' => $ttl,
+            'type' => 'access',
+        ]);
+
+        $refreshToken = $this->issueToken($user, [
+            'expiry' => $refreshTtl,
+            'type' => 'refresh',
+        ]);
+
+        return [
+            'access_token' => $accessToken,
+            'refresh_token' => $refreshToken,
+            'expires_in' => $ttl,
+        ];
+    }
+
+    /**
+     * Refresh the current token.
+     * Expects a valid Refresh Token to be provided.
+     *
+     * @param string|null $refreshToken
+     * @return array|null The new Token Pair
+     */
+    public function refresh(?string $refreshToken = null): ?array
+    {
+        $token = $refreshToken ?: $this->getTokenForRequest();
 
         if (empty($token)) {
             return null;
         }
 
-        // Decode ignoring expiration to allow refresh of recently expired tokens
-        $payload = $this->jwt->decode($token, true);
+        // Decode strict expiration for refresh context
+        $payload = $this->jwt->decode($token, false);
 
-        if (!$payload || !isset($payload['sub'])) {
-            return null;
-        }
-
-        // Ensure token isn't excessively old (prevent permanent refresh cycles if desired)
-        // Here we just check the grace period against 'exp'
-        if (isset($payload['exp']) && (time() - $payload['exp']) > $gracePeriod) {
+        if (!$payload || !isset($payload['sub']) || ($payload['type'] ?? '') !== 'refresh') {
             return null;
         }
 
@@ -230,7 +254,7 @@ class JwtGuard implements StatelessGuardInterface
             return null;
         }
 
-        return $this->issueToken($user);
+        return $this->issueTokenPair($user);
     }
 
     /**

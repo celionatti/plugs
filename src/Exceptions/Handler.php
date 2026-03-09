@@ -208,6 +208,46 @@ class Handler
     }
 
     /**
+     * Build an RFC 7807 Problem Details JSON response.
+     *
+     * @param int $status The HTTP status code.
+     * @param string $title A short, human-readable summary of the problem type.
+     * @param string $detail A human-readable explanation specific to this occurrence of the problem.
+     * @param string|null $type A URI reference that identifies the problem type (RFC 7807).
+     * @param ServerRequestInterface|null $request The current request, to include the instance URI.
+     * @param array $additional Additional data to merge into the response (like validation errors).
+     * @return ResponseInterface
+     */
+    protected function buildJsonError(
+        int $status,
+        string $title,
+        string $detail,
+        ?string $type = null,
+        ?ServerRequestInterface $request = null,
+        array $additional = []
+    ): ResponseInterface {
+        $type = $type ?? "https://httpstatuses.com/{$status}";
+
+        $payload = [
+            'type' => $type,
+            'title' => $title,
+            'status' => $status,
+            'detail' => $detail,
+        ];
+
+        if ($request !== null) {
+            $payload['instance'] = $request->getUri()->getPath();
+        }
+
+        if (!empty($additional)) {
+            $payload = array_merge($payload, $additional);
+        }
+
+        return ResponseFactory::json($payload, $status)
+            ->withHeader('Content-Type', 'application/problem+json');
+    }
+
+    /**
      * Render a missing route parameter exception.
      *
      * @param ServerRequestInterface $request
@@ -219,7 +259,13 @@ class Handler
         MissingRouteParameterException $e
     ): ResponseInterface {
         if ($this->expectsJson($request)) {
-            return ResponseFactory::json($e->toArray(), 500);
+            return $this->buildJsonError(
+                500,
+                'Internal Server Error',
+                $e->getMessage(),
+                null,
+                $request
+            );
         }
 
         if ($this->debug) {
@@ -241,7 +287,14 @@ class Handler
         ValidationException $e
     ): ResponseInterface {
         if ($this->expectsJson($request)) {
-            return ResponseFactory::json($e->toArray(), 422);
+            return $this->buildJsonError(
+                422,
+                'Unprocessable Entity',
+                $e->getMessage() ?: 'The provided data was invalid.',
+                'https://httpstatuses.com/422',
+                $request,
+                ['errors' => $e->errors()]
+            );
         }
 
         // Redirect back with errors
@@ -264,7 +317,13 @@ class Handler
         AuthenticationException $e
     ): ResponseInterface {
         if ($this->expectsJson($request)) {
-            return ResponseFactory::json(['message' => $e->getMessage()], 401);
+            return $this->buildJsonError(
+                401,
+                'Unauthenticated',
+                $e->getMessage() ?: 'Authentication is required to access this resource.',
+                'https://httpstatuses.com/401',
+                $request
+            );
         }
 
         $redirectTo = $e->redirectTo() ?? '/login';
@@ -284,7 +343,13 @@ class Handler
         AuthorizationException $e
     ): ResponseInterface {
         if ($this->expectsJson($request)) {
-            return ResponseFactory::json(['message' => $e->getMessage()], 403);
+            return $this->buildJsonError(
+                403,
+                'Forbidden',
+                $e->getMessage() ?: 'You do not have permission to access this resource.',
+                'https://httpstatuses.com/403',
+                $request
+            );
         }
 
         return $this->renderErrorPage($request, 403, $e->getMessage());
@@ -302,7 +367,13 @@ class Handler
         ModelNotFoundException $e
     ): ResponseInterface {
         if ($this->expectsJson($request)) {
-            return ResponseFactory::json(['message' => $e->getMessage()], 404);
+            return $this->buildJsonError(
+                404,
+                'Not Found',
+                $e->getMessage() ?: 'The requested resource was not found.',
+                'https://httpstatuses.com/404',
+                $request
+            );
         }
 
         return $this->renderErrorPage($request, 404);
@@ -320,7 +391,13 @@ class Handler
         RouteNotFoundException $e
     ): ResponseInterface {
         if ($this->expectsJson($request)) {
-            return ResponseFactory::json(['message' => 'Not Found'], 404);
+            return $this->buildJsonError(
+                404,
+                'Not Found',
+                $e->getMessage() ?: 'The requested route was not found.',
+                'https://httpstatuses.com/404',
+                $request
+            );
         }
 
         return $this->renderErrorPage($request, 404);
@@ -341,10 +418,14 @@ class Handler
         $allowedMethods = $e->getAllowedMethods();
 
         if ($this->expectsJson($request)) {
-            return ResponseFactory::json([
-                'message' => $e->getMessage(),
-                'allowed_methods' => $allowedMethods,
-            ], $statusCode)->withHeader('Allow', implode(', ', $allowedMethods));
+            return $this->buildJsonError(
+                $statusCode,
+                'Method Not Allowed',
+                $e->getMessage() ?: 'The HTTP method is not allowed for this route.',
+                "https://httpstatuses.com/{$statusCode}",
+                $request,
+                ['allowed_methods' => $allowedMethods]
+            )->withHeader('Allow', implode(', ', $allowedMethods));
         }
 
         $response = $this->renderErrorPage($request, $statusCode, $e->getMessage());
@@ -368,10 +449,14 @@ class Handler
         $headers = $retryAfter ? ['Retry-After' => (string) $retryAfter] : [];
 
         if ($this->expectsJson($request)) {
-            $response = ResponseFactory::json([
-                'message' => $e->getMessage(),
-                'retry_after' => $retryAfter,
-            ], $statusCode);
+            $response = $this->buildJsonError(
+                $statusCode,
+                'Too Many Requests',
+                $e->getMessage() ?: 'Rate limit exceeded.',
+                "https://httpstatuses.com/{$statusCode}",
+                $request,
+                ['retry_after' => $retryAfter]
+            );
 
             foreach ($headers as $name => $value) {
                 $response = $response->withHeader($name, $value);
@@ -405,7 +490,13 @@ class Handler
         $message = $this->debug ? $e->getMessage() : 'A data security error occurred.';
 
         if ($this->expectsJson($request)) {
-            return ResponseFactory::json(['message' => $message], 500);
+            return $this->buildJsonError(
+                500,
+                'Encryption Error',
+                $message,
+                'https://httpstatuses.com/500',
+                $request
+            );
         }
 
         if ($this->debug) {
@@ -429,7 +520,19 @@ class Handler
         $statusCode = $e->getStatusCode();
 
         if ($this->expectsJson($request)) {
-            return ResponseFactory::json(['message' => $e->getMessage()], $statusCode);
+            $response = $this->buildJsonError(
+                $statusCode,
+                'HTTP Exception',
+                $e->getMessage(),
+                "https://httpstatuses.com/{$statusCode}",
+                $request
+            );
+
+            // Add any custom headers from the exception
+            foreach ($e->getHeaders() as $name => $value) {
+                $response = $response->withHeader($name, $value);
+            }
+            return $response;
         }
 
         $response = $this->renderErrorPage($request, $statusCode, $e->getMessage());
@@ -456,11 +559,12 @@ class Handler
         $statusCode = $e instanceof PlugsException ? $e->getStatusCode() : 500;
 
         if ($this->expectsJson($request)) {
-            $data = ['message' => 'Server Error'];
+            $detail = 'An unexpected server error occurred.';
+            $additional = [];
 
             if ($this->debug) {
-                $data = [
-                    'message' => $e->getMessage(),
+                $detail = $e->getMessage();
+                $additional = [
                     'exception' => get_class($e),
                     'file' => $e->getFile(),
                     'line' => $e->getLine(),
@@ -468,7 +572,14 @@ class Handler
                 ];
             }
 
-            return ResponseFactory::json($data, $statusCode);
+            return $this->buildJsonError(
+                $statusCode,
+                'Internal Server Error',
+                $detail,
+                "https://httpstatuses.com/{$statusCode}",
+                $request,
+                $additional
+            );
         }
 
         if ($this->debug) {
@@ -600,7 +711,13 @@ class Handler
         TokenMismatchException $e
     ): ResponseInterface {
         if ($this->expectsJson($request)) {
-            return ResponseFactory::json(['message' => $e->getMessage()], 419);
+            return $this->buildJsonError(
+                419,
+                'Token Mismatch',
+                $e->getMessage() ?: 'CSRF token mismatch.',
+                'https://httpstatuses.com/419',
+                $request
+            );
         }
 
         if ($this->debug) {
@@ -622,18 +739,26 @@ class Handler
         DatabaseException $e
     ): ResponseInterface {
         if ($this->expectsJson($request)) {
-            $data = ['message' => 'A database error occurred.'];
+            $detail = 'A database error occurred.';
+            $additional = [];
 
             if ($this->debug) {
-                $data = [
-                    'message' => $e->getMessage(),
+                $detail = $e->getMessage();
+                $additional = [
                     'exception' => get_class($e),
                     'sql' => $e->getSql(),
                     'bindings' => $this->maskSensitiveData($e->getBindings()),
                 ];
             }
 
-            return ResponseFactory::json($data, 500);
+            return $this->buildJsonError(
+                500,
+                'Database Error',
+                $detail,
+                'https://httpstatuses.com/500',
+                $request,
+                $additional
+            );
         }
 
         if ($this->debug) {
