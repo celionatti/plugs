@@ -114,11 +114,15 @@ class ErrorRenderer
         * { margin: 0; padding: 0; box-sizing: border-box; }
         ::selection { background: rgba(139,92,246,0.3); color: #fff; }
 
+        html, body {
+            height: 100%;
+            overflow: hidden;
+        }
+
         body {
             background: #0c0f1a;
             color: #e2e8f0;
             font-family: "Outfit", sans-serif;
-            min-height: 100vh;
             line-height: 1.6;
         }
 
@@ -126,7 +130,8 @@ class ErrorRenderer
         .shell {
             display: grid;
             grid-template-columns: 380px 1fr;
-            min-height: 100vh;
+            height: 100vh;
+            overflow: hidden;
         }
 
         /* ── LEFT PANEL ── */
@@ -155,6 +160,7 @@ class ErrorRenderer
 
         .error-type {
             margin-top: 1.5rem;
+            font-family: "Outfit", sans-serif;
             font-size: 0.7rem;
             font-weight: 700;
             text-transform: uppercase;
@@ -167,6 +173,7 @@ class ErrorRenderer
 
         .error-msg {
             margin-top: 0.75rem;
+            font-family: "Outfit", sans-serif;
             font-size: 1.15rem;
             font-weight: 700;
             color: #f8fafc;
@@ -181,6 +188,7 @@ class ErrorRenderer
         }
 
         .info-label {
+            font-family: "Outfit", sans-serif;
             font-size: 0.65rem;
             font-weight: 700;
             text-transform: uppercase;
@@ -194,10 +202,11 @@ class ErrorRenderer
             justify-content: space-between;
             align-items: center;
             padding: 0.4rem 0;
+            font-family: "Outfit", sans-serif;
             font-size: 0.8rem;
         }
 
-        .info-row .key { color: #94a3b8; }
+        .info-row .key { color: #94a3b8; font-family: "Outfit", sans-serif; }
         .info-row .val { color: #e2e8f0; font-family: "Fira Code", monospace; font-size: 0.75rem; }
 
         .file-path {
@@ -381,14 +390,20 @@ class ErrorRenderer
 
         /* ── Responsive ── */
         @media (max-width: 900px) {
+            html, body { height: auto; overflow: auto; }
             .shell {
                 grid-template-columns: 1fr;
                 grid-template-rows: auto 1fr;
+                height: auto;
+                overflow: visible;
             }
             .left {
                 border-right: none;
                 border-bottom: 1px solid rgba(139,92,246,0.12);
-                max-height: 50vh;
+                overflow-y: visible;
+            }
+            .right {
+                overflow-y: visible;
             }
             .left-footer { display: none; }
         }
