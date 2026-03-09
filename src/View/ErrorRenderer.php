@@ -18,7 +18,7 @@ class ErrorRenderer
     /**
      * Max lines for stack trace display
      */
-    private const MAX_TRACE_LINES = 15;
+    private const MAX_TRACE_LINES = 5;
 
     /**
      * Render the exception to a premium HTML page

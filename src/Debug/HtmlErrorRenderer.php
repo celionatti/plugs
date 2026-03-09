@@ -28,44 +28,336 @@ class HtmlErrorRenderer
 
         if (!headers_sent()) {
             header('Content-Type: text/html; charset=UTF-8');
-            header_remove('Content-Security-Policy'); // Ensure error page styles are not blocked
+            header_remove('Content-Security-Policy');
         }
 
         $trace = $e->getTrace();
         $file = $e->getFile();
         $line = $e->getLine();
-
-        $frames = [];
-        $frames[] = [
-            'file' => $file,
-            'line' => $line,
-            'function' => '{main}',
-            'class' => '',
-            'type' => '',
-            'args' => [],
-        ];
-        foreach ($trace as $t) {
-            $frames[] = $t;
-        }
-
         $className = get_class($e);
         $shortClass = basename(str_replace('\\', '/', $className));
+        $message = htmlspecialchars($e->getMessage());
+        $nonceAttr = $nonce ? ' nonce="' . $nonce . '"' : '';
 
         $analyzer = new ErrorAnalyzer();
         $suggestions = $analyzer->analyze($e);
 
         // Detect specific errors
         $msg = $e->getMessage();
-        $isMissingComponent = false;
-        if (str_contains($msg, 'not found') && (str_contains($msg, 'Controller') || str_contains($msg, 'Method'))) {
-            $isMissingComponent = true;
+        $isMissingComponent = str_contains($msg, 'not found') && (str_contains($msg, 'Controller') || str_contains($msg, 'Method'));
+        $badgeText = $isMissingComponent ? 'Missing Component' : htmlspecialchars($className);
+        $badgeColor = $isMissingComponent ? '#f59e0b' : '#ef4444';
+
+        // Build smart frames - filter to relevant ones
+        $allFrames = [];
+        $allFrames[] = ['file' => $file, 'line' => $line, 'function' => '{main}', 'class' => '', 'type' => '', 'args' => []];
+        foreach ($trace as $t) {
+            $allFrames[] = $t;
         }
 
-        $html = $this->getDebugHeader($shortClass, $nonce);
-        $html .= $this->getDebugBody($e, $className, $file, $line, $frames, $suggestions, $nonce, $isMissingComponent);
-        $html .= $this->getDebugFooter($nonce);
+        $appFrames = [];
+        $internalFrames = [];
+        foreach ($allFrames as $i => $frame) {
+            $f = $frame['file'] ?? '';
+            $isInternal = !$f || str_contains($f, 'vendor') || str_contains($f, 'src' . DIRECTORY_SEPARATOR . 'Debug');
+            if ($i === 0 || !$isInternal) {
+                $appFrames[] = ['frame' => $frame, 'index' => $i];
+            } else {
+                $internalFrames[] = ['frame' => $frame, 'index' => $i];
+            }
+        }
 
-        echo $html;
+        if (count($appFrames) > 5) {
+            $extraFrames = array_slice($appFrames, 5);
+            $appFrames = array_slice($appFrames, 0, 5);
+            $internalFrames = array_merge($extraFrames, $internalFrames);
+        }
+
+        // Code snippet for the error line
+        $mainSnippet = (file_exists($file)) ? $this->getCodeSnippet($file, $line) : '<div style="padding:2rem;color:#94a3b8;text-align:center;">No preview available.</div>';
+
+        // Request info
+        $method = $_SERVER['REQUEST_METHOD'] ?? 'GET';
+        $uri = $_SERVER['REQUEST_URI'] ?? '/';
+        $headers = function_exists('getallheaders') ? getallheaders() : [];
+        $phpVersion = PHP_VERSION;
+        $os = PHP_OS;
+        $memory = round(memory_get_usage() / 1024 / 1024, 2) . ' MB';
+
+        echo '<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Plugs &middot; ' . $shortClass . '</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <style' . $nonceAttr . '>
+        @import url("https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Fira+Code:wght@400;500&display=swap");
+        * { margin:0; padding:0; box-sizing:border-box; }
+        ::selection { background:rgba(139,92,246,0.3); color:#fff; }
+        html, body { height:100%; overflow:hidden; }
+        body { background:#0c0f1a; color:#e2e8f0; font-family:"Outfit",sans-serif; line-height:1.6; }
+
+        .shell { display:grid; grid-template-columns:380px 1fr; height:100vh; overflow:hidden; }
+
+        .left { background:#111827; border-right:1px solid rgba(139,92,246,0.12); display:flex; flex-direction:column; overflow-y:auto; }
+        .left-header { padding:2rem 1.75rem 1.5rem; border-bottom:1px solid rgba(255,255,255,0.06); }
+        .brand { font-family:"Outfit",sans-serif; font-size:1.5rem; font-weight:800; background:linear-gradient(135deg,#a78bfa,#60a5fa); -webkit-background-clip:text; -webkit-text-fill-color:transparent; letter-spacing:-0.02em; text-decoration:none; }
+        .error-type { margin-top:1.5rem; font-family:"Outfit",sans-serif; font-size:0.7rem; font-weight:700; text-transform:uppercase; letter-spacing:0.1em; display:flex; align-items:center; gap:0.4rem; }
+        .error-msg { margin-top:0.75rem; font-family:"Outfit",sans-serif; font-size:1.15rem; font-weight:700; color:#f8fafc; line-height:1.4; word-break:break-word; }
+        .info-section { padding:1.25rem 1.75rem; border-bottom:1px solid rgba(255,255,255,0.04); }
+        .info-label { font-family:"Outfit",sans-serif; font-size:0.65rem; font-weight:700; text-transform:uppercase; letter-spacing:0.08em; color:#64748b; margin-bottom:0.6rem; }
+        .info-row { display:flex; justify-content:space-between; align-items:center; padding:0.4rem 0; font-family:"Outfit",sans-serif; font-size:0.8rem; }
+        .info-row .key { color:#94a3b8; }
+        .info-row .val { color:#e2e8f0; font-family:"Fira Code",monospace; font-size:0.75rem; }
+        .file-path { font-family:"Fira Code",monospace; font-size:0.75rem; color:#94a3b8; word-break:break-all; line-height:1.5; }
+        .file-path .line-num { color:#ef4444; font-weight:700; }
+        .open-editor { display:inline-flex; align-items:center; gap:0.5rem; margin-top:0.75rem; padding:0.5rem 1rem; background:rgba(139,92,246,0.15); border:1px solid rgba(139,92,246,0.3); border-radius:8px; color:#a78bfa; font-size:0.75rem; font-weight:600; text-decoration:none; transition:all 0.2s; }
+        .open-editor:hover { background:rgba(139,92,246,0.25); color:#c4b5fd; }
+        .suggestions-box { margin-top:1rem; padding:1rem; background:rgba(139,92,246,0.08); border:1px dashed rgba(139,92,246,0.3); border-radius:12px; }
+        .left-footer { margin-top:auto; padding:1rem 1.75rem; border-top:1px solid rgba(255,255,255,0.04); font-size:0.7rem; color:#475569; text-align:center; }
+
+        .right { display:flex; flex-direction:column; overflow-y:auto; background:#0c0f1a; }
+        .right-header { padding:1.25rem 2rem; border-bottom:1px solid rgba(255,255,255,0.06); display:flex; align-items:center; justify-content:space-between; flex-shrink:0; }
+        .right-header h2 { font-family:"Outfit",sans-serif; font-size:0.85rem; font-weight:700; color:#a78bfa; text-transform:uppercase; letter-spacing:0.05em; }
+
+        .code-container { background:#080b14; overflow-x:auto; flex-shrink:0; }
+        .code-table { width:100%; border-collapse:collapse; font-family:"Fira Code",monospace; font-size:13px; }
+        .code-row.error-line { background:rgba(239,68,68,0.12); position:relative; }
+        .code-row.error-line::before { content:""; position:absolute; left:0; top:0; bottom:0; width:3px; background:#ef4444; }
+        .code-line-num { width:55px; text-align:right; padding:0 1rem 0 0; color:#334155; border-right:1px solid rgba(255,255,255,0.04); user-select:none; }
+        .error-line .code-line-num { color:#ef4444; font-weight:700; }
+        .code-content { padding-left:1rem; white-space:pre; color:#cbd5e1; line-height:1.7; }
+        .token-keyword { color:#c084fc; font-weight:600; }
+        .token-string { color:#4ade80; }
+        .token-var { color:#60a5fa; }
+        .token-comment { color:#475569; font-style:italic; }
+
+        .stack-section { padding:1.5rem 2rem; flex:1; }
+        .stack-section h3 { font-family:"Outfit",sans-serif; font-size:0.75rem; font-weight:700; text-transform:uppercase; letter-spacing:0.06em; color:#64748b; margin-bottom:1rem; }
+        .stack-item { padding:0.7rem 0.9rem; background:rgba(255,255,255,0.02); border:1px solid rgba(255,255,255,0.04); border-radius:8px; margin-bottom:0.5rem; transition:all 0.15s; cursor:pointer; }
+        .stack-item:hover { background:rgba(139,92,246,0.06); border-color:rgba(139,92,246,0.15); transform:translateX(3px); }
+        .stack-item.active { background:rgba(139,92,246,0.1); border-color:rgba(139,92,246,0.3); }
+        .stack-item.internal { opacity:0.45; }
+        .stack-call { color:#60a5fa; font-family:"Fira Code",monospace; font-size:0.75rem; font-weight:500; }
+        .stack-file { color:#475569; font-family:"Fira Code",monospace; font-size:0.7rem; margin-top:0.15rem; word-break:break-all; }
+        .stack-preview { display:none; margin-top:0.75rem; border-top:1px solid rgba(255,255,255,0.06); padding-top:0.75rem; overflow-x:auto; }
+        .stack-item.expanded .stack-preview { display:block; }
+        .toggle-internal { background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.08); color:#94a3b8; padding:0.5rem 1rem; border-radius:8px; font-family:"Outfit",sans-serif; font-size:0.75rem; cursor:pointer; transition:all 0.2s; margin-top:0.5rem; }
+        .toggle-internal:hover { background:rgba(255,255,255,0.08); color:#e2e8f0; }
+        .internal-frames { display:none; }
+        .internal-frames.visible { display:block; }
+
+        .detail-tabs { display:flex; gap:0.5rem; padding:1rem 2rem; border-bottom:1px solid rgba(255,255,255,0.06); background:rgba(0,0,0,0.15); }
+        .detail-tab { padding:0.5rem 1rem; background:transparent; border:none; border-bottom:2px solid transparent; color:#64748b; font-family:"Outfit",sans-serif; font-weight:600; font-size:0.8rem; cursor:pointer; transition:all 0.2s; }
+        .detail-tab:hover { color:#e2e8f0; }
+        .detail-tab.active { color:#a78bfa; border-bottom-color:#a78bfa; }
+        .detail-panel { display:none; padding:1.5rem 2rem; }
+        .detail-panel.active { display:block; }
+        .data-table { width:100%; border-collapse:collapse; font-size:0.8rem; background:rgba(0,0,0,0.2); border-radius:8px; overflow:hidden; border:1px solid rgba(139,92,246,0.1); }
+        .data-table th, .data-table td { padding:0.7rem 1rem; text-align:left; border-bottom:1px solid rgba(139,92,246,0.08); }
+        .data-table th { background:rgba(255,255,255,0.03); color:#94a3b8; font-weight:600; width:30%; font-family:"Outfit",sans-serif; }
+        .data-table td { font-family:"Fira Code",monospace; color:#e2e8f0; word-break:break-all; font-size:0.75rem; }
+        .data-table tr:last-child th, .data-table tr:last-child td { border-bottom:none; }
+
+        @media (max-width:900px) {
+            html, body { height:auto; overflow:auto; }
+            .shell { grid-template-columns:1fr; grid-template-rows:auto 1fr; height:auto; overflow:visible; }
+            .left { border-right:none; border-bottom:1px solid rgba(139,92,246,0.12); overflow-y:visible; }
+            .right { overflow-y:visible; }
+            .left-footer { display:none; }
+        }
+        @media (max-width:480px) {
+            .left-header { padding:1.5rem 1.25rem 1.25rem; }
+            .info-section { padding:1rem 1.25rem; }
+            .stack-section { padding:1.25rem; }
+        }
+    </style>
+</head>
+<body>
+    <div class="shell">
+        <aside class="left">
+            <div class="left-header">
+                <a href="/" class="brand">⚡ Plugs</a>
+                <div class="error-type" style="color:' . $badgeColor . '">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0zM12 9v4m0 4h.01"/></svg>
+                    ' . $badgeText . '
+                </div>
+                <div class="error-msg">' . $message . '</div>
+            </div>
+
+            <div class="info-section">
+                <div class="info-label">📄 Source</div>
+                <div class="file-path" id="active-file-path">' . htmlspecialchars($file) . ' <span class="line-num">:' . $line . '</span></div>
+                <a href="vscode://file/' . htmlspecialchars(realpath($file) ?: $file) . ':' . $line . '" id="active-vscode-btn" class="open-editor">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4"/></svg>
+                    Open in Editor
+                </a>
+            </div>';
+
+        if (!empty($suggestions)) {
+            echo '<div class="info-section">
+                <div class="info-label">💡 Suggestions</div>
+                <div class="suggestions-box">';
+            foreach ($suggestions as $suggestion) {
+                $parsed = preg_replace('/\*\*(.*?)\*\*/', '<strong style="color:#f8fafc;">$1</strong>', htmlspecialchars($suggestion));
+                $parsed = preg_replace('/`(.*?)`/', '<code style="background:rgba(0,0,0,0.3);padding:0.15rem 0.4rem;border-radius:6px;color:#60a5fa;font-family:Fira Code;font-size:0.7rem;">$1</code>', $parsed);
+                echo '<div style="margin-bottom:0.4rem;color:#94a3b8;font-size:0.8rem;display:flex;gap:0.4rem;"><span style="color:#a78bfa;">•</span> ' . $parsed . '</div>';
+            }
+            echo '</div></div>';
+        }
+
+        echo '
+            <div class="info-section">
+                <div class="info-label">🌐 Request</div>
+                <div class="info-row"><span class="key">Method</span><span class="val">' . $method . '</span></div>
+                <div class="info-row"><span class="key">URL</span><span class="val">' . htmlspecialchars($uri) . '</span></div>
+            </div>
+
+            <div class="info-section">
+                <div class="info-label">⚙️ Environment</div>
+                <div class="info-row"><span class="key">PHP</span><span class="val">' . $phpVersion . '</span></div>
+                <div class="info-row"><span class="key">OS</span><span class="val">' . $os . '</span></div>
+                <div class="info-row"><span class="key">Memory</span><span class="val">' . $memory . '</span></div>
+            </div>
+
+            <div class="left-footer">&copy; ' . date('Y') . ' Plugs Framework</div>
+        </aside>
+
+        <main class="right">
+            <div class="right-header">
+                <h2>Execution Snippet</h2>
+                <span style="font-family:Fira Code,monospace;font-size:0.7rem;color:#475569;">Line ' . $line . '</span>
+            </div>
+
+            <div class="code-container">' . $mainSnippet . '</div>
+
+            <div class="stack-section">
+                <h3>Stack Trace (' . count($appFrames) . ' app frames)</h3>';
+
+        // Render app frames
+        foreach ($appFrames as $entry) {
+            $frame = $entry['frame'];
+            $idx = $entry['index'];
+            $f = $frame['file'] ?? '{internal}';
+            $l = $frame['line'] ?? '-';
+            $func = ($frame['class'] ?? '') . ($frame['type'] ?? '') . $frame['function'];
+            $activeClass = $idx === 0 ? ' active' : '';
+            $previewHtml = '';
+            if (isset($frame['file']) && file_exists($frame['file'])) {
+                $previewHtml = $this->getCodeSnippet($frame['file'], (int) ($frame['line'] ?? 0));
+            }
+
+            echo '<div class="stack-item' . $activeClass . '" data-index="' . $idx . '" data-file="' . htmlspecialchars($f) . '" data-line="' . $l . '">
+                <div style="display:flex;justify-content:space-between;align-items:center;">
+                    <span class="stack-call">' . htmlspecialchars($func) . '()</span>
+                    <span class="stack-file">' . htmlspecialchars(basename($f)) . ':' . $l . '</span>
+                </div>
+                <div class="stack-preview"><div class="code-container" style="border-radius:8px;max-height:200px;overflow:auto;">' . $previewHtml . '</div></div>
+            </div>';
+        }
+
+        // Render internal frames toggle
+        if (!empty($internalFrames)) {
+            echo '<button class="toggle-internal" onclick="document.getElementById(\'internal-frames\').classList.toggle(\'visible\');this.textContent=this.textContent.includes(\'Show\')?\'Hide ' . count($internalFrames) . ' other frames\':\'Show ' . count($internalFrames) . ' other frames\';">Show ' . count($internalFrames) . ' other frames</button>';
+            echo '<div id="internal-frames" class="internal-frames">';
+            foreach ($internalFrames as $entry) {
+                $frame = $entry['frame'];
+                $idx = $entry['index'];
+                $f = $frame['file'] ?? '{internal}';
+                $l = $frame['line'] ?? '-';
+                $func = ($frame['class'] ?? '') . ($frame['type'] ?? '') . $frame['function'];
+                $previewHtml = '';
+                if (isset($frame['file']) && file_exists($frame['file'])) {
+                    $previewHtml = $this->getCodeSnippet($frame['file'], (int) ($frame['line'] ?? 0));
+                }
+
+                echo '<div class="stack-item internal" data-index="' . $idx . '" data-file="' . htmlspecialchars($f) . '" data-line="' . $l . '">
+                    <div style="display:flex;justify-content:space-between;align-items:center;">
+                        <span class="stack-call">' . htmlspecialchars($func) . '()</span>
+                        <span class="stack-file">' . htmlspecialchars(basename($f)) . ':' . $l . '</span>
+                    </div>
+                    <div class="stack-preview"><div class="code-container" style="border-radius:8px;max-height:200px;overflow:auto;">' . $previewHtml . '</div></div>
+                </div>';
+            }
+            echo '</div>';
+        }
+
+        echo '</div>
+
+            <div class="detail-tabs">
+                <button class="detail-tab active" data-panel="headers">Headers</button>
+                <button class="detail-tab" data-panel="app">App</button>
+                <button class="detail-tab" data-panel="env">Server</button>
+            </div>
+
+            <div id="panel-headers" class="detail-panel active">
+                <table class="data-table">';
+        foreach ($headers as $name => $value) {
+            echo '<tr><th>' . htmlspecialchars($name) . '</th><td>' . htmlspecialchars($value) . '</td></tr>';
+        }
+        if (!empty($_POST)) {
+            echo '</table><div style="font-family:Outfit;font-size:0.75rem;font-weight:700;text-transform:uppercase;color:#64748b;margin:1.5rem 0 0.75rem;">Post Data</div><table class="data-table">';
+            foreach ($_POST as $key => $val) {
+                $v = is_array($val) ? json_encode($val) : $val;
+                echo '<tr><th>' . htmlspecialchars($key) . '</th><td>' . htmlspecialchars($v) . '</td></tr>';
+            }
+        }
+        echo '</table>
+            </div>
+
+            <div id="panel-app" class="detail-panel">
+                <table class="data-table">
+                    <tr><th>Environment</th><td>' . (defined('APP_ENV') ? APP_ENV : 'development') . '</td></tr>
+                    <tr><th>Debug Mode</th><td>' . (defined('APP_DEBUG') && APP_DEBUG ? 'Enabled' : 'Disabled') . '</td></tr>
+                    <tr><th>Base Path</th><td>' . htmlspecialchars(realpath(__DIR__ . '/../../') ?: 'N/A') . '</td></tr>
+                </table>
+            </div>
+
+            <div id="panel-env" class="detail-panel">
+                <table class="data-table">
+                    <tr><th>PHP Version</th><td>' . PHP_VERSION . '</td></tr>
+                    <tr><th>SAPI</th><td>' . PHP_SAPI . '</td></tr>
+                    <tr><th>OS</th><td>' . PHP_OS . '</td></tr>
+                    <tr><th>Server</th><td>' . ($_SERVER['SERVER_SOFTWARE'] ?? 'N/A') . '</td></tr>
+                    <tr><th>Memory Limit</th><td>' . ini_get('memory_limit') . '</td></tr>
+                </table>
+            </div>
+        </main>
+    </div>
+
+    <script' . $nonceAttr . '>
+        // Toggle stack item preview on click
+        document.querySelectorAll(".stack-item").forEach(el => {
+            el.addEventListener("click", function() {
+                this.classList.toggle("expanded");
+                // Update sidebar source info
+                const file = this.getAttribute("data-file");
+                const line = this.getAttribute("data-line");
+                const pathEl = document.getElementById("active-file-path");
+                if (pathEl && file !== "{internal}") {
+                    pathEl.innerHTML = file + \' <span class="line-num">:\' + line + \'</span>\';
+                }
+                const btn = document.getElementById("active-vscode-btn");
+                if (btn && file !== "{internal}") {
+                    btn.href = "vscode://file/" + file + ":" + line;
+                }
+            });
+        });
+
+        // Detail tabs
+        document.querySelectorAll(".detail-tab").forEach(btn => {
+            btn.addEventListener("click", function() {
+                document.querySelectorAll(".detail-tab").forEach(b => b.classList.remove("active"));
+                this.classList.add("active");
+                document.querySelectorAll(".detail-panel").forEach(p => p.classList.remove("active"));
+                document.getElementById("panel-" + this.getAttribute("data-panel")).classList.add("active");
+            });
+        });
+    </script>
+</body>
+</html>';
     }
 
     /**
