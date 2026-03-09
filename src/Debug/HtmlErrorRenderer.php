@@ -54,8 +54,15 @@ class HtmlErrorRenderer
         $analyzer = new ErrorAnalyzer();
         $suggestions = $analyzer->analyze($e);
 
+        // Detect specific errors
+        $msg = $e->getMessage();
+        $isMissingComponent = false;
+        if (str_contains($msg, 'not found') && (str_contains($msg, 'Controller') || str_contains($msg, 'Method'))) {
+            $isMissingComponent = true;
+        }
+
         $html = $this->getDebugHeader($shortClass, $nonce);
-        $html .= $this->getDebugBody($e, $className, $file, $line, $frames, $suggestions, $nonce);
+        $html .= $this->getDebugBody($e, $className, $file, $line, $frames, $suggestions, $nonce, $isMissingComponent);
         $html .= $this->getDebugFooter($nonce);
 
         echo $html;
@@ -100,25 +107,29 @@ class HtmlErrorRenderer
         @import url("https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Fira+Code:wght@400;500&display=swap");
 
         :root {
-            --bg: #0f172a;
-            --card: #1e293b;
-            --primary: #10b981;
-            --accent: #06b6d4;
+            --bg: #0b0f1a;
+            --card: #151b2b;
+            --primary: #a78bfa;
+            --accent: #60a5fa;
             --danger: #ef4444;
             --text: #f8fafc;
             --text-muted: #94a3b8;
-            --border: rgba(255, 255, 255, 0.08);
-            --glass: rgba(15, 23, 42, 0.8);
+            --border: rgba(139, 92, 246, 0.15);
+            --glass: rgba(15, 23, 42, 0.85);
             --glass-light: rgba(255, 255, 255, 0.03);
+            --selection: rgba(139, 92, 246, 0.3);
         }
+
+        ::selection { background: var(--selection); color: var(--text); }
 
         body.plugs-error-page {
             background-color: var(--bg);
-            background-image: radial-gradient(circle at 15% 15%, rgba(16, 185, 129, 0.05) 0%, transparent 40%), 
-                              radial-gradient(circle at 85% 85%, rgba(6, 182, 212, 0.05) 0%, transparent 40%);
+            background-image: radial-gradient(circle at 10% 10%, rgba(139, 92, 246, 0.1) 0%, transparent 40%), 
+                              radial-gradient(circle at 90% 90%, rgba(96, 165, 250, 0.1) 0%, transparent 40%);
             color: var(--text);
             font-family: "Outfit", sans-serif;
             margin: 0; padding: 0; min-height: 100vh; overflow-x: hidden;
+            line-height: 1.5;
         }
 
         .plugs-error-page * { box-sizing: border-box; }
@@ -126,27 +137,27 @@ class HtmlErrorRenderer
         .container {
             max-width: 1400px;
             margin: 0 auto;
-            padding: 2rem;
-            animation: fadeIn 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+            padding: clamp(1rem, 5vw, 4rem);
+            animation: fadeIn 0.8s cubic-bezier(0.16, 1, 0.3, 1);
         }
 
         @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(10px); }
+            from { opacity: 0; transform: translateY(20px); }
             to { opacity: 1; transform: translateY(0); }
         }
 
         .glass-card {
             background: var(--glass);
-            backdrop-filter: blur(24px);
-            -webkit-backdrop-filter: blur(24px);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
             border: 1px solid var(--border);
-            border-radius: 28px;
+            border-radius: 32px;
             overflow: hidden;
-            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+            box-shadow: 0 40px 100px -20px rgba(0, 0, 0, 0.7);
         }
 
         header.header {
-            padding: 2.5rem;
+            padding: 2rem 2.5rem;
             border-bottom: 1px solid var(--border);
             display: flex;
             align-items: center;
@@ -155,42 +166,48 @@ class HtmlErrorRenderer
         }
 
         .brand {
-            font-size: 1.5rem;
+            font-family: "Outfit", sans-serif;
+            font-size: 1.75rem;
             font-weight: 800;
-            color: var(--primary);
+            background: linear-gradient(135deg, #a78bfa, #60a5fa);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
             text-decoration: none;
             display: flex;
             align-items: center;
-            gap: 0.5rem;
+            gap: 0.75rem;
+            letter-spacing: -0.02em;
         }
 
         .error-banner {
-            padding: 2.5rem;
+            padding: 3rem 2.5rem;
             border-bottom: 1px solid var(--border);
+            background: radial-gradient(circle at top left, rgba(239, 68, 68, 0.05), transparent 40%);
         }
 
         .exception-message {
-            font-size: clamp(1.5rem, 4vw, 2.5rem);
-            font-weight: 700;
-            line-height: 1.2;
-            margin: 1rem 0;
+            font-size: clamp(1.75rem, 5vw, 3rem);
+            font-weight: 800;
+            line-height: 1.1;
+            margin: 1.5rem 0;
             color: var(--text);
+            letter-spacing: -0.03em;
         }
 
         .main-content {
-            padding: 2.5rem;
+            padding: 3rem 2.5rem;
         }
 
         .section-header {
             display: flex;
             align-items: center;
-            gap: 1rem;
-            margin-bottom: 1.5rem;
+            gap: 1.25rem;
+            margin-bottom: 2rem;
             color: var(--primary);
             font-weight: 700;
-            font-size: 1.1rem;
+            font-size: 0.9rem;
             text-transform: uppercase;
-            letter-spacing: 0.05em;
+            letter-spacing: 0.15em;
         }
 
         .section-header::after {
@@ -206,34 +223,40 @@ class HtmlErrorRenderer
             flex-direction: column;
             gap: 0.75rem;
             margin-bottom: 3rem;
+            padding: 0;
+            list-style: none;
         }
 
         .stack-item {
             background: rgba(255,255,255,0.02);
             border: 1px solid var(--border);
-            border-radius: 12px;
-            padding: 1.25rem;
+            border-radius: 16px;
+            padding: 1.25rem 1.5rem;
             cursor: pointer;
-            transition: all 0.2s;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+            overflow: hidden;
         }
 
         .stack-item:hover {
-            background: rgba(255,255,255,0.04);
-            transform: translateX(4px);
+            background: rgba(139, 92, 246, 0.05);
+            transform: translateX(8px);
+            border-color: rgba(139, 92, 246, 0.3);
         }
 
         .stack-item.active {
-            background: rgba(16, 185, 129, 0.05);
+            background: rgba(139, 92, 246, 0.08);
             border-color: var(--primary);
-            box-shadow: 0 0 20px rgba(16, 185, 129, 0.1);
+            box-shadow: 0 0 30px rgba(139, 92, 246, 0.1);
         }
 
         .code-viewer-container {
-            border-radius: 16px;
-            background: #0b1120;
+            border-radius: 20px;
+            background: #080b14;
             border: 1px solid var(--border);
             overflow: hidden;
             margin-bottom: 3rem;
+            box-shadow: inset 0 2px 10px rgba(0,0,0,0.5);
         }
 
         .code-table {
@@ -244,98 +267,135 @@ class HtmlErrorRenderer
         }
 
         .code-row.error-line {
-            background: rgba(239, 68, 68, 0.12);
+            background: rgba(239, 68, 68, 0.15);
             position: relative;
         }
 
         .code-row.error-line::before {
             content: "";
             position: absolute;
-            left: 0; top: 0; bottom: 0; width: 3px;
+            left: 0; top: 0; bottom: 0; width: 4px;
             background: var(--danger);
-            box-shadow: 0 0 10px var(--danger);
+            box-shadow: 4px 0 15px var(--danger);
+            z-index: 10;
         }
 
         .code-line-num {
-            width: 65px;
+            width: 70px;
             text-align: right;
-            padding: 0.4rem 1.25rem;
+            padding: 0.6rem 1.5rem;
             color: #4b5563;
             border-right: 1px solid rgba(255,255,255,0.05);
             user-select: none;
+            background: rgba(0,0,0,0.2);
         }
 
         .error-line .code-line-num {
             color: var(--danger);
             font-weight: 700;
+            background: rgba(239, 68, 68, 0.1);
         }
 
         .code-content {
-            padding: 0.4rem 1.5rem;
+            padding: 0.6rem 1.5rem;
             white-space: pre;
             color: #e2e8f0;
         }
 
-        .token-keyword { color: #f472b6; font-weight: 600; }
-        .token-string { color: #34d399; }
-        .token-var { color: #93c5fd; }
-        .token-comment { color: #6b7280; font-style: italic; }
+        .token-keyword { color: #c084fc; font-weight: 600; }
+        .token-string { color: #4ade80; }
+        .token-var { color: #60a5fa; }
+        .token-comment { color: #64748b; font-style: italic; }
 
         .suggestions-box {
-            background: rgba(16, 185, 129, 0.05);
-            border: 1px solid rgba(16, 185, 129, 0.2);
-            padding: 1.5rem;
-            margin-top: 2rem;
-            border-radius: 16px;
+            background: rgba(139, 92, 246, 0.05);
+            border: 1px solid rgba(139, 92, 246, 0.2);
+            padding: 2rem;
+            margin-top: 2.5rem;
+            border-radius: 24px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .suggestions-box::before {
+            content: "";
+            position: absolute;
+            top: 0; left: 0; width: 4px; height: 100%;
+            background: var(--primary);
         }
 
         .file-location-bar {
             display: flex;
             align-items: center;
             justify-content: space-between;
-            background: rgba(0,0,0,0.2);
-            padding: 1rem 1.5rem;
-            border-radius: 12px;
+            background: rgba(0,0,0,0.3);
+            padding: 1.25rem 1.75rem;
+            border-radius: 16px;
             border: 1px solid var(--border);
             font-family: "Fira Code", monospace;
             font-size: 0.9rem;
+            flex-wrap: wrap;
+            gap: 1rem;
         }
 
         .vscode-btn {
             display: inline-flex;
             align-items: center;
-            gap: 0.5rem;
+            gap: 0.6rem;
             background: var(--primary);
             color: white;
-            padding: 0.6rem 1.2rem;
-            border-radius: 10px;
+            padding: 0.75rem 1.5rem;
+            border-radius: 12px;
             font-size: 0.85rem;
             text-decoration: none;
-            font-weight: 600;
+            font-weight: 700;
+            transition: all 0.2s;
+            box-shadow: 0 4px 12px rgba(167, 139, 250, 0.3);
+        }
+
+        .vscode-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(167, 139, 250, 0.4);
+            filter: brightness(1.1);
+        }
+
+        @media (max-width: 768px) {
+            .container { padding: 1rem; }
+            header.header { padding: 1.5rem; }
+            .error-banner { padding: 2rem 1.5rem; }
+            .main-content { padding: 2rem 1.5rem; }
+            .file-location-bar { flex-direction: column; align-items: flex-start; }
+            .vscode-btn { width: 100%; justify-content: center; }
+            .stack-item:hover { transform: none; }
         }
 
     </style>
 </head>
 <body class="plugs-error-page">
-    <header class="header"><a href="/" class="brand">Plugs</a></header>';
+    <header class="header"><a href="/" class="brand">⚡ Plugs</a></header>';
     }
 
     /**
      * Get debug body content.
      */
-    protected function getDebugBody(Throwable $e, string $className, string $file, int $line, array $frames, array $suggestions = [], ?string $nonce = null): string
+    protected function getDebugBody(Throwable $e, string $className, string $file, int $line, array $frames, array $suggestions = [], ?string $nonce = null, bool $isMissingComponent = false): string
     {
+        $badgeColor = $isMissingComponent ? '#f59e0b' : 'var(--danger)';
+        $badgeText = $isMissingComponent ? 'Missing Component' : htmlspecialchars($className);
+
         $html = '<div class="container">
         <div class="glass-card">
             <header class="header">
                 <a href="/" class="brand">
-                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
-                    Plugs
+                    ⚡ Plugs
                 </a>
             </header>
 
             <div class="error-banner">
-                <div style="color: var(--danger); font-size: 0.85rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.05em;">' . htmlspecialchars($className) . '</div>
+                <div style="color: ' . $badgeColor . '; font-size: 0.85rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.1em; display: flex; align-items: center; gap: 0.5rem;">
+                    ' . ($isMissingComponent ? '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0zM12 9v4m0 4h.01"/></svg>' : '') . '
+                    ' . $badgeText . '
+                </div>
                 <h1 class="exception-message">' . htmlspecialchars($e->getMessage()) . '</h1>
                 <div class="file-location-bar">
                     <span id="active-location" style="color: var(--text-muted);">' . htmlspecialchars(basename($file)) . ' <span style="color: var(--danger);">: ' . $line . '</span></span>
@@ -477,60 +537,149 @@ class HtmlErrorRenderer
      */
     public function getProductionHtml(int $statusCode = 500, ?string $nonce = null): string
     {
-        $titles = [404 => 'Not Found', 403 => 'Forbidden', 401 => 'Unauthorized', 500 => 'Server Error', 503 => 'Service Unavailable'];
-        $title = $titles[$statusCode] ?? 'Error';
+        $titles = [
+            404 => 'Page Not Found',
+            403 => 'Access Forbidden',
+            401 => 'Unauthorized',
+            500 => 'Internal Server Error',
+            503 => 'Service Unavailable'
+        ];
+        $descriptions = [
+            404 => "The path you're looking for doesn't exist or has been moved.",
+            403 => "You don't have permission to access this resource.",
+            401 => "Please authenticate to access this page.",
+            500 => "Something went wrong on our end. We're working on it.",
+            503 => "We're briefly down for maintenance. Be right back!"
+        ];
+
+        $title = $titles[$statusCode] ?? 'Unexpected Error';
+        $desc = $descriptions[$statusCode] ?? 'An error occurred while processing your request.';
         $nonceAttr = $nonce ? ' nonce="' . $nonce . '"' : '';
+
         return '<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>' . $statusCode . ' - ' . htmlspecialchars($title) . '</title>
+    <title>' . $statusCode . ' &middot; ' . htmlspecialchars($title) . '</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <style' . $nonceAttr . '>
-        @import url("https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700&display=swap");
+        @import url("https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap");
+        
+        :root {
+            --bg: #0b0f1a;
+            --text: #f8fafc;
+            --text-muted: #94a3b8;
+            --primary: #a78bfa;
+            --accent: #60a5fa;
+            --border: rgba(139, 92, 246, 0.15);
+        }
+
         body {
-            background-color: #080b12;
-            background-image: radial-gradient(circle at 15% 15%, rgba(139, 92, 246, 0.08) 0%, transparent 40%), radial-gradient(circle at 85% 85%, rgba(59, 130, 246, 0.08) 0%, transparent 40%);
-            color: #f8fafc;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            height: 100vh;
-            margin: 0;
+            background-color: var(--bg);
+            background-image: radial-gradient(circle at 15% 15%, rgba(139, 92, 246, 0.12) 0%, transparent 40%), 
+                              radial-gradient(circle at 85% 85%, rgba(96, 165, 250, 0.12) 0%, transparent 40%);
+            color: var(--text);
             font-family: "Outfit", sans-serif;
-            text-align: center;
+            margin: 0; padding: 0;
+            display: flex; align-items: center; justify-content: center;
+            min-height: 100vh;
         }
+
+        .container {
+            width: 100%;
+            max-width: 500px;
+            padding: 2rem;
+            animation: fadeIn 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
         .error-card {
-            background: rgba(30, 41, 59, 0.5);
-            backdrop-filter: blur(12px);
-            border: 1px solid rgba(255, 255, 255, 0.05);
-            padding: 3rem 4rem;
-            border-radius: 16px;
-            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
-            transform: translateY(-20px);
+            background: rgba(15, 23, 42, 0.8);
+            backdrop-filter: blur(24px);
+            -webkit-backdrop-filter: blur(24px);
+            border: 1px solid var(--border);
+            border-radius: 32px;
+            padding: 3.5rem 2.5rem;
+            text-align: center;
+            box-shadow: 0 40px 100px -20px rgba(0, 0, 0, 0.7);
         }
-        h1 {
-            font-size: 5rem;
-            margin: 0;
-            line-height: 1;
-            background: linear-gradient(135deg, #8b5cf6, #3b82f6);
+
+        .brand {
+            font-size: 1.5rem;
+            font-weight: 800;
+            background: linear-gradient(135deg, #a78bfa, #60a5fa);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
+            margin-bottom: 2.5rem;
+            display: inline-block;
+            letter-spacing: -0.02em;
         }
-        p {
-            font-size: 1.5rem;
-            color: #94a3b8;
-            margin: 1rem 0 0 0;
-            font-weight: 400;
+
+        .status-code {
+            font-size: 8rem;
+            font-weight: 900;
+            line-height: 0.8;
+            margin-bottom: 1.5rem;
+            background: linear-gradient(135deg, #a78bfa, #60a5fa);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            filter: drop-shadow(0 0 30px rgba(139, 92, 246, 0.3));
+        }
+
+        .title {
+            font-size: 1.75rem;
+            font-weight: 700;
+            margin-bottom: 1rem;
+            letter-spacing: -0.02em;
+        }
+
+        .description {
+            color: var(--text-muted);
+            font-size: 1.1rem;
+            line-height: 1.6;
+            margin-bottom: 2.5rem;
+        }
+
+        .btn {
+            background: linear-gradient(135deg, #a78bfa, #60a5fa);
+            color: white;
+            text-decoration: none;
+            padding: 0.85rem 2rem;
+            border-radius: 14px;
+            font-weight: 700;
+            font-size: 0.95rem;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            display: inline-block;
+            box-shadow: 0 10px 25px -5px rgba(139, 92, 246, 0.4);
+        }
+
+        .btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 15px 35px -5px rgba(139, 92, 246, 0.5);
+            filter: brightness(1.1);
+        }
+
+        @media (max-width: 480px) {
+            .error-card { padding: 2.5rem 1.5rem; }
+            .status-code { font-size: 6rem; }
         }
     </style>
 </head>
 <body>
-    <div class="error-card">
-        <h1>' . $statusCode . '</h1>
-        <p>' . htmlspecialchars($title) . '</p>
+    <div class="container">
+        <div class="error-card">
+            <div class="brand">⚡ Plugs</div>
+            <div class="status-code">' . $statusCode . '</div>
+            <h1 class="title">' . htmlspecialchars($title) . '</h1>
+            <p class="description">' . htmlspecialchars($desc) . '</p>
+            <a href="/" class="btn">Return Home</a>
+        </div>
     </div>
 </body>
 </html>';
