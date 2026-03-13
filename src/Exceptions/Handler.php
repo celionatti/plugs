@@ -1,27 +1,32 @@
 <?php
 
-declare(strict_types=1);
+declare(strict_types = 1)
+;
 
 namespace Plugs\Exceptions;
 
-/*
-|--------------------------------------------------------------------------
-| Exception Handler
-|--------------------------------------------------------------------------
-|
-| This class handles all exceptions thrown in the application. It provides
-| methods for reporting and rendering exceptions in a consistent manner.
-*/
+/* |-------------------------------------------------------------------------- | Exception Handler |-------------------------------------------------------------------------- | | This class handles all exceptions thrown in the application. It provides | methods for reporting and rendering exceptions in a consistent manner. */
 
 use Plugs\Container\Container;
+use Plugs\Exceptions\AuthenticationException;
+use Plugs\Exceptions\AuthorizationException;
 use Plugs\Exceptions\DatabaseException;
-use Plugs\Exceptions\TokenMismatchException;
+use Plugs\Exceptions\EncryptionException;
+use Plugs\Exceptions\HttpException;
+use Plugs\Exceptions\MethodNotAllowedException;
 use Plugs\Exceptions\MissingRouteParameterException;
+use Plugs\Exceptions\ModelNotFoundException;
+use Plugs\Exceptions\PlugsException;
+use Plugs\Exceptions\RateLimitException;
+use Plugs\Exceptions\RouteNotFoundException;
+use Plugs\Exceptions\TokenMismatchException;
+use Plugs\Exceptions\ValidationException;
 use Plugs\Http\ResponseFactory;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Log\LoggerInterface;
 use Throwable;
+
 class Handler
 {
     /**
@@ -37,13 +42,13 @@ class Handler
      * @var array<class-string<Throwable>>
      */
     protected array $dontReport = [
-        AuthenticationException::class,
-        AuthorizationException::class,
-        ValidationException::class,
-        HttpException::class,
-        ModelNotFoundException::class,
-        RouteNotFoundException::class,
-        RateLimitException::class,
+        AuthenticationException::class ,
+        AuthorizationException::class ,
+        ValidationException::class ,
+        HttpException::class ,
+        ModelNotFoundException::class ,
+        RouteNotFoundException::class ,
+        RateLimitException::class ,
     ];
 
     /**
@@ -75,7 +80,7 @@ class Handler
     public function __construct(Container $container)
     {
         $this->container = $container;
-        $this->debug = (bool) config('app.debug', false);
+        $this->debug = (bool)config('app.debug', false);
     }
 
     /**
@@ -112,7 +117,8 @@ class Handler
                 'trace' => $e->getTraceAsString(),
                 'context' => $e instanceof PlugsException ? $e->getContext() : [],
             ]);
-        } catch (Throwable $ex) {
+        }
+        catch (Throwable $ex) {
             // If logging fails, write to error log
             error_log($e->getMessage() . ' in ' . $e->getFile() . ' on line ' . $e->getLine());
         }
@@ -190,21 +196,55 @@ class Handler
         }
 
         // Handle specific exception types
-        return match (true) {
-            $e instanceof ValidationException => $this->renderValidationException($request, $e),
-            $e instanceof AuthenticationException => $this->renderAuthenticationException($request, $e),
-            $e instanceof AuthorizationException => $this->renderAuthorizationException($request, $e),
-            $e instanceof ModelNotFoundException => $this->renderModelNotFoundException($request, $e),
-            $e instanceof MethodNotAllowedException => $this->renderMethodNotAllowedException($request, $e),
-            $e instanceof RateLimitException => $this->renderRateLimitException($request, $e),
-            $e instanceof RouteNotFoundException => $this->renderRouteNotFoundException($request, $e),
-            $e instanceof TokenMismatchException => $this->renderTokenMismatchException($request, $e),
-            $e instanceof DatabaseException => $this->renderDatabaseException($request, $e),
-            $e instanceof EncryptionException => $this->renderEncryptionException($request, $e),
-            $e instanceof HttpException => $this->renderHttpException($request, $e),
-            $e instanceof MissingRouteParameterException => $this->renderMissingRouteParameterException($request, $e),
-            default => $this->renderGenericException($request, $e),
-        };
+        if ($e instanceof ValidationException) {
+            return $this->renderValidationException($request, $e);
+        }
+
+        if ($e instanceof AuthenticationException) {
+            return $this->renderAuthenticationException($request, $e);
+        }
+
+        if ($e instanceof AuthorizationException) {
+            return $this->renderAuthorizationException($request, $e);
+        }
+
+        if ($e instanceof ModelNotFoundException) {
+            return $this->renderModelNotFoundException($request, $e);
+        }
+
+        if ($e instanceof MethodNotAllowedException) {
+            return $this->renderMethodNotAllowedException($request, $e);
+        }
+
+        if ($e instanceof RateLimitException) {
+            return $this->renderRateLimitException($request, $e);
+        }
+
+        if ($e instanceof RouteNotFoundException) {
+            return $this->renderRouteNotFoundException($request, $e);
+        }
+
+        if ($e instanceof TokenMismatchException) {
+            return $this->renderTokenMismatchException($request, $e);
+        }
+
+        if ($e instanceof DatabaseException) {
+            return $this->renderDatabaseException($request, $e);
+        }
+
+        if ($e instanceof EncryptionException) {
+            return $this->renderEncryptionException($request, $e);
+        }
+
+        if ($e instanceof HttpException) {
+            return $this->renderHttpException($request, $e);
+        }
+
+        if ($e instanceof MissingRouteParameterException) {
+            return $this->renderMissingRouteParameterException($request, $e);
+        }
+
+        return $this->renderGenericException($request, $e);
     }
 
     /**
@@ -225,7 +265,8 @@ class Handler
         ?string $type = null,
         ?ServerRequestInterface $request = null,
         array $additional = []
-    ): ResponseInterface {
+        ): ResponseInterface
+    {
         $type = $type ?? "https://httpstatuses.com/{$status}";
 
         $payload = [
@@ -257,7 +298,8 @@ class Handler
     protected function renderMissingRouteParameterException(
         ServerRequestInterface $request,
         MissingRouteParameterException $e
-    ): ResponseInterface {
+        ): ResponseInterface
+    {
         if ($this->expectsJson($request)) {
             return $this->buildJsonError(
                 500,
@@ -285,7 +327,8 @@ class Handler
     protected function renderValidationException(
         ServerRequestInterface $request,
         ValidationException $e
-    ): ResponseInterface {
+        ): ResponseInterface
+    {
         if ($this->expectsJson($request)) {
             return $this->buildJsonError(
                 422,
@@ -293,7 +336,7 @@ class Handler
                 $e->getMessage() ?: 'The provided data was invalid.',
                 'https://httpstatuses.com/422',
                 $request,
-                ['errors' => $e->errors()]
+            ['errors' => $e->errors()]
             );
         }
 
@@ -315,7 +358,8 @@ class Handler
     protected function renderAuthenticationException(
         ServerRequestInterface $request,
         AuthenticationException $e
-    ): ResponseInterface {
+        ): ResponseInterface
+    {
         if ($this->expectsJson($request)) {
             return $this->buildJsonError(
                 401,
@@ -341,7 +385,8 @@ class Handler
     protected function renderAuthorizationException(
         ServerRequestInterface $request,
         AuthorizationException $e
-    ): ResponseInterface {
+        ): ResponseInterface
+    {
         if ($this->expectsJson($request)) {
             return $this->buildJsonError(
                 403,
@@ -365,7 +410,8 @@ class Handler
     protected function renderModelNotFoundException(
         ServerRequestInterface $request,
         ModelNotFoundException $e
-    ): ResponseInterface {
+        ): ResponseInterface
+    {
         if ($this->expectsJson($request)) {
             return $this->buildJsonError(
                 404,
@@ -389,7 +435,8 @@ class Handler
     protected function renderRouteNotFoundException(
         ServerRequestInterface $request,
         RouteNotFoundException $e
-    ): ResponseInterface {
+        ): ResponseInterface
+    {
         if ($this->expectsJson($request)) {
             return $this->buildJsonError(
                 404,
@@ -413,7 +460,8 @@ class Handler
     protected function renderMethodNotAllowedException(
         ServerRequestInterface $request,
         MethodNotAllowedException $e
-    ): ResponseInterface {
+        ): ResponseInterface
+    {
         $statusCode = 405;
         $allowedMethods = $e->getAllowedMethods();
 
@@ -424,7 +472,7 @@ class Handler
                 $e->getMessage() ?: 'The HTTP method is not allowed for this route.',
                 "https://httpstatuses.com/{$statusCode}",
                 $request,
-                ['allowed_methods' => $allowedMethods]
+            ['allowed_methods' => $allowedMethods]
             )->withHeader('Allow', implode(', ', $allowedMethods));
         }
 
@@ -443,10 +491,11 @@ class Handler
     protected function renderRateLimitException(
         ServerRequestInterface $request,
         RateLimitException $e
-    ): ResponseInterface {
+        ): ResponseInterface
+    {
         $statusCode = 429;
         $retryAfter = $e->getRetryAfter();
-        $headers = $retryAfter ? ['Retry-After' => (string) $retryAfter] : [];
+        $headers = $retryAfter ? ['Retry-After' => (string)$retryAfter] : [];
 
         if ($this->expectsJson($request)) {
             $response = $this->buildJsonError(
@@ -455,7 +504,7 @@ class Handler
                 $e->getMessage() ?: 'Rate limit exceeded.',
                 "https://httpstatuses.com/{$statusCode}",
                 $request,
-                ['retry_after' => $retryAfter]
+            ['retry_after' => $retryAfter]
             );
 
             foreach ($headers as $name => $value) {
@@ -486,7 +535,8 @@ class Handler
     protected function renderEncryptionException(
         ServerRequestInterface $request,
         EncryptionException $e
-    ): ResponseInterface {
+        ): ResponseInterface
+    {
         $message = $this->debug ? $e->getMessage() : 'A data security error occurred.';
 
         if ($this->expectsJson($request)) {
@@ -516,7 +566,8 @@ class Handler
     protected function renderHttpException(
         ServerRequestInterface $request,
         HttpException $e
-    ): ResponseInterface {
+        ): ResponseInterface
+    {
         $statusCode = $e->getStatusCode();
 
         if ($this->expectsJson($request)) {
@@ -555,7 +606,8 @@ class Handler
     protected function renderGenericException(
         ServerRequestInterface $request,
         Throwable $e
-    ): ResponseInterface {
+        ): ResponseInterface
+    {
         $statusCode = $e instanceof PlugsException ? $e->getStatusCode() : 500;
 
         if ($this->expectsJson($request)) {
@@ -601,7 +653,8 @@ class Handler
         ServerRequestInterface $request,
         int $statusCode,
         ?string $message = null
-    ): ResponseInterface {
+        ): ResponseInterface
+    {
         // Guard against recursive error page rendering
         if ($this->renderingErrorPage) {
             // Ensure error helpers are available for the fallback
@@ -630,7 +683,8 @@ class Handler
 
             return ResponseFactory::html($html, $statusCode)
                 ->withHeader('Content-Security-Policy', "default-src 'self' 'unsafe-inline';");
-        } catch (Throwable $e) {
+        }
+        catch (Throwable $e) {
             // Ensure error helpers are available for the fallback
             $errorFile = dirname(__DIR__) . '/functions/error.php';
             if (!function_exists('getProductionErrorHtml') && file_exists($errorFile)) {
@@ -644,7 +698,8 @@ class Handler
                 : "<h1>Error {$statusCode}</h1><p>" . htmlspecialchars($message ?? 'An error occurred.') . '</p>',
                 $statusCode
             )->withHeader('Content-Security-Policy', "default-src 'self' 'unsafe-inline';");
-        } finally {
+        }
+        finally {
             $this->renderingErrorPage = false;
         }
     }
@@ -682,7 +737,8 @@ class Handler
             // Explicitly set a relaxed CSP so SecurityHeadersMiddleware doesn't overwrite it
             // with strict application rules that block the error page's inline highlighting.
             return $response->withHeader('Content-Security-Policy', "default-src 'self' 'unsafe-inline' 'unsafe-eval' data:;");
-        } catch (Throwable $renderError) {
+        }
+        catch (Throwable $renderError) {
             // Emergency fallback — ensure user always sees something
             ob_end_clean(); // Clean any partial output
 
@@ -709,7 +765,8 @@ class Handler
     protected function renderTokenMismatchException(
         ServerRequestInterface $request,
         TokenMismatchException $e
-    ): ResponseInterface {
+        ): ResponseInterface
+    {
         if ($this->expectsJson($request)) {
             return $this->buildJsonError(
                 419,
@@ -737,7 +794,8 @@ class Handler
     protected function renderDatabaseException(
         ServerRequestInterface $request,
         DatabaseException $e
-    ): ResponseInterface {
+        ): ResponseInterface
+    {
         if ($this->expectsJson($request)) {
             $detail = 'A database error occurred.';
             $additional = [];
@@ -808,7 +866,8 @@ class Handler
         foreach ($data as $key => $value) {
             if (is_array($value)) {
                 $data[$key] = $this->maskSensitiveData($value);
-            } elseif ($this->isSensitiveKey($key)) {
+            }
+            elseif ($this->isSensitiveKey($key)) {
                 $data[$key] = '********';
             }
         }
