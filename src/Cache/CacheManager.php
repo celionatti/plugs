@@ -1,10 +1,12 @@
 <?php
 
-declare(strict_types=1);
+declare(strict_types = 1)
+;
 
 namespace Plugs\Cache;
 
 use InvalidArgumentException;
+use Plugs\Cache\TieredCache;
 use Plugs\Cache\Drivers\FileCacheDriver;
 use Plugs\Cache\Drivers\MemoryCache;
 
@@ -20,8 +22,8 @@ class CacheManager
         // Register tiered driver (memory → file) as default
         $this->extend('tiered', function () {
             return new TieredCache([
-                'memory' => new MemoryCache(),
-                'file' => new FileCacheDriver(),
+            'memory' => new MemoryCache(),
+            'file' => new FileCacheDriver(),
             ]);
         });
 
@@ -44,11 +46,22 @@ class CacheManager
             throw new InvalidArgumentException("Cache driver [{$name}] is not defined.");
         }
 
-        if (is_callable($this->drivers[$name])) {
-            $this->drivers[$name] = $this->drivers[$name]();
+        $driver = $this->drivers[$name];
+
+        // Ensure we handle nested callables until we get an instance or reach an uncallable type.
+        while (is_callable($driver) && !$driver instanceof CacheDriverInterface) {
+            $driver = $driver();
         }
 
-        return $this->drivers[$name];
+        // Cache the resolved instantiated driver back
+        $this->drivers[$name] = $driver;
+
+        if (!$driver instanceof CacheDriverInterface) {
+            $type = is_object($driver) ? get_class($driver) : gettype($driver);
+            throw new InvalidArgumentException("Cache driver [{$name}] must resolve to an instance of CacheDriverInterface. {$type} returned.");
+        }
+
+        return $driver;
     }
 
     public function extend(string $name, callable $driver): void
@@ -108,7 +121,7 @@ class CacheManager
         }
 
         $jitterFactor = config('cache.jitter', 0.1); // Default 10%
-        $jitter = (int) ($ttl * $jitterFactor);
+        $jitter = (int)($ttl * $jitterFactor);
 
         if ($jitter < 1) {
             return $ttl;
@@ -150,7 +163,8 @@ class CacheManager
                 $this->set($key, $value, $ttl);
 
                 return $value;
-            } finally {
+            }
+            finally {
                 $this->releaseLock($lockKey);
             }
         }
