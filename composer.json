@@ -23,6 +23,7 @@
   "autoload-dev": {
     "psr-4": {
       "App\\": "app/",
+      "Modules\\": "modules/",
       "Database\\": "database/",
       "Tests\\": "tests/"
     }

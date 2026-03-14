@@ -29,7 +29,12 @@ class MigrateRollbackCommand extends Command
             $connection = Connection::getInstance();
             $migrationPath = base_path('database/Migrations');
 
-            $runner = new MigrationRunner($connection, $migrationPath);
+            // Collect migration paths: base + feature modules
+            $migrationPaths = [$migrationPath];
+            $featureManager = \Plugs\FeatureModule\FeatureModuleManager::getInstance();
+            $migrationPaths = array_merge($migrationPaths, $featureManager->getMigrationPaths());
+
+            $runner = new MigrationRunner($connection, $migrationPaths);
 
             $this->section('Rollback Summary');
             $this->keyValue('Database', $connection->getName());

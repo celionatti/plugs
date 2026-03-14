@@ -17,14 +17,22 @@ namespace Plugs\Database;
 class MigrationRunner
 {
     private $connection;
-    private $migrationPath;
+    /** @var string[] */
+    private array $migrationPaths;
     private $migrationsTable = 'migrations';
     private $logsTable = 'migration_logs';
 
-    public function __construct(Connection $connection, string $migrationPath)
+    /**
+     * @param Connection $connection
+     * @param string|string[] $migrationPath One or more directories containing migration files
+     */
+    public function __construct(Connection $connection, string|array $migrationPath)
     {
         $this->connection = $connection;
-        $this->migrationPath = rtrim($migrationPath, '/\\');
+        $this->migrationPaths = array_map(
+            fn(string $p) => rtrim($p, '/\\'),
+            is_array($migrationPath) ? $migrationPath : [$migrationPath]
+        );
         $this->ensureMigrationTableExists();
     }
 
@@ -297,9 +305,14 @@ class MigrationRunner
      */
     private function calculateChecksum(string $migration): string
     {
-        $file = $this->migrationPath . '/' . $migration . '.php';
+        foreach ($this->migrationPaths as $path) {
+            $file = $path . '/' . $migration . '.php';
+            if (file_exists($file)) {
+                return md5_file($file);
+            }
+        }
 
-        return file_exists($file) ? md5_file($file) : '';
+        return '';
     }
 
     /**
@@ -313,21 +326,25 @@ class MigrationRunner
     }
 
     /**
-     * Get all migration files
+     * Get all migration files from all migration paths.
      */
     private function getAllMigrationFiles(): array
     {
-        if (!is_dir($this->migrationPath)) {
-            return [];
-        }
-
-        $files = glob($this->migrationPath . '/*.php');
         $migrations = [];
 
-        foreach ($files as $file) {
-            $migrations[] = basename($file, '.php');
+        foreach ($this->migrationPaths as $path) {
+            if (!is_dir($path)) {
+                continue;
+            }
+
+            $files = glob($path . '/*.php');
+            foreach ($files as $file) {
+                $migrations[] = basename($file, '.php');
+            }
         }
 
+        // Remove duplicates and sort
+        $migrations = array_unique($migrations);
         sort($migrations);
 
         return $migrations;
@@ -356,8 +373,8 @@ class MigrationRunner
 
         // Step 1: Analyze all migrations to find what they create and what they need
         foreach ($migrations as $migration) {
-            $file = $this->migrationPath . '/' . $migration . '.php';
-            if (!file_exists($file)) {
+            $file = $this->findMigrationFile($migration);
+            if (!$file) {
                 continue;
             }
 
@@ -525,10 +542,10 @@ class MigrationRunner
      */
     private function resolveMigration(string $migration): Migration
     {
-        $file = $this->migrationPath . '/' . $migration . '.php';
+        $file = $this->findMigrationFile($migration);
 
-        if (!file_exists($file)) {
-            throw new \RuntimeException("Migration file not found: {$file}");
+        if (!$file) {
+            throw new \RuntimeException("Migration file not found: {$migration}");
         }
 
         $instance = require_once $file;
@@ -568,5 +585,37 @@ class MigrationRunner
     public function setMigrationsTable(string $table): void
     {
         $this->migrationsTable = $table;
+    }
+
+    /**
+     * Add additional migration paths.
+     *
+     * @param string|string[] $paths
+     */
+    public function addPaths(string|array $paths): void
+    {
+        $paths = is_array($paths) ? $paths : [$paths];
+
+        foreach ($paths as $path) {
+            $normalized = rtrim($path, '/\\');
+            if (!in_array($normalized, $this->migrationPaths, true)) {
+                $this->migrationPaths[] = $normalized;
+            }
+        }
+    }
+
+    /**
+     * Find a migration file across all paths.
+     */
+    private function findMigrationFile(string $migration): ?string
+    {
+        foreach ($this->migrationPaths as $path) {
+            $file = $path . '/' . $migration . '.php';
+            if (file_exists($file)) {
+                return $file;
+            }
+        }
+
+        return null;
     }
 }

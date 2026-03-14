@@ -28,6 +28,7 @@ Welcome to the official documentation for the **Plugs** framework. Plugs is a li
 ### 🏗️ Architecture
 
 - [**Modular First Architecture**](file:///docs/architecture/modular-architecture.md) (New)
+- [**Feature Modules**](file:///docs/architecture/feature-modules.md) (New)
 - [Request Lifecycle](file:///docs/architecture/lifecycle.md) (Updated)
 
 ### 🧩 The Basics

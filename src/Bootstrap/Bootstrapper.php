@@ -71,6 +71,9 @@ class Bootstrapper
         // Phase 4: Bootstrap the application (Runs Module Manager)
         $this->app->bootstrap();
 
+        // Phase 4.5: Discover and boot Feature Modules
+        $this->bootFeatureModules();
+
         // Phase 5: Create and boot the appropriate kernel
         $this->kernel = $this->createKernel($context);
 
@@ -129,6 +132,16 @@ class Bootstrapper
             \Plugs\Module\Core\SocialiteModule::class,
             \Plugs\Module\Core\PdfModule::class,
         ]);
+    }
+
+    /**
+     * Discover and boot application Feature Modules.
+     */
+    protected function bootFeatureModules(): void
+    {
+        $manager = \Plugs\FeatureModule\FeatureModuleManager::getInstance();
+        $manager->setModulesPath($this->basePath . 'modules');
+        $manager->boot($this->app);
     }
 
     /**

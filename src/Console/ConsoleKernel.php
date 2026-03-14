@@ -115,6 +115,7 @@ class ConsoleKernel
         'make:notification' => MakeNotificationCommand::class,
         'make:ai-migration' => MakeAiMigrationCommand::class,
         'make:module' => \Plugs\Console\Commands\MakeModuleCommand::class,
+        'make:feature-module' => \Plugs\Console\Commands\MakeFeatureModuleCommand::class,
         'make:lang' => MakeLangCommand::class,
 
         'db:backup' => DatabaseBackupCommand::class,
@@ -204,6 +205,7 @@ class ConsoleKernel
         'g:lis' => 'make:listener',
         'g:not' => 'make:notification',
         'g:mod' => 'make:module',
+        'g:fmod' => 'make:feature-module',
         'g:lang' => 'make:lang',
         'seed' => 'db:seed',
         'routes' => 'route:list',
@@ -251,6 +253,7 @@ class ConsoleKernel
             'make:notification',
             'make:ai-migration',
             'make:module',
+            'make:feature-module',
             'make:lang',
         ],
         'Routes' => ['route:list', 'route:cache', 'route:clear', 'route:test'],

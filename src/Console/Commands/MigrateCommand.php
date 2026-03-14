@@ -28,7 +28,13 @@ class MigrateCommand extends Command
             $connection = Connection::getInstance();
             $migrationPath = base_path('database/Migrations');
 
-            $runner = new MigrationRunner($connection, $migrationPath);
+            // Collect migration paths: base + feature modules
+            $migrationPaths = [$migrationPath];
+            $featureManager = \Plugs\FeatureModule\FeatureModuleManager::getInstance();
+            $modulePaths = $featureManager->getMigrationPaths();
+            $migrationPaths = array_merge($migrationPaths, $modulePaths);
+
+            $runner = new MigrationRunner($connection, $migrationPaths);
 
             $this->section('Migration Summary');
             $this->keyValue('Database', $connection->getName());

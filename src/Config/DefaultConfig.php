@@ -27,6 +27,7 @@ class DefaultConfig
             'opcache' => self::opcache(),
             'view' => self::view(),
             'billing' => self::billing(),
+            'modules' => self::modules(),
             default => [],
         };
     }
@@ -593,6 +594,23 @@ class DefaultConfig
                     'cap' => 2000,
                 ],
             ],
+        ];
+    }
+
+    private static function modules(): array
+    {
+        return [
+            // Auto-discover all modules in the modules/ directory
+            'auto_discover' => true,
+
+            // Explicitly enable specific modules (used when auto_discover is false)
+            'enabled' => [],
+
+            // Explicitly disable specific modules (overrides auto_discover)
+            'disabled' => [],
+
+            // Module-specific settings accessible via config('modules.settings.ModuleName')
+            'settings' => [],
         ];
     }
 }

@@ -97,14 +97,20 @@ class WebKernel extends AbstractKernel
                 require $basePath . 'routes/web.php';
             }
 
+            // Load Feature Module web routes
+            $this->loadFeatureModuleWebRoutes($router);
+
             // Also load API routes in web kernel for unified routing
             $router->group([
                 'prefix' => 'api',
                 'middleware' => [\Plugs\Http\Middleware\ForceJsonMiddleware::class],
-            ], function () use ($basePath) {
+            ], function () use ($basePath, $router) {
                 if (file_exists($basePath . 'routes/api.php')) {
                     require $basePath . 'routes/api.php';
                 }
+
+                // Load Feature Module API routes
+                $this->loadFeatureModuleApiRoutes($router);
             });
         }
 
@@ -141,5 +147,71 @@ class WebKernel extends AbstractKernel
                 404
             );
         });
+    }
+
+    /**
+     * Load web route files from all feature modules.
+     */
+    private function loadFeatureModuleWebRoutes(Router $router): void
+    {
+        $manager = \Plugs\FeatureModule\FeatureModuleManager::getInstance();
+
+        foreach ($manager->getWebRouteEntries() as $entry) {
+            /** @var \Plugs\FeatureModule\FeatureModuleInterface $module */
+            $module = $entry['module'];
+            $file = $entry['file'];
+
+            $attributes = [
+                'namespace' => $module->getControllerNamespace(),
+                'as' => $module->getRouteNamePrefix(),
+            ];
+
+            $prefix = $module->getRoutePrefix();
+            if ($prefix !== '') {
+                $attributes['prefix'] = $prefix;
+            }
+
+            $middleware = $module->getMiddleware();
+            if (!empty($middleware)) {
+                $attributes['middleware'] = $middleware;
+            }
+
+            $router->group($attributes, function () use ($file) {
+                require $file;
+            });
+        }
+    }
+
+    /**
+     * Load API route files from all feature modules.
+     */
+    private function loadFeatureModuleApiRoutes(Router $router): void
+    {
+        $manager = \Plugs\FeatureModule\FeatureModuleManager::getInstance();
+
+        foreach ($manager->getApiRouteEntries() as $entry) {
+            /** @var \Plugs\FeatureModule\FeatureModuleInterface $module */
+            $module = $entry['module'];
+            $file = $entry['file'];
+
+            $attributes = [
+                'namespace' => $module->getControllerNamespace(),
+                'as' => $module->getRouteNamePrefix(),
+            ];
+
+            $prefix = $module->getRoutePrefix();
+            if ($prefix !== '') {
+                $attributes['prefix'] = $prefix;
+            }
+
+            $middleware = $module->getMiddleware();
+            if (!empty($middleware)) {
+                $attributes['middleware'] = $middleware;
+            }
+
+            $router->group($attributes, function () use ($file) {
+                require $file;
+            });
+        }
     }
 }
