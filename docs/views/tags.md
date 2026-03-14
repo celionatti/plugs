@@ -23,6 +23,16 @@ Anything inside the `<layout>` tag that isn't a named slot is automatically capt
 </layout>
 ```
 
+#### Module Layouts
+You can also use layouts defined within a module by using the module namespace:
+
+```html
+<layout name="admin::layouts.admin">
+    <slot:title>Admin Dashboard</slot:title>
+    <!-- Admin content -->
+</layout>
+```
+
 ### Slots & Yields
 
 | Tag                   | Attribute | Description                          |

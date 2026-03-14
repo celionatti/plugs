@@ -42,6 +42,8 @@ class RouteRegistrar
         'options',
         'any',
         'match',
+        'view',
+        'redirect',
     ];
 
     /**
@@ -249,6 +251,34 @@ class RouteRegistrar
     public function any(string $path, $handler, array $middleware = []): Route
     {
         return $this->registerRoute('any', $path, $handler, $middleware);
+    }
+
+    /**
+     * Register a route that returns a view.
+     */
+    public function view(string $uri, string $view, array $data = []): Route
+    {
+        $route = null;
+
+        $this->router->group($this->attributes, function () use ($uri, $view, $data, &$route) {
+            $route = $this->router->view($uri, $view, $data);
+        });
+
+        return $route;
+    }
+
+    /**
+     * Register a route that redirects to another URI.
+     */
+    public function redirect(string $uri, string $destination, int $status = 302): Route
+    {
+        $route = null;
+
+        $this->router->group($this->attributes, function () use ($uri, $destination, $status, &$route) {
+            $route = $this->router->redirect($uri, $destination, $status);
+        });
+
+        return $route;
     }
 
     /**

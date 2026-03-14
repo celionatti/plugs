@@ -101,6 +101,15 @@ Available inside `@foreach` and `@forelse`:
 @section('title', 'Inline content')
 
 @parent {{-- Include parent section content --}}
+
+#### Namespaced Views (Modules)
+Directives like `@extends`, `@include`, and `@stream` support namespaced views using the `module::` prefix:
+
+```blade
+@extends('admin::layouts.admin')
+
+@include('store::partials.product-card')
+```
 ```
 
 ---

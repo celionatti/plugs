@@ -263,6 +263,32 @@ public function index() {
 
 This will look for the template at `modules/Store/Views/products/index.plug.php`.
 
+### Module Layouts
+
+Modules can define their own layouts. Simply create the layout in the `Views/layouts/` directory of your module:
+
+```blade
+{{-- modules/Admin/Views/layouts/admin.plug.php --}}
+@extends('layouts.app') {{-- Can extend global layout --}}
+
+@section('content')
+    <div class="admin-sidebar">...</div>
+    <div class="admin-main">
+        @yield('admin-content')
+    </div>
+@endsection
+```
+
+Then extend it in your module views:
+
+```blade
+@extends('admin::layouts.admin')
+
+@section('admin-content')
+    <h1>Dashboard</h1>
+@endsection
+```
+
 ### Module Components
 
 Components inside a module's `Views/components/` directory are also namespaced:

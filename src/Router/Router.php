@@ -246,14 +246,14 @@ class Router
                 $middleware
             );
 
-            // Add PATCH support for update
+            // Add PATCH support for update (uses SAME path as PUT, handled by same action)
             if ($action === 'update') {
                 $this->addRoute(
                     'PATCH',
                     '/' . trim($name, '/') . $path,
                     $controller . '@' . $controllerMethod,
                     $middleware
-                )->name($names[$action] ?? "{$name}.{$action}");
+                );
             }
 
             $route->name($names[$action] ?? "{$name}.{$action}");
@@ -846,11 +846,11 @@ class Router
             } else {
                 throw new RuntimeException('Invalid route handler type: ' . gettype($handler));
             }
-
-            return $this->normalizeResponse($response);
         } finally {
             $profiler->stopSegment('controller');
         }
+
+        return $this->normalizeResponse($response);
     }
 
     /**
