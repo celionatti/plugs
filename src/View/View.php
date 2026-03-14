@@ -387,7 +387,7 @@ class View
     /**
      * Dump view data and die
      *
-     * @return never
+     * @return void
      */
     public function dd(): never
     {
