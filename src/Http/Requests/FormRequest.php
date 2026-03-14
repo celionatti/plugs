@@ -217,9 +217,55 @@ abstract class FormRequest
     }
 
     /**
+     * Get the route parameter value or the route object.
+     *
+     * @param string|null $key
+     * @param mixed $default
+     * @return mixed
+     */
+    public function route(?string $key = null, $default = null): mixed
+    {
+        if (!$this->request) {
+            return is_null($key) ? null : $default;
+        }
+
+        // Check if the request object has the route method (which we just added)
+        if (method_exists($this->request, 'route')) {
+            return $this->request->route($key, $default);
+        }
+
+        // Fallback for PSR-7 requests that don't have our custom method
+        $route = $this->request->getAttribute('_route');
+
+        if (is_null($key)) {
+            return $route;
+        }
+
+        $params = $this->request->getAttribute('_route_params', []);
+
+        return $params[$key] ?? $default;
+    }
+
+    /**
+     * Get an input item from the request.
+     *
+     * @param string|null $key
+     * @param mixed $default
+     * @return mixed
+     */
+    public function input(?string $key = null, $default = null): mixed
+    {
+        if (is_null($key)) {
+            return $this->all();
+        }
+
+        return $this->data[$key] ?? $default;
+    }
+
+    /**
      * Get all input data.
      */
-    protected function all(): array
+    public function all(): array
     {
         return $this->data;
     }

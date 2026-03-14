@@ -801,6 +801,26 @@ class ServerRequest implements ServerRequestInterface
     }
 
     /**
+     * Get the route parameter value or the route object.
+     *
+     * @param string|null $key
+     * @param mixed $default
+     * @return mixed
+     */
+    public function route(?string $key = null, $default = null): mixed
+    {
+        $route = $this->getAttribute('_route');
+
+        if (is_null($key)) {
+            return $route;
+        }
+
+        $params = $this->getAttribute('_route_params', []);
+
+        return $params[$key] ?? $default;
+    }
+
+    /**
      * Get URL path
      *
      * @return string
