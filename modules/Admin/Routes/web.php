@@ -7,6 +7,7 @@ use Modules\Admin\Controllers\AdminDashboardController;
 use Modules\Admin\Controllers\AdminUserController;
 use Modules\Admin\Controllers\AdminSettingsController;
 use Modules\Admin\Controllers\AdminProfileController;
+use Modules\Admin\Controllers\AdminModuleController;
 
 /*
 |--------------------------------------------------------------------------
@@ -27,3 +28,5 @@ Route::post('/settings', [AdminSettingsController::class, 'store'])->name('admin
 
 Route::get('/profile', [AdminProfileController::class, 'index'])->name('admin.profile.index');
 Route::post('/profile', [AdminProfileController::class, 'update'])->name('admin.profile.update');
+
+Route::get('/modules', [AdminModuleController::class, 'index'])->name('admin.modules.index');

@@ -9,7 +9,7 @@
 </div>
 
 <div class="max-w-4xl">
-    <form action="{{ route('admin.profile.update') }}" method="POST">
+    <form action="/admin/profile/update" method="POST">
         @csrf
         
         <div class="space-y-8">

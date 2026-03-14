@@ -41,7 +41,7 @@ class AdminProfileController
         $user->fill($data);
         $user->save();
 
-        return ResponseFactory::redirect(route('admin.profile.index'))
+        return ResponseFactory::redirect('/admin/profile')
             ->with('success', 'Profile updated successfully.');
     }
 }
