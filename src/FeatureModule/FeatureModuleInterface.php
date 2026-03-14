@@ -48,6 +48,11 @@ interface FeatureModuleInterface
     public function getMigrationPath(): ?string;
 
     /**
+     * Get the path to the module's view directory, or null if no views.
+     */
+    public function getViewPath(): ?string;
+
+    /**
      * Get the namespace prefix for controllers in this module.
      */
     public function getControllerNamespace(): string;

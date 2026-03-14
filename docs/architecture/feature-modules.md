@@ -246,6 +246,33 @@ If no `{Name}Module.php` exists, the framework creates a **Convention Module** a
 
 ---
 
+## View Support
+
+Each feature module can have its own `Views/` directory. These views are automatically registered with a **namespace** matching the lowercase name of the module.
+
+### Referencing Module Views
+
+You can render module views using the `namespace::view` syntax:
+
+```php
+// In a controller within 'Store' module
+public function index() {
+    return view('store::products.index');
+}
+```
+
+This will look for the template at `modules/Store/Views/products/index.plug.php`.
+
+### Module Components
+
+Components inside a module's `Views/components/` directory are also namespaced:
+
+```html
+<x-store::product-card :product="$product" />
+```
+
+---
+
 ## Configuration
 
 Feature modules are designed to be **Zero-Config**. By default, they are auto-discovered and loaded automatically using internal defaults.
@@ -418,17 +445,12 @@ modules/
       ProductController.php
       CartController.php
       CheckoutController.php
-    Models/
-      Product.php
-      Cart.php
-      Order.php
-    Services/
-      CartService.php
-      PaymentService.php
-    Routes/
-      web.php
-      api.php
-    Migrations/
+    ├── Models/             (Module models)
+    ├── Views/              (Module views)
+    ├── Routes/             (Module routes)
+    │   ├── web.php
+    │   └── api.php
+    └── Migrations/         (Module migrations)
 
   Admin/
     AdminModule.php

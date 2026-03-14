@@ -31,6 +31,7 @@ class PlugViewEngine implements ViewEngineInterface
     private ?string $requestedSection = null;
     private bool $fastCache = false;
     private ?string $theme = null;
+    private array $namespaces = [];
 
     private const VIEW_EXTENSIONS = ['.plug.php', '.php', '.html'];
     private const PRODUCTION_ERROR_LEVEL = E_ERROR | E_PARSE | E_CORE_ERROR | E_COMPILE_ERROR;
@@ -821,7 +822,7 @@ class PlugViewEngine implements ViewEngineInterface
         // This preserves stacks from child views
         $__sections = $__sections ?? [];
         $__stacks = $__stacks ?? [];
-        $__extends = null;
+        $__extends = $__extends ?? null;
         $__currentSection = null;
 
         $previousErrorLevel = $this->suppressNonCriticalErrors();
@@ -847,7 +848,11 @@ class PlugViewEngine implements ViewEngineInterface
             error_reporting($previousErrorLevel);
 
             /** @phpstan-ignore-next-line */
-            if (isset($__extends) && $__extends && !$this->suppressLayout) {
+            $__extends = get_defined_vars()['__extends'] ?? $__extends;
+            $__sections = get_defined_vars()['__sections'] ?? $__sections;
+            $__stacks = get_defined_vars()['__stacks'] ?? $__stacks;
+
+            if ($__extends && !$this->suppressLayout) {
                 // FIX: Pass stacks and childContent to parent layout
                 return (string) $this->renderParent(
                     $__extends,
@@ -1021,52 +1026,60 @@ class PlugViewEngine implements ViewEngineInterface
 
     private function getViewPath(string $view): string
     {
-        $view = str_replace('.', DIRECTORY_SEPARATOR, $view);
+        $namespace = null;
 
-        // Check theme path first if theme is set
-        if ($this->theme && $this->theme !== 'default') {
-            foreach (self::VIEW_EXTENSIONS as $extension) {
-                $themeViewPath = $this->viewPath . DIRECTORY_SEPARATOR . 'themes' . DIRECTORY_SEPARATOR . $this->theme . DIRECTORY_SEPARATOR . $view . $extension;
-
-                if ($this->fileExistsCached($themeViewPath)) {
-                    return $themeViewPath;
-                }
-            }
+        if (str_contains($view, '::')) {
+            [$namespace, $view] = explode('::', $view, 2);
         }
 
-        foreach (self::VIEW_EXTENSIONS as $extension) {
-            $viewPath = $this->viewPath . DIRECTORY_SEPARATOR . $view . $extension;
+        $view = str_replace('.', DIRECTORY_SEPARATOR, $view);
 
-            if ($this->fileExistsCached($viewPath)) {
-                $realViewPath = realpath(dirname($viewPath));
-                $realBasePath = realpath($this->viewPath);
+        // Resolve base paths for resolution
+        $paths = $this->getPathsForNamespace($namespace);
 
-                if (
-                    $realViewPath === false ||
-                    $realBasePath === false ||
-                    strpos($realViewPath, $realBasePath) !== 0
-                ) {
-                    throw new ViewException(
-                        sprintf('Invalid view path: %s', $view),
-                        0,
-                        null,
-                        $view,
-                        ViewException::INVALID_PATH
-                    );
+        foreach ($paths as $path) {
+            // Check theme path first if theme is set
+            if ($this->theme && $this->theme !== 'default') {
+                foreach (self::VIEW_EXTENSIONS as $extension) {
+                    $themeViewPath = $path . DIRECTORY_SEPARATOR . 'themes' . DIRECTORY_SEPARATOR . $this->theme . DIRECTORY_SEPARATOR . $view . $extension;
+
+                    if ($this->fileExistsCached($themeViewPath)) {
+                        return $themeViewPath;
+                    }
                 }
+            }
 
-                return $viewPath;
+            foreach (self::VIEW_EXTENSIONS as $extension) {
+                $viewPath = $path . DIRECTORY_SEPARATOR . $view . $extension;
+
+                if ($this->fileExistsCached($viewPath)) {
+                    $realViewPath = realpath(dirname($viewPath));
+                    $realBasePath = realpath($path);
+
+                    if (
+                        $realViewPath === false ||
+                        $realBasePath === false ||
+                        strpos($realViewPath, $realBasePath) !== 0
+                    ) {
+                        throw new ViewException(
+                            sprintf('Invalid view path: %s', $view),
+                            0,
+                            null,
+                            $view,
+                            ViewException::INVALID_PATH
+                        );
+                    }
+
+                    return $viewPath;
+                }
             }
         }
 
         throw new ViewException(
             sprintf(
-                'View [%s] not found. Looked for: %s%s',
-                $view,
-                $this->theme ? "Theme [{$this->theme}] and " : '',
-                implode(', ', array_map(function ($ext) use ($view) {
-                    return $view . $ext;
-                }, self::VIEW_EXTENSIONS))
+                'View [%s] not found. Looked in: %s',
+                ($namespace ? "$namespace::" : '') . $view,
+                implode(', ', $paths)
             ),
             0,
             null,
@@ -1077,6 +1090,12 @@ class PlugViewEngine implements ViewEngineInterface
 
     private function getComponentPath(string $componentName): string
     {
+        $namespace = null;
+
+        if (str_contains($componentName, '::')) {
+            [$namespace, $componentName] = explode('::', $componentName, 2);
+        }
+
         // Prevent directory traversal
         if (str_contains($componentName, '..')) {
             throw new ViewException(
@@ -1095,45 +1114,82 @@ class PlugViewEngine implements ViewEngineInterface
         // Try multiple naming conventions
         $filenames = array_unique([$path, $kebab]);
 
-        foreach ($filenames as $filename) {
-            foreach (self::VIEW_EXTENSIONS as $extension) {
-                // Check theme component path first
-                if ($this->theme && $this->theme !== 'default') {
-                    $themeComponentPath = $this->viewPath . DIRECTORY_SEPARATOR . 'themes' . DIRECTORY_SEPARATOR . $this->theme . DIRECTORY_SEPARATOR . 'components' . DIRECTORY_SEPARATOR . $filename . $extension;
+        // Resolve base paths for resolution
+        $paths = $this->getPathsForNamespace($namespace);
 
-                    if ($this->fileExistsCached($themeComponentPath)) {
-                        return $themeComponentPath;
-                    }
-                }
+        foreach ($paths as $basePath) {
+            $componentPathBase = $basePath . DIRECTORY_SEPARATOR . 'components';
 
-                $componentPath = $this->componentPath . DIRECTORY_SEPARATOR . $filename . $extension;
+            foreach ($filenames as $filename) {
+                foreach (self::VIEW_EXTENSIONS as $extension) {
+                    // Check theme component path first
+                    if ($this->theme && $this->theme !== 'default') {
+                        $themeComponentPath = $basePath . DIRECTORY_SEPARATOR . 'themes' . DIRECTORY_SEPARATOR . $this->theme . DIRECTORY_SEPARATOR . 'components' . DIRECTORY_SEPARATOR . $filename . $extension;
 
-                if ($this->fileExistsCached($componentPath)) {
-                    // Additional security check - verify real path is within component directory
-                    $realComponentPath = realpath($componentPath);
-                    $realBaseComponentPath = realpath($this->componentPath);
-
-                    if (
-                        $realComponentPath === false ||
-                        $realBaseComponentPath === false ||
-                        strpos($realComponentPath, $realBaseComponentPath) !== 0
-                    ) {
-                        throw new ViewException(
-                            sprintf('Invalid component path: %s', $componentName),
-                            0,
-                            null,
-                            $componentName,
-                            ViewException::INVALID_PATH
-                        );
+                        if ($this->fileExistsCached($themeComponentPath)) {
+                            return $themeComponentPath;
+                        }
                     }
 
-                    return $componentPath;
+                    $componentPath = $componentPathBase . DIRECTORY_SEPARATOR . $filename . $extension;
+
+                    if ($this->fileExistsCached($componentPath)) {
+                        // Additional security check - verify real path is within component directory
+                        $realComponentPath = realpath($componentPath);
+                        $realBaseComponentPath = realpath($componentPathBase);
+
+                        if (
+                            $realComponentPath === false ||
+                            $realBaseComponentPath === false ||
+                            strpos($realComponentPath, $realBaseComponentPath) !== 0
+                        ) {
+                            throw new ViewException(
+                                sprintf('Invalid component path: %s', $componentName),
+                                0,
+                                null,
+                                $componentName,
+                                ViewException::INVALID_PATH
+                            );
+                        }
+
+                        return $componentPath;
+                    }
                 }
             }
         }
 
-        // Fallback to kebab-case path if not found (default location)
-        return $this->componentPath . DIRECTORY_SEPARATOR . $kebab . self::VIEW_EXTENSIONS[0];
+        // Fallback to kebab-case path if not found (default location of first path)
+        return ($namespace ? "$namespace::" : "") . $this->getPathsForNamespace($namespace)[0] . DIRECTORY_SEPARATOR . 'components' . DIRECTORY_SEPARATOR . $kebab . self::VIEW_EXTENSIONS[0];
+    }
+
+    /**
+     * Add a namespaced path for views.
+     */
+    public function addNamespace(string $namespace, string|array $paths): self
+    {
+        $paths = (array) $paths;
+
+        if (!isset($this->namespaces[$namespace])) {
+            $this->namespaces[$namespace] = [];
+        }
+
+        foreach ($paths as $path) {
+            $this->namespaces[$namespace][] = rtrim($path, '/\\');
+        }
+
+        return $this;
+    }
+
+    /**
+     * Get the paths for a given namespace.
+     */
+    private function getPathsForNamespace(?string $namespace): array
+    {
+        if ($namespace && isset($this->namespaces[$namespace])) {
+            return $this->namespaces[$namespace];
+        }
+
+        return [$this->viewPath];
     }
 
     /**
@@ -1316,7 +1372,7 @@ class PlugViewEngine implements ViewEngineInterface
 
             // Write back any template-set variables so callers can read them
             foreach (array_keys($__localVars) as $__key) {
-                if (isset($$__key)) {
+                if (array_key_exists($__key, get_defined_vars())) {
                     $__localVars[$__key] = $$__key;
                 }
             }
@@ -1520,6 +1576,8 @@ class PlugViewEngine implements ViewEngineInterface
         $previousSuppress = $this->isLayoutSuppressed();
         $this->suppressLayout(true);
 
+        $result = '';
+
         try {
             // Render the view (fragments are captured)
             $this->render($view, array_merge($data, [
@@ -1541,11 +1599,13 @@ class PlugViewEngine implements ViewEngineInterface
             // Append teleport scripts if any were captured during this render
             $scripts = $this->getTeleportScripts();
 
-            return $content . $scripts;
+            $result = $content . $scripts;
         } finally {
             // Restore previous layout suppression state
             $this->suppressLayout($previousSuppress);
         }
+
+        return $result;
     }
 
     /**
@@ -1582,7 +1642,7 @@ class PlugViewEngine implements ViewEngineInterface
      * Stream render a view as a Generator
      * Yields content in chunks for large views
      */
-    public function stream(string $view, array $data = []): \Generator
+    public function stream(string $view, array $data = []): iterable
     {
         $previousStreaming = $this->isStreaming;
         $this->isStreaming = true;
@@ -1596,16 +1656,15 @@ class PlugViewEngine implements ViewEngineInterface
             $content = ob_get_clean() ?: '';
 
             if (empty($content)) {
-                yield ''; // Already flushed/echoed
-                return;
-            }
+                yield ''; // Already flushed/echoed or empty
+            } else {
+                // Stream in 8KB chunks if any content was buffered
+                $chunkSize = 8192;
+                $length = strlen($content);
 
-            // Stream in 8KB chunks if any content was buffered
-            $chunkSize = 8192;
-            $length = strlen($content);
-
-            for ($i = 0; $i < $length; $i += $chunkSize) {
-                yield substr($content, $i, $chunkSize);
+                for ($i = 0; $i < $length; $i += $chunkSize) {
+                    yield substr($content, $i, $chunkSize);
+                }
             }
         } finally {
             $this->isStreaming = $previousStreaming;

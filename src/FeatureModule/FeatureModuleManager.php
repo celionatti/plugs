@@ -110,6 +110,16 @@ class FeatureModuleManager
         // Phase 2: Boot
         foreach ($moduleInstances as $module) {
             $module->boot($app);
+
+            // Register view namespace if Views directory exists
+            $viewPath = $module->getViewPath();
+            if (is_dir($viewPath)) {
+                $namespace = strtolower($module->getName());
+                if ($container->has(\Plugs\View\ViewManager::class)) {
+                    $container->make(\Plugs\View\ViewManager::class)->addNamespace($namespace, $viewPath);
+                }
+            }
+
             $this->modules[] = $module;
         }
 

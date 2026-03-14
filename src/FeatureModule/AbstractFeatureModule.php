@@ -94,11 +94,14 @@ abstract class AbstractFeatureModule implements FeatureModuleInterface
     /**
      * {@inheritDoc}
      */
-    public function getMigrationPath(): ?string
+    public function getMigrationPath(): string
     {
-        $path = $this->getPath() . DIRECTORY_SEPARATOR . 'Migrations';
+        return $this->path . DIRECTORY_SEPARATOR . 'Migrations';
+    }
 
-        return is_dir($path) ? $path : null;
+    public function getViewPath(): string
+    {
+        return $this->path . DIRECTORY_SEPARATOR . 'Views';
     }
 
     /**

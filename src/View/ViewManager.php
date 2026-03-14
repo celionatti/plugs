@@ -131,6 +131,20 @@ class ViewManager
     }
 
     /**
+     * Register a namespaced path for views.
+     *
+     * @param string $namespace
+     * @param string|array $paths
+     * @return $this
+     */
+    public function addNamespace(string $namespace, string|array $paths): self
+    {
+        $this->driver()->addNamespace($namespace, $paths);
+
+        return $this;
+    }
+
+    /**
      * Register a custom driver creator Closure.
      *
      * @param string $driver
