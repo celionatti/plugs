@@ -22,6 +22,7 @@ use Plugs\Facade;
  * @method static static extend(string $driver, callable $callback)
  * @method static static provider(string $driver, callable $callback)
  * @method static \Plugs\Security\Auth\Contracts\UserProviderInterface createUserProvider(string $name)
+ * @method static \Plugs\Security\Auth\DeviceTrustManager deviceTrust()
  *
  * @see \Plugs\Security\Auth\AuthManager
  */
