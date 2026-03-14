@@ -4,20 +4,32 @@ declare(strict_types=1);
 
 namespace Modules\Admin\Controllers;
 
+use App\Http\Requests\UserRequest;
+use App\Services\UserService;
+use App\Models\User;
 use Plugs\Http\ResponseFactory;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 
 class AdminUserController
 {
+    protected UserService $userService;
+
+    public function __construct(UserService $userService)
+    {
+        $this->userService = $userService;
+    }
+
     /**
      * Display a listing of the users.
      */
     public function index(ServerRequestInterface $request): ResponseInterface
     {
+        $users = $this->userService->getAllUsers();
+
         return response(view('admin::index', [
-            'title' => 'Admin - Users Management',
-            'users' => [] // Logic to fetch users would go here
+            'title' => 'Users Management',
+            'users' => $users
         ]));
     }
 
@@ -27,54 +39,66 @@ class AdminUserController
     public function create(ServerRequestInterface $request): ResponseInterface
     {
         return response(view('admin::create', [
-            'title' => 'Admin - Create User'
+            'title' => 'Create User'
         ]));
     }
 
     /**
-     * Store a newly created user in storage.
+     * Store a newly created user.
      */
-    public function store(ServerRequestInterface $request): ResponseInterface
+    public function store(UserRequest $request): ResponseInterface
     {
-        // Logic to store user
-        return ResponseFactory::redirect(route('admin.users.index'));
+        $this->userService->createUser($request->validated());
+
+        return ResponseFactory::redirect(route('admin.users.index'))
+            ->with('success', 'User created successfully.');
     }
 
     /**
-     * Display the specified user.
+     * Display user details.
      */
     public function show(ServerRequestInterface $request, $id): ResponseInterface
     {
+        $user = User::find($id);
+
         return response(view('admin::show', [
-            'id' => $id
+            'user' => $user
         ]));
     }
 
     /**
-     * Show the form for editing the specified user.
+     * Show edit form.
      */
     public function edit(ServerRequestInterface $request, $id): ResponseInterface
     {
+        $user = User::find($id);
+
         return response(view('admin::edit', [
-            'id' => $id
+            'user' => $user
         ]));
     }
 
     /**
-     * Update the specified user in storage.
+     * Update user.
      */
-    public function update(ServerRequestInterface $request, $id): ResponseInterface
+    public function update(UserRequest $request, $id): ResponseInterface
     {
-        // Logic to update user
-        return ResponseFactory::redirect(route('admin.users.index'));
+        $user = User::find($id);
+        $this->userService->updateUser($user, $request->validated());
+
+        return ResponseFactory::redirect(route('admin.users.index'))
+            ->with('success', 'User updated successfully.');
     }
 
     /**
-     * Remove the specified user from storage.
+     * Delete user.
      */
     public function destroy(ServerRequestInterface $request, $id): ResponseInterface
     {
-        // Logic to delete user
-        return ResponseFactory::redirect(route('admin.users.index'));
+        $user = User::find($id);
+        $this->userService->deleteUser($user);
+
+        return ResponseFactory::redirect(route('admin.users.index'))
+            ->with('success', 'User deleted successfully.');
     }
 }
