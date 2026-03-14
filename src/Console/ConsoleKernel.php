@@ -8,6 +8,7 @@ use Plugs\Console\Commands\CacheClearCommand;
 use Plugs\Console\Commands\DemoCommand;
 use Plugs\Console\Commands\HealthCommand;
 use Plugs\Console\Commands\HelpCommand;
+use Plugs\Console\Commands\AdminInstallCommand;
 use Plugs\Console\Commands\ExplainCommand;
 use Plugs\Console\Commands\InspireCommand;
 use Plugs\Console\Commands\MakeActionCommand;
@@ -177,6 +178,7 @@ class ConsoleKernel
         'view:cache' => ViewCacheCommand::class,
         'view:clear' => ViewClearCommand::class,
         'identity:install' => \Plugs\Console\Commands\IdentityInstallCommand::class,
+        'admin:install' => AdminInstallCommand::class,
     ];
 
 
