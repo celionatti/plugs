@@ -157,6 +157,16 @@ if (!function_exists('dt')) {
     }
 }
 
+if (!function_exists('plugs_dump_profile')) {
+    /**
+     * Dump Profiler - Show performance profiling data
+     */
+    function plugs_dump_profile(array $profile, bool $die = true): void
+    {
+        plugs_dump([$profile], $die, 'profile');
+    }
+}
+
 if (!function_exists('plugs_dump')) {
     /**
      * Core dump function - proxies to Dumper service

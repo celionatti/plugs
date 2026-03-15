@@ -87,6 +87,16 @@ if (!function_exists('app')) {
     }
 }
 
+if (!function_exists('app_context')) {
+    /**
+     * Get the current application context.
+     */
+    function app_context(): \Plugs\Bootstrap\ContextType
+    {
+        return \Plugs\Bootstrap\DetectMode::getContext();
+    }
+}
+
 if (!function_exists('resolve')) {
     /**
      * Resolve a class from the container.
@@ -234,6 +244,16 @@ if (!function_exists('auth')) {
     function auth()
     {
         return \Plugs\Facades\Auth::getFacadeRoot();
+    }
+}
+
+if (!function_exists('gate')) {
+    /**
+     * Get the gate instance.
+     */
+    function gate()
+    {
+        return app('gate');
     }
 }
 

@@ -252,8 +252,8 @@ class AIManager
      */
     public function queue(string $method, array $params = []): void
     {
-        if (function_exists('dispatch')) {
-            dispatch(\Plugs\AI\Jobs\AIJob::class, [
+        if (app()->bound('queue')) {
+            app('queue')->push(\Plugs\AI\Jobs\AIJob::class, [
                 'method' => $method,
                 'params' => $params
             ]);

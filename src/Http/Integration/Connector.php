@@ -66,9 +66,7 @@ abstract class Connector
         );
 
         // Trait usage for headers (e.g. HasJsonBody)
-        if (method_exists($request, 'defaultHeaders')) {
-            $headers = array_merge($headers, $request->defaultHeaders());
-        }
+        $headers = array_merge($headers, $request->defaultHeaders());
 
         $client->headers($headers);
 

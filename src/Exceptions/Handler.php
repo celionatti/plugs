@@ -681,7 +681,7 @@ class Handler
                 'statusCode' => $statusCode,
             ]);
 
-            return ResponseFactory::html($html, $statusCode)
+            $response = ResponseFactory::html($html, $statusCode)
                 ->withHeader('Content-Security-Policy', "default-src 'self' 'unsafe-inline';");
         }
         catch (Throwable $e) {
@@ -692,7 +692,7 @@ class Handler
             }
 
             $nonce = null; // Error CSP explicitly relies on 'unsafe-inline' without nonces
-            return ResponseFactory::html(
+            $response = ResponseFactory::html(
                 function_exists('getProductionErrorHtml')
                 ? getProductionErrorHtml($statusCode, null, $message, $nonce)
                 : "<h1>Error {$statusCode}</h1><p>" . htmlspecialchars($message ?? 'An error occurred.') . '</p>',
@@ -702,6 +702,8 @@ class Handler
         finally {
             $this->renderingErrorPage = false;
         }
+
+        return $response;
     }
 
     /**

@@ -1,18 +1,11 @@
 <?php
 
-declare(strict_types=1);
+declare(strict_types = 1)
+;
 
 namespace Plugs\Http;
 
-/*
-|--------------------------------------------------------------------------
-| MiddlewareDispatcher Class
-|--------------------------------------------------------------------------
-|
-| This class manages and executes the middleware stack.
-| It features a "Compiled Pipeline" for maximum speed and a 
-| "Priority Registry" for guaranteed security middleware execution order.
-*/
+/* |-------------------------------------------------------------------------- | MiddlewareDispatcher Class |-------------------------------------------------------------------------- | | This class manages and executes the middleware stack. | It features a "Compiled Pipeline" for maximum speed and a  | "Priority Registry" for guaranteed security middleware execution order. */
 
 use Plugs\Http\Middleware\MiddlewareRegistry;
 use Psr\Http\Message\ResponseInterface;
@@ -45,7 +38,8 @@ class MiddlewareDispatcher implements RequestHandlerInterface
     {
         if (function_exists('app') && app()->has(MiddlewareRegistry::class)) {
             $this->registry = app(MiddlewareRegistry::class);
-        } else {
+        }
+        else {
             $this->registry = new MiddlewareRegistry();
         }
     }
@@ -84,7 +78,8 @@ class MiddlewareDispatcher implements RequestHandlerInterface
                 foreach ($this->registry->resolve($mw) as $resolvedClass) {
                     $resolvedRows[] = $resolvedClass;
                 }
-            } else {
+            }
+            else {
                 $resolvedRows[] = $mw;
             }
         }
@@ -120,15 +115,14 @@ class MiddlewareDispatcher implements RequestHandlerInterface
 
         // Reuse a single Handler wrapper for all PSR-15 middlewares
         $handlerFactory = function ($nextCallable) {
-            return new class ($nextCallable) implements RequestHandlerInterface {
-                public function __construct(private $cb)
-                {}
-                public function handle(ServerRequestInterface $request): ResponseInterface
-                {
-                    return ($this->cb)($request);
-                }
-            };
-        };
+            return new class($nextCallable) implements RequestHandlerInterface {
+                public function __construct(private $cb) {
+                        }
+                        public function handle(ServerRequestInterface $request): ResponseInterface {
+                            return ($this->cb)($request);
+                        }
+                    };
+                };
 
         $isProfilerEnabled = $this->profiler && $this->profiler->isEnabled();
 
@@ -179,26 +173,29 @@ class MiddlewareDispatcher implements RequestHandlerInterface
                 try {
                     // We wrap the next handler to measure its duration
                     $wrappedNext = function (ServerRequestInterface $req) use ($next, &$nextDuration) {
-                        $nStart = microtime(true);
-                        try {
-                            return $next($req);
-                        } finally {
-                            $nextDuration += (microtime(true) - $nStart) * 1000;
+                                    $nStart = microtime(true);
+                                    try {
+                                        return $next($req);
+                                    }
+                                    finally {
+                                        $nextDuration += (microtime(true) - $nStart) * 1000;
+                                    }
+                                }
+                                    ;
+
+                                $wrappedNextHandler = $handlerFactory($wrappedNext);
+                                $response = $this->execute($instance, $request, $wrappedNext, $wrappedNextHandler);
+                                return $response;
+                            }
+                            finally {
+                                $totalDuration = (microtime(true) - $start) * 1000;
+                                $exclusiveDuration = max(0, $totalDuration - $nextDuration);
+                                $this->profiler->stopSegment('mw_' . $name, $exclusiveDuration);
+                            }
                         }
+
+                        return $this->execute($instance, $request, $next, $nextHandler);
                     };
-
-                    $wrappedNextHandler = $handlerFactory($wrappedNext);
-                    $response = $this->execute($instance, $request, $wrappedNext, $wrappedNextHandler);
-                    return $response;
-                } finally {
-                    $totalDuration = (microtime(true) - $start) * 1000;
-                    $exclusiveDuration = max(0, $totalDuration - $nextDuration);
-                    $this->profiler->stopSegment('mw_' . $name, $exclusiveDuration);
-                }
-            }
-
-            return $this->execute($instance, $request, $next, $nextHandler);
-        };
     }
 
 
@@ -222,4 +219,3 @@ class MiddlewareDispatcher implements RequestHandlerInterface
         throw new \RuntimeException(sprintf('Middleware must implement %s or be callable', MiddlewareInterface::class));
     }
 }
-

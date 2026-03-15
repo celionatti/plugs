@@ -389,7 +389,7 @@ class View
      *
      * @return void
      */
-    public function dd(): never
+    public function dd(): void
     {
         $this->dump();
         exit(1);

@@ -57,4 +57,12 @@ abstract class Request
     {
         return [];
     }
+
+    /**
+     * Get the default headers for the request.
+     */
+    public function defaultHeaders(): array
+    {
+        return [];
+    }
 }

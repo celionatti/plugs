@@ -302,9 +302,20 @@ abstract class Controller
         }
 
         // 2. Legacy/Simple authorization fallback
-        if (method_exists($this, 'can') && !$this->can($ability, $arguments)) {
+        if (is_callable([$this, 'can']) && !$this->can($ability, $arguments)) {
             throw new \Plugs\Exceptions\AuthorizationException("This action is unauthorized.");
         }
+    }
+
+    /**
+     * Determine if the user has a given ability.
+     * 
+     * Default implementation returns true. Override this in child 
+     * controllers to restrict access for legacy authorization.
+     */
+    public function can(string $ability, $arguments = []): bool
+    {
+        return true;
     }
 
     /**

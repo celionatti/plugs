@@ -21,7 +21,7 @@ trait HasJsonBody
         return $this;
     }
 
-    protected function defaultHeaders(): array
+    public function defaultHeaders(): array
     {
         return [
             'Content-Type' => 'application/json',

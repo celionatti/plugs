@@ -548,7 +548,7 @@ abstract class Command implements CommandInterface
 
     // ==================== UTILITIES ====================
 
-    protected function abort(string $message, int $exitCode = 1): never
+    protected function abort(string $message, int $exitCode = 1): void
     {
         $this->error($message);
         exit($exitCode);
