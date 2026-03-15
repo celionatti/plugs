@@ -60,11 +60,21 @@ class QueueManager
             throw new InvalidArgumentException("Queue driver [{$name}] is not defined.");
         }
 
-        if (is_callable($this->drivers[$name])) {
-            $this->drivers[$name] = $this->drivers[$name]();
+        $driver = $this->drivers[$name];
+
+        // Ensure we handle nested callables until we get an instance or reach an uncallable type.
+        while (is_callable($driver) && !$driver instanceof QueueDriverInterface) {
+            $driver = $driver();
         }
 
-        return $this->drivers[$name];
+        // Cache the resolved instantiated driver back
+        $this->drivers[$name] = $driver;
+
+        if (!$driver instanceof QueueDriverInterface) {
+            throw new InvalidArgumentException("Queue driver [{$name}] must resolve to an instance of QueueDriverInterface.");
+        }
+
+        return $driver;
     }
 
     public function extend(string $name, callable $driver): void
