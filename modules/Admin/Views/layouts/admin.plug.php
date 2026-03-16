@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en" class="h-full bg-slate-50">
+<html lang="en" class="h-full bg-slate-50 dark:bg-slate-950">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -7,12 +7,97 @@
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <meta name="app-url" content="{{ url('/') }}">
     <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+        }
+        if (localStorage.getItem('color-theme') === 'dark' || (!('color-theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+            document.documentElement.classList.add('dark');
+        } else {
+            document.documentElement.classList.remove('dark');
+        }
+    </script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700&family=Dancing+Script:wght@400..700&display=swap" rel="stylesheet">
     <style>
+        /* Core Admin Styles */
         body {
             font-family: 'Plus Jakarta Sans', sans-serif;
+        }
+        
+        /* Pagination Framework Base Styles */
+        .pagination-container {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            width: 100%;
+        }
+        .pagination-info {
+            font-size: 0.875rem;
+            color: #64748b; /* slate-500 */
+        }
+        .pagination {
+            display: flex;
+            list-style: none;
+            padding: 0;
+            margin: 0;
+            gap: 0.25rem;
+        }
+        .page-link {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-width: 2.25rem;
+            height: 2.25rem;
+            padding: 0 0.75rem;
+            font-size: 0.875rem;
+            font-weight: 600;
+            text-decoration: none;
+            border-radius: 0.5rem;
+            transition: all 0.2s ease;
+            color: #334155;
+            background: #ffffff;
+            border: 1px solid #e2e8f0;
+        }
+        .page-link:hover:not(.disabled) {
+            background: #f8fafc;
+            border-color: #cbd5e1;
+        }
+        .active .page-link {
+            background: #000000 !important;
+            color: #ffffff !important;
+            border-color: #000000 !important;
+        }
+        .disabled .page-link {
+            color: #94a3b8;
+            background: #f8fafc;
+            border-color: #f1f5f9;
+            cursor: not-allowed;
+        }
+
+        /* Dark Mode Pagination Styles */
+        .dark .pagination-info {
+            color: #94a3b8; /* slate-400 */
+        }
+        .dark .page-link {
+            background: #1e293b; /* slate-800 */
+            border-color: #334155; /* slate-700 */
+            color: #cbd5e1; /* slate-300 */
+        }
+        .dark .page-link:hover:not(.disabled) {
+            background: #334155;
+            border-color: #475569;
+        }
+        .dark .active .page-link {
+            background: #ffffff !important;
+            color: #000000 !important;
+            border-color: #ffffff !important;
+        }
+        .dark .disabled .page-link {
+            color: #475569;
+            background: #0f172a; /* slate-950 */
+            border-color: #1e293b;
         }
         .brand-font {
             font-family: 'Dancing Script', cursive;
@@ -23,18 +108,38 @@
             -webkit-backdrop-filter: blur(12px);
             border: 1px solid rgba(255, 255, 255, 0.3);
         }
+        .dark .glass {
+            background: rgba(15, 23, 42, 0.7); /* slate-900 */
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
         .gradient-text {
             background: #000;
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .dark .gradient-text {
+            background: #fff;
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
         }
         .gradient-bg {
             background: #000;
         }
+        .dark .gradient-bg {
+            background: #fff;
+        }
+        .dark .gradient-bg span {
+            color: #000;
+        }
         .sidebar-active {
             background: white !important;
             color: black !important;
             box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        }
+        .dark .sidebar-active {
+            background: rgba(255, 255, 255, 0.1) !important;
+            color: white !important;
+            box-shadow: none;
         }
         .custom-scrollbar::-webkit-scrollbar {
             width: 5px;
@@ -52,7 +157,7 @@
     </style>
     @yield('styles')
 </head>
-<body class="h-full text-slate-900 selection:bg-indigo-100 selection:text-indigo-700 overflow-hidden">
+<body class="h-full text-slate-900 dark:text-slate-100 selection:bg-indigo-100 dark:selection:bg-indigo-900 selection:text-indigo-700 dark:selection:text-indigo-300 overflow-hidden bg-slate-50 dark:bg-slate-950">
 
     <div class="flex h-full">
         <!-- Sidebar -->
@@ -87,6 +192,13 @@
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
                         </svg>
                         Users
+                    </a>
+
+                    <a href="/admin/articles" data-spa="true" class="sidebar-link flex items-center gap-3 px-4 py-3 text-sm font-semibold rounded-xl transition-all duration-200 text-slate-400 hover:text-white hover:bg-white/5 group">
+                        <svg class="w-5 h-5 opacity-70 group-hover:text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10l4 4v10a2 2 0 01-2 2zM14 4v4h4" />
+                        </svg>
+                        Articles
                     </a>
 
                     <div class="pt-6 pb-2 text-[10px] font-bold text-slate-400 uppercase tracking-widest px-4 mb-2">Management</div>
@@ -124,32 +236,36 @@
         <!-- Main Wrapper -->
         <div class="flex-1 flex flex-col min-w-0 overflow-hidden">
             <!-- Header -->
-            <header class="h-20 glass sticky top-0 z-40 flex items-center justify-between px-8 border-b border-white/20">
+            <header class="h-20 glass sticky top-0 z-40 flex items-center justify-between px-8 border-b border-white/20 dark:border-white/5">
                 <div class="flex items-center gap-4">
-                    <button id="sidebarToggle" class="lg:hidden p-2 rounded-xl bg-white shadow-sm border border-slate-100 text-slate-600 hover:text-indigo-600 transition-all active:scale-95">
+                    <button id="sidebarToggle" class="lg:hidden p-2 rounded-xl bg-white dark:bg-slate-800 shadow-sm border border-slate-100 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:text-indigo-600 dark:hover:text-indigo-400 transition-all active:scale-95">
                         <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16m-7 6h7" />
                         </svg>
                     </button>
                     <div class="hidden sm:block">
-                        <h2 class="text-xs font-bold text-slate-400 uppercase tracking-widest">Dashboard</h2>
+                        <h2 class="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">Dashboard</h2>
                         <div class="flex items-center gap-2 mt-0.5">
-                            <span class="text-lg font-bold text-slate-800">Overview</span>
-                            <div class="px-2 py-0.5 rounded-full bg-black text-white text-[10px] font-bold uppercase tracking-wider">Active</div>
+                            <span class="text-lg font-bold text-slate-800 dark:text-slate-100">Overview</span>
+                            <div class="px-2 py-0.5 rounded-full bg-black dark:bg-white text-white dark:text-black text-[10px] font-bold uppercase tracking-wider">Active</div>
                         </div>
                     </div>
                 </div>
 
                 <div class="flex items-center gap-4">
-                    <button class="p-2.5 rounded-xl text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 transition-all">
+                    <button id="theme-toggle" type="button" class="p-2.5 rounded-xl text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 dark:hover:bg-slate-800 dark:hover:text-indigo-400 transition-all">
+                        <svg id="theme-toggle-dark-icon" class="hidden w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path d="M17.293 13.293A8 8 0 016.707 2.707a8.001 8.001 0 1010.586 10.586z"></path></svg>
+                        <svg id="theme-toggle-light-icon" class="hidden w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path d="M10 2a1 1 0 011 1v1a1 1 0 11-2 0V3a1 1 0 011-1zm4 8a4 4 0 11-8 0 4 4 0 018 0zm-.464 4.95l.707.707a1 1 0 001.414-1.414l-.707-.707a1 1 0 00-1.414 1.414zm2.12-10.607a1 1 0 010 1.414l-.706.707a1 1 0 11-1.414-1.414l.707-.707a1 1 0 011.414 0zM17 11a1 1 0 100-2h-1a1 1 0 100 2h1zm-7 4a1 1 0 011 1v1a1 1 0 11-2 0v-1a1 1 0 011-1zM5.05 6.464A1 1 0 106.465 5.05l-.708-.707a1 1 0 00-1.414 1.414l.707.707zm1.414 8.486l-.707.707a1 1 0 01-1.414-1.414l.707-.707a1 1 0 011.414 1.414zM4 11a1 1 0 100-2H3a1 1 0 000 2h1z" fill-rule="evenodd" clip-rule="evenodd"></path></svg>
+                    </button>
+                    <button class="p-2.5 rounded-xl text-slate-400 hover:text-indigo-600 hover:bg-slate-100 dark:hover:bg-slate-800 dark:hover:text-indigo-400 transition-all">
                         <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
                         </svg>
                     </button>
-                    <div class="h-8 w-px bg-slate-200 mx-2"></div>
+                    <div class="h-8 w-px bg-slate-200 dark:bg-slate-700 mx-2"></div>
                     <form action="{{ route('logout') }}" method="POST" class="inline">
                         @csrf
-                        <button type="submit" class="px-5 py-2.5 rounded-xl bg-slate-100 text-slate-600 text-sm font-bold hover:bg-rose-50 hover:text-rose-600 transition-all active:scale-95">
+                        <button type="submit" class="px-5 py-2.5 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 text-sm font-bold hover:bg-rose-50 dark:hover:bg-rose-900/30 hover:text-rose-600 dark:hover:text-rose-400 transition-all active:scale-95">
                             Sign Out
                         </button>
                     </form>
@@ -159,8 +275,8 @@
             <!-- Content Area -->
             <main class="flex-1 overflow-y-auto custom-scrollbar p-8">
                 @if(session()->has('success'))
-                <div class="mb-6 p-4 rounded-2xl bg-emerald-50 border border-emerald-100 text-emerald-700 text-sm font-semibold flex items-center gap-3 animate-in fade-in slide-in-from-top-4 duration-500">
-                    <div class="w-8 h-8 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-600">
+                <div class="mb-6 p-4 rounded-2xl bg-emerald-50 dark:bg-emerald-900/30 border border-emerald-100 dark:border-emerald-800 text-emerald-700 dark:text-emerald-400 text-sm font-semibold flex items-center gap-3 animate-in fade-in slide-in-from-top-4 duration-500">
+                    <div class="w-8 h-8 rounded-full bg-emerald-100 dark:bg-emerald-900/50 flex items-center justify-center text-emerald-600 dark:text-emerald-400">
                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
                         </svg>
@@ -202,6 +318,41 @@
                 link.classList.add('sidebar-active');
             }
         });
+
+        var themeToggleDarkIcon = document.getElementById('theme-toggle-dark-icon');
+        var themeToggleLightIcon = document.getElementById('theme-toggle-light-icon');
+
+        if (localStorage.getItem('color-theme') === 'dark' || (!('color-theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+            themeToggleLightIcon.classList.remove('hidden');
+        } else {
+            themeToggleDarkIcon.classList.remove('hidden');
+        }
+
+        var themeToggleBtn = document.getElementById('theme-toggle');
+        if (themeToggleBtn) {
+            themeToggleBtn.addEventListener('click', function() {
+                themeToggleDarkIcon.classList.toggle('hidden');
+                themeToggleLightIcon.classList.toggle('hidden');
+
+                if (localStorage.getItem('color-theme')) {
+                    if (localStorage.getItem('color-theme') === 'light') {
+                        document.documentElement.classList.add('dark');
+                        localStorage.setItem('color-theme', 'dark');
+                    } else {
+                        document.documentElement.classList.remove('dark');
+                        localStorage.setItem('color-theme', 'light');
+                    }
+                } else {
+                    if (document.documentElement.classList.contains('dark')) {
+                        document.documentElement.classList.remove('dark');
+                        localStorage.setItem('color-theme', 'light');
+                    } else {
+                        document.documentElement.classList.add('dark');
+                        localStorage.setItem('color-theme', 'dark');
+                    }
+                }
+            });
+        }
     </script>
     @yield('scripts')
     <script src="{{ url('/plugs/plugs-spa.js') }}"></script>
