@@ -28,7 +28,6 @@ use Plugs\Console\Commands\MakeMigrationCommand;
 use Plugs\Console\Commands\MakeModelCommand;
 use Plugs\Console\Commands\MakeNotificationCommand;
 use Plugs\Console\Commands\MakePaginationTemplateCommand;
-use Plugs\Console\Commands\MakePdfTemplateCommand;
 use Plugs\Console\Commands\MakeRepositoryCommand;
 use Plugs\Console\Commands\MakeRequestCommand;
 use Plugs\Console\Commands\MakeResourceCommand;
@@ -66,9 +65,7 @@ use Plugs\Console\Commands\SecurityScanCommand;
 use Plugs\Console\Commands\ViewCacheCommand;
 use Plugs\Console\Commands\ViewClearCommand;
 use Plugs\Console\Commands\LogClearCommand;
-use Plugs\Tenancy\Console\TenantMigrateCommand;
 use Plugs\Exceptions\ConsoleException;
-
 
 /*
 |--------------------------------------------------------------------------
@@ -102,7 +99,6 @@ class ConsoleKernel
         'make:seeder' => MakeSeederCommand::class,
         'make:connector' => MakeConnectorCommand::class,
         'make:api-request' => MakeApiRequestCommand::class,
-        'make:pdf-template' => MakePdfTemplateCommand::class,
         'make:pagination-template' => MakePaginationTemplateCommand::class,
         'make:component' => MakeComponentCommand::class,
         'make:event' => MakeEventCommand::class,
@@ -167,7 +163,6 @@ class ConsoleKernel
         'make:ai-test' => MakeAiTestCommand::class,
         'db:analyze' => DatabaseAnalyzeCommand::class,
         'framework:scan-security' => SecurityScanCommand::class,
-        'tenant:migrate' => TenantMigrateCommand::class,
         'auth:install' => \Plugs\Console\Commands\AuthInstallCommand::class,
         'view:cache' => ViewCacheCommand::class,
         'view:clear' => ViewClearCommand::class,
@@ -235,7 +230,6 @@ class ConsoleKernel
             'make:seeder',
             'make:connector',
             'make:api-request',
-            'make:pdf-template',
             'make:pagination-template',
             'make:component',
             'make:event',
@@ -250,7 +244,7 @@ class ConsoleKernel
         'Utility' => ['serve', 'cache:clear', 'logs:clear', 'view:cache', 'view:clear', 'config:publish', 'config:cache', 'optimize', 'opcache:clear', 'opcache:status', 'queue:work', 'queue:failed', 'queue:retry', 'health', 'storage:link', 'type:gen', 'ai:chat', 'ai:fix', 'ai:audit', 'make:ai-test', 'ai:agent', 'ai:think', 'framework:scan-security', 'auth:install', 'identity:install'],
 
         'Scheduling' => ['schedule:run', 'schedule:list'],
-        'Database' => ['migrate', 'migrate:rollback', 'migrate:status', 'migrate:fresh', 'migrate:validate', 'migrate:reset', 'make:migration', 'db:seed', 'db:analyze', 'db:backup', 'db:restore', 'tenant:migrate'],
+        'Database' => ['migrate', 'migrate:rollback', 'migrate:status', 'migrate:fresh', 'migrate:validate', 'migrate:reset', 'make:migration', 'db:seed', 'db:analyze', 'db:backup', 'db:restore'],
     ];
 
     public function commands(): array

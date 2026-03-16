@@ -25,7 +25,6 @@ use InvalidArgumentException;
 use Plugs\Container\Container;
 use Plugs\Http\MiddlewareDispatcher;
 use Plugs\Http\ResponseFactory;
-use Plugs\Inertia\InertiaResponse;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use ReflectionClass;
@@ -1350,11 +1349,6 @@ class Router
     {
         if ($response instanceof ResponseInterface) {
             return $response;
-        }
-
-        // Handle InertiaResponse objects
-        if ($response instanceof InertiaResponse) {
-            return $response->toResponse($this->currentRequest);
         }
 
         if (is_string($response)) {

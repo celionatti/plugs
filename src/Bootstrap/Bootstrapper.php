@@ -128,9 +128,6 @@ class Bootstrapper
             \Plugs\Module\Core\ConcurrencyModule::class,
             \Plugs\Module\Core\ProvidersModule::class,
             \Plugs\Module\Core\OpCacheModule::class,
-            \Plugs\Module\Core\TenancyModule::class,
-            \Plugs\Module\Core\SocialiteModule::class,
-            \Plugs\Module\Core\PdfModule::class,
         ]);
     }
 

@@ -91,14 +91,4 @@ trait Prunable
         return false;
     }
 
-    /**
-     * Fire the "pruning" event for the model.
-     *
-     * @deprecated Use fireModelEvent('pruning')
-     * @return void
-     */
-    protected function firingPruningEvent(): void
-    {
-        // Handled via fireModelEvent in prune()
-    }
 }

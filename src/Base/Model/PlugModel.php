@@ -24,7 +24,6 @@ use Plugs\Database\Traits\Searchable;
 use Plugs\Database\Traits\SoftDeletes;
 use Plugs\Database\Traits\HasDomainRules;
 use Plugs\Database\Traits\HasScopes;
-use Plugs\Database\Traits\HasTenancy;
 use Plugs\Database\Traits\Authorizable;
 use Plugs\Database\Traits\HasImmutability;
 use Plugs\Database\Traits\HasVersioning;
@@ -56,7 +55,6 @@ abstract class PlugModel implements \JsonSerializable
         SoftDeletes,
         HasFactory,
         HasDomainRules,
-        HasTenancy,
         Authorizable,
         HasImmutability,
         HasVersioning,

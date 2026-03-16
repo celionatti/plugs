@@ -6,31 +6,6 @@ namespace Plugs\View\Compilers;
 
 trait CompilesComponents
 {
-    /**
-     * @deprecated Props are now auto-injected. All attributes passed to a component
-     *             are automatically available as variables inside the component template.
-     *             This directive is no longer needed and will be removed in a future version.
-     *
-     *             Before (required):  @props(['title', 'description'])
-     *             After (zero setup): Just use {{ $title }} directly.
-     */
-    protected function compileProps(string $content): string
-    {
-        $balanced = '([^()]*+(?:\((?1)\)[^()]*+)*+)';
-
-        return preg_replace_callback(
-            '/@props\s*\(' . $balanced . '\)/s',
-            function ($matches) {
-                $defaults = $matches[1];
-
-                return sprintf(
-                    '<?php $__props = %s; foreach ($__props as $__key => $__default) { if (is_int($__key)) { $__key = $__default; $__default = null; } if (!isset($$__key)) { $$__key = $__default; } } unset($__props, $__key, $__default); ?>',
-                    $defaults
-                );
-            },
-            $content
-        );
-    }
 
     /**
      * Compile @fragment directive for HTMX/Turbo partial rendering

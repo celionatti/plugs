@@ -1,6 +1,6 @@
 # Themes & Customization
 
-The Plugs framework supports a powerful theme system that allows you to override any view or component without modifying the core application files. This is perfect for building multi-tenant applications or providing white-label solutions.
+The Plugs framework supports a powerful theme system that allows you to override any view or component without modifying the core application files. This is perfect for building modular skins or providing white-label solutions for different environments.
 
 ## 🏗️ How it Works
 

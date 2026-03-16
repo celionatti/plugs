@@ -681,7 +681,6 @@ class ViewCompiler
         $content = $this->compileErrorDirectives($content);
 
         // Phase 6: Components & UI Elements Compilation
-        $content = $this->compileProps($content);
         $content = $this->compileFragment($content);
         $content = $this->compileTeleport($content);
         $content = $this->compileCacheBlocks($content);

@@ -125,20 +125,6 @@ abstract class Controller
         }
     }
 
-    /**
-     * Render an Inertia page
-     *
-     * Use this for SPA-style rendering with React, Vue, or other frontend frameworks.
-     * Returns JSON for XHR requests (navigation) or full HTML for initial page loads.
-     *
-     * @param string $component Component name (e.g., 'Users/Index')
-     * @param array $props Data to pass to the component
-     * @return \Plugs\Inertia\InertiaResponse
-     */
-    protected function inertia(string $component, array $props = []): \Plugs\Inertia\InertiaResponse
-    {
-        return \Plugs\Inertia\Inertia::render($component, $props);
-    }
 
     /**
      * Redirect back with errors and old input (chainable)
