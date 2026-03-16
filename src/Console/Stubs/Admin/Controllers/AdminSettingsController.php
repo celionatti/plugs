@@ -49,7 +49,7 @@ class AdminSettingsController
         $data = $request->getParsedBody();
         $allowedKeys = [
             'site_name', 'site_description', 'admin_email',
-            'primary_color', 'dark_mode',
+            'primary_color', 'secondary_color', 'dark_mode', 'border_radius',
             'registration_enabled', 'two_factor_auth',
             'meta_keywords', 'google_analytics_id'
         ];
@@ -71,7 +71,7 @@ class AdminSettingsController
      */
     protected function getSettingGroup(string $key): string
     {
-        if (str_contains($key, 'color') || str_contains($key, 'dark_mode')) return 'appearance';
+        if (str_contains($key, 'color') || str_contains($key, 'dark_mode') || $key === 'border_radius') return 'appearance';
         if (str_contains($key, 'registration') || str_contains($key, 'auth')) return 'security';
         if (str_contains($key, 'meta') || str_contains($key, 'analytics')) return 'seo';
         return 'general';

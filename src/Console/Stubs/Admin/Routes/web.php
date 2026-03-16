@@ -8,6 +8,7 @@ use Modules\Admin\Controllers\AdminUserController;
 use Modules\Admin\Controllers\AdminSettingsController;
 use Modules\Admin\Controllers\AdminProfileController;
 use Modules\Admin\Controllers\AdminModuleController;
+use Modules\Admin\Controllers\AdminArticleController;
 
 /*
 |--------------------------------------------------------------------------
@@ -27,6 +28,16 @@ Route::post('/users/{id}', [AdminUserController::class, 'update'])->name('admin.
 Route::put('/users/{id}', [AdminUserController::class, 'update']);
 Route::post('/users/{id}/delete', [AdminUserController::class, 'destroy'])->name('admin.users.destroy');
 Route::delete('/users/{id}', [AdminUserController::class, 'destroy']);
+
+// Articles CRUD
+Route::get('/articles', [AdminArticleController::class, 'index'])->name('admin.articles.index');
+Route::get('/articles/create', [AdminArticleController::class, 'create'])->name('admin.articles.create');
+Route::post('/articles', [AdminArticleController::class, 'store'])->name('admin.articles.store');
+Route::get('/articles/{id}/edit', [AdminArticleController::class, 'edit'])->name('admin.articles.edit');
+Route::post('/articles/{id}', [AdminArticleController::class, 'update'])->name('admin.articles.update');
+Route::put('/articles/{id}', [AdminArticleController::class, 'update']);
+Route::post('/articles/{id}/delete', [AdminArticleController::class, 'destroy'])->name('admin.articles.destroy');
+Route::delete('/articles/{id}', [AdminArticleController::class, 'destroy']);
 
 // Settings
 Route::get('/settings', [AdminSettingsController::class, 'index'])->name('admin.settings.index');
