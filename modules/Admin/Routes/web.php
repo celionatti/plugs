@@ -50,3 +50,8 @@ Route::post('/profile/update', [AdminProfileController::class, 'update']);
 
 // Modules
 Route::get('/modules', [AdminModuleController::class, 'index'])->name('admin.modules.index');
+Route::get('/modules/create', [AdminModuleController::class, 'create'])->name('admin.modules.create');
+Route::post('/modules', [AdminModuleController::class, 'store'])->name('admin.modules.store');
+Route::post('/modules/{name}/toggle', [AdminModuleController::class, 'toggle'])->name('admin.modules.toggle');
+Route::post('/modules/{name}/delete', [AdminModuleController::class, 'destroy'])->name('admin.modules.destroy');
+Route::delete('/modules/{name}', [AdminModuleController::class, 'destroy']);
