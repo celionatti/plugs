@@ -165,6 +165,9 @@ class PlugsSPA {
   }
 
   initializeComponents(container = document) {
+    this.initializeAsyncComponents(container);
+    this.initializeFetchComponents(container);
+
     let components = Array.from(
       container.querySelectorAll("[data-plug-component]"),
     );
@@ -395,6 +398,120 @@ class PlugsSPA {
     });
 
     this.observeLinks(container);
+  }
+
+  initializeAsyncComponents(container = document) {
+    container.querySelectorAll(".plugs-async-component").forEach(async (el) => {
+      if (el._asyncInitialized) return;
+      el._asyncInitialized = true;
+
+      const src = el.dataset.plugsAsyncSrc;
+      const payload = el.dataset.plugsAsyncPayload;
+
+      try {
+        let response;
+        if (src) {
+          response = await fetch(src, {
+            headers: { "X-Requested-With": "XMLHttpRequest" },
+          });
+        } else if (payload) {
+          const csrfToken =
+            document.querySelector('meta[name="csrf-token"]')?.content;
+          response = await fetch("/_plugs/component/render", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "X-CSRF-TOKEN": csrfToken,
+            },
+            body: JSON.stringify({ payload }),
+          });
+        }
+
+        if (response && response.ok) {
+          const html = await response.text();
+          this.morphInner(el, html);
+          // Re-initialize any components in the newly loaded content
+          this.initializeComponents(el);
+        }
+      } catch (e) {
+        console.error("Async Component Error:", e);
+      }
+    });
+  }
+
+  initializeFetchComponents(container = document) {
+    container.querySelectorAll(".plugs-fetch-component").forEach(async (el) => {
+      if (el._fetchInitialized) return;
+      el._fetchInitialized = true;
+
+      const url = el.dataset.plugsFetchUrl;
+      const templateEl = el.querySelector(".plugs-fetch-success-template");
+      const initialEl = el.querySelector(".plugs-fetch-initial");
+
+      if (!url || !templateEl) return;
+
+      try {
+        const response = await fetch(url, {
+          headers: {
+            Accept: "application/json",
+            "X-Requested-With": "XMLHttpRequest",
+          },
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          const template = templateEl.innerHTML;
+          const html = this.renderTemplate(template, data);
+
+          this.morphInner(el, html);
+          // Re-initialize components in new content
+          this.initializeComponents(el);
+        }
+      } catch (e) {
+        console.error("Fetch Component Error:", e);
+      }
+    });
+  }
+
+  renderTemplate(template, data) {
+    let html = template;
+
+    // Handle @for item in list
+    // Simple non-nested support for V1
+    html = html.replace(
+      /@for\s+(\w+)\s+in\s+([\w.]+)([\s\S]*?)@endfor/g,
+      (match, item, listKey, body) => {
+        const list = this.getNestedValue(data, listKey) || [];
+        if (!Array.isArray(list)) return "";
+        return list
+          .map((val) => {
+            const context = { ...data, [item]: val };
+            return this.renderTemplate(body, context);
+          })
+          .join("");
+      },
+    );
+
+    // Handle @if(var)
+    html = html.replace(
+      /@if\s*\((.*?)\)([\s\S]*?)@endif/g,
+      (match, condition, body) => {
+        const val = this.getNestedValue(data, condition.trim());
+        return val ? this.renderTemplate(body, data) : "";
+      },
+    );
+
+    // Handle {{ var }} and { var }
+    html = html.replace(/\{\{?\s*(.*?)\s*\}?\}/g, (match, key) => {
+      return this.getNestedValue(data, key) ?? "";
+    });
+
+    return html;
+  }
+
+  getNestedValue(obj, path) {
+    if (!path || path === "data") return obj;
+    return path.split(".").reduce((acc, part) => acc && acc[part], obj);
   }
 
   handleOutsideClick(e) {

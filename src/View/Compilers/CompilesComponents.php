@@ -138,20 +138,17 @@ trait CompilesComponents
                 $parts = preg_split('/\s*,\s*/', $head, 2);
                 $component = trim($parts[0], ' "\'');
                 $data = isset($parts[1]) ? trim($parts[1]) : '[]';
-                $uniqueId = 'lazy_' . substr(md5($component . uniqid()), 0, 8);
 
                 return sprintf(
                     '<?php 
-                    $__lazyId = \'%s\';
-                    $__lazyComponent = \'%s\';
-                    $__lazyData = %s;
-                    echo \'<div id="\' . $__lazyId . \'" data-lazy-component="\' . $__lazyComponent . \'" data-lazy-data="\' . htmlspecialchars(json_encode($__lazyData), ENT_QUOTES) . \'">\';
+                    $__lazyPayload = ["component" => "%s", "attributes" => %s];
+                    $__encryptedPayload = \Plugs\Facades\Crypt::encrypt($__lazyPayload);
+                    echo \'<div class="plugs-lazy-component" data-plugs-lazy-payload="\' . $__encryptedPayload . \'">\';
                     echo \'<div class="lazy-placeholder" style="min-height: 50px; background: #f0f0f0; border-radius: 4px; display: flex; align-items: center; justify-content: center;">\';
                     echo \'<span style="color: #666;">Loading...</span>\';
                     echo \'</div></div>\';
-                    unset($__lazyId, $__lazyComponent, $__lazyData);
+                    unset($__lazyPayload, $__encryptedPayload);
                     ?>',
-                    $uniqueId,
                     addslashes($component),
                     $data
                 );
@@ -926,6 +923,84 @@ trait CompilesComponents
                 return "@svg('{$attrs['icon']['value']}', '{$class}')";
             }
             return $m[0];
+        }, $content);
+
+        // 16. <async src="..."> or <async component="...">
+        $content = preg_replace_callback('/<async' . $attrRegex . '>(.*?)<\/async>/is', function ($m) {
+            $attrs = $this->parseAttributes($m[1]);
+            $slot = $m[2];
+            
+            if (isset($attrs['src'])) {
+                $src = $attrs['src']['value'];
+                return "<div class=\"plugs-async-component\" data-plugs-async-src=\"{$src}\">{$slot}</div>";
+            }
+            
+            if (isset($attrs['component'])) {
+                $component = $attrs['component']['value'];
+                unset($attrs['component']);
+                $dataPhp = $this->buildDataArray($attrs);
+                
+                return "<?php 
+                    \$__asyncPayload = ['component' => '{$component}', 'attributes' => [{$dataPhp}]];
+                    \$__encryptedAsync = \Plugs\Facades\Crypt::encrypt(\$__asyncPayload);
+                    echo '<div class=\"plugs-async-component\" data-plugs-async-payload=\"' . \$__encryptedAsync . '\">';
+                ?>{$slot}<?php echo '</div>'; ?>";
+            }
+            
+            return $m[0];
+        }, $content);
+
+        // Self-closing version
+        $content = preg_replace_callback('/<async' . $attrRegex . '\/?>/is', function ($m) {
+            if (str_contains($m[0], '</async>')) return $m[0]; 
+
+            $attrs = $this->parseAttributes($m[1]);
+            
+            if (isset($attrs['src'])) {
+                $src = $attrs['src']['value'];
+                return "<div class=\"plugs-async-component\" data-plugs-async-src=\"{$src}\"></div>";
+            }
+            
+            if (isset($attrs['component'])) {
+                $component = $attrs['component']['value'];
+                unset($attrs['component']);
+                $dataPhp = $this->buildDataArray($attrs);
+                
+                return "<?php 
+                    \$__asyncPayload = ['component' => '{$component}', 'attributes' => [{$dataPhp}]];
+                    \$__encryptedAsync = \Plugs\Facades\Crypt::encrypt(\$__asyncPayload);
+                    echo '<div class=\"plugs-async-component\" data-plugs-async-payload=\"' . \$__encryptedAsync . '\"></div>';
+                ?>";
+            }
+            
+            return $m[0];
+        }, $content);
+
+        // 17. <fetch url="...">
+        $content = preg_replace_callback('/<fetch' . $attrRegex . '>(.*?)<\/fetch>/is', function ($m) {
+            $attrs = $this->parseAttributes($m[1]);
+            $inner = $m[2];
+            
+            $url = $attrs['url']['value'] ?? ($attrs['src']['value'] ?? '');
+            
+            $loading = '';
+            if (preg_match('/<loading>(.*?)<\/loading>/is', $inner, $lm)) {
+                $loading = $lm[1];
+            }
+            
+            $success = '';
+            if (preg_match('/<success>(.*?)<\/success>/is', $inner, $sm)) {
+                $success = $sm[1];
+            } else {
+                $success = preg_replace('/<loading>.*?<\/loading>/is', '', $inner);
+            }
+            
+            $success = trim($success);
+            
+            return "<div class=\"plugs-fetch-component\" data-plugs-fetch-url=\"{$url}\">" .
+                   "<div class=\"plugs-fetch-initial\">{$loading}</div>" .
+                   "<template class=\"plugs-fetch-success-template\">@verbatim{$success}@endverbatim</template>" .
+                   "</div>";
         }, $content);
 
         return $content;
