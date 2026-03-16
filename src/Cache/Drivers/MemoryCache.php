@@ -1,6 +1,7 @@
 <?php
 
-declare(strict_types=1);
+declare(strict_types = 1)
+;
 
 namespace Plugs\Cache\Drivers;
 
@@ -28,7 +29,8 @@ class MemoryCache implements CacheDriverInterface
         self::$cache[$key] = $value;
         if ($ttl !== null) {
             self::$expiry[$key] = time() + $ttl;
-        } else {
+        }
+        else {
             unset(self::$expiry[$key]);
         }
         return true;
@@ -85,5 +87,19 @@ class MemoryCache implements CacheDriverInterface
             $this->delete($key);
         }
         return true;
+    }
+
+    public function increment(string $key, int $value = 1): int|bool
+    {
+        $current = (int)$this->get($key, 0);
+        $new = $current + $value;
+        return $this->set($key, $new) ? $new : false;
+    }
+
+    public function decrement(string $key, int $value = 1): int|bool
+    {
+        $current = (int)$this->get($key, 0);
+        $new = $current - $value;
+        return $this->set($key, $new) ? $new : false;
     }
 }

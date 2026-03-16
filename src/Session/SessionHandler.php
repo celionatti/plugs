@@ -30,7 +30,7 @@ class SessionHandler implements \SessionHandlerInterface
         return $this->driver->close();
     }
 
-    public function read(string $id): string|false
+    public function read(string $id): string|bool
     {
         return $this->driver->read($id);
     }
@@ -45,7 +45,7 @@ class SessionHandler implements \SessionHandlerInterface
         return $this->driver->destroy($id);
     }
 
-    public function gc(int $max_lifetime): int|false
+    public function gc(int $max_lifetime): int|bool
     {
         return $this->driver->gc($max_lifetime);
     }

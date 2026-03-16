@@ -1,6 +1,7 @@
 <?php
 
-declare(strict_types=1);
+declare(strict_types = 1)
+;
 
 namespace Plugs\Database\Traits;
 
@@ -13,7 +14,7 @@ trait SoftDeletes
     protected $softDelete = false;
     protected $deletedAtColumn = 'deleted_at';
 
-    public function restore(): int|false
+    public function restore(): int|bool
     {
         if (!$this->softDelete || !$this->exists()) {
             return false;
@@ -59,10 +60,10 @@ trait SoftDeletes
         return static::query();
     }
 
-    public static function restoreAll(): int|false
+    public static function restoreAll(): int|bool
     {
         /** @phpstan-ignore new.static */
-        $instance = new static();
+        $instance = new static ();
         if (!$instance->softDelete) {
             return false;
         }
@@ -72,10 +73,10 @@ trait SoftDeletes
             ->update([$instance->deletedAtColumn => null]);
     }
 
-    public static function forceDeleteAll(): int|false
+    public static function forceDeleteAll(): int|bool
     {
         /** @phpstan-ignore new.static */
-        $instance = new static();
+        $instance = new static ();
         if (!$instance->softDelete) {
             return false;
         }

@@ -228,3 +228,31 @@ if (!function_exists('data_get')) {
 }
 
 // abort() is defined in abort.php (canonical source with full signature)
+
+if (!function_exists('collect')) {
+    /**
+     * Create a collection from the given value.
+     */
+    function collect(mixed $value = []): \Plugs\Database\Collection
+    {
+        return new \Plugs\Database\Collection(is_array($value) ? $value : (iterable_to_array($value) ?? [$value]));
+    }
+}
+
+if (!function_exists('iterable_to_array')) {
+    /**
+     * Convert the given value to an array.
+     */
+    function iterable_to_array(mixed $value): ?array
+    {
+        if (is_array($value)) {
+            return $value;
+        }
+
+        if ($value instanceof \Traversable) {
+            return iterator_to_array($value);
+        }
+
+        return null;
+    }
+}

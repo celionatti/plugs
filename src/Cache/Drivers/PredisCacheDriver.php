@@ -1,22 +1,14 @@
 <?php
 
-declare(strict_types=1);
+declare(strict_types = 1)
+;
 
 namespace Plugs\Cache\Drivers;
 
 use Plugs\Cache\CacheDriverInterface;
 use Predis\Client;
 
-/*
-|--------------------------------------------------------------------------
-| Predis Cache Driver
-|--------------------------------------------------------------------------
-|
-| A pure PHP implementation of the Redis driver. This is useful when
-| the phpredis extension is not available.
-|
-| Requires: composer require predis/predis
-*/
+/* |-------------------------------------------------------------------------- | Predis Cache Driver |-------------------------------------------------------------------------- | | A pure PHP implementation of the Redis driver. This is useful when | the phpredis extension is not available. | | Requires: composer require predis/predis */
 
 class PredisCacheDriver implements CacheDriverInterface
 {
@@ -32,9 +24,9 @@ class PredisCacheDriver implements CacheDriverInterface
         $config = $config ?? [
             'scheme' => 'tcp',
             'host' => env('REDIS_HOST', '127.0.0.1'),
-            'port' => (int) env('REDIS_PORT', 6379),
+            'port' => (int)env('REDIS_PORT', 6379),
             'password' => env('REDIS_PASSWORD', null),
-            'database' => (int) env('REDIS_CACHE_DB', 1),
+            'database' => (int)env('REDIS_CACHE_DB', 1),
             'prefix' => env('CACHE_PREFIX', 'plugs_cache:'),
         ];
 
@@ -68,7 +60,8 @@ class PredisCacheDriver implements CacheDriverInterface
 
         if ($ttl !== null && $ttl > 0) {
             $response = $this->redis->setex($this->prefix . $key, $ttl, $serialized);
-        } else {
+        }
+        else {
             $response = $this->redis->set($this->prefix . $key, $serialized);
         }
 
@@ -82,7 +75,7 @@ class PredisCacheDriver implements CacheDriverInterface
 
     public function has(string $key): bool
     {
-        return (bool) $this->redis->exists($this->prefix . $key);
+        return (bool)$this->redis->exists($this->prefix . $key);
     }
 
     public function clear(): bool
@@ -139,7 +132,7 @@ class PredisCacheDriver implements CacheDriverInterface
     /**
      * Increment a cached value atomically.
      */
-    public function increment(string $key, int $value = 1): int|false
+    public function increment(string $key, int $value = 1): int|bool
     {
         return $this->redis->incrby($this->prefix . $key, $value);
     }
@@ -147,7 +140,7 @@ class PredisCacheDriver implements CacheDriverInterface
     /**
      * Decrement a cached value atomically.
      */
-    public function decrement(string $key, int $value = 1): int|false
+    public function decrement(string $key, int $value = 1): int|bool
     {
         return $this->redis->decrby($this->prefix . $key, $value);
     }

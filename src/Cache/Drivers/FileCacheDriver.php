@@ -1,6 +1,7 @@
 <?php
 
-declare(strict_types=1);
+declare(strict_types = 1)
+;
 
 namespace Plugs\Cache\Drivers;
 
@@ -40,7 +41,8 @@ class FileCacheDriver implements CacheDriverInterface
             if (!is_array($data) || !isset($data['expires'])) {
                 return $default;
             }
-        } catch (\Throwable $e) {
+        }
+        catch (\Throwable $e) {
             // Handle corrupted cache data
             return $default;
         }
@@ -66,13 +68,14 @@ class FileCacheDriver implements CacheDriverInterface
 
         try {
             $serialized = serialize($data);
-        } catch (\Throwable $e) {
+        }
+        catch (\Throwable $e) {
             $type = is_object($value) ? get_class($value) : gettype($value);
             throw new \RuntimeException(
                 "Cache serialization failed for key [{$key}]. Value type: {$type}. Error: " . $e->getMessage(),
                 0,
                 $e
-            );
+                );
         }
 
         $success = file_put_contents($file, $serialized, LOCK_EX) !== false;
@@ -104,8 +107,9 @@ class FileCacheDriver implements CacheDriverInterface
                         @unlink($file);
                     }
                 }
-            } catch (\Throwable $e) {
-                // Ignore errors during GC
+            }
+            catch (\Throwable $e) {
+            // Ignore errors during GC
             }
         }
     }
@@ -168,6 +172,20 @@ class FileCacheDriver implements CacheDriverInterface
         }
 
         return $success;
+    }
+
+    public function increment(string $key, int $value = 1): int|bool
+    {
+        $current = (int)$this->get($key, 0);
+        $new = $current + $value;
+        return $this->set($key, $new) ? $new : false;
+    }
+
+    public function decrement(string $key, int $value = 1): int|bool
+    {
+        $current = (int)$this->get($key, 0);
+        $new = $current - $value;
+        return $this->set($key, $new) ? $new : false;
     }
 
     private function getFilePath(string $key): string

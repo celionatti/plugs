@@ -16,14 +16,16 @@ namespace Plugs\Database;
 
 class Blueprint
 {
-    private $connection;
-    private $table;
-    private $commands = [];
-    private $columns = [];
-    private $engine = 'InnoDB';
-    private $charset = 'utf8mb4';
-    private $collation = 'utf8mb4_unicode_ci';
-    private $temporary = false;
+    private Connection $connection;
+    private string $table;
+    /** @var array<int, array<string, mixed>> */
+    private array $commands = [];
+    /** @var ColumnDefinition[] */
+    private array $columns = [];
+    private string $engine = 'InnoDB';
+    private string $charset = 'utf8mb4';
+    private string $collation = 'utf8mb4_unicode_ci';
+    private bool $temporary = false;
 
     public function __construct(Connection $connection, string $table)
     {
@@ -600,6 +602,16 @@ class Blueprint
     }
 
     /**
+     * Add a raw foreign key constraint string
+     */
+    public function addForeignKey(string $constraint): self
+    {
+        $this->commands[] = ['type' => 'rawForeignKey', 'constraint' => $constraint];
+
+        return $this;
+    }
+
+    /**
      * Drop a foreign key constraint
      */
     public function dropForeign(string|array $index): self
@@ -638,7 +650,7 @@ class Blueprint
      */
     public function dropPrimary(?string $index = null): self
     {
-        $this->commands[] = ['type' => 'dropPrimary', 'index' => $index];
+        $this->commands[] = ['type' => 'dropPrimary', 'index' => $index !== null ? [$index] : []];
 
         return $this;
     }
@@ -805,6 +817,9 @@ class Blueprint
 
             case 'foreign':
                 return $command['definition']->toSql();
+
+            case 'rawForeignKey':
+                return $command['constraint'];
 
             default:
                 return '';

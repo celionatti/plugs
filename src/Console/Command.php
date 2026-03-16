@@ -104,6 +104,21 @@ abstract class Command implements CommandInterface
         return [];
     }
 
+    public function getExamples(): array
+    {
+        return $this->defineExamples();
+    }
+
+    public function getUsageExamples(): array
+    {
+        return $this->defineExamples();
+    }
+
+    protected function defineExamples(): array
+    {
+        return [];
+    }
+
     // ==================== INTERACTIVE INPUT ====================
 
     protected function ask(string $question, ?string $default = null): string

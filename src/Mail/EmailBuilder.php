@@ -5,16 +5,16 @@ declare(strict_types=1);
 namespace Plugs\Mail;
 
 use Symfony\Component\Mailer\Exception\TransportExceptionInterface;
-use Symfony\Component\Mailer\Mailer;
+use Symfony\Component\Mailer\MailerInterface;
 use Symfony\Component\Mime\Address;
 use Symfony\Component\Mime\Email;
 
 class EmailBuilder
 {
-    private Mailer $mailer;
+    private MailerInterface $mailer;
     private Email $email;
 
-    public function __construct(Mailer $mailer, string $fromEmail, string $fromName)
+    public function __construct(MailerInterface $mailer, string $fromEmail, string $fromName)
     {
         $this->mailer = $mailer;
         $this->email = (new Email())->from(new Address($fromEmail, $fromName));

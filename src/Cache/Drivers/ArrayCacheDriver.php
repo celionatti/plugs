@@ -1,20 +1,13 @@
 <?php
 
-declare(strict_types=1);
+declare(strict_types = 1)
+;
 
 namespace Plugs\Cache\Drivers;
 
 use Plugs\Cache\CacheDriverInterface;
 
-/*
-|--------------------------------------------------------------------------
-| Array Cache Driver (Null/Testing Driver)
-|--------------------------------------------------------------------------
-|
-| In-memory cache that persists only for the current request lifetime.
-| Ideal for testing environments where you don't want cache side effects
-| but still need the cache API to work correctly.
-*/
+/* |-------------------------------------------------------------------------- | Array Cache Driver (Null/Testing Driver) |-------------------------------------------------------------------------- | | In-memory cache that persists only for the current request lifetime. | Ideal for testing environments where you don't want cache side effects | but still need the cache API to work correctly. */
 
 class ArrayCacheDriver implements CacheDriverInterface
 {
@@ -36,7 +29,8 @@ class ArrayCacheDriver implements CacheDriverInterface
 
         if ($ttl !== null && $ttl > 0) {
             $this->expirations[$key] = time() + $ttl;
-        } else {
+        }
+        else {
             unset($this->expirations[$key]);
         }
 
@@ -102,5 +96,19 @@ class ArrayCacheDriver implements CacheDriverInterface
         }
 
         return true;
+    }
+
+    public function increment(string $key, int $value = 1): int|bool
+    {
+        $current = (int)$this->get($key, 0);
+        $new = $current + $value;
+        return $this->set($key, $new) ? $new : false;
+    }
+
+    public function decrement(string $key, int $value = 1): int|bool
+    {
+        $current = (int)$this->get($key, 0);
+        $new = $current - $value;
+        return $this->set($key, $new) ? $new : false;
     }
 }

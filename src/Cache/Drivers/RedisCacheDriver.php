@@ -1,21 +1,13 @@
 <?php
 
-declare(strict_types=1);
+declare(strict_types = 1)
+;
 
 namespace Plugs\Cache\Drivers;
 
 use Plugs\Cache\CacheDriverInterface;
 
-/*
-|--------------------------------------------------------------------------
-| Redis Cache Driver
-|--------------------------------------------------------------------------
-|
-| Production-grade cache driver using Redis. Supports tags via prefixed
-| keys and atomic increment/decrement operations.
-|
-| Requires the phpredis extension.
-*/
+/* |-------------------------------------------------------------------------- | Redis Cache Driver |-------------------------------------------------------------------------- | | Production-grade cache driver using Redis. Supports tags via prefixed | keys and atomic increment/decrement operations. | | Requires the phpredis extension. */
 
 class RedisCacheDriver implements CacheDriverInterface
 {
@@ -26,9 +18,9 @@ class RedisCacheDriver implements CacheDriverInterface
     {
         $config = $config ?? [
             'host' => env('REDIS_HOST', '127.0.0.1'),
-            'port' => (int) env('REDIS_PORT', 6379),
+            'port' => (int)env('REDIS_PORT', 6379),
             'password' => env('REDIS_PASSWORD', null),
-            'database' => (int) env('REDIS_CACHE_DB', 1),
+            'database' => (int)env('REDIS_CACHE_DB', 1),
             'prefix' => env('CACHE_PREFIX', 'plugs_cache:'),
         ];
 
@@ -76,7 +68,7 @@ class RedisCacheDriver implements CacheDriverInterface
 
     public function has(string $key): bool
     {
-        return (bool) $this->redis->exists($this->prefix . $key);
+        return (bool)$this->redis->exists($this->prefix . $key);
     }
 
     public function clear(): bool
@@ -126,7 +118,7 @@ class RedisCacheDriver implements CacheDriverInterface
     /**
      * Increment a cached value atomically.
      */
-    public function increment(string $key, int $value = 1): int|false
+    public function increment(string $key, int $value = 1): int|bool
     {
         return $this->redis->incrBy($this->prefix . $key, $value);
     }
@@ -134,7 +126,7 @@ class RedisCacheDriver implements CacheDriverInterface
     /**
      * Decrement a cached value atomically.
      */
-    public function decrement(string $key, int $value = 1): int|false
+    public function decrement(string $key, int $value = 1): int|bool
     {
         return $this->redis->decrBy($this->prefix . $key, $value);
     }

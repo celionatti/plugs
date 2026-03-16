@@ -509,7 +509,8 @@ class Profiler
         $files = glob($storageDir . '*.json');
         if (count($files) > self::MAX_PROFILES) {
             // Sort by modification time
-            array_multisort(array_map('filemtime', $files), SORT_ASC, $files);
+            $mtimes = array_map('filemtime', $files);
+            array_multisort($mtimes, SORT_ASC, $files);
             $toDelete = array_slice($files, 0, count($files) - self::MAX_PROFILES);
             foreach ($toDelete as $file) {
                 @unlink($file);

@@ -1,31 +1,24 @@
 <?php
 
-declare(strict_types=1);
+declare(strict_types = 1)
+;
 
 namespace Plugs\Database;
 
-/*
-|--------------------------------------------------------------------------
-| Foreign Key Class
-|--------------------------------------------------------------------------
-|
-| This class provides a fluent interface for defining foreign key
-| constraints in database schemas. It allows you to specify the
-| referenced table and column, as well as actions on delete and update.
-*/
+/* |-------------------------------------------------------------------------- | Foreign Key Class |-------------------------------------------------------------------------- | | This class provides a fluent interface for defining foreign key | constraints in database schemas. It allows you to specify the | referenced table and column, as well as actions on delete and update. */
 
 class ForeignKey
 {
-    private $schema;
+    private $blueprint;
     private $column;
     private $references;
     private $on;
     private $onDelete = 'RESTRICT';
     private $onUpdate = 'RESTRICT';
 
-    public function __construct(Schema $schema, string $column)
+    public function __construct(Blueprint $blueprint, string $column)
     {
-        $this->schema = $schema;
+        $this->blueprint = $blueprint;
         $this->column = $column;
     }
 
@@ -36,12 +29,12 @@ class ForeignKey
         return $this;
     }
 
-    public function on(string $table): Schema
+    public function on(string $table): Blueprint
     {
         $this->on = $table;
         $this->build();
 
-        return $this->schema;
+        return $this->blueprint;
     }
 
     public function onDelete(string $action): self
@@ -73,6 +66,6 @@ class ForeignKey
         $constraint = "FOREIGN KEY ({$this->column}) REFERENCES {$this->on}({$this->references})";
         $constraint .= " ON DELETE {$this->onDelete} ON UPDATE {$this->onUpdate}";
 
-        $this->schema->addForeignKey($constraint);
+        $this->blueprint->addForeignKey($constraint);
     }
 }

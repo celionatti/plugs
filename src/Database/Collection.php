@@ -941,6 +941,28 @@ class Collection implements \ArrayAccess, \Iterator, \Countable, \JsonSerializab
     }
 
     /**
+     * Determine if all items pass the given truth test.
+     */
+    public function every(callable $callback): bool
+    {
+        foreach ($this->items as $key => $item) {
+            if (!$callback($item, $key)) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    /**
+     * Determine if any item passes the given truth test.
+     */
+    public function some(callable $callback): bool
+    {
+        return $this->contains($callback);
+    }
+
+    /**
      * Get item at index
      */
     public function get($key, $default = null)

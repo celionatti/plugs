@@ -4,20 +4,19 @@ declare(strict_types=1);
 
 namespace Plugs\Pdf;
 
-use Dompdf\Dompdf;
-use Dompdf\Options;
 use Plugs\View\ViewEngineInterface;
 use RuntimeException;
 
 class Pdf
 {
-    protected Dompdf $dompdf;
+    /** @var \Dompdf\Dompdf */
+    protected $dompdf;
     protected ViewEngineInterface $view;
     protected string $html = '';
 
     public function __construct(ViewEngineInterface $view)
     {
-        if (!class_exists(Dompdf::class)) {
+        if (!class_exists(\Dompdf\Dompdf::class)) {
             throw new RuntimeException(
                 'The "dompdf/dompdf" package is required to use the PDF service. ' .
                 'Please install it via composer: composer require dompdf/dompdf'
@@ -25,12 +24,14 @@ class Pdf
         }
 
         $this->view = $view;
-        $options = new Options();
+        /** @phpstan-ignore-next-line */
+        /** @var \Dompdf\Options $options */
+        $options = new \Dompdf\Options(); // @phpstan-ignore-line
         $options->set('isHtml5ParserEnabled', true);
         $options->set('isRemoteEnabled', true);
         $options->set('defaultFont', 'Arial');
 
-        $this->dompdf = new Dompdf($options);
+        $this->dompdf = new \Dompdf\Dompdf($options);
     }
 
     /**

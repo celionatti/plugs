@@ -62,7 +62,8 @@ class AssetManager
     private function configureFromEnvironment(): void
     {
         if (defined('APP_ENV')) {
-            $isDev = APP_ENV === 'development' || APP_ENV === 'local';
+            $env = constant('APP_ENV');
+            $isDev = $env === 'development' || $env === 'local';
             $this->minify = !$isDev;
             $this->combine = !$isDev;
             $this->versioning = true;

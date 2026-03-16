@@ -42,7 +42,7 @@ class StorageManager
         $driverMethod = 'create' . ucfirst($config['driver']) . 'Driver';
 
         if (method_exists($this, $driverMethod)) {
-            return $this->{$driverMethod}($config);
+            return $this->{ $driverMethod}($config);
         }
 
         throw new InvalidArgumentException("Driver [{$config['driver']}] is not supported.");
@@ -123,12 +123,12 @@ class StorageManager
         return $this->disk()->download($path, $name, $headers);
     }
 
-    public function putFile(string $path, $file, array $options = []): string|false
+    public function putFile(string $path, $file, array $options = []): string|bool
     {
         return $this->putFileAs($path, $file, $file->hashName(), $options);
     }
 
-    public function putFileAs(string $path, $file, string $name, array $options = []): string|false
+    public function putFileAs(string $path, $file, string $name, array $options = []): string|bool
     {
         $targetPath = trim($path . '/' . $name, '/');
 

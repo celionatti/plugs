@@ -60,7 +60,7 @@ interface SessionDriverInterface
      * Garbage collection — remove expired sessions.
      *
      * @param int $maxLifetime Maximum session lifetime in seconds
-     * @return int|false The number of deleted sessions, or false on failure
+     * @return int|bool The number of deleted sessions, or false on failure
      */
-    public function gc(int $maxLifetime): int|false;
+    public function gc(int $maxLifetime): int|bool;
 }

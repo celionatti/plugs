@@ -15,6 +15,8 @@ use Plugs\Facade;
  * @method static iterable getMultiple(iterable $keys, $default = null)
  * @method static bool setMultiple(iterable $values, int|null $ttl = null)
  * @method static bool deleteMultiple(iterable $keys)
+ * @method static int|false increment(string $key, int $value = 1)
+ * @method static int|false decrement(string $key, int $value = 1)
  * @method static \Plugs\Cache\CacheDriverInterface driver(string $name = null)
  *
  * @see \Plugs\Cache\CacheManager

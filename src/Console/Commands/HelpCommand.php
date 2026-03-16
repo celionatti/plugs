@@ -133,8 +133,8 @@ class HelpCommand extends Command
         }
 
         // Examples
-        $examples = method_exists($command, 'getExamples') ? $command->getExamples() : [];
-        if (empty($examples) && method_exists($command, 'getUsageExamples')) {
+        $examples = $command->getExamples();
+        if (empty($examples)) {
             $examples = $command->getUsageExamples();
         }
 

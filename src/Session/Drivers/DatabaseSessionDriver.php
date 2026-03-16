@@ -155,7 +155,7 @@ class DatabaseSessionDriver implements SessionDriverInterface
         return true;
     }
 
-    public function gc(int $maxLifetime): int|false
+    public function gc(int $maxLifetime): int|bool
     {
         $cutoff = time() - $maxLifetime;
 

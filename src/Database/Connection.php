@@ -162,9 +162,9 @@ class Connection
         $cacheKey = 'db:lb:health:conns:' . md5($key);
 
         if ($connecting) {
-            \Plugs\Facades\Cache::increment($cacheKey); // @phpstan-ignore staticMethod.notFound
+            \Plugs\Facades\Cache::increment($cacheKey);
         } else {
-            \Plugs\Facades\Cache::decrement($cacheKey); // @phpstan-ignore staticMethod.notFound
+            \Plugs\Facades\Cache::decrement($cacheKey);
         }
     }
 

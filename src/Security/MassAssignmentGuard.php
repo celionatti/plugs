@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Plugs\Security;
 
 use RuntimeException;
+use Plugs\Exceptions\MassAssignmentException;
 
 /**
  * Trait to guard against mass assignment vulnerabilities.
@@ -33,9 +34,7 @@ trait MassAssignmentGuard
         foreach ($attributes as $key => $value) {
             if (!$this->isFillable($key)) {
                 if ($this->isStrictGuarding()) {
-                    throw new MassAssignmentException(
-                        "Attribute [{$key}] is not mass assignable on " . static::class
-                    );
+                    throw new MassAssignmentException($key, static::class);
                 }
                 continue;
             }

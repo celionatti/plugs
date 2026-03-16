@@ -1,6 +1,7 @@
 <?php
 
-declare(strict_types=1);
+declare(strict_types = 1)
+;
 
 namespace Plugs\Cache;
 
@@ -19,7 +20,8 @@ class TieredCache implements CacheDriverInterface
             // Default tiers: memory → file
             $this->addTier('memory', new Drivers\MemoryCache());
             $this->addTier('file', new Drivers\FileCacheDriver());
-        } else {
+        }
+        else {
             foreach ($drivers as $name => $driver) {
                 $this->addTier($name, $driver);
             }
@@ -153,6 +155,40 @@ class TieredCache implements CacheDriverInterface
             }
         }
         return $success;
+    }
+
+    public function increment(string $key, int $value = 1): int|bool
+    {
+        // Use the last (most persistent) tier for the atomic operation
+        $lastTier = end($this->tiers);
+        $result = $lastTier->increment($key, $value);
+
+        if ($result !== false) {
+            // Update all other tiers with the new value
+            foreach ($this->tiers as $tier) {
+                if ($tier !== $lastTier) {
+                    $tier->set($key, $result);
+                }
+            }
+        }
+
+        return $result;
+    }
+
+    public function decrement(string $key, int $value = 1): int|bool
+    {
+        $lastTier = end($this->tiers);
+        $result = $lastTier->decrement($key, $value);
+
+        if ($result !== false) {
+            foreach ($this->tiers as $tier) {
+                if ($tier !== $lastTier) {
+                    $tier->set($key, $result);
+                }
+            }
+        }
+
+        return $result;
     }
 
     /**

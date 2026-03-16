@@ -369,6 +369,12 @@ class UploadedFile
     {
         $tempFile = tempnam(sys_get_temp_dir(), 'plugs_comp_');
 
+        if ($tempFile === false) {
+            throw new RuntimeException('Failed to create temporary file for image compression');
+        }
+
+        $contents = '';
+
         try {
             $image = new \Plugs\Image\Image();
             $image->load($this->tmpName);
@@ -389,13 +395,13 @@ class UploadedFile
             if ($contents === false) {
                 throw new RuntimeException('Failed to read compressed image data');
             }
-
-            return $contents;
         } finally {
             if (file_exists($tempFile)) {
                 @unlink($tempFile);
             }
         }
+
+        return $contents;
     }
 
     public function moveTo(string $targetPath): bool

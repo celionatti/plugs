@@ -64,7 +64,7 @@ class FileSessionDriver implements SessionDriverInterface
         return true;
     }
 
-    public function gc(int $maxLifetime): int|false
+    public function gc(int $maxLifetime): int|bool
     {
         $count = 0;
         $cutoff = time() - $maxLifetime;
