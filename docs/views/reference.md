@@ -101,3 +101,32 @@ Instantly dump all variables in the current view scope.
 
 - **Usage:** `@debug`
 - **Purpose:** Quick debugging of view data.
+
+---
+
+## 📦 Data Binding
+
+### `@needs`
+
+Declares required variables for a view template. Throws a `ViewException` at render time if any are missing.
+
+- **Usage:** `@needs user posts`
+- **Alternate:** `@needs $user, $posts`
+- **Error Code:** `PLUGS-VIEW-006`
+- **Purpose:** Improves type safety by allowing views to declare their data contract.
+
+### `->auto()`
+
+Automatically collects all safe variables and passes them to the view.
+
+- **From properties:** `return view('profile')->auto()`
+- **From local vars:** `return view('profile')->auto(get_defined_vars())`
+- **Purpose:** Lazy mode — collects everything, filters out framework internals.
+
+### `->with('name1', 'name2', ...)`
+
+Selectively collects named variables from the calling controller.
+
+- **From properties:** `return view('profile')->with('user', 'posts')`
+- **From local vars:** `return view('profile')->with('user', 'posts', get_defined_vars())`
+- **Purpose:** Easy mode — explicitly name which variables to pass.

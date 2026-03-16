@@ -323,4 +323,52 @@ trait CompilesControlStructures
 
         return $content;
     }
+
+    /**
+     * Compile the @needs directive.
+     *
+     * @needs user posts
+     *
+     * Transforms into a runtime check that throws a ViewException
+     * if any of the required variables are missing from the view scope.
+     *
+     * @param  string  $content
+     * @return string
+     */
+    protected function compileNeeds(string $content): string
+    {
+        return preg_replace_callback(
+            '/@needs\s+(.+?)(?=\r?\n|$)/s',
+            function ($matches) {
+                $varsRaw = trim($matches[1]);
+                // Support comma-separated or space-separated variable names
+                $vars = preg_split('/[\s,]+/', $varsRaw, -1, PREG_SPLIT_NO_EMPTY);
+
+                if (empty($vars)) {
+                    return '';
+                }
+
+                $checks = [];
+                $names = [];
+                foreach ($vars as $var) {
+                    $var = ltrim($var, '$'); // Allow @needs $user or @needs user
+                    $checks[] = "!isset(\${$var})";
+                    $names[] = $var;
+                }
+
+                $condition = implode(' || ', $checks);
+                $namesList = implode(', ', $names);
+
+                return sprintf(
+                    '<?php if (%s) { throw new \Plugs\Exceptions\ViewException('
+                    . '"View requires the following variables: %s", 0, null, "", '
+                    . '\Plugs\Exceptions\ViewException::MISSING_VARIABLE'
+                    . '); } ?>',
+                    $condition,
+                    $namesList
+                );
+            },
+            $content
+        );
+    }
 }

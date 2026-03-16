@@ -332,6 +332,29 @@ The `@let` directive allows you to compute and store variables directly within a
 <p>Interest: {{ interest }}</p>
 ```
 
+### @needs
+
+The `@needs` directive declares which variables a view **requires** from the controller. If any are missing at render time, a `ViewException` is thrown with a clear error message instead of a silent `undefined variable` notice.
+
+```blade
+@needs user posts
+
+<h1>{{ $user->name }}</h1>
+@foreach($posts as $post)
+    <p>{{ $post->title }}</p>
+@endforeach
+```
+
+Supports comma-separated, space-separated, and `$`-prefixed names:
+
+```blade
+@needs user, posts
+@needs $user $posts
+```
+
+> [!IMPORTANT]
+> `@needs` is a runtime check. If a required variable is not `isset()`, a `[PLUGS-VIEW-006]` error is thrown immediately.
+
 > [!TIP]
 > Variables defined with `@let` or `@calc` are automatically available in the rest of the template and follow standard PHP scoping rules for the rendered view.
 

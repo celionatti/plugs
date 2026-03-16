@@ -73,15 +73,117 @@ class View
     }
 
     /**
-     * Add a single data item to the view
+     * Variables/types to exclude during automatic collection.
+     * Prevents leaking framework internals into the view scope.
+     */
+    private const AUTO_EXCLUDED_TYPES = [
+        ViewEngineInterface::class,
+        \Plugs\Container\Container::class,
+        \Plugs\Router\Router::class,
+        \Plugs\Http\MiddlewareDispatcher::class,
+    ];
+
+    private const AUTO_EXCLUDED_KEYS = [
+        'view', 'engine', 'db', 'currentRequest',
+        'middleware', 'container', 'app', 'kernel',
+    ];
+
+    /**
+     * Add data to the view (multi-mode).
      *
-     * @param string $key Data key
-     * @param mixed $value Data value
+     * Usage:
+     *   ->with('key', $value)           // Manual: single key-value pair
+     *   ->with('user', 'posts')         // Easy: collect named variables from caller (properties)
+     *   ->with(['user' => $u])          // Manual: array of key-value pairs
+     *
+     * For local variable collection, pass get_defined_vars() as the LAST argument:
+     *   ->with('user', 'posts', get_defined_vars())
+     *
      * @return self Fluent interface
      */
-    public function with(string $key, $value): self
+    public function with(string|array ...$args): self
     {
-        $this->data[$key] = $value;
+        // with(['key' => 'value']) — array merge mode
+        if (count($args) === 1 && is_array($args[0])) {
+            $this->data = array_merge($this->data, $args[0]);
+            return $this;
+        }
+
+        // with('key', $value) — exactly 2 args where second is any type
+        // Detect: if 2 args AND second arg is NOT a plain string name → treat as key-value
+        if (count($args) === 2 && is_string($args[0]) && !is_string($args[1])) {
+            $this->data[$args[0]] = $args[1];
+            return $this;
+        }
+
+        // with('user', 'posts', ...) — selective variable pickup
+        // Check if last arg is an array (from get_defined_vars()), rest are strings
+        $lastArg = end($args);
+        $hasVarsArray = is_array($lastArg);
+
+        if ($hasVarsArray) {
+            // Last arg is get_defined_vars() result, preceding args are names
+            $vars = $this->filterData($lastArg);
+            $names = array_slice($args, 0, -1);
+
+            // If only the array was passed (no names), merge all filtered vars
+            if (empty($names)) {
+                $this->data = array_merge($this->data, $vars);
+                return $this;
+            }
+
+            foreach ($names as $name) {
+                if (is_string($name) && array_key_exists($name, $vars)) {
+                    $this->data[$name] = $vars[$name];
+                }
+            }
+
+            return $this;
+        }
+
+        // All args are strings — selective pickup from caller properties
+        if (count($args) >= 1 && array_reduce($args, fn($carry, $a) => $carry && is_string($a), true)) {
+            /** @var string[] $names */
+            $names = $args;
+            $callerVars = $this->collectFromCaller();
+
+            foreach ($names as $name) {
+                if (array_key_exists($name, $callerVars)) {
+                    $this->data[$name] = $callerVars[$name];
+                }
+            }
+
+            return $this;
+        }
+
+        return $this;
+    }
+
+    /**
+     * Automatically collect all safe variables and pass them to the view.
+     *
+     * Two modes:
+     *   ->auto()                     // Collects public properties from the caller (controller)
+     *   ->auto(get_defined_vars())   // Collects local variables from the calling scope
+     *
+     * Local variables like $user = User::find(1) can only be discovered
+     * if you pass get_defined_vars() — PHP does not allow reading another
+     * function's local scope.
+     *
+     * @param array|null $vars Optional: result of get_defined_vars() from the caller
+     * @return self Fluent interface
+     */
+    public function auto(?array $vars = null): self
+    {
+        if ($vars !== null) {
+            // Local variable mode — filter and merge
+            $filtered = $this->filterData($vars);
+            $this->data = array_merge($this->data, $filtered);
+        } else {
+            // Property mode — collect public properties from caller
+            $callerVars = $this->collectFromCaller();
+            $this->data = array_merge($this->data, $callerVars);
+        }
 
         return $this;
     }
@@ -97,6 +199,94 @@ class View
         $this->data = array_merge($this->data, $data);
 
         return $this;
+    }
+
+    /**
+     * Collect safe variables from the calling scope.
+     *
+     * Uses debug_backtrace() to find the caller (typically a controller method),
+     * then extracts its public properties. Filters out framework internals.
+     *
+     * @return array<string, mixed>
+     */
+    private function collectFromCaller(): array
+    {
+        // Walk up the call stack to find the originating controller/caller
+        $trace = debug_backtrace(DEBUG_BACKTRACE_PROVIDE_OBJECT, 6);
+
+        $collected = [];
+
+        foreach ($trace as $frame) {
+            if (!isset($frame['object'])) {
+                continue;
+            }
+
+            $obj = $frame['object'];
+
+            // Skip the View class itself
+            if ($obj instanceof self) {
+                continue;
+            }
+
+            // Found a non-View caller — extract its public properties
+            $reflection = new \ReflectionObject($obj);
+            foreach ($reflection->getProperties(\ReflectionProperty::IS_PUBLIC) as $prop) {
+                $name = $prop->getName();
+
+                // Skip excluded property names
+                if (in_array($name, self::AUTO_EXCLUDED_KEYS, true)) {
+                    continue;
+                }
+
+                $value = $prop->getValue($obj);
+
+                // Skip excluded types
+                if (is_object($value)) {
+                    foreach (self::AUTO_EXCLUDED_TYPES as $excludedType) {
+                        if ($value instanceof $excludedType) {
+                            continue 2;
+                        }
+                    }
+                }
+
+                $collected[$name] = $value;
+            }
+
+            break; // Only inspect the first non-View caller
+        }
+
+        return $this->filterData($collected);
+    }
+
+    /**
+     * Filter data array to remove unsafe/internal keys.
+     *
+     * Removes superglobals, PHP internals, and framework engine references
+     * from the data before passing to the template.
+     *
+     * @param array $data Raw data array
+     * @return array Filtered data
+     */
+    private function filterData(array $data): array
+    {
+        $blocked = [
+            'this', '_GET', '_POST', '_SERVER', '_SESSION',
+            '_COOKIE', '_FILES', '_ENV', '_REQUEST', 'GLOBALS',
+            '__DIR__', '__FILE__', '__LINE__', '__FUNCTION__', '__CLASS__',
+        ];
+
+        foreach ($blocked as $key) {
+            unset($data[$key]);
+        }
+
+        // Remove any ViewEngineInterface instances that slipped through
+        foreach ($data as $key => $value) {
+            if ($value instanceof ViewEngineInterface) {
+                unset($data[$key]);
+            }
+        }
+
+        return $data;
     }
 
     /**

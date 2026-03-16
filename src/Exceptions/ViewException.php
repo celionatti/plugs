@@ -14,6 +14,7 @@ class ViewException extends PlugsException
     public const COMPILATION_ERROR = 'PLUGS-VIEW-003';
     public const RUNTIME_ERROR = 'PLUGS-VIEW-004';
     public const INVALID_PATH = 'PLUGS-VIEW-005';
+    public const MISSING_VARIABLE = 'PLUGS-VIEW-006';
 
     protected ?string $view = null;
     protected ?string $frameworkCode = null;
