@@ -156,10 +156,38 @@ abstract class ReactiveComponent
         return $this->name;
     }
 
-    protected array $attributes = [];
-
     public function getAttributes(): array
     {
         return $this->attributes;
+    }
+
+    /**
+     * Generic property update handler
+     */
+    public function updateProperty(string $property, mixed $value): void
+    {
+        if (property_exists($this, $property)) {
+            $this->{$property} = $value;
+        }
+    }
+
+    /**
+     * Increment a numeric property
+     */
+    public function increment(string $property): void
+    {
+        if (property_exists($this, $property) && is_numeric($this->{$property})) {
+            $this->{$property}++;
+        }
+    }
+
+    /**
+     * Decrement a numeric property
+     */
+    public function decrement(string $property): void
+    {
+        if (property_exists($this, $property) && is_numeric($this->{$property})) {
+            $this->{$property}--;
+        }
     }
 }

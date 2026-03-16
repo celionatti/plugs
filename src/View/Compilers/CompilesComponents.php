@@ -158,6 +158,59 @@ trait CompilesComponents
     }
 
     /**
+     * Compile @live directive for reactive components
+     * Usage: @live('counter', ['count' => 0]) or @live counter
+     */
+    protected function compileLive(string $content): string
+    {
+        $balanced = '([^()]*+(?:\((?1)\)[^()]*+)*+)';
+
+        // 1. Standard syntax: @live('name', [...])
+        $content = preg_replace_callback(
+            '/@live\s*\(' . $balanced . '\)/s',
+            function ($matches) {
+                $head = $matches[1];
+                $parts = preg_split('/\s*,\s*/', $head, 2);
+                $component = trim($parts[0], ' "\'');
+                $data = isset($parts[1]) ? trim($parts[1]) : '[]';
+
+                return sprintf(
+                    '<?php echo $view->renderComponent(\'%s\', %s); ?>',
+                    addslashes($component),
+                    $data
+                );
+            },
+            $content
+        );
+
+        // 2. Short syntax: @live counter or @live counter(args)
+        $content = preg_replace_callback(
+            '/@live\s+([a-zA-Z0-9_\-\.]+)(?:\s*\((.*?)\))?/s',
+            function ($matches) {
+                $component = trim($matches[1]);
+                $data = isset($matches[2]) && !empty(trim($matches[2])) ? trim($matches[2]) : '[]';
+
+                return sprintf(
+                    '<?php echo $view->renderComponent(\'%s\', %s); ?>',
+                    addslashes($component),
+                    $data
+                );
+            },
+            $content
+        );
+
+        return $content;
+    }
+
+    /**
+     * Compile shorthand event selectors: @click="count++" -> p-click="count++"
+     */
+    protected function compileShorthands(string $content): string
+    {
+        return preg_replace('/@(click|input|change|blur|submit|keyup|keydown)(?:\.[\w-]+)*=/i', 'p-$1=', $content);
+    }
+
+    /**
      * Compile @aware directive to access parent component data
      */
     protected function compileAware(string $content): string

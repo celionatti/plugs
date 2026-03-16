@@ -699,6 +699,36 @@ class PlugsSPA {
     const componentEl = element.closest("[data-plug-component]");
     if (!componentEl) return;
 
+    // Handle expressions (e.g., count++, toggleVar, prop = value)
+    if (action.includes("++")) {
+      const prop = action.replace("++", "").trim();
+      action = "increment";
+      payload = prop;
+    } else if (action.includes("--")) {
+      const prop = action.replace("--", "").trim();
+      action = "decrement";
+      payload = prop;
+    } else if (action.includes("=") && !action.includes("(")) {
+      const parts = action.split("=");
+      const prop = parts[0].trim();
+      let val = parts[1].trim();
+      // Basic unquote
+      if (
+        (val.startsWith("'") && val.endsWith("'")) ||
+        (val.startsWith('"') && val.endsWith('"'))
+      ) {
+        val = val.substring(1, val.length - 1);
+      }
+      // Basic type sensing
+      if (val === "true") val = true;
+      else if (val === "false") val = false;
+      else if (val === "null") val = null;
+      else if (!isNaN(val) && val !== "") val = Number(val);
+
+      action = "updateProperty";
+      payload = [prop, val];
+    }
+
     if (!componentEl._requestQueue) componentEl._requestQueue = [];
 
     // Deduplication Logic

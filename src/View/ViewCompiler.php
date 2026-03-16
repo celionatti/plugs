@@ -323,6 +323,9 @@ class ViewCompiler
         // Phase 0.5: Scoped Styles (Before any tag replacements to ensure pure HTML targeting)
         $content = $this->compileScopedStyles($content);
 
+        // Phase 0.6: Shorthands (@click -> p-click)
+        $content = $this->compileShorthands($content);
+
         // Phase 0.75: Inline Components (Extract them before they are processed as standard directives or echoes)
         $content = $this->extractInlineComponents($content);
 
@@ -682,6 +685,7 @@ class ViewCompiler
         $content = $this->compileFragment($content);
         $content = $this->compileTeleport($content);
         $content = $this->compileCacheBlocks($content);
+        $content = $this->compileLive($content);
         $content = $this->compileLazy($content);
         $content = $this->compileAware($content);
         $content = $this->compileId($content);
