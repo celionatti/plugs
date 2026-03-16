@@ -19,12 +19,14 @@ trait CompilesControlStructures
 
         // @if
         $content = preg_replace_callback('/@if\s*\(' . $balanced . '\)/s', function ($matches) {
-            return "<?php if ({$matches[1]}): ?>";
+            $expr = $this->convertDotSyntax($matches[1]);
+            return "<?php if ({$expr}): ?>";
         }, $content);
 
         // @elseif
         $content = preg_replace_callback('/@elseif\s*\(' . $balanced . '\)/s', function ($matches) {
-            return "<?php elseif ({$matches[1]}): ?>";
+            $expr = $this->convertDotSyntax($matches[1]);
+            return "<?php elseif ({$expr}): ?>";
         }, $content);
 
         // @else
@@ -35,29 +37,34 @@ trait CompilesControlStructures
 
         // @unless
         $content = preg_replace_callback('/@unless\s*\(' . $balanced . '\)/s', function ($matches) {
-            return "<?php if (!({$matches[1]})): ?>";
+            $expr = $this->convertDotSyntax($matches[1]);
+            return "<?php if (!({$expr})): ?>";
         }, $content);
         $content = preg_replace('/@endunless\s*(?:\r?\n)?/', '<?php endif; ?>', $content);
 
         // @isset
         $content = preg_replace_callback('/@isset\s*\(' . $balanced . '\)/s', function ($matches) {
-            return "<?php if (isset({$matches[1]})): ?>";
+            $expr = $this->convertDotSyntax($matches[1]);
+            return "<?php if (isset({$expr})): ?>";
         }, $content);
         $content = preg_replace('/@endisset\s*(?:\r?\n)?/', '<?php endif; ?>', $content);
 
         // @empty
         $content = preg_replace_callback('/@empty\s*\(' . $balanced . '\)/s', function ($matches) {
-            return "<?php if (empty({$matches[1]})): ?>";
+            $expr = $this->convertDotSyntax($matches[1]);
+            return "<?php if (empty({$expr})): ?>";
         }, $content);
         $content = preg_replace('/@endempty\s*(?:\r?\n)?/', '<?php endif; ?>', $content);
 
         // @switch
         $content = preg_replace_callback('/@switch\s*\(' . $balanced . '\)/s', function ($matches) {
-            return "<?php switch ({$matches[1]}): ?>";
+            $expr = $this->convertDotSyntax($matches[1]);
+            return "<?php switch ({$expr}): ?>";
         }, $content);
 
         $content = preg_replace_callback('/@case\s*\(' . $balanced . '\)/s', function ($matches) {
-            return "<?php case {$matches[1]}: ?>";
+            $expr = $this->convertDotSyntax($matches[1]);
+            return "<?php case {$expr}: ?>";
         }, $content);
 
         $content = preg_replace('/@default\s*/', '<?php default: ?>', $content);
@@ -85,13 +92,13 @@ trait CompilesControlStructures
                     return $matches[0];
                 }
 
-                $array = trim($headMatches[1]);
+                $array = $this->convertDotSyntax(trim($headMatches[1]));
                 $iteration = trim($headMatches[2]);
                 $loopContent = $matches[2];
                 $emptyContent = $matches[3];
                 $emptyVar = '__empty_' . md5($array . uniqid());
 
-                $checkIsset = preg_match('/^\$[\w]+$/', $array) ? "isset($array) && " : '';
+                $checkIsset = preg_match('/^\$[\w\->]+$/', $array) ? "isset($array) && " : '';
 
                 $initLoop = '$loop = new \Plugs\View\Loop(' . $array . ', $loop ?? null, (($loop->depth ?? 0) + 1));';
                 $tick = '$loop->tick(); if (isset($this) && method_exists($this, "isAutoFlushEnabled") && $this->isAutoFlushEnabled() && $loop->shouldFlush($this->getAutoFlushFrequency())) flush();';
@@ -123,9 +130,9 @@ trait CompilesControlStructures
                     return $matches[0];
                 }
 
-                $array = trim($headMatches[1]);
+                $array = $this->convertDotSyntax(trim($headMatches[1]));
                 $iteration = trim($headMatches[2]);
-                $checkIsset = preg_match('/^\$[\w]+$/', $array) ? "isset($array) && " : '';
+                $checkIsset = preg_match('/^\$[\w\->]+$/', $array) ? "isset($array) && " : '';
 
                 $initLoop = '$loop = new \Plugs\View\Loop(' . $array . ', $loop ?? null, (($loop->depth ?? 0) + 1));';
 
@@ -145,13 +152,15 @@ trait CompilesControlStructures
 
         // @for
         $content = preg_replace_callback('/@for\s*\(' . $balanced . '\)/s', function ($matches) {
-            return "<?php for ({$matches[1]}): ?>";
+            $expr = $this->convertDotSyntax($matches[1]);
+            return "<?php for ({$expr}): ?>";
         }, $content);
         $content = preg_replace('/@endfor\s*(?:\r?\n)?/', '<?php endfor; ?>', $content);
 
         // @while
         $content = preg_replace_callback('/@while\s*\(' . $balanced . '\)/s', function ($matches) {
-            return "<?php while ({$matches[1]}): ?>";
+            $expr = $this->convertDotSyntax($matches[1]);
+            return "<?php while ({$expr}): ?>";
         }, $content);
         $content = preg_replace('/@endwhile\s*(?:\r?\n)?/', '<?php endwhile; ?>', $content);
 

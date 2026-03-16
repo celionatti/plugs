@@ -108,6 +108,11 @@ class ViewCompiler
      */
     private static array $parentDataStack = [];
 
+    /**
+     * Inline components registry
+     */
+    public static array $inlineComponents = [];
+
     public function __construct()
     {
         self::initPatterns();
@@ -124,8 +129,9 @@ class ViewCompiler
 
         self::$patterns = [
             // Echo patterns
-            'escaped_echo' => '/\{\{\s*(.*?)\s*\}\}/s',
-            'raw_echo' => '/\{!!\s*(.*?)\s*!!\}/s',
+            'escaped_echo' => '/(?<!@)\{\{\s*(.*?)\s*\}\}/s',
+            'inline_echo'  => '/(?<![@\{])\{\s*([a-zA-Z0-9_\.\>\<\=\!\?\:\+\-\*\/\(\)\[\]\'\"\$ ]+)\s*\}(?!\})/s',
+            'raw_echo' => '/(?<!@)\{!!\s*(.*?)\s*!!\}/s',
             'legacy_raw_echo' => '/\{\{\{\s*(.*?)\s*\}\}\}/s',
 
             // Comment patterns
@@ -139,8 +145,8 @@ class ViewCompiler
             'php_inline' => '/@php\s*\((.+?)\)/s',
 
             // Component patterns
-            'component_self_close' => '/<([A-Z][a-zA-Z0-9]*(?:::[A-Z][a-zA-Z0-9]*)*)((?:\s+(?:[^>"\'\/]+|"[^"]*"|\'[^\']*\'))*?)\/>/',
-            'component_with_content' => '/<([A-Z][a-zA-Z0-9]*(?:::[A-Z][a-zA-Z0-9]*)*)((?:\s+(?:[^>"\'\/]+|"[^"]*"|\'[^\']*\'))*?)>(.*?)<\/\1\s*>/s',
+            'component_self_close' => '/<(x-[a-z0-9_\-\.]+|[A-Z][a-zA-Z0-9]*(?:::[A-Z][a-zA-Z0-9]*)*)((?:\s+(?:[^>"\'\/]+|"[^"]*"|\'[^\']*\'))*?)\/>/',
+            'component_with_content' => '/<(x-[a-z0-9_\-\.]+|[A-Z][a-zA-Z0-9]*(?:::[A-Z][a-zA-Z0-9]*)*)((?:\s+(?:[^>"\'\/]+|"[^"]*"|\'[^\']*\'))*?)>(.*?)<\/\1\s*>/s',
 
             // Slot patterns
             'named_slot' => '/<slot(?:\s+name=["\']([^"\']+)["\']|:([\w-]+))(.*?)>(.*?)<\/slot>/s',
@@ -168,7 +174,6 @@ class ViewCompiler
             'include' => '/@include\s*\([\'"](.+?)[\'"]\s*(?:,\s*(\[.+?\]|\$\w+))?\s*\)/s',
 
             // New directive patterns
-            'props' => '/@props\s*\((\[.+?\])\)/s',
             'fragment' => '/@fragment\s*\([\'"](.+?)[\'"]\)/s',
             'endfragment' => '/@endfragment\s*/',
             'teleport' => '/@teleport\s*\([\'"](.+?)[\'"]\)/s',
@@ -313,7 +318,13 @@ class ViewCompiler
             $content = $contentWithLines;
         }
 
-        // Phase 0.5: Tag Pre-processing (Convert ALL tags to @directives first)
+        // Phase 0.5: Scoped Styles (Before any tag replacements to ensure pure HTML targeting)
+        $content = $this->compileScopedStyles($content);
+
+        // Phase 0.75: Inline Components (Extract them before they are processed as standard directives or echoes)
+        $content = $this->extractInlineComponents($content);
+
+        // Phase 1: Tag Pre-processing (Convert ALL tags to @directives first)
         $content = $this->compileTagsToDirectives($content);
 
         // Phase 1: Extract components first (they have highest priority)
@@ -348,16 +359,135 @@ class ViewCompiler
         $this->componentData = [];
     }
 
+    private function extractInlineComponents(string $content): string
+    {
+        // Matches: @component name(args) ... @endcomponent
+        // Or just: @component name ... @endcomponent
+        $pattern = '/@component\s+([a-zA-Z0-9_\-\.]+)(?:\s*\((.*?)\))?\s*(.*?)@endcomponent/is';
+
+        $content = preg_replace_callback($pattern, function ($matches) {
+            $name = trim($matches[1]);
+            // $arguments = isset($matches[2]) ? trim($matches[2]) : ''; // (syntactic sugar)
+            $body = $matches[3];
+
+            // Register in the registry
+            self::$inlineComponents[$name] = $body;
+
+            // Remove it from the compiled HTML output
+            return '';
+        }, $content);
+
+        return $content;
+    }
+
+    private function compileScopedStyles(string $content): string
+    {
+        // Check if <style scoped> exists
+        if (!preg_match('/<style\s+scoped[^>]*>(.*?)<\/style>/is', $content, $matches)) {
+            return $content; // No scoped styles found
+        }
+
+        // Generate a unique scope ID for this view based on its starting content
+        $scopeId = 'data-v-' . substr(self::fastHash($content), 0, 8);
+
+        // 1. Rewrite the CSS block
+        $content = preg_replace_callback('/<style\s+scoped[^>]*>(.*?)<\/style>/is', function ($styleMatches) use ($scopeId) {
+            $css = $styleMatches[1];
+
+            // A regex to locate CSS blocks: 'selector { rules }'
+            // Captures the selector string in group 1, and the rules in group 2
+            $css = preg_replace_callback('/([^{]+)\{([^}]*)\}/s', function ($ruleMatches) use ($scopeId) {
+                $selectorsRaw = trim($ruleMatches[1]);
+                $rules = $ruleMatches[2];
+
+                // Ignore media queries and keyframes (we don't scope the @media rule itself)
+                if (str_starts_with($selectorsRaw, '@')) {
+                    if (str_starts_with($selectorsRaw, '@font-face') || str_starts_with($selectorsRaw, '@keyframes')) {
+                        return $ruleMatches[0];
+                    }
+                    // For @media, we'd ideally parse interior rules, but a simple regex might break.
+                    // For a robust implementation we'll assume basic @media nesting isn't fully scoped via simple regex,
+                    // or we skip scoping on standard @media wrappers for now, but usually in standard Vue, media queries wrap scoped css.
+                    // To be safe, if a developer writes @media, we just leave the @media line alone,
+                    // but since a regex `([^{]+)\{` matches the `@media (...) {`, the inside rules are treated as the 'rules' block.
+                    // Wait, basic regex cannot parse nested braces { { } }. 
+                    // Let's implement a safe standard scoped selector approach that works for typical classes.
+                }
+
+                // Split selectors by comma: .card, a:hover
+                $selectors = explode(',', $selectorsRaw);
+                $scopedSelectors = [];
+
+                foreach ($selectors as $selector) {
+                    $selector = trim($selector);
+                    if (empty($selector)) continue;
+
+                    // Don't scope root or keyframe steps
+                    if (in_array($selector, [':root', 'from', 'to']) || preg_match('/^[0-9]+%$/', $selector)) {
+                        $scopedSelectors[] = $selector;
+                        continue;
+                    }
+
+                    // Append the scope ID before any pseudo-classes (e.g., .card:hover -> .card[data-v-123]:hover)
+                    if (strpos($selector, ':') !== false) {
+                        $parts = explode(':', $selector, 2);
+                        $scopedSelectors[] = $parts[0] . '[' . $scopeId . ']:' . $parts[1];
+                    } else {
+                        // Just append
+                        $scopedSelectors[] = $selector . '[' . $scopeId . ']';
+                    }
+                }
+
+                // Reconstruct rule
+                return implode(', ', $scopedSelectors) . " {\n" . $rules . "\n}";
+            }, $css);
+
+            return "<style>\n" . $css . "\n</style>";
+        }, $content);
+
+        // 2. Inject $scopeId into all opening HTML tags
+        // E.g., <div class="card"> -> <div class="card" data-v-xxx>
+        // We match <tagName attributes> but ignore PHP tags and self-closing component tags (<x- )
+        $content = preg_replace_callback('/<([a-zA-Z0-9\-]+)([^>]*?)\s*\/?>/s', function ($tagMatches) use ($scopeId) {
+            $tagName = $tagMatches[1];
+            $attributes = $tagMatches[2];
+            $fullTag = $tagMatches[0];
+
+            // Ignore PHP tags, components (<x-), slots, and other special framework tags
+            if (
+                in_array(strtolower($tagName), ['php', 'slot', 'auth', 'guest', 'fragment', 'teleport', 'style', 'script']) ||
+                str_starts_with(strtolower($tagName), 'x-') ||
+                str_starts_with($tagName, '@') || 
+                str_starts_with($tagName, '?')
+            ) {
+                return $fullTag;
+            }
+
+            // Append scope ID. Check if self closing '/>' or '>'
+            if (str_ends_with($fullTag, '/>')) {
+                return '<' . $tagName . $attributes . ' ' . $scopeId . ' />';
+            }
+
+            return '<' . $tagName . $attributes . ' ' . $scopeId . '>';
+        }, $content);
+
+        return $content;
+    }
+
     private function extractComponentsWithSlots(string $content): string
     {
         // Regex to match attributes while ignoring '>' inside quotes
         $attrRegex = '((?:[^>"\']+|"[^"]*"|\'[^\']*\')*)';
 
-        // 1. Self-closing components: <ComponentName attr="value" /> or <Module::Component />
+        // 1. Self-closing components: <ComponentName attr="value" /> or <x-component /> or <Module::Component />
         $content = preg_replace_callback(
-            '/<([A-Z][a-zA-Z0-9]*(?:::[A-Z][a-zA-Z0-9]*)*)' . $attrRegex . '\/>/s',
+            '/<(x-[a-z0-9_\-\.]+|[A-Z][a-zA-Z0-9]*(?:::[A-Z][a-zA-Z0-9]*)*)' . $attrRegex . '\/>/s',
             function ($matches) {
-                $componentName = str_replace('::', '.', $matches[1]);
+                $componentName = $matches[1];
+                if (str_starts_with($componentName, 'x-')) {
+                    $componentName = substr($componentName, 2);
+                }
+                $componentName = str_replace('::', '.', $componentName);
                 $attributes = $matches[2];
 
                 return $this->createComponentPlaceholder($componentName, trim($attributes), '');
@@ -365,11 +495,15 @@ class ViewCompiler
             $content
         ) ?? $content;
 
-        // 2. Components with content: <ComponentName>...</ComponentName>
+        // 2. Components with content: <ComponentName>...</ComponentName> or <x-component>...</x-component>
         $content = preg_replace_callback(
-            '/<([A-Z][a-zA-Z0-9]*(?:::[A-Z][a-zA-Z0-9]*)*)' . $attrRegex . '>(.*?)<\/\1\s*>/s',
+            '/<(x-[a-z0-9_\-\.]+|[A-Z][a-zA-Z0-9]*(?:::[A-Z][a-zA-Z0-9]*)*)' . $attrRegex . '>(.*?)<\/\1\s*>/s',
             function ($matches) {
-                $componentName = str_replace('::', '.', $matches[1]);
+                $componentName = $matches[1];
+                if (str_starts_with($componentName, 'x-')) {
+                    $componentName = substr($componentName, 2);
+                }
+                $componentName = str_replace('::', '.', $componentName);
                 $attributes = $matches[2];
                 $slotContent = $matches[3];
 
@@ -678,17 +812,19 @@ class ViewCompiler
         $expressionMap = [];
         $expressionCounter = 0;
 
-        $attributes = preg_replace_callback(
-            '/\{\{\s*(.+?)\s*\}\}/s',
-            function ($matches) use (&$expressionMap, &$expressionCounter) {
-                $placeholder = sprintf('___EXPR_%d___', $expressionCounter);
-                $expressionMap[$placeholder] = trim($matches[1]);
-                $expressionCounter++;
+        $callback = function ($matches) use (&$expressionMap, &$expressionCounter) {
+            $placeholder = sprintf('___EXPR_%d___', $expressionCounter);
+            $expressionMap[$placeholder] = $this->convertDotSyntax(trim($matches[1]));
+            $expressionCounter++;
 
-                return $placeholder;
-            },
-            $attributes
-        );
+            return $placeholder;
+        };
+
+        // Extract {{ ... }} expressions
+        $attributes = preg_replace_callback(self::$patterns['escaped_echo'], $callback, $attributes);
+        
+        // Extract { ... } expressions (inline echo)
+        $attributes = preg_replace_callback(self::$patterns['inline_echo'], $callback, $attributes);
 
         // Quoted attributes
         preg_match_all(
@@ -726,6 +862,7 @@ class ViewCompiler
                 $value = implode(" . ", $exprParts);
                 $hasExpression = true;
             } elseif ($isDynamic) {
+                $value = $this->convertDotSyntax($value);
                 $hasExpression = true;
             }
 

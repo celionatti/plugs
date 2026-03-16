@@ -7,8 +7,12 @@ namespace Plugs\View\Compilers;
 trait CompilesComponents
 {
     /**
-     * Compile @props directive for component default props
-     * Usage: @props(['type' => 'primary', 'size' => 'md'])
+     * @deprecated Props are now auto-injected. All attributes passed to a component
+     *             are automatically available as variables inside the component template.
+     *             This directive is no longer needed and will be removed in a future version.
+     *
+     *             Before (required):  @props(['title', 'description'])
+     *             After (zero setup): Just use {{ $title }} directly.
      */
     protected function compileProps(string $content): string
     {
@@ -20,7 +24,7 @@ trait CompilesComponents
                 $defaults = $matches[1];
 
                 return sprintf(
-                    '<?php $__props = %s; foreach ($__props as $__key => $__default) { if (!isset($$__key)) { $$__key = $__default; } } unset($__props, $__key, $__default); ?>',
+                    '<?php $__props = %s; foreach ($__props as $__key => $__default) { if (is_int($__key)) { $__key = $__default; $__default = null; } if (!isset($$__key)) { $$__key = $__default; } } unset($__props, $__key, $__default); ?>',
                     $defaults
                 );
             },

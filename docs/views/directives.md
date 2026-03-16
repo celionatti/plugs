@@ -6,10 +6,35 @@ Complete reference for all available template directives in the Plugs View syste
 
 | Syntax              | Description                                    |
 | ------------------- | ---------------------------------------------- |
-| `{{ $var }}`        | Context-aware escaped output (Safe by default) |
-| `{{{ $var }}}`      | Raw/unescaped output (Preferred)               |
-| `{!! $var !!}`      | Raw/unescaped output (Alternative)             |
+| `{{ $var }}` or `{{ var }}` | Context-aware escaped output (Safe by default) |
+| `{{{ $var }}}` or `{{{ var }}}`    | Raw/unescaped output (Preferred)               |
+| `{!! $var !!}` or `{!! var !!}`    | Raw/unescaped output (Alternative)             |
 | `{{-- comment --}}` | Template comment (not rendered)                |
+
+### Vue/JS-Style Variable Syntax (New in V5)
+
+Plugs V5 automatically translates Vue/JS-style variables into PHP syntax. You can drop the `$` prefix and use dot-notation for object access.
+
+```html
+{{-- Before --}}
+<h1>{{ $user->name }}</h1>
+<p>{{ $post->author->getAge() }}</p>
+
+{{-- After (Zero setup) --}}
+<h1>{{ user.name }}</h1>
+<p>{{ post.author.getAge() }}</p>
+```
+
+This works identically inside control structures and short attributes:
+
+```blade
+@if(user.isAdmin)
+    <span :class="user.role === 'editor' ? 'text-blue' : 'text-red'">Admin</span>
+@endif
+```
+
+> [!TIP]
+> **Native PHP features:** The engine is smart enough to ignore native PHP keywords like `true`, `false`, `null`, and functions like `count()` or `empty()`. It will convert `count(users)` to `count($users)`.
 
 ---
 
@@ -286,11 +311,40 @@ The `@use` directive allows you to import PHP classes into the view scope, simil
 
 ## Props & Component Data
 
-```blade
-{{-- Define default props --}}
-@props(['type' => 'primary', 'size' => 'md', 'disabled' => false])
+Props passed to components are **auto-injected** — all attributes are available as variables inside the component template with zero setup.
 
+```html
+{{-- Usage --}}
+<Card title="Welcome" description="Hello world" />
+```
+
+```blade
+{{-- components/Card.plug.php --}}
+<div class="card">
+    <h1>{{ $title }}</h1>
+    <p>{{ $description }}</p>
+</div>
+```
+
+For optional props with defaults, use the null coalescing operator:
+
+```blade
+@php
+    $type = $type ?? 'primary';
+    $size = $size ?? 'md';
+@endphp
+```
+
+> [!NOTE]
+> `@props` is deprecated. It still works for backward compatibility but is no longer needed.
+
+```blade
 {{-- Access parent component data --}}
+@aware(['theme', 'user'])
+```
+
+
+
 @aware(['theme', 'user'])
 ```
 

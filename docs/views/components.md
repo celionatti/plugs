@@ -1,6 +1,6 @@
 # Components
 
-Build reusable, self-contained UI components with props, slots, and attributes.
+Build reusable, self-contained UI components with automatic props, slots, and attributes.
 
 ## Creating Components
 
@@ -21,13 +21,15 @@ resources/views/components/
 
 ```blade
 {{-- components/Alert.plug.php --}}
-@props(['type' => 'info', 'message' => ''])
 
 <div class="alert alert-{{ $type }}" {{ $attributes }}>
     {{ $message }}
     {{ $slot }}
 </div>
 ```
+
+> [!TIP]
+> **Zero setup!** All attributes passed to a component are automatically available as variables. No `@props` directive needed.
 
 ### Usage
 
@@ -48,40 +50,40 @@ Plugs V5 uses **PascalCase** tags to distinguish components from regular HTML ta
 
 ---
 
-## Props
+## Props (Auto-Injected)
 
-### Defining Props with Defaults
+All attributes passed to a component tag are **automatically available** as PHP variables inside the component template. No declaration is required.
+
+### How It Works
+
+When you write:
+
+```html
+<Card title="Welcome" description="Hello world" />
+```
+
+Inside `components/Card.plug.php`, `$title` and `$description` are ready to use:
 
 ```blade
-@props([
-    'type' => 'primary',
-    'size' => 'md',
-    'disabled' => false,
-    'icon' => null
-])
-
-<button
-    class="btn btn-{{ $type }} btn-{{ $size }}"
-    @disabled($disabled)
->
-    @if($icon)
-        <i class="icon-{{ $icon }}"></i>
-    @endif
-    {{ $slot }}
-</button>
+<div class="card">
+    <h1>{{ $title }}</h1>
+    <p>{{ $description }}</p>
+</div>
 ```
+
+No `@props`, no boilerplate — just pass attributes and use them.
 
 ### Passing Props
 
 ```html
 {{-- String values --}}
-<button type="danger" size="lg">Delete</button>
+<Button type="danger" size="lg">Delete</Button>
 
 {{-- Dynamic values with : prefix --}}
-<button :type="$buttonType" :disabled="$isLoading">Submit</button>
+<Button :type="$buttonType" :disabled="$isLoading">Submit</Button>
 
 {{-- Boolean props --}}
-<button disabled>Can't Click</button>
+<Button disabled>Can't Click</Button>
 ```
 
 ---
@@ -106,7 +108,6 @@ Plugs V5 uses **PascalCase** tags to distinguish components from regular HTML ta
 
 ```blade
 {{-- components/card.plug.php --}}
-@props(['title' => ''])
 
 <div class="card">
     <div class="card-header">
@@ -146,14 +147,13 @@ Plugs V5 uses **PascalCase** tags to distinguish components from regular HTML ta
 
 ```blade
 {{-- Component --}}
-@props(['type' => 'button'])
 
 <button type="{{ $type }}" {{ $attributes }}>
     {{ $slot }}
 </button>
 
 {{-- Usage - extra attributes are merged --}}
-<Button class="mt-4" id="submit-btn" @click="handleClick">
+<Button type="button" class="mt-4" id="submit-btn" @click="handleClick">
     Submit
 </Button>
 
@@ -166,15 +166,13 @@ Plugs V5 uses **PascalCase** tags to distinguish components from regular HTML ta
 ### Merging Classes
 
 ```blade
-@props(['type' => 'primary'])
-
 <button {{ $attributes->merge(['class' => 'btn btn-' . $type]) }}>
     {{ $slot }}
 </button>
 ```
 
 ```html
-<button class="mt-4">Click</button> {{-- Renders: class="btn btn-primary mt-4"
+<Button class="mt-4">Click</Button> {{-- Renders: class="btn btn-primary mt-4"
 --}}
 ```
 
@@ -337,7 +335,6 @@ Access data from parent components:
 
 ```blade
 {{-- Parent component: form.plug.php --}}
-@props(['theme' => 'light'])
 
 <?php \Plugs\View\ViewCompiler::pushParentData(['theme' => $theme]); ?>
 <div class="form form-{{ $theme }}">
@@ -361,17 +358,15 @@ Access data from parent components:
 
 ```blade
 {{-- components/button.plug.php --}}
-@props([
-    'type' => 'button',
-    'variant' => 'primary',
-    'size' => 'md',
-    'disabled' => false,
-    'loading' => false,
-    'icon' => null,
-    'href' => null
-])
 
 @php
+    $type = $type ?? 'button';
+    $variant = $variant ?? 'primary';
+    $size = $size ?? 'md';
+    $disabled = $disabled ?? false;
+    $loading = $loading ?? false;
+    $icon = $icon ?? null;
+    $href = $href ?? null;
     $baseClasses = 'btn';
     $variantClasses = 'btn-' . $variant;
     $sizeClasses = 'btn-' . $size;
@@ -403,12 +398,13 @@ Access data from parent components:
 
 ```blade
 {{-- components/modal.plug.php --}}
-@props([
-    'id' => 'modal',
-    'title' => '',
-    'size' => 'md',
-    'closable' => true
-])
+
+@php
+    $id = $id ?? 'modal';
+    $title = $title ?? '';
+    $size = $size ?? 'md';
+    $closable = $closable ?? true;
+@endphp
 
 <div id="{{ $id }}" class="modal modal-{{ $size }}" {{ $attributes }}>
     <div class="modal-backdrop"></div>
@@ -435,15 +431,15 @@ Access data from parent components:
 
 ```blade
 {{-- components/forms/input.plug.php --}}
-@props([
-    'name',
-    'type' => 'text',
-    'label' => null,
-    'value' => '',
-    'error' => null,
-    'hint' => null,
-    'required' => false
-])
+
+@php
+    $type = $type ?? 'text';
+    $label = $label ?? null;
+    $value = $value ?? '';
+    $error = $error ?? null;
+    $hint = $hint ?? null;
+    $required = $required ?? false;
+@endphp
 
 <div class="form-group @if($error) has-error @endif">
     @if($label)

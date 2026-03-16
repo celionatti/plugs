@@ -45,21 +45,29 @@ Given the `Link` component above:
 </Link>
 ```
 
-### 2. Passing Attributes
+### 2. Passing Attributes (Auto Props)
 
-Any attributes added to the component tag are available in the component via the `$attributes` variable.
+All attributes added to the component tag are **automatically available** as PHP variables inside the component template. You don't need any special declarations.
 
 ```html
-<Link href="/login" class="btn btn-primary" id="login-link">
+<Link href="/login" class="btn btn-primary" id="login-link" :is-active="$isActive">
     Login
 </Link>
 ```
 
-In the component definition, use `$attributes->merge()` to set default values and merge incoming attributes (like `class` which gets appended).
-
 ```php
 <!-- resources/views/components/link.plug.php -->
-<a {{ $attributes->merge(['class' => 'text-decoration-none']) }}>
+<!-- $href and $isActive are automatically available -->
+<a href="{{ $href }}" class="{{ isset($isActive) && $isActive ? 'active' : '' }}">
+    {{ $slot }}
+</a>
+```
+
+Additionally, all incoming attributes are bundled into the `$attributes` ComponentAttributes bag. You can use `$attributes->merge()` to set default values and merge incoming attributes (like `class` which gets appended).
+
+```php
+<!-- Using $attributes->merge() to combine classes -->
+<a href="{{ $href ?? '#' }}" {{ $attributes->merge(['class' => 'text-decoration-none']) }}>
     {{ $slot }}
 </a>
 ```
@@ -91,6 +99,77 @@ You can pass PHP expressions to attributes using Blade syntax `{{ ... }}`.
 <Link href="/profile" class="{{ $isActive ? 'active' : '' }}">
     Profile
 </Link>
+You can also pass Vue/JS style JS syntax on dynamic component attributes.
+
+```html
+<x-card />
+<!-- Output: <div class="bg-gray-100 p-4"></div> -->
+```
+
+### 7. Scoped Component Styles
+
+If you want your CSS to only apply to the current component without leaking out globally, you can use the `<style scoped>` tag.
+
+The framework will automatically assign a unique hash to your component (like `data-v-a1b2c3d4`) and rewrite your CSS selectors and HTML elements to encapsulate the styling natively, just like Vue and Svelte!
+
+**`resources/views/components/card.blade.php`**
+```html
+<style scoped>
+    .card {
+        padding: 20px;
+        border-radius: 8px;
+        background: white;
+    }
+    
+    .card:hover {
+        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    }
+</style>
+
+<div class="card">
+    <slot></slot>
+</div>
+```
+
+**Compiled Output:**
+```html
+<style>
+    .card[data-v-3aeb0f57] {
+        padding: 20px;
+        ...
+    }
+    .card[data-v-3aeb0f57]:hover {
+        ...
+    }
+</style>
+
+<div class="card" data-v-3aeb0f57>
+    ...
+</div>
+```
+
+### 8. Inline Components
+
+You can define components directly within a view using the `@component` directive. This is useful for small, single-use components that don't deserve their own file.
+
+```html
+@component custom-alert(type, message)
+    <div class="alert alert-{type}">
+        {message}
+    </div>
+@endcomponent
+
+<!-- Usage -->
+<x-custom-alert type="error" message="Something went wrong!" />
+```
+
+Inline components are extracted during compilation and registered in memory, so they won't render where they are defined.
+
+
+Alternatively, you could pass it without the `:` but use echo statements:
+
+```html
+<x-card title="{{ user.name }}" />
 ```
 
 ### 5. Self-Closing

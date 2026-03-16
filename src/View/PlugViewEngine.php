@@ -576,6 +576,19 @@ class PlugViewEngine implements ViewEngineInterface
     public function renderComponent(string $componentName, array $data = []): string
     {
         try {
+            // Check for Inline Component registered during View Compilation
+            if (isset(\Plugs\View\ViewCompiler::$inlineComponents[$componentName])) {
+                $rawTemplate = \Plugs\View\ViewCompiler::$inlineComponents[$componentName];
+
+                $slot = $data['slot'] ?? '';
+                unset($data['slot']);
+                $componentData = array_merge($data, ['slot' => $slot]);
+
+                $compiledContent = $this->getCompiler()->compile($rawTemplate);
+
+                return $this->executeCompiledContent($compiledContent, $componentData);
+            }
+
             $componentFile = $this->getComponentPath($componentName);
 
             if (!$this->fileExistsCached($componentFile)) {
