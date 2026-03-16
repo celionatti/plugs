@@ -1,6 +1,7 @@
 <?php
 
-declare(strict_types=1);
+declare(strict_types = 1)
+;
 
 namespace Plugs\Database;
 
@@ -28,15 +29,13 @@ class LoadBalancer extends BaseLoadBalancer
     {
         try {
             return parent::select();
-        } catch (Throwable $e) {
-            if (str_contains($e->getMessage(), 'All hosts are down')) {
-                throw new \RuntimeException(
-                    'All database hosts are down. Hosts: ' . $this->formatDownHosts(),
-                    0,
-                    $e
+        }
+        catch (Throwable $e) {
+            throw new \RuntimeException(
+                'All database hosts are down. Hosts: ' . $this->formatDownHosts(),
+                0,
+                $e
                 );
-            }
-            throw $e;
         }
     }
 
@@ -47,7 +46,8 @@ class LoadBalancer extends BaseLoadBalancer
     {
         try {
             return parent::selectWithFailover($testCallback);
-        } catch (Throwable $e) {
+        }
+        catch (Throwable $e) {
             $this->logFailover(null, $e);
             throw $e;
         }
@@ -95,10 +95,10 @@ class LoadBalancer extends BaseLoadBalancer
                 'key' => $key,
                 'is_down' => $this->isDown($key),
                 'failures' => $state['failures'],
-                'down_since' => $state['down_at'] ? date('Y-m-d H:i:s', (int) $state['down_at']) : null,
+                'down_since' => $state['down_at'] ? date('Y-m-d H:i:s', (int)$state['down_at']) : null,
                 'cooldown_remaining' => $state['down_at']
-                    ? max(0, $this->healthCheckCooldown - (microtime(true) - $state['down_at']))
-                    : 0,
+                ? max(0, $this->healthCheckCooldown - (microtime(true) - $state['down_at']))
+                : 0,
             ];
         }
         return $report;
