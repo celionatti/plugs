@@ -90,11 +90,29 @@ class PlugViewEngine implements ViewEngineInterface
     private bool $streamingEnabled = false;
 
     /**
+     * Assets to be injected into stacks (styles/scripts)
+     */
+    private array $autoInjectedAssets = ['styles' => [], 'scripts' => []];
+
+    /**
+     * Components that have already injected their assets
+     */
+    private array $injectedComponents = [];
+
+    /**
      * Check if streaming is enabled.
      */
     public function isStreamingEnabled(): bool
     {
         return $this->streamingEnabled;
+    }
+
+    /**
+     * Get auto-injected assets for a specific stack.
+     */
+    public function getAutoInjectedAssets(string $stack): array
+    {
+        return $this->autoInjectedAssets[$stack] ?? [];
     }
 
     /**
@@ -590,6 +608,13 @@ class PlugViewEngine implements ViewEngineInterface
             }
 
             $componentFile = $this->getComponentPath($componentName);
+
+            // Check for Folder Component Assets (style.css, script.js)
+            $componentDir = dirname($componentFile);
+            $viewBaseName = basename($componentFile);
+            if (in_array($viewBaseName, ['view.plug.php', 'view.php', 'view.html', 'index.plug.php', 'index.php', 'index.html'])) {
+                $this->injectFolderComponentAssets($componentName, $componentDir);
+            }
 
             if (!$this->fileExistsCached($componentFile)) {
                 throw new ViewException(
@@ -1134,6 +1159,37 @@ class PlugViewEngine implements ViewEngineInterface
             $componentPathBase = $basePath . DIRECTORY_SEPARATOR . 'components';
 
             foreach ($filenames as $filename) {
+                // Check for Folder-based component first: components/folder/view.plug.php
+                $folderPath = $componentPathBase . DIRECTORY_SEPARATOR . $filename;
+                if (is_dir($folderPath)) {
+                    foreach (self::VIEW_EXTENSIONS as $extension) {
+                        foreach (['view', 'index', 'index.plug'] as $viewBase) {
+                            // Handle .plug.php extension specifically
+                            $fullPath = $folderPath . DIRECTORY_SEPARATOR . $viewBase . (str_ends_with($viewBase, '.plug') ? '.php' : $extension);
+                            if ($this->fileExistsCached($fullPath)) {
+                                // Additional security check for folder-based components
+                                $realComponentPath = realpath($fullPath);
+                                $realBaseComponentPath = realpath($componentPathBase);
+
+                                if (
+                                    $realComponentPath === false ||
+                                    $realBaseComponentPath === false ||
+                                    strpos($realComponentPath, $realBaseComponentPath) !== 0
+                                ) {
+                                    throw new ViewException(
+                                        sprintf('Invalid component path: %s', $componentName),
+                                        0,
+                                        null,
+                                        $componentName,
+                                        ViewException::INVALID_PATH
+                                    );
+                                }
+                                return $fullPath;
+                            }
+                        }
+                    }
+                }
+
                 foreach (self::VIEW_EXTENSIONS as $extension) {
                     // Check theme component path first
                     if ($this->theme && $this->theme !== 'default') {
@@ -1353,6 +1409,40 @@ class PlugViewEngine implements ViewEngineInterface
      * @param array $__localVars Variables to extract into the template scope
      * @return string The rendered output
      */
+    /**
+     * Inject assets (CSS/JS) for a folder-based component.
+     */
+    private function injectFolderComponentAssets(string $componentName, string $dir): void
+    {
+        if (isset($this->injectedComponents[$componentName])) {
+            return;
+        }
+
+        // Check for style.css
+        $stylePath = $dir . DIRECTORY_SEPARATOR . 'style.css';
+        if ($this->fileExistsCached($stylePath)) {
+            $css = file_get_contents($stylePath);
+            $this->autoInjectedAssets['styles'][] = sprintf(
+                '<style data-component="%s">%s</style>',
+                htmlspecialchars($componentName),
+                $css
+            );
+        }
+
+        // Check for script.js
+        $scriptPath = $dir . DIRECTORY_SEPARATOR . 'script.js';
+        if ($this->fileExistsCached($scriptPath)) {
+            $js = file_get_contents($scriptPath);
+            $this->autoInjectedAssets['scripts'][] = sprintf(
+                '<script data-component="%s">%s</script>',
+                htmlspecialchars($componentName),
+                $js
+            );
+        }
+
+        $this->injectedComponents[$componentName] = true;
+    }
+
     private function includeCompiledString(string $compiledContent, array &$__localVars): string
     {
         // Use a deterministic hash so the same content reuses the same file

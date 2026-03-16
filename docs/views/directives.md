@@ -309,6 +309,34 @@ The `@use` directive allows you to import PHP classes into the view scope, simil
 
 ---
 
+## Variable Computation
+
+### @let
+
+The `@let` directive allows you to compute and store variables directly within a view template. This is useful for small computations that would otherwise require raw PHP blocks.
+
+```blade
+@let subtotal = product.price * quantity
+@let total = subtotal * 1.2
+
+<p>Subtotal: {{ subtotal }}</p>
+<p>Total (incl. tax): {{ total }}</p>
+```
+
+### @calc
+
+`@calc` is an alias for `@let` and can be used interchangeably based on developer preference.
+
+```blade
+@calc interest = principal * rate * time
+<p>Interest: {{ interest }}</p>
+```
+
+> [!TIP]
+> Variables defined with `@let` or `@calc` are automatically available in the rest of the template and follow standard PHP scoping rules for the rendered view.
+
+---
+
 ## Props & Component Data
 
 Props passed to components are **auto-injected** — all attributes are available as variables inside the component template with zero setup.

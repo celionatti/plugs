@@ -210,6 +210,8 @@ class ViewCompiler
             'disabled' => '/@disabled\s*\((.+?)\)/s',
             'readonly' => '/@readonly\s*\((.+?)\)/s',
             'required' => '/@required\s*\((.+?)\)/s',
+            'let' => '/@let\s+([a-zA-Z0-9_]+)\s*=\s*(.*?)(?=\r?\n|$)/s',
+            'calc' => '/@calc\s+([a-zA-Z0-9_]+)\s*=\s*(.*?)(?=\r?\n|$)/s',
         ];
     }
 
@@ -660,6 +662,7 @@ class ViewCompiler
         // Phase 3: Control Flow Compilation
         $content = $this->compileConditionals($content);
         $content = $this->compileLoops($content);
+        $content = $this->compileLet($content);
 
         // Phase 4: Authorization & Environment Compilation
         $content = $this->compileAuthDirectives($content);

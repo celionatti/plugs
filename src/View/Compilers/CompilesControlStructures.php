@@ -303,4 +303,24 @@ trait CompilesControlStructures
 
         return $content;
     }
+
+    /**
+     * Compile the @let and @calc directives.
+     *
+     * @param  string  $content
+     * @return string
+     */
+    protected function compileLet(string $content): string
+    {
+        $callback = function ($matches) {
+            $variable = $matches[1];
+            $expression = $this->convertDotSyntax(trim($matches[2]));
+            return "<?php \${$variable} = {$expression}; ?>";
+        };
+
+        $content = preg_replace_callback('/@let\s+([a-zA-Z0-9_]+)\s*=\s*(.*?)(?=\r?\n|$)/s', $callback, $content);
+        $content = preg_replace_callback('/@calc\s+([a-zA-Z0-9_]+)\s*=\s*(.*?)(?=\r?\n|$)/s', $callback, $content);
+
+        return $content;
+    }
 }

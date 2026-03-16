@@ -282,7 +282,11 @@ trait CompilesLayouts
             function ($matches) {
                 $stackName = addslashes($matches[1]);
 
-                return sprintf('<?php echo implode(\'\', $__stacks[\'%s\'] ?? []); ?>', $stackName);
+                return sprintf(
+                    '<?php echo implode(\'\', array_merge($view->getAutoInjectedAssets(\'%s\'), $__stacks[\'%s\'] ?? [])); ?>',
+                    $stackName,
+                    $stackName
+                );
             },
             $content
         );
