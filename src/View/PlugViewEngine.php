@@ -528,6 +528,11 @@ class PlugViewEngine implements ViewEngineInterface
         $this->directive('endhasallroles', function () {
             return "<?php endif; ?>";
         });
+
+        $this->directive('frameworkScripts', function () {
+            return '<script src="/plugs/plugs-spa.js" defer></script>' . "\n" .
+                   '<script src="/plugs/plugs-lazy.js" defer></script>';
+        });
     }
 
     public function render(string $view, array $data = [], bool $isComponent = false): string
@@ -578,6 +583,15 @@ class PlugViewEngine implements ViewEngineInterface
         $content = $this->cacheEnabled
             ? $this->renderCached($view, $viewFile, $data, $isComponent)
             : $this->renderDirect($viewFile, $data);
+
+        // Auto-inject framework scripts if it's a full page render and not an HTMX partial
+        if (!$isComponent && !$this->isLayoutSuppressed() && !\Plugs\View\FragmentRenderer::isPartialRequest()) {
+            if (strpos($content, '</body>') !== false && strpos($content, '/plugs/plugs-spa.js') === false) {
+                $scripts = '<script src="/plugs/plugs-spa.js" defer></script>' . "\n" .
+                           '<script src="/plugs/plugs-lazy.js" defer></script>';
+                $content = str_replace('</body>', $scripts . "\n</body>", $content);
+            }
+        }
 
         // Record in Profiler (cached class_exists check)
         if (self::$profilerAvailable === null) {

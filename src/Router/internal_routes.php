@@ -75,6 +75,15 @@ $router->group(['prefix' => '_plugs'], function () use ($router) {
 // Media Routes
 $router->post('/plugs/media/upload', [\Plugs\Http\Controllers\MediaController::class, 'upload'])->name('plugs.media.upload');
 
+// Asset Routes
+$router->get('/plugs/{file}.js', function($file) use ($router) {
+    return (new \Plugs\Http\Controllers\AssetController())->serve('js', $file . '.js');
+})->where('file', 'plugs-(spa|lazy|editor)');
+
+$router->get('/plugs/{file}.css', function($file) use ($router) {
+    return (new \Plugs\Http\Controllers\AssetController())->serve('css', $file . '.css');
+})->where('file', 'plugs-editor');
+
 $router->get('/reactive-test', function () {
     return view('reactive_test');
 });
