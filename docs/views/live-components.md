@@ -2,6 +2,9 @@
 
 Live Components bring real-time reactivity to your Plugs application without the need for complex JavaScript frameworks. It is inspired by tools like Laravel Livewire and Phoenix LiveView, allowing you to build reactive UIs primarily using PHP.
 
+> [!TIP]
+> **Hybrid Power:** For instant client-side interactions (like toggling modals or simple counters) that don't require the server, pair Live Components with **[Hybrid Reactivity](reactivity.md)**.
+
 ## Rendering a Live Component
 
 Use the `@live` directive to render a reactive component class.

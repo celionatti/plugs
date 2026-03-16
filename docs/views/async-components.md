@@ -36,3 +36,7 @@ All data passed to an async component (like `:user-id`) is **encrypted** on the 
 - **Non-blocking**: The main page renders instantly while heavy components load in the background.
 - **Progressive Enhancement**: Provide fallback content that remains visible if the user has JavaScript disabled or the request fails.
 - **Zero Configuration**: No need to write manual AJAX calls or state management.
+
+## ⚡ Reactivity Integration
+
+Async Components are fully integrated with the **[Hybrid Reactivity](reactivity.md)** engine. Any content loaded via `<async>` will be automatically scanned for `p-` directives (like `p-data`, `p-on`, `p-show`) and initialized immediately after the DOM update.

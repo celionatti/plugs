@@ -27,6 +27,8 @@ document.addEventListener("DOMContentLoaded", function () {
     if (!payload) return;
 
     try {
+      window.dispatchEvent(new CustomEvent("plugs:lazy-loading", { detail: { el: placeholder } }));
+
       // Get CSRF token
       const csrfToken = document
         .querySelector('meta[name="csrf-token"]')
@@ -48,15 +50,22 @@ document.addEventListener("DOMContentLoaded", function () {
       const html = await response.text();
 
       // Swap content
-      placeholder.outerHTML = html;
+      const temp = document.createElement("div");
+      temp.innerHTML = html.trim();
+      const newEl = temp.firstElementChild;
+      placeholder.replaceWith(newEl);
 
-      // Re-scan for nested lazy components or other directives if needed
-      // (If the loaded content contains script tags, they won't execute by default with innerHTML/outerHTML
-      //  unless we explicitly handle them, but standard HTML components should be fine)
+      // Re-initialize with SPA engine if available
+      if (window.plugsSPA) {
+        window.plugsSPA.initializeComponents(newEl);
+      }
+
+      window.dispatchEvent(new CustomEvent("plugs:lazy-loaded", { detail: { el: newEl } }));
     } catch (error) {
       console.error("Error loading lazy component:", error);
       placeholder.innerHTML =
         '<div class="text-danger p-2">Error loading component</div>';
+      window.dispatchEvent(new CustomEvent("plugs:lazy-error", { detail: { error, el: placeholder } }));
     }
   }
 

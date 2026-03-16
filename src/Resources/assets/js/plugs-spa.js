@@ -19,9 +19,21 @@ class PlugsSPA {
     this.cacheTimestamps = new Map();
     this.currentView = null;
     this.prefetchObserver = null;
+    this.directives = new Map();
 
     this.loadPersistentCache();
+    this.registerBaseDirectives();
     this.init();
+  }
+
+  static directive(name, callback) {
+    if (window.plugsSPA) {
+      window.plugsSPA.directives.set(name, callback);
+    } else {
+      // Buffer if not yet initialized
+      if (!window._plugsPendingDirectives) window._plugsPendingDirectives = [];
+      window._plugsPendingDirectives.push({ name, callback });
+    }
   }
 
   loadPersistentCache() {
@@ -135,7 +147,224 @@ class PlugsSPA {
     document.addEventListener("click", (e) => this.handleOutsideClick(e));
 
     window.plugsSPAInitialized = true;
-    console.log("Plugs SPA Bridge (v3.2).");
+
+    // Flush pending directives
+    if (window._plugsPendingDirectives) {
+      window._plugsPendingDirectives.forEach(({ name, callback }) => {
+        this.directives.set(name, callback);
+      });
+      delete window._plugsPendingDirectives;
+    }
+
+    console.log("Plugs SPA Bridge (v4.0) with Reactivity.");
+  }
+
+  registerBaseDirectives() {
+    this.directive("text", (el, value) => {
+      el.innerText = value;
+    });
+
+    this.directive("html", (el, value) => {
+      el.innerHTML = value;
+    });
+
+    this.directive("show", (el, value) => {
+      el.style.display = value ? "" : "none";
+    });
+
+    this.directive("if", (el, value) => {
+      if (!value) {
+        if (!el._pPlaceholder) {
+          el._pPlaceholder = document.createComment("p-if");
+          el.replaceWith(el._pPlaceholder);
+        }
+      } else {
+        if (el._pPlaceholder) {
+          el._pPlaceholder.replaceWith(el);
+          delete el._pPlaceholder;
+        }
+      }
+    });
+
+    this.directive("bind", (el, value, arg) => {
+      if (arg === "class") {
+        if (typeof value === "object") {
+          Object.entries(value).forEach(([cls, active]) => {
+            el.classList.toggle(cls, !!active);
+          });
+        } else {
+          el.className = value;
+        }
+      } else if (arg === "style") {
+        if (typeof value === "object") {
+          Object.assign(el.style, value);
+        } else {
+          el.style.cssText = value;
+        }
+      } else {
+        if (value === false || value === null || value === undefined) {
+          el.removeAttribute(arg);
+        } else {
+          el.setAttribute(arg, value === true ? arg : value);
+        }
+      }
+    });
+
+    this.directive("model", (el, value, arg, component) => {
+      const isInput =
+        el.tagName === "INPUT" ||
+        el.tagName === "TEXTAREA" ||
+        el.tagName === "SELECT";
+      if (!isInput) return;
+
+      if (el.type === "checkbox") {
+        el.checked = !!value;
+      } else if (el.type === "radio") {
+        el.checked = el.value == value;
+      } else {
+        if (el.value !== value) el.value = value ?? "";
+      }
+    });
+  }
+
+  async transition(el, stage) {
+    const attr = el.getAttribute(`p-transition:${stage}`);
+    if (!attr) return;
+
+    const startAttr = el.getAttribute(`p-transition:${stage}-start`);
+    const endAttr = el.getAttribute(`p-transition:${stage}-end`);
+
+    const classes = attr.split(" ").filter(Boolean);
+    const startClasses = (startAttr || "").split(" ").filter(Boolean);
+    const endClasses = (endAttr || "").split(" ").filter(Boolean);
+
+    // Enter/Leave phase
+    el.classList.add(...classes);
+    el.classList.add(...startClasses);
+
+    // Wait for next frame
+    await new Promise((r) => requestAnimationFrame(r));
+    await new Promise((r) => requestAnimationFrame(r));
+
+    el.classList.remove(...startClasses);
+    el.classList.add(...endClasses);
+
+    // Wait for transition end
+    await new Promise((r) => {
+      const handler = () => {
+        el.removeEventListener("transitionend", handler);
+        el.removeEventListener("animationend", handler);
+        r();
+      };
+      el.addEventListener("transitionend", handler);
+      el.addEventListener("animationend", handler);
+      // Fallback timeout
+      setTimeout(handler, 1000);
+    });
+
+    el.classList.remove(...classes);
+    el.classList.remove(...endClasses);
+  }
+
+  directive(name, callback) {
+    this.directives.set(name, callback);
+  }
+
+  // --- Reactivity Core ---
+
+  evaluate(expression, context = {}) {
+    try {
+      const keys = Object.keys(context);
+      const values = Object.values(context);
+      // Create a function that returns the expression value
+      // We use a proxy-safe approach or just a simple Function constructor
+      const fn = new Function(...keys, `return ${expression}`);
+      return fn(...values);
+    } catch (e) {
+      console.warn(`Plugs error evaluating: "${expression}"`, e);
+      return null;
+    }
+  }
+
+  async runAction(expression, context = {}) {
+    try {
+      const keys = Object.keys(context);
+      const values = Object.values(context);
+      // If it's a simple assignment like "count++" or "open = !open"
+      // We wrap it in a function
+      const fn = new Function(...keys, `${expression}`);
+      return fn(...values);
+    } catch (e) {
+      console.warn(`Plugs error running action: "${expression}"`, e);
+    }
+  }
+
+  createProxy(obj, onChange) {
+    const self = this;
+    const handler = {
+      get(target, key) {
+        const val = target[key];
+        if (val !== null && typeof val === "object") {
+          return self.createProxy(val, onChange);
+        }
+        return val;
+      },
+      set(target, key, value) {
+        target[key] = value;
+        onChange();
+        return true;
+      },
+    };
+    return new Proxy(obj, handler);
+  }
+
+  applyDirectives(container, state, componentEl) {
+    const walker = document.createTreeWalker(
+      container,
+      NodeFilter.SHOW_ELEMENT,
+      null,
+      false,
+    );
+
+    const componentsInSubtree = [];
+
+    let node = container;
+    while (node) {
+      if (node !== container && node.hasAttribute("p-data")) {
+        // Nested p-data handles its own state
+        node = walker.nextSibling() || walker.nextNode();
+        continue;
+      }
+
+      const attrs = Array.from(node.attributes);
+      attrs.forEach((attr) => {
+        if (attr.name.startsWith("p-")) {
+          const parts = attr.name.slice(2).split(":");
+          const dirName = parts[0];
+          const arg = parts[1];
+
+          if (this.directives.has(dirName)) {
+            const value = this.evaluate(attr.value, state);
+            this.directives.get(dirName)(node, value, arg, componentEl);
+          }
+        }
+      });
+
+      node = walker.nextNode();
+    }
+
+    // Lifecycle: p-updated
+    if (componentEl.getAttribute("p-updated")) {
+      this.runAction(componentEl.getAttribute("p-updated"), {
+        $el: componentEl,
+        ...(componentEl._pState || {}),
+      });
+    }
+  }
+
+  refreshComponent(el) {
+    if (!el._pState) return;
+    this.applyDirectives(el, el._pState, el);
   }
 
   initViewportPrefetch() {
@@ -169,13 +398,13 @@ class PlugsSPA {
     this.initializeFetchComponents(container);
 
     let components = Array.from(
-      container.querySelectorAll("[data-plug-component]"),
+      container.querySelectorAll("[data-plug-component], [p-data]"),
     );
 
     if (
       container !== document &&
       container.hasAttribute &&
-      container.hasAttribute("data-plug-component")
+      (container.hasAttribute("data-plug-component") || container.hasAttribute("p-data"))
     ) {
       components.unshift(container);
       container._plugInitialized = false;
@@ -186,6 +415,17 @@ class PlugsSPA {
     components.forEach((el) => {
       if (el._plugInitialized || processed.has(el)) return;
       processed.add(el);
+
+      // Handle p-data (Reactivity)
+      if (el.hasAttribute("p-data")) {
+        try {
+          const rawData = this.evaluate(el.getAttribute("p-data") || "{}");
+          el._pState = this.createProxy(rawData, () => this.refreshComponent(el));
+          this.refreshComponent(el);
+        } catch (e) {
+          console.error("Plugs: p-data initialization failed", e);
+        }
+      }
 
       const initAction =
         el.getAttribute("p-init") ||
@@ -219,7 +459,7 @@ class PlugsSPA {
 
       const filterToBound = (selector) => {
         return Array.from(el.querySelectorAll(selector)).filter(
-          (child) => child.closest("[data-plug-component]") === el,
+          (child) => child.closest("[data-plug-component], [p-data]") === el,
         );
       };
 
@@ -393,6 +633,72 @@ class PlugsSPA {
           }, debounceTime);
         });
       });
+
+      // p-on:* (Advanced Events)
+      const isPlugComp = el.hasAttribute("data-plug-component");
+      const eventEls = [el, ...Array.from(el.querySelectorAll("*"))].filter(
+        (child) => child.closest("[data-plug-component], [p-data]") === el,
+      );
+
+      eventEls.forEach((actionEl) => {
+        Array.from(actionEl.attributes).forEach((attr) => {
+          if (attr.name.startsWith("p-on:")) {
+            if (actionEl._plugHandlers && actionEl._plugHandlers[attr.name])
+              return;
+            if (!actionEl._plugHandlers) actionEl._plugHandlers = {};
+
+            const parts = attr.name.slice(5).split(".");
+            const eventName = parts[0];
+            const modifiers = parts.slice(1);
+            const expression = attr.value;
+
+            const handler = (e) => {
+              if (modifiers.includes("prevent")) e.preventDefault();
+              if (modifiers.includes("stop")) e.stopPropagation();
+              if (modifiers.includes("self") && e.target !== actionEl) return;
+              if (modifiers.includes("outside") && actionEl.contains(e.target))
+                return;
+
+              if (modifiers.includes("window") || modifiers.includes("document"))
+                return;
+
+              const context = {
+                ...(el._pState || {}),
+                $el: actionEl,
+                $event: e,
+                $dispatch: (name, detail = {}) =>
+                  window.dispatchEvent(
+                    new CustomEvent(name, { detail, bubbles: true }),
+                  ),
+              };
+
+              // If it's a server component and expression is not a local property/function
+              if (isPlugComp && (!el._pState || !el._pState[expression.split("(")[0]])) {
+                this.callComponentAction(el, eventName, expression);
+              } else {
+                this.runAction(expression, context);
+              }
+            };
+
+            actionEl._plugHandlers[attr.name] = handler;
+
+            if (modifiers.includes("window")) {
+              window.addEventListener(eventName, handler);
+            } else if (modifiers.includes("document")) {
+              document.addEventListener(eventName, handler);
+            } else {
+              actionEl.addEventListener(eventName, handler);
+            }
+          }
+        });
+      });
+
+      // Lifecycle: p-mounted
+      const mountedAction = el.getAttribute("p-mounted");
+      if (mountedAction && !el._pMounted) {
+        el._pMounted = true;
+        this.runAction(mountedAction, { $el: el, ...(el._pState || {}) });
+      }
 
       el._plugInitialized = true;
     });
@@ -614,6 +920,16 @@ class PlugsSPA {
     // 3. Cleanup remaining old nodes
     oldNodes.forEach((node) => {
       if (!processedOldNodes.has(node)) {
+        if (node.nodeType === 1) {
+          const unmountAction = node.getAttribute("p-unmounted");
+          if (unmountAction) {
+            this.runAction(unmountAction, { $el: node });
+          }
+          // Recursively unmount children
+          node.querySelectorAll("[p-unmounted]").forEach((child) => {
+            this.runAction(child.getAttribute("p-unmounted"), { $el: child });
+          });
+        }
         target.removeChild(node);
       }
     });
@@ -813,6 +1129,14 @@ class PlugsSPA {
       }
 
       if (result.state) componentEl.dataset.plugState = result.state;
+
+      // Handle server-dispatched events
+      if (result.events && Array.isArray(result.events)) {
+        result.events.forEach((evt) => {
+          const detail = evt.params || evt.detail || {};
+          window.dispatchEvent(new CustomEvent(evt.event, { detail, bubbles: true }));
+        });
+      }
 
       this.initializeComponents(componentEl);
     } catch (err) {

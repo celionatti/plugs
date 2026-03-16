@@ -7,7 +7,7 @@ Plugs comes with built-in scripts and styles that are necessary for certain fram
 By default, the framework automatically injects the necessary core scripts into your HTML response if it detects a `</body>` tag and the request is a full page render (not an HTMX partial or a specialized component).
 
 The scripts currently auto-injected are:
-- `plugs-spa.js`: Handles Single Page Application transitions and navigation.
+- `plugs-spa.js`: Handles Single Page Application transitions, navigation, and **Hybrid Reactivity** (state, events, and transitions).
 - `plugs-lazy.js`: Manages lazy loading of images and components.
 
 ## 🛠️ Framework Scripts Directive
@@ -33,7 +33,7 @@ The framework serves internal assets through dedicated routes. You can reference
 
 | Asset Path | Description |
 |------------|-------------|
-| `/plugs/plugs-spa.js` | SPA Bridge script |
+| `/plugs/plugs-spa.js` | SPA Bridge & Reactivity Engine |
 | `/plugs/plugs-lazy.js` | Lazy loading utility |
 | `/plugs/plugs-editor.js` | Rich Text Editor assets |
 | `/plugs/plugs-editor.css` | Rich Text Editor styles |

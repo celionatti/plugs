@@ -531,6 +531,26 @@ For large views or long-running processes, use `@stream` to send the response in
 
 ---
 
+## Hybrid Reactivity (Client-Side)
+
+Plugs supports Alpine/Vue-style reactivity for instant client-side interactions. These directives start with the `p-` prefix.
+
+| Directive | Description |
+|-----------|-------------|
+| `p-data`  | Initializes a reactive scope with local JSON state. |
+| `p-text`  | Reactively updates inner text. |
+| `p-html`  | Reactively updates inner HTML. |
+| `p-show`  | Toggles visibility via CSS. |
+| `p-if`    | Adds/Removes element from DOM. |
+| `p-on`    | Attaches event listeners (e.g. `p-on:click`). |
+| `p-bind`  | Binds attributes to state (e.g. `p-bind:class`). |
+| `p-model` | Two-way data binding for forms. |
+
+> [!TIP]
+> For a full guide on building interactive UIs with these directives, see the **[Hybrid Reactivity Guide](reactivity.md)**.
+
+---
+
 ## Utility Directives
 
 ### JSON & JS Output

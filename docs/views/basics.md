@@ -217,3 +217,11 @@ Plugs supports several extensions and naming conventions:
 
 - `user.profile` -> `resources/user/profile.plug.php`
 - Falls back to `.php` or `.html` if `.plug.php` is missing.
+
+---
+
+## ⚡ Hybrid Reactivity
+
+For instantaneous client-side interactions (toggles, counters, input tracking) that don't require a server round-trip, Plugs provides a built-in Alpine-style reactivity engine. 
+
+See the **[Hybrid Reactivity Guide](reactivity.md)** to learn about `p-data`, `p-on`, and `p-show`.

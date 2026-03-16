@@ -19,6 +19,7 @@ If you're new to Plugs, start with the basics of rendering and data binding.
 - **[Async Components](async-components.md)**: **New.** On-demand loading of URLs and components.
 - **[Fetch Components](fetch-components.md)**: **New.** Automated API states with client-side templates.
 - **[Live Components](live-components.md)**: **New.** Reactive PHP components with shorthand events.
+- **[Hybrid Reactivity](reactivity.md)**: **New.** Alpine-style client state, events, and transitions.
 - **[HTMX Integration](htmx-integration.md)**: Build fast, reactive interfaces with fragments and OOB swaps.
 - **[Themes & Customization](themes.md)**: Override views and components for white-labeling or deep customization.
 - **[Caching](caching.md)**: High-performance fragment and view caching.

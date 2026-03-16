@@ -50,3 +50,7 @@ The success block supports a simple, directive-like syntax:
 - **Automatic Transitions**: Seamlessly switches between loading and success states.
 - **Client-Side Templating**: No need to rely on heavy JS frameworks for simple data display.
 - **Efficient Updates**: Uses DOM morphing to ensure updates are fast and preserve element state.
+
+## ⚡ Reactivity Integration
+
+Fetch Components can be nested within reactive scopes or containing their own `p-data`. Additionally, any content rendered within the `<success>` block that contains `p-` directives will be automatically initialized by the **[Hybrid Reactivity](reactivity.md)** engine upon successful data fetch.
