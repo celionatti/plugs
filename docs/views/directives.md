@@ -355,8 +355,22 @@ Supports comma-separated, space-separated, and `$`-prefixed names:
 > [!IMPORTANT]
 > `@needs` is a runtime check. If a required variable is not `isset()`, a `[PLUGS-VIEW-006]` error is thrown immediately.
 
+### @defaults
+
+The `@defaults` directive allows you to set fallback values for variables. If the variable is already passed from the controller, the default is ignored.
+
+```blade
+@defaults(['theme' => 'light', 'showSidebar' => true])
+
+<body class="theme-{{ $theme }}">
+    @if($showSidebar)
+        <aside>...</aside>
+    @endif
+</body>
+```
+
 > [!TIP]
-> Variables defined with `@let` or `@calc` are automatically available in the rest of the template and follow standard PHP scoping rules for the rendered view.
+> Variables defined with `@let`, `@calc`, or `@defaults` are automatically available in the rest of the template and follow standard PHP scoping rules for the rendered view.
 
 ---
 

@@ -1,22 +1,11 @@
 <?php
 
-declare(strict_types=1);
+declare(strict_types = 1)
+;
 
 namespace Plugs\View;
 
-/*
-|--------------------------------------------------------------------------
-| View Class
-|--------------------------------------------------------------------------
-|
-| This class represents a view in the Plugs framework. It is responsible for
-| rendering templates with provided data using a specified view engine.
-|
-| Represents a view instance with data binding and rendering capabilities.
-| This class acts as a value object for view rendering operations.
-|
-| @package Plugs\View
-*/
+/* |-------------------------------------------------------------------------- | View Class |-------------------------------------------------------------------------- | | This class represents a view in the Plugs framework. It is responsible for | rendering templates with provided data using a specified view engine. | | Represents a view instance with data binding and rendering capabilities. | This class acts as a value object for view rendering operations. | | @package Plugs\View */
 
 use RuntimeException;
 use Throwable;
@@ -77,10 +66,10 @@ class View
      * Prevents leaking framework internals into the view scope.
      */
     private const AUTO_EXCLUDED_TYPES = [
-        ViewEngineInterface::class,
-        \Plugs\Container\Container::class,
-        \Plugs\Router\Router::class,
-        \Plugs\Http\MiddlewareDispatcher::class,
+        ViewEngineInterface::class ,
+        \Plugs\Container\Container::class ,
+        \Plugs\Router\Router::class ,
+        \Plugs\Http\MiddlewareDispatcher::class ,
     ];
 
     private const AUTO_EXCLUDED_KEYS = [
@@ -179,7 +168,8 @@ class View
             // Local variable mode — filter and merge
             $filtered = $this->filterData($vars);
             $this->data = array_merge($this->data, $filtered);
-        } else {
+        }
+        else {
             // Property mode — collect public properties from caller
             $callerVars = $this->collectFromCaller();
             $this->data = array_merge($this->data, $callerVars);
@@ -197,6 +187,106 @@ class View
     public function withData(array $data): self
     {
         $this->data = array_merge($this->data, $data);
+
+        return $this;
+    }
+
+    /**
+     * Exclude specific variables from the view data.
+     * Useful after calling auto().
+     *
+     * @param string ...$keys Keys to remove
+     * @return self Fluent interface
+     */
+    public function except(string...$keys): self
+    {
+        foreach ($keys as $key) {
+            unset($this->data[$key]);
+        }
+
+        return $this;
+    }
+
+    /**
+     * Keep ONLY the specified variables, removing everything else.
+     * Optionally accepts get_defined_vars() as the last argument
+     * to pull those variables from the local scope.
+     *
+     * @return self Fluent interface
+     */
+    public function only(string|array ...$args): self
+    {
+        $lastArg = end($args);
+        $hasVarsArray = is_array($lastArg);
+
+        if ($hasVarsArray) {
+            // Local variable mode: only('user', 'posts', get_defined_vars())
+            $vars = $this->filterData($lastArg);
+            $names = array_slice($args, 0, -1);
+
+            $this->data = []; // Clear existing data entirely when strict ONLY is called this way
+            foreach ($names as $name) {
+                if (is_string($name) && array_key_exists($name, $vars)) {
+                    $this->data[$name] = $vars[$name];
+                }
+            }
+        }
+        else {
+            // Property mode or filtering existing data: only('user', 'posts')
+            $keysToKeep = array_flip($args);
+            $this->data = array_intersect_key($this->data, $keysToKeep);
+        }
+
+        return $this;
+    }
+
+    /**
+     * Conditionally add data to the view.
+     *
+     * @param callable|bool $condition If false/falsy, the data is added
+     * @param array|string $keyOrData Array of data, or a single key
+     * @param mixed $value Value if using a single key
+     * @return self Fluent interface
+     */
+    public function unless($condition, $keyOrData, $value = null): self
+    {
+        $resolved = is_callable($condition) ? $condition() : $condition;
+
+        if (!$resolved) {
+            if (is_array($keyOrData)) {
+                $this->withData($keyOrData);
+            }
+            elseif (is_string($keyOrData)) {
+                $this->with($keyOrData, $value);
+            }
+        }
+
+        return $this;
+    }
+
+    /**
+     * Tap into the view data for debugging without breaking the chain.
+     *
+     * @param callable|null $callback Optional callback to inspect data
+     * @return self Fluent interface
+     */
+    public function tap(?callable $callback = null): self
+    {
+        if ($callback) {
+            $callback($this->data, $this->view);
+        }
+        else {
+            // Default: Dump if dump() is available (like Symfony VarDumper)
+            if (function_exists('dd')) {
+                dd(['view' => $this->view, 'data' => $this->data]);
+            }
+            else {
+                echo "<pre>\n";
+                echo "View Tap [{$this->view}]:\n";
+                var_dump($this->data);
+                echo "</pre>\n";
+            }
+        }
 
         return $this;
     }
@@ -337,16 +427,17 @@ class View
             }
 
             return $content;
-        } catch (Throwable $e) {
+        }
+        catch (Throwable $e) {
             throw new RuntimeException(
                 sprintf(
-                    'Error rendering view [%s]: %s',
-                    $this->view,
-                    $e->getMessage()
-                ),
-                (int) $e->getCode(),
+                'Error rendering view [%s]: %s',
+                $this->view,
+                $e->getMessage()
+            ),
+                (int)$e->getCode(),
                 $e
-            );
+                );
         }
     }
 
@@ -359,7 +450,8 @@ class View
     {
         try {
             return $this->render();
-        } catch (Throwable $e) {
+        }
+        catch (Throwable $e) {
             return $this->handleToStringError($e);
         }
     }
@@ -393,12 +485,12 @@ class View
         if (function_exists('error_log')) {
             error_log(
                 sprintf(
-                    'View Error [%s]: %s in %s:%d',
-                    $this->view,
-                    $e->getMessage(),
-                    $e->getFile(),
-                    $e->getLine()
-                )
+                'View Error [%s]: %s in %s:%d',
+                $this->view,
+                $e->getMessage(),
+                $e->getFile(),
+                $e->getLine()
+            )
             );
         }
     }
@@ -412,7 +504,7 @@ class View
     {
         // Check constant first (most performant)
         if (defined('APP_DEBUG')) {
-            return (bool) constant('APP_DEBUG');
+            return (bool)constant('APP_DEBUG');
         }
 
         // Check $_ENV

@@ -130,3 +130,29 @@ Selectively collects named variables from the calling controller.
 - **From properties:** `return view('profile')->with('user', 'posts')`
 - **From local vars:** `return view('profile')->with('user', 'posts', get_defined_vars())`
 - **Purpose:** Easy mode — explicitly name which variables to pass.
+
+### `->only('name1', ...)`
+
+Keeps *only* the specified variables, discarding everything else.
+
+- **Usage:** `return view('profile')->auto()->only('user')`
+- **From local vars:** `return view('profile')->only('user', get_defined_vars())`
+
+### `->except('name1', ...)`
+
+Excludes specific variables from the view data.
+
+- **Usage:** `return view('profile')->auto()->except('password')`
+
+### `->unless($condition, $data)`
+
+Conditionally adds data to the view if the condition is falsy.
+
+- **Usage:** `return view('profile')->unless(isProduction(), ['debug' => $data])`
+
+### `->tap()`
+
+Dumps the current view data to the screen or error log without breaking the fluent chain.
+
+- **Usage:** `return view('profile')->auto()->tap()->withStatus(200)`
+- **Purpose:** Quick debugging of what data is actually being passed.

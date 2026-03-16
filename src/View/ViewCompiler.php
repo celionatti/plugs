@@ -213,6 +213,7 @@ class ViewCompiler
             'let' => '/@let\s+([a-zA-Z0-9_]+)\s*=\s*(.*?)(?=\r?\n|$)/s',
             'calc' => '/@calc\s+([a-zA-Z0-9_]+)\s*=\s*(.*?)(?=\r?\n|$)/s',
             'needs' => '/@needs\s+(.+?)(?=\r?\n|$)/s',
+            'defaults' => '/@defaults\s*\((.*?)\)/s',
         ];
     }
 
@@ -668,6 +669,7 @@ class ViewCompiler
         $content = $this->compileLoops($content);
         $content = $this->compileLet($content);
         $content = $this->compileNeeds($content);
+        $content = $this->compileDefaults($content);
 
         // Phase 4: Authorization & Environment Compilation
         $content = $this->compileAuthDirectives($content);

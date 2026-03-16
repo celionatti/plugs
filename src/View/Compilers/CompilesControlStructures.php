@@ -371,4 +371,32 @@ trait CompilesControlStructures
             $content
         );
     }
+
+    /**
+     * Compile the @defaults directive.
+     *
+     * @defaults(['theme' => 'light', 'showSidebar' => true])
+     *
+     * Transforms into a PHP block that uses extract() with EXTR_SKIP
+     * to only set variables if they are not already defined.
+     *
+     * @param  string  $content
+     * @return string
+     */
+    protected function compileDefaults(string $content): string
+    {
+        return preg_replace_callback(
+            '/@defaults\s*\((.*?)\)/s',
+            function ($matches) {
+                // The argument should be an array literal: ['key' => 'val']
+                $arrayExpr = trim($matches[1]);
+                if (empty($arrayExpr)) {
+                    return '';
+                }
+
+                return "<?php extract({$arrayExpr}, EXTR_SKIP); ?>";
+            },
+            $content
+        );
+    }
 }
