@@ -8,6 +8,7 @@ use Plugs\Http\Message\ServerRequest;
 use Plugs\Http\ResponseFactory;
 use Plugs\Facades\Crypt;
 use Plugs\Facades\View;
+use Plugs\Facades\Log;
 use Psr\Http\Message\ResponseInterface;
 
 class ComponentController

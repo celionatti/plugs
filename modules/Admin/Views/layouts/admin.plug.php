@@ -204,8 +204,8 @@
         });
     </script>
     @yield('scripts')
-    <script src="/plugs/plugs-spa.js"></script>
-    <script src="/plugs/plugs-lazy.js"></script>
+    <script src="{{ url('/plugs/plugs-spa.js') }}"></script>
+    <script src="{{ url('/plugs/plugs-lazy.js') }}"></script>
     <script>
         window.plugsSPA = new PlugsSPA({
             contentSelector: 'main',
