@@ -160,6 +160,11 @@ trait CompilesEchos
                     if (in_array(strtolower($word), $reserved, true)) {
                         return $word;
                     }
+
+                    // Ignore all-uppercase words (treated as constants)
+                    if (preg_match('/^[A-Z_][A-Z0-9_]*$/', $word)) {
+                        return $word;
+                    }
                     
                     return '$' . $word;
                 }, $part);

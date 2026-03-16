@@ -143,8 +143,10 @@ class ContextResolver
     {
         $uri = $server['REQUEST_URI'] ?? '';
         $path = parse_url($uri, PHP_URL_PATH) ?: '';
+        $path = rtrim($path, '/');
 
-        return str_starts_with(rtrim($path, '/'), '/plugs/component');
+        return str_starts_with($path, '/plugs/component') || 
+               str_starts_with($path, '/_plugs/component');
     }
 
     /**

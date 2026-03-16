@@ -10,8 +10,18 @@
     <script>
         tailwind.config = {
             darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        primary: 'var(--primary-color)',
+                        secondary: 'var(--secondary-color)',
+                    }
+                }
+            }
         }
-        if (localStorage.getItem('color-theme') === 'dark' || (!('color-theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+        
+        const forceDarkMode = "{{ \App\Models\Setting::getValue('dark_mode', 'false') }}" === 'true';
+        if (forceDarkMode || localStorage.getItem('color-theme') === 'dark' || (!('color-theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
             document.documentElement.classList.add('dark');
         } else {
             document.documentElement.classList.remove('dark');
@@ -21,10 +31,19 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700&family=Dancing+Script:wght@400..700&display=swap" rel="stylesheet">
     <style>
+        :root {
+            --primary-color: {{ \App\Models\Setting::getValue('primary_color', '#6366f1') }};
+            --secondary-color: {{ \App\Models\Setting::getValue('secondary_color', '#4f46e5') }};
+            --border-radius: {{ \App\Models\Setting::getValue('border_radius', '1.5rem') }};
+        }
+
         /* Core Admin Styles */
         body {
             font-family: 'Plus Jakarta Sans', sans-serif;
         }
+
+        .rounded-2xl { border-radius: var(--border-radius); }
+        .rounded-3xl { border-radius: calc(var(--border-radius) * 1.5); }
         
         /* Pagination Framework Base Styles */
         .pagination-container {
@@ -123,7 +142,7 @@
             -webkit-text-fill-color: transparent;
         }
         .gradient-bg {
-            background: #000;
+            background: var(--primary-color);
         }
         .dark .gradient-bg {
             background: #fff;

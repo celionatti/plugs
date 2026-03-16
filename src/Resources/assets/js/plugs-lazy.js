@@ -44,7 +44,7 @@ document.addEventListener("DOMContentLoaded", function () {
       // Get CSRF token
       const csrfToken = document
         .querySelector('meta[name="csrf-token"]')
-        ?.content; // Simplified access
+        ?.content; 
 
       const baseUrl = getBaseUrl();
       const response = await fetch(baseUrl + "/_plugs/component/render", {
@@ -57,7 +57,16 @@ document.addEventListener("DOMContentLoaded", function () {
       });
 
       if (!response.ok) {
-        throw new Error("Network response was not ok");
+        let errorMessage = `HTTP error! status: ${response.status}`;
+        try {
+          const errorData = await response.json();
+          if (errorData && errorData.error) {
+            errorMessage = errorData.error;
+          }
+        } catch (e) {
+          // Fallback to status if JSON parsing fails
+        }
+        throw new Error(errorMessage);
       }
 
       const html = await response.text();
@@ -65,19 +74,34 @@ document.addEventListener("DOMContentLoaded", function () {
       // Swap content
       const temp = document.createElement("div");
       temp.innerHTML = html.trim();
-      const newEl = temp.firstElementChild;
-      el.replaceWith(newEl);
+      
+      const fragment = document.createDocumentFragment();
+      while (temp.firstChild) {
+          fragment.appendChild(temp.firstChild);
+      }
+      
+      const newElements = Array.from(fragment.childNodes).filter(node => node.nodeType === Node.ELEMENT_NODE);
+      const firstNewEl = newElements[0];
+      
+      el.replaceWith(fragment);
 
       // Re-initialize with SPA engine if available
-      if (window.plugsSPA) {
-        window.plugsSPA.initializeComponents(newEl);
+      if (window.plugsSPA && firstNewEl) {
+          newElements.forEach(node => window.plugsSPA.initializeComponents(node));
       }
 
-      window.dispatchEvent(new CustomEvent("plugs:lazy-loaded", { detail: { el: newEl } }));
+      window.dispatchEvent(new CustomEvent("plugs:lazy-loaded", { detail: { el: firstNewEl } }));
     } catch (error) {
       console.error("Error loading lazy component:", error);
-      el.innerHTML =
-        '<div class="text-danger p-2">Error loading component</div>';
+      el.innerHTML = `
+        <div class="p-4 rounded-2xl bg-rose-50 border border-rose-100 dark:bg-rose-900/20 dark:border-rose-800 text-rose-600 dark:text-rose-400 text-xs font-bold flex flex-col gap-1">
+            <div class="flex items-center gap-2">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                Component Error
+            </div>
+            <div class="text-[10px] opacity-70 ml-6">${error.message}</div>
+        </div>
+      `;
       window.dispatchEvent(new CustomEvent("plugs:lazy-error", { detail: { error, el: el } }));
     }
   }

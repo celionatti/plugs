@@ -22,7 +22,7 @@ interface CacheDriverInterface
 
     public function deleteMultiple(iterable $keys): bool;
 
-    public function increment(string $key, int $value = 1): int|false;
+    public function increment(string $key, int $value = 1): int|bool;
 
-    public function decrement(string $key, int $value = 1): int|false;
+    public function decrement(string $key, int $value = 1): int|bool;
 }

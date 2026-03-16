@@ -49,6 +49,10 @@ class ComponentController
                 'X-Plugs-Component' => $componentName
             ]);
         } catch (\Exception $e) {
+            Log::error("Lazy Component Render Error [{$componentName}]: " . $e->getMessage(), [
+                'exception' => $e,
+                'attributes' => $attributes
+            ]);
             return ResponseFactory::json(['error' => 'Rendering error: ' . $e->getMessage()], 500);
         }
     }

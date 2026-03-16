@@ -59,27 +59,65 @@
                     <h2 class="text-xl font-bold text-slate-800">Visual Identity</h2>
                     <p class="text-sm text-slate-500 mt-1">Customize the look and feel of your admin panel.</p>
                 </div>
-                <div class="p-8 space-y-6">
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <div class="space-y-2">
-                            <label class="text-sm font-bold text-slate-700 ml-1">Primary Theme Color</label>
-                            <div class="flex gap-4">
-                                <input type="color" name="primary_color" value="{{ $settings['primary_color'] }}" class="w-12 h-14 rounded-2xl border-none cursor-pointer">
-                                <input type="text" value="{{ $settings['primary_color'] }}" readonly class="flex-1 px-5 py-4 rounded-2xl bg-slate-100 border border-transparent font-mono text-sm text-slate-600">
+                <div class="p-8 space-y-8">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                        <div class="space-y-4">
+                            <div>
+                                <label class="text-sm font-bold text-slate-700 ml-1">Primary Theme Color</label>
+                                <div class="flex gap-4 mt-2">
+                                    <input type="color" name="primary_color" id="primary_color" value="{{ $settings['primary_color'] ?? '#6366f1' }}" class="w-14 h-14 rounded-2xl border-none cursor-pointer shadow-sm" oninput="updateThemePreview('primary', this.value)">
+                                    <input type="text" id="primary_color_hex" value="{{ $settings['primary_color'] ?? '#6366f1' }}" readonly class="flex-1 px-5 py-4 rounded-2xl bg-slate-50 border border-slate-100 font-mono text-sm text-slate-600">
+                                </div>
+                            </div>
+                            <div>
+                                <label class="text-sm font-bold text-slate-700 ml-1">Secondary (Accent) Color</label>
+                                <div class="flex gap-4 mt-2">
+                                    <input type="color" name="secondary_color" id="secondary_color" value="{{ $settings['secondary_color'] ?? '#4f46e5' }}" class="w-14 h-14 rounded-2xl border-none cursor-pointer shadow-sm" oninput="updateThemePreview('secondary', this.value)">
+                                    <input type="text" id="secondary_color_hex" value="{{ $settings['secondary_color'] ?? '#4f46e5' }}" readonly class="flex-1 px-5 py-4 rounded-2xl bg-slate-50 border border-slate-100 font-mono text-sm text-slate-600">
+                                </div>
                             </div>
                         </div>
-                        <div class="space-y-4 pt-4">
-                            <label class="flex items-center gap-3 cursor-pointer group">
-                                <div class="relative">
-                                    <input type="checkbox" name="dark_mode" value="true" {{ $settings['dark_mode'] === 'true' ? 'checked' : '' }} class="sr-only peer">
-                                    <div class="w-12 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600"></div>
-                                </div>
-                                <span class="text-sm font-bold text-slate-700 group-hover:text-indigo-600 transition-colors">Force Admin Dark Mode</span>
-                            </label>
+
+                        <div class="space-y-6">
+                            <div class="space-y-2">
+                                <label class="text-sm font-bold text-slate-700 ml-1">Interface Border Radius</label>
+                                <select name="border_radius" id="border_radius" class="w-full px-5 py-4 rounded-2xl bg-slate-50 border border-slate-100 focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 transition-all font-medium text-slate-800" onchange="updateThemePreview('radius', this.value)">
+                                    <option value="0px" {{ (\App\Models\Setting::getValue('border_radius') === '0px') ? 'selected' : '' }}>None (Square)</option>
+                                    <option value="0.5rem" {{ (\App\Models\Setting::getValue('border_radius') === '0.5rem') ? 'selected' : '' }}>Small (8px)</option>
+                                    <option value="1rem" {{ (\App\Models\Setting::getValue('border_radius') === '1rem') ? 'selected' : '' }}>Medium (16px)</option>
+                                    <option value="1.5rem" {{ (\App\Models\Setting::getValue('border_radius') === '1.5rem' || !\App\Models\Setting::getValue('border_radius')) ? 'selected' : '' }}>Large (24px)</option>
+                                    <option value="2rem" {{ (\App\Models\Setting::getValue('border_radius') === '2rem') ? 'selected' : '' }}>Extra Large (32px)</option>
+                                </select>
+                            </div>
+
+                            <div class="p-6 rounded-3xl bg-slate-50 border border-slate-100 space-y-4">
+                                <label class="flex items-center justify-between cursor-pointer group">
+                                    <span class="text-sm font-bold text-slate-700 group-hover:text-primary transition-colors">Force Admin Dark Mode</span>
+                                    <div class="relative">
+                                        <input type="checkbox" name="dark_mode" value="true" {{ $settings['dark_mode'] === 'true' ? 'checked' : '' }} class="sr-only peer">
+                                        <div class="w-12 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
+                                    </div>
+                                </label>
+                                <p class="text-xs text-slate-400 font-medium leading-relaxed">Overrides the system and session preference to always show the admin panel in dark mode.</p>
+                            </div>
                         </div>
                     </div>
                 </div>
             </div>
+
+            <script>
+                function updateThemePreview(type, value) {
+                    if (type === 'primary') {
+                        document.documentElement.style.setProperty('--primary-color', value);
+                        document.getElementById('primary_color_hex').value = value;
+                    } else if (type === 'secondary') {
+                        document.documentElement.style.setProperty('--secondary-color', value);
+                        document.getElementById('secondary_color_hex').value = value;
+                    } else if (type === 'radius') {
+                        document.documentElement.style.setProperty('--border-radius', value);
+                    }
+                }
+            </script>
 
             <!-- Security Settings -->
             <div id="panel-security" class="settings-panel bg-white rounded-3xl shadow-sm border border-slate-100 overflow-hidden" style="display:none;">
