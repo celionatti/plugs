@@ -714,6 +714,14 @@ class PlugsSPA {
       const src = el.dataset.plugsAsyncSrc;
       const payload = el.dataset.plugsAsyncPayload;
 
+      const getBaseUrl = () => {
+        const meta = document.querySelector('meta[name="app-url"]');
+        if (meta) {
+          return meta.content.endsWith('/') ? meta.content.slice(0, -1) : meta.content;
+        }
+        return '';
+      };
+
       try {
         let response;
         if (src) {
@@ -723,7 +731,8 @@ class PlugsSPA {
         } else if (payload) {
           const csrfToken =
             document.querySelector('meta[name="csrf-token"]')?.content;
-          response = await fetch("/_plugs/component/render", {
+          const baseUrl = getBaseUrl();
+          response = await fetch(baseUrl + "/_plugs/component/render", {
             method: "POST",
             headers: {
               "Content-Type": "application/json",
@@ -1102,7 +1111,15 @@ class PlugsSPA {
     }
 
     try {
-      const response = await fetch("/plugs/component/action", {
+      const getBaseUrl = () => {
+        const meta = document.querySelector('meta[name="app-url"]');
+        if (meta) {
+          return meta.content.endsWith('/') ? meta.content.slice(0, -1) : meta.content;
+        }
+        return '';
+      };
+      const baseUrl = getBaseUrl();
+      const response = await fetch(baseUrl + "/plugs/component/action", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

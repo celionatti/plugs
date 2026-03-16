@@ -18,7 +18,7 @@ class AdminProfileController
     {
         $user = auth()->user();
 
-        return response(view('admin::profile', [
+        return response(view('admin::profile.index', [
             'title' => 'My Profile',
             'user' => $user
         ]));

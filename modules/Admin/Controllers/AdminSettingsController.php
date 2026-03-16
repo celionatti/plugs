@@ -35,7 +35,7 @@ class AdminSettingsController
             'google_analytics_id' => Setting::getValue('google_analytics_id', ''),
         ];
 
-        return response(view('admin::settings', [
+        return response(view('admin::settings.index', [
             'title' => 'Settings',
             'settings' => $settings
         ]));

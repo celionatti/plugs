@@ -21,20 +21,33 @@ document.addEventListener("DOMContentLoaded", function () {
     });
   }
 
-  async function loadComponent(placeholder) {
-    const payload = placeholder.dataset.plugsLazyPayload;
+  async function loadComponent(el) {
+    if (el._plugsLoading) return;
+    el._plugsLoading = true;
+
+    const payload = el.dataset.plugsLazyPayload; // Assuming original dataset key `plugsLazyPayload` is kept
+    // const name = el.dataset.lazyName; // This variable was in the snippet but not used, keeping original logic
 
     if (!payload) return;
 
+    const getBaseUrl = () => {
+      const meta = document.querySelector('meta[name="app-url"]');
+      if (meta) {
+        return meta.content.endsWith('/') ? meta.content.slice(0, -1) : meta.content;
+      }
+      return '';
+    };
+
     try {
-      window.dispatchEvent(new CustomEvent("plugs:lazy-loading", { detail: { el: placeholder } }));
+      window.dispatchEvent(new CustomEvent("plugs:lazy-loading", { detail: { el: el } }));
 
       // Get CSRF token
       const csrfToken = document
         .querySelector('meta[name="csrf-token"]')
-        ?.getAttribute("content");
+        ?.content; // Simplified access
 
-      const response = await fetch("/_plugs/component/render", {
+      const baseUrl = getBaseUrl();
+      const response = await fetch(baseUrl + "/_plugs/component/render", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -53,7 +66,7 @@ document.addEventListener("DOMContentLoaded", function () {
       const temp = document.createElement("div");
       temp.innerHTML = html.trim();
       const newEl = temp.firstElementChild;
-      placeholder.replaceWith(newEl);
+      el.replaceWith(newEl);
 
       // Re-initialize with SPA engine if available
       if (window.plugsSPA) {
@@ -63,9 +76,9 @@ document.addEventListener("DOMContentLoaded", function () {
       window.dispatchEvent(new CustomEvent("plugs:lazy-loaded", { detail: { el: newEl } }));
     } catch (error) {
       console.error("Error loading lazy component:", error);
-      placeholder.innerHTML =
+      el.innerHTML =
         '<div class="text-danger p-2">Error loading component</div>';
-      window.dispatchEvent(new CustomEvent("plugs:lazy-error", { detail: { error, el: placeholder } }));
+      window.dispatchEvent(new CustomEvent("plugs:lazy-error", { detail: { error, el: el } }));
     }
   }
 

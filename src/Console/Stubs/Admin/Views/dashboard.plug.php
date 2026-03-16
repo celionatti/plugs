@@ -66,7 +66,7 @@
     <div class="bg-white rounded-3xl shadow-sm border border-slate-100 overflow-hidden">
         <div class="p-6 border-b border-slate-50 flex items-center justify-between">
             <h2 class="text-lg font-bold text-slate-800">Recently Joined</h2>
-            <a href="/admin/users" class="text-xs font-bold text-black border-b border-black/20 hover:border-black transition-all pb-0.5">View All</a>
+            <a href="/admin/users" data-spa="true" class="text-xs font-bold text-black border-b border-black/20 hover:border-black transition-all pb-0.5">View All</a>
         </div>
         <div class="overflow-x-auto">
             <table class="w-full text-left">
@@ -108,7 +108,7 @@
     <div class="bg-white rounded-3xl shadow-sm border border-slate-100 p-8 flex flex-col justify-center">
         <h2 class="text-xl font-extrabold text-slate-800 mb-6">Quick Actions</h2>
         <div class="grid grid-cols-2 gap-4">
-            <a href="/admin/users/create" class="p-4 rounded-2xl bg-slate-50 border border-slate-100 text-left hover:border-black/20 hover:bg-slate-100 transition-all group">
+            <a href="/admin/users/create" data-spa="true" class="p-4 rounded-2xl bg-slate-50 border border-slate-100 text-left hover:border-black/20 hover:bg-slate-100 transition-all group">
                 <div class="w-10 h-10 rounded-xl bg-black text-white flex items-center justify-center mb-3 transition-all">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
@@ -128,5 +128,9 @@
             </button>
         </div>
     </div>
+</div>
+
+<div class="mt-8">
+    @lazy('admin::system-info')
 </div>
 @endsection

@@ -30,8 +30,16 @@
             
             if (!this.container || !this.hiddenInput) return;
 
+            const getBaseUrl = () => {
+                const meta = document.querySelector('meta[name="app-url"]');
+                if (meta) {
+                    return meta.content.endsWith('/') ? meta.content.slice(0, -1) : meta.content;
+                }
+                return '';
+            };
+
             this.wrapper = this.container.closest('.plugs-editor-wrapper');
-            this.uploadUrl = options.uploadUrl || "/plugs/media/upload";
+            this.uploadUrl = options.uploadUrl || (getBaseUrl() + "/plugs/media/upload");
             this.maxWidth = this.container.dataset.maxWidth || null;
             this.maxHeight = this.container.dataset.maxHeight || null;
 

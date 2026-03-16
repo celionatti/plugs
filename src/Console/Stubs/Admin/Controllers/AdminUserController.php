@@ -30,7 +30,7 @@ class AdminUserController
             $users = [];
         }
 
-        return response(view('admin::index', [
+        return response(view('admin::users.index', [
             'title' => 'Users Management',
             'users' => $users
         ]));
@@ -41,7 +41,7 @@ class AdminUserController
      */
     public function create(ServerRequestInterface $request): ResponseInterface
     {
-        return response(view('admin::create', [
+        return response(view('admin::users.create', [
             'title' => 'Create User'
         ]));
     }
@@ -77,7 +77,7 @@ class AdminUserController
                 ->with('error', 'User not found.');
         }
 
-        return response(view('admin::show', [
+        return response(view('admin::users.show', [
             'title' => 'User Details',
             'user' => $user
         ]));
@@ -95,7 +95,7 @@ class AdminUserController
                 ->with('error', 'User not found.');
         }
 
-        return response(view('admin::edit', [
+        return response(view('admin::users.edit', [
             'title' => 'Edit User',
             'user' => $user
         ]));

@@ -25,7 +25,7 @@ class AdminModuleController
     {
         $modules = $this->moduleService->getModules();
 
-        return response(view('admin::modules', [
+        return response(view('admin::modules-list.index', [
             'title' => 'Modules Management',
             'modules' => $modules
         ]));
