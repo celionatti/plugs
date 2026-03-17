@@ -36,10 +36,11 @@
         </div>
     </div>
 
+    <!-- Active Plugs Stat -->
     <div class="bg-white dark:bg-slate-900 p-6 rounded-3xl shadow-sm border border-slate-100 dark:border-slate-800 flex items-center justify-between group hover:shadow-xl hover:shadow-black/5 dark:hover:shadow-white/5 transition-all">
         <div>
             <span class="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">Active Plugs</span>
-            <div class="text-3xl font-extrabold text-slate-800 dark:text-white mt-1">12</div>
+            <div class="text-3xl font-extrabold text-slate-800 dark:text-white mt-1">{{ $stats['plugs_count'] }}</div>
         </div>
         <div class="w-12 h-12 rounded-2xl bg-slate-50 dark:bg-slate-800/50 text-slate-400 flex items-center justify-center transition-transform group-hover:scale-110">
             <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -48,10 +49,11 @@
         </div>
     </div>
 
+    <!-- Security Tags Stat -->
     <div class="bg-white dark:bg-slate-900 p-6 rounded-3xl shadow-sm border border-slate-100 dark:border-slate-800 flex items-center justify-between group hover:shadow-xl hover:shadow-black/5 dark:hover:shadow-white/5 transition-all">
         <div>
             <span class="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">Security Tags</span>
-            <div class="text-3xl font-extrabold text-slate-800 dark:text-white mt-1">4</div>
+            <div class="text-3xl font-extrabold text-slate-800 dark:text-white mt-1">{{ $stats['security_tags_count'] }}</div>
         </div>
         <div class="w-12 h-12 rounded-2xl bg-black dark:bg-white text-white dark:text-black flex items-center justify-center transition-transform group-hover:scale-110">
             <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">

@@ -40,24 +40,36 @@
             </p>
 
             <div class="flex items-center justify-between pt-6 border-t border-slate-50">
-                <div class="flex -space-x-2">
-                    <div class="w-6 h-6 rounded-full bg-slate-200 border-2 border-white"></div>
-                    <div class="w-6 h-6 rounded-full bg-slate-300 border-2 border-white"></div>
+                <form action="/admin/modules/{{ $module['name'] }}/toggle" method="POST">
+                    @csrf
+                    <button type="submit" class="text-xs font-bold {{ $module['enabled'] ? 'text-amber-600' : 'text-emerald-600' }} hover:opacity-80 transition-colors uppercase tracking-widest border-b border-black/20 hover:border-black transition-all pb-0.5">
+                        {{ $module['enabled'] ? 'Disable' : 'Enable' }}
+                    </button>
+                </form>
+                
+                <div class="flex items-center gap-4">
+                    <a href="/admin/modules/{{ $module['name'] }}/configure" class="text-xs font-bold text-black hover:text-slate-600 transition-colors uppercase tracking-widest border-b border-black/20 hover:border-black transition-all pb-0.5">Configure</a>
+                    
+                    @if($module['name'] !== 'Admin')
+                    <form action="/admin/modules/{{ $module['name'] }}/delete" method="POST" onsubmit="return confirm('Are you sure you want to delete this module? This action cannot be undone.')">
+                        @csrf
+                        <button type="submit" class="text-xs font-bold text-red-500 hover:text-red-700 transition-colors uppercase tracking-widest border-b border-red-200 hover:border-red-500 transition-all pb-0.5">Delete</button>
+                    </form>
+                    @endif
                 </div>
-                <button class="text-xs font-bold text-black hover:text-slate-600 transition-colors uppercase tracking-widest border-b border-black/20 hover:border-black transition-all pb-0.5">Configure</button>
             </div>
         </div>
     </div>
     @endforeach
 
     <!-- Add New Module Placeholder -->
-    <div class="bg-white rounded-3xl shadow-sm border border-slate-100 border-dashed border-2 flex flex-col items-center justify-center p-8 hover:border-indigo-200 hover:bg-slate-50/50 transition-all group">
+    <a href="/admin/modules/create" class="bg-white rounded-3xl shadow-sm border border-slate-100 border-dashed border-2 flex flex-col items-center justify-center p-8 hover:border-indigo-200 hover:bg-slate-50/50 transition-all group">
         <div class="w-12 h-12 rounded-2xl bg-slate-50 text-slate-300 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
             <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
             </svg>
         </div>
         <span class="text-sm font-bold text-slate-400">Install Module</span>
-    </div>
+    </a>
 </div>
 @endsection
