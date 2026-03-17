@@ -39,3 +39,4 @@ PRODUCTION_NOTES.md
 /samples/
 /config_backup/
 /.env_backup
+/modules
