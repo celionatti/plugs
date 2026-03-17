@@ -1,0 +1,73 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\Models;
+
+use Plugs\Base\Model\PlugModel;
+
+class Setting extends PlugModel
+{
+    /**
+     * The table associated with the model.
+     *
+     * @var string
+     */
+    protected $table = 'settings';
+
+    /**
+     * The attributes that are mass assignable.
+     *
+     * @var array
+     */
+    protected $fillable = [
+        'key',
+        'value',
+        'group',
+    ];
+
+    /**
+     * Indicates if the model should be timestamped.
+     *
+     * @var bool
+     */
+    public $timestamps = true;
+
+    /**
+     * Get a setting value by key.
+     *
+     * @param string $key
+     * @param mixed $default
+     * @return mixed
+     */
+    public static function getValue(string $key, $default = null)
+    {
+        $setting = static::where('key', $key)->first();
+        return $setting ? $setting->value : $default;
+    }
+
+    /**
+     * Set a setting value by key.
+     *
+     * @param string $key
+     * @param mixed $value
+     * @param string|null $group
+     * @return self
+     */
+    public static function setValue(string $key, $value, ?string $group = null)
+    {
+        $setting = static::where('key', $key)->first();
+        
+        if ($setting) {
+            $setting->update(['value' => $value]);
+        } else {
+            $setting = static::create([
+                'key' => $key,
+                'value' => $value,
+                'group' => $group ?: 'general',
+            ]);
+        }
+        
+        return $setting;
+    }
+}

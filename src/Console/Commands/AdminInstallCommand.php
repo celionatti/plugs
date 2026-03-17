@@ -38,16 +38,23 @@ class AdminInstallCommand extends Command
         }
 
         $this->task('Installing Admin module files', function () use ($stubPath, $destinationPath) {
-            // Copy everything except Migrations folder (since we handle those separately)
+            // Copy everything except Migrations and Models folders (since we handle those separately)
             $success = Filesystem::copyDirectory($stubPath, $destinationPath);
             if (Filesystem::isDirectory($destinationPath . '/Migrations')) {
                 Filesystem::deleteDirectory($destinationPath . '/Migrations');
+            }
+            if (Filesystem::isDirectory($destinationPath . '/Models')) {
+                Filesystem::deleteDirectory($destinationPath . '/Models');
             }
             return $success;
         });
 
         $this->task('Publishing database migrations', function () {
             return $this->publishMigrations();
+        });
+
+        $this->task('Publishing models', function () {
+            return $this->publishModels();
         });
 
         if (!$this->hasOption('no-migrate')) {
@@ -67,6 +74,38 @@ class AdminInstallCommand extends Command
         );
 
         return 0;
+    }
+
+    private function publishModels(): bool
+    {
+        $stubsDir = __DIR__ . '/../Stubs/Admin/Models';
+        $targetDir = getcwd() . '/app/Models';
+
+        Filesystem::ensureDir($targetDir);
+
+        $models = [
+            'User.stub' => 'User.php',
+            'Setting.stub' => 'Setting.php',
+            'Article.stub' => 'Article.php',
+        ];
+
+        foreach ($models as $stubName => $fileName) {
+            $stubFile = $stubsDir . '/' . $stubName;
+            $destination = $targetDir . '/' . $fileName;
+            
+            if (Filesystem::exists($destination) && !$this->hasOption('force')) {
+                $this->info("  - Model already exists: {$fileName}");
+                continue;
+            }
+
+            if (Filesystem::exists($stubFile)) {
+                $content = Filesystem::get($stubFile);
+                Filesystem::put($destination, $content);
+                $this->info("  - Published: {$fileName}");
+            }
+        }
+
+        return true;
     }
 
     private function publishMigrations(): bool
