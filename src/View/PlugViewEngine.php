@@ -566,9 +566,16 @@ class PlugViewEngine implements ViewEngineInterface
         }
         $data = $this->applyComposers($view, $data);
 
-        $viewFile = $isComponent
-            ? $this->getComponentPath($view)
-            : $this->getViewPath($view);
+        try {
+            $viewFile = $isComponent
+                ? $this->getComponentPath($view)
+                : $this->getViewPath($view);
+        } catch (ViewException $e) {
+            if ($e->getFrameworkCode() === ViewException::VIEW_NOT_FOUND && !$isComponent) {
+                return $this->renderThemeNotFoundPage($view, $e->getMessage());
+            }
+            throw $e;
+        }
 
         if (!$this->fileExistsCached($viewFile)) {
             throw new ViewException(
@@ -1127,17 +1134,137 @@ class PlugViewEngine implements ViewEngineInterface
             }
         }
 
+        // Check which themes have this view — helps developers find theme-only views
+        $availableInThemes = $this->findViewInThemes($view, $paths);
+        $themeHint = '';
+        if (!empty($availableInThemes)) {
+            $themeHint = sprintf(
+                ' However, this view exists in theme(s): [%s]. Activate one of those themes to use it.',
+                implode(', ', $availableInThemes)
+            );
+        }
+
         throw new ViewException(
             sprintf(
-                'View [%s] not found. Looked in: %s',
+                'View [%s] not found in the current theme [%s]. Looked in: %s.%s',
                 ($namespace ? "$namespace::" : '') . $view,
-                implode(', ', $paths)
+                $this->theme ?? 'default',
+                implode(', ', $paths),
+                $themeHint
             ),
             0,
             null,
             $view,
             ViewException::VIEW_NOT_FOUND
         );
+    }
+
+    /**
+     * Scan all theme directories to find which themes contain the given view.
+     *
+     * @param string $view  View path (with DIRECTORY_SEPARATOR)
+     * @param array  $paths Base paths to check
+     * @return string[] List of theme slugs that contain the view
+     */
+    private function findViewInThemes(string $view, array $paths): array
+    {
+        $found = [];
+
+        foreach ($paths as $path) {
+            $themesDir = $path . DIRECTORY_SEPARATOR . 'themes';
+            if (!is_dir($themesDir)) {
+                continue;
+            }
+
+            $entries = @scandir($themesDir);
+            if ($entries === false) {
+                continue;
+            }
+
+            foreach ($entries as $entry) {
+                if ($entry === '.' || $entry === '..') {
+                    continue;
+                }
+
+                $themeDir = $themesDir . DIRECTORY_SEPARATOR . $entry;
+                if (!is_dir($themeDir)) {
+                    continue;
+                }
+
+                foreach (self::VIEW_EXTENSIONS as $extension) {
+                    if (is_file($themeDir . DIRECTORY_SEPARATOR . $view . $extension)) {
+                        $found[] = $entry;
+                        break;
+                    }
+                }
+            }
+        }
+
+        return array_unique($found);
+    }
+
+    /**
+     * Render a graceful "view not available" page when a theme-only view
+     * cannot be found in the current theme.
+     */
+    private function renderThemeNotFoundPage(string $view, string $errorMessage): string
+    {
+        $currentTheme = htmlspecialchars($this->theme ?? 'default', ENT_QUOTES, 'UTF-8');
+        $viewName     = htmlspecialchars($view, ENT_QUOTES, 'UTF-8');
+        $isDebug      = self::isDebugMode();
+        $detailBlock  = '';
+
+        if ($isDebug) {
+            $safeMessage = htmlspecialchars($errorMessage, ENT_QUOTES, 'UTF-8');
+            $detailBlock = <<<HTML
+            <details style="margin-top:24px;text-align:left;max-width:600px;width:100%">
+                <summary style="cursor:pointer;font-weight:600;color:#6366f1;font-size:14px">Developer Details</summary>
+                <pre style="margin-top:12px;padding:16px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;font-size:12px;color:#475569;overflow-x:auto;white-space:pre-wrap;word-break:break-word">{$safeMessage}</pre>
+            </details>
+HTML;
+        }
+
+        return <<<HTML
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>View Not Available</title>
+    <style>
+        *{margin:0;padding:0;box-sizing:border-box}
+        body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;min-height:100vh;display:flex;align-items:center;justify-content:center;background:#f8fafc;color:#1e293b}
+        .container{text-align:center;padding:48px 24px;max-width:640px}
+        .icon{width:80px;height:80px;margin:0 auto 24px;background:linear-gradient(135deg,#e0e7ff,#f5f3ff);border-radius:24px;display:flex;align-items:center;justify-content:center}
+        .icon svg{width:40px;height:40px;color:#6366f1}
+        h1{font-size:28px;font-weight:800;color:#1e293b;margin-bottom:8px}
+        .subtitle{font-size:16px;color:#64748b;line-height:1.6;margin-bottom:24px}
+        .badge{display:inline-block;padding:6px 16px;border-radius:999px;background:#f1f5f9;border:1px solid #e2e8f0;font-size:13px;font-weight:600;color:#475569;margin-bottom:24px}
+        .btn{display:inline-block;padding:12px 32px;background:#1e293b;color:#fff;border-radius:12px;text-decoration:none;font-weight:600;font-size:14px;transition:all .2s}
+        .btn:hover{background:#334155;transform:translateY(-1px)}
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="icon">
+            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01"/>
+            </svg>
+        </div>
+        <h1>View Not Available</h1>
+        <p class="subtitle">
+            The page <strong>{$viewName}</strong> is not available in the current theme.
+        </p>
+        <div class="badge">Active Theme: {$currentTheme}</div>
+        <p class="subtitle" style="font-size:14px">
+            This view may only exist in a different theme. Switch themes from the admin panel or add this view to the current theme.
+        </p>
+        <a href="javascript:history.back()" class="btn">← Go Back</a>
+        {$detailBlock}
+    </div>
+</body>
+</html>
+HTML;
     }
 
     private function getComponentPath(string $componentName): string

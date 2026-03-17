@@ -39,5 +39,25 @@ class ViewModule implements ModuleInterface
 
     public function boot(Plugs $app): void
     {
+        $container = Container::getInstance();
+
+        // Register ThemeManager singleton
+        $container->singleton(\Plugs\View\ThemeManager::class, function () {
+            return new \Plugs\View\ThemeManager(config('app.paths.views'));
+        });
+
+        // Override config theme with DB-stored active theme
+        try {
+            $themeManager = $container->make(\Plugs\View\ThemeManager::class);
+            $activeTheme = $themeManager->getActiveTheme();
+
+            /** @var \Plugs\View\ViewEngineInterface $engine */
+            $engine = $container->make('view');
+            if ($engine instanceof \Plugs\View\PlugViewEngine) {
+                $engine->setTheme($activeTheme);
+            }
+        } catch (\Throwable) {
+            // Silently ignore — DB may not be ready during migrations
+        }
     }
 }
