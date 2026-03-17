@@ -8,6 +8,7 @@ use Modules\Admin\Controllers\AdminUserController;
 use Modules\Admin\Controllers\AdminSettingsController;
 use Modules\Admin\Controllers\AdminProfileController;
 use Modules\Admin\Controllers\AdminModuleController;
+use Modules\Admin\Controllers\AdminThemeController;
 use Modules\Admin\Controllers\AdminArticleController;
 use Modules\Admin\Controllers\LogController;
 use Modules\Admin\Controllers\MigrationController;
@@ -49,6 +50,11 @@ Route::post('/settings', [AdminSettingsController::class, 'store'])->name('setti
 Route::get('/profile', [AdminProfileController::class, 'index'])->name('profile.index');
 Route::post('/profile', [AdminProfileController::class, 'update'])->name('profile.update');
 Route::post('/profile/update', [AdminProfileController::class, 'update']);
+
+// Themes
+Route::get('/themes', [AdminThemeController::class, 'index'])->name('themes.index');
+Route::get('/themes/{name}/screenshot', [AdminThemeController::class, 'screenshot'])->name('themes.screenshot');
+Route::post('/themes/{name}/activate', [AdminThemeController::class, 'activate'])->name('themes.activate');
 
 // Modules
 Route::get('/modules', [AdminModuleController::class, 'index'])->name('modules.index');
