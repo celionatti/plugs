@@ -24,6 +24,8 @@ class AdminSettingsController
             
             // Appearance
             'primary_color' => Setting::getValue('primary_color', '#6366f1'),
+            'secondary_color' => Setting::getValue('secondary_color', '#4f46e5'),
+            'border_radius' => Setting::getValue('border_radius', '1.5rem'),
             'dark_mode' => Setting::getValue('dark_mode', 'false'),
             
             // Security

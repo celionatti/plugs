@@ -29,7 +29,7 @@
             <span class="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">Articles</span>
             <div class="text-3xl font-extrabold text-slate-800 dark:text-white mt-1">{{ $stats['articles_count'] }}</div>
         </div>
-        <div class="w-12 h-12 rounded-2xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 flex items-center justify-center transition-transform group-hover:scale-110">
+        <div class="w-12 h-12 rounded-2xl bg-secondary/10 dark:bg-secondary/20 text-secondary flex items-center justify-center transition-transform group-hover:scale-110">
             <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10l4 4v10a2 2 0 01-2 2zM14 4v4h4" />
             </svg>
@@ -119,8 +119,8 @@
                 <span class="block text-sm font-bold text-slate-700 dark:text-slate-300">Add User</span>
                 <span class="text-[10px] text-slate-400 dark:text-slate-500">Invite new team member</span>
             </a>
-            <a href="/admin/articles/create" class="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800 text-left hover:border-black/20 dark:hover:border-white/20 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all group">
-                <div class="w-10 h-10 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 flex items-center justify-center mb-3 transition-all">
+            <a href="/admin/articles/create" class="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800 text-left hover:border-secondary/20 dark:hover:border-secondary/20 hover:bg-secondary/5 dark:hover:bg-secondary/10 transition-all group">
+                <div class="w-10 h-10 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-secondary flex items-center justify-center mb-3 transition-all group-hover:bg-secondary group-hover:text-white shadow-sm group-hover:shadow-secondary/20">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                     </svg>

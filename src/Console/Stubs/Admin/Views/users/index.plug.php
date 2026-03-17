@@ -51,7 +51,7 @@
                             </div>
                         </td>
                         <td class="px-8 py-5">
-                            <span class="px-3 py-1 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-400 text-xs font-bold">{{ $user->role ?? 'Member' }}</span>
+                            <span class="px-3 py-1 rounded-full bg-secondary/10 dark:bg-secondary/20 text-secondary text-xs font-bold">{{ $user->role ?? 'Member' }}</span>
                         </td>
                         <td class="px-8 py-5 text-sm text-slate-500 dark:text-slate-400 font-medium">
                             {{ date('M d, Y', strtotime($user->created_at)) }}

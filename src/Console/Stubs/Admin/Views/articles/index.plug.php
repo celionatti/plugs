@@ -47,7 +47,7 @@
                             @if($article->status === 'published')
                                 <span class="px-3 py-1 rounded-full bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 text-xs font-bold">Published</span>
                             @elseif($article->status === 'archived')
-                                <span class="px-3 py-1 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-400 text-xs font-bold">Archived</span>
+                                <span class="px-3 py-1 rounded-full bg-secondary/10 dark:bg-secondary/20 text-secondary text-xs font-bold">Archived</span>
                             @else
                                 <span class="px-3 py-1 rounded-full bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 text-xs font-bold">Draft</span>
                             @endif
