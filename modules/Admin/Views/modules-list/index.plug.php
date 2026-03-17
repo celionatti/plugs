@@ -48,7 +48,7 @@
                 </form>
                 
                 <div class="flex items-center gap-4">
-                    <button class="text-xs font-bold text-black hover:text-slate-600 transition-colors uppercase tracking-widest border-b border-black/20 hover:border-black transition-all pb-0.5" onclick="alert('Configuration options for {{ $module['name'] }} coming soon!')">Configure</button>
+                    <a href="/admin/modules/{{ $module['name'] }}/configure" class="text-xs font-bold text-black hover:text-slate-600 transition-colors uppercase tracking-widest border-b border-black/20 hover:border-black transition-all pb-0.5">Configure</a>
                     
                     @if($module['name'] !== 'Admin')
                     <form action="/admin/modules/{{ $module['name'] }}/delete" method="POST" onsubmit="return confirm('Are you sure you want to delete this module? This action cannot be undone.')">

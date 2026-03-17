@@ -74,6 +74,49 @@ class AdminModuleController
     }
 
     /**
+     * Show module configuration page.
+     */
+    public function show(ServerRequestInterface $request, string $name): ResponseInterface
+    {
+        $modules = $this->moduleService->getModules();
+        $module = null;
+        
+        foreach ($modules as $m) {
+            if ($m['name'] === $name) {
+                $module = $m;
+                break;
+            }
+        }
+
+        if (!$module) {
+            return redirect('/admin/modules?error=Module not found');
+        }
+
+        $settings = $this->moduleService->getModuleSettings($name);
+
+        return response(view('admin::modules-list.configure', [
+            'title' => 'Configure Module: ' . $name,
+            'module' => $module,
+            'settings' => $settings
+        ]));
+    }
+
+    /**
+     * Update module settings.
+     */
+    public function updateSettings(ServerRequestInterface $request, string $name): ResponseInterface
+    {
+        $data = $request->getParsedBody();
+        unset($data['_token']); // Remove CSRF token from settings
+
+        if ($this->moduleService->updateModuleSettings($name, $data)) {
+            return redirect("/admin/modules/{$name}/configure?success=Settings updated successfully");
+        }
+
+        return redirect("/admin/modules/{$name}/configure?error=Failed to update settings");
+    }
+
+    /**
      * Delete a module.
      */
     public function destroy(ServerRequestInterface $request, string $name): ResponseInterface
