@@ -59,7 +59,8 @@ class Setting extends PlugModel
         $setting = static::where('key', $key)->first();
         
         if ($setting) {
-            $setting->update(['value' => $value]);
+            $setting->value = $value;
+            $setting->save();
         } else {
             $setting = static::create([
                 'key' => $key,
