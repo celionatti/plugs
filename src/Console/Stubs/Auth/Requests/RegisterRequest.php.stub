@@ -4,48 +4,51 @@ declare(strict_types=1);
 
 namespace Modules\{{name}}\Requests;
 
-use Psr\Http\Message\ServerRequestInterface;
+use Plugs\Http\Requests\FormRequest;
 
-class RegisterRequest
+class RegisterRequest extends FormRequest
 {
-    public readonly string $name;
-    public readonly string $email;
-    public readonly string $password;
-    
-    public array $errors = [];
-
-    public function __construct(ServerRequestInterface $request)
+    /**
+     * Get validation rules.
+     */
+    public function rules(): array
     {
-        $data = $request->getParsedBody() ?? [];
-        
-        $this->name = trim($data['name'] ?? '');
-        $this->email = trim($data['email'] ?? '');
-        $this->password = $data['password'] ?? '';
-
-        $this->validate();
+        return [
+            'name'     => 'required|min:2',
+            'email'    => 'required|email',
+            'password' => 'required|min:8|confirmed',
+        ];
     }
 
-    protected function validate(): void
+    /**
+     * Get custom error messages.
+     */
+    public function messages(): array
     {
-        if (empty($this->name)) {
-            $this->errors['name'] = 'Name is required.';
-        }
-
-        if (empty($this->email)) {
-            $this->errors['email'] = 'Email is required.';
-        } elseif (!filter_var($this->email, FILTER_VALIDATE_EMAIL)) {
-            $this->errors['email'] = 'Please enter a valid email address.';
-        }
-
-        if (empty($this->password)) {
-            $this->errors['password'] = 'Password is required.';
-        } elseif (strlen($this->password) < 8) {
-            $this->errors['password'] = 'Password must be at least 8 characters.';
-        }
+        return [
+            'name.required' => 'Please enter your full name.',
+            'email.required' => 'Please enter your email address.',
+            'password.required' => 'Please enter a password.',
+            'password.min' => 'Password must be at least 8 characters.',
+            'password.confirmed' => 'Passwords do not match.',
+        ];
     }
 
-    public function isValid(): bool
+    /**
+     * Get data helpers.
+     */
+    public function name(): string
     {
-        return empty($this->errors);
+        return trim($this->input('name', ''));
+    }
+
+    public function email(): string
+    {
+        return trim($this->input('email', ''));
+    }
+
+    public function password(): string
+    {
+        return $this->input('password', '');
     }
 }

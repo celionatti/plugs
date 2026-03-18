@@ -22,8 +22,8 @@ class AuthService
     public function attemptLogin(LoginRequest $request): bool
     {
         return Auth::attempt(
-            ['email' => $request->email, 'password' => $request->password],
-            $request->remember
+            ['email' => $request->email(), 'password' => $request->password()],
+            $request->remember()
         );
     }
 
@@ -32,18 +32,21 @@ class AuthService
      */
     public function registerUser(RegisterRequest $request): void
     {
-        if ($this->userRepository->emailExists($request->email)) {
+        // Double check uniqueness
+        if ($this->userRepository->emailExists($request->email())) {
             throw new \InvalidArgumentException('Email is already registered.');
         }
 
-        $hashedPassword = Hash::make($request->password);
+        // Hash the password manually since User model might not have auto-hash mutator
+        $hashedPassword = Hash::make($request->password());
 
         $user = $this->userRepository->create([
-            'name'     => $request->name,
-            'email'    => $request->email,
+            'name'     => $request->name(),
+            'email'    => $request->email(),
             'password' => $hashedPassword,
         ]);
 
+        // Login the user after registration
         Auth::login($user);
     }
 

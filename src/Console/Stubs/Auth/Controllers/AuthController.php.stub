@@ -7,21 +7,25 @@ namespace Modules\{{name}}\Controllers;
 use Modules\{{name}}\Requests\LoginRequest;
 use Modules\{{name}}\Requests\RegisterRequest;
 use Modules\{{name}}\Services\AuthService;
+use Plugs\Base\Controller\Controller;
+use Plugs\Facades\Auth;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 
-class AuthController
+class AuthController extends Controller
 {
     public function __construct(
         protected AuthService $authService = new AuthService()
-    ) {}
+    ) {
+        parent::__construct();
+    }
 
     /**
      * Show the login form.
      */
     public function showLogin(ServerRequestInterface $request): ResponseInterface
     {
-        return response(view('{{lowerName}}::login', ['title' => 'Sign In']));
+        return $this->view('{{lowerName}}::login', ['title' => 'Sign In']);
     }
 
     /**
@@ -29,20 +33,18 @@ class AuthController
      */
     public function login(ServerRequestInterface $request): ResponseInterface
     {
-        $loginRequest = new LoginRequest($request);
-
-        if (!$loginRequest->isValid()) {
-            return redirectBack()
-                ->withErrors($loginRequest->errors)
-                ->withInput();
-        }
+        $this->validate(LoginRequest::class);
+        
+        $loginRequest = new LoginRequest($request->getParsedBody());
 
         if ($this->authService->attemptLogin($loginRequest)) {
-            $request->getSession()->regenerate();
-            return redirect('/dashboard')->with('success', 'Welcome back!');
+            $user = Auth::user();
+            $redirectPath = ($user && method_exists($user, 'isAdmin') && $user->isAdmin()) ? '/admin' : '/dashboard';
+            
+            return $this->redirect($redirectPath)->withSuccess('Welcome back!');
         }
 
-        return redirectBack()
+        return $this->back()
             ->withErrors(['email' => 'The provided credentials do not match our records.'])
             ->withInput();
     }
@@ -52,7 +54,7 @@ class AuthController
      */
     public function showRegister(ServerRequestInterface $request): ResponseInterface
     {
-        return response(view('{{lowerName}}::register', ['title' => 'Create Account']));
+        return $this->view('{{lowerName}}::register', ['title' => 'Create Account']);
     }
 
     /**
@@ -60,24 +62,23 @@ class AuthController
      */
     public function register(ServerRequestInterface $request): ResponseInterface
     {
-        $registerRequest = new RegisterRequest($request);
+        $this->validate(RegisterRequest::class);
 
-        if (!$registerRequest->isValid()) {
-            return redirectBack()
-                ->withErrors($registerRequest->errors)
-                ->withInput();
-        }
+        $registerRequest = new RegisterRequest($request->getParsedBody());
 
         try {
             $this->authService->registerUser($registerRequest);
-            $request->getSession()->regenerate();
-            return redirect('/dashboard')->with('success', 'Account created successfully!');
+            
+            $user = Auth::user();
+            $redirectPath = ($user && method_exists($user, 'isAdmin') && $user->isAdmin()) ? '/admin' : '/dashboard';
+
+            return $this->redirect($redirectPath)->withSuccess('Account created successfully!');
         } catch (\InvalidArgumentException $e) {
-            return redirectBack()
+            return $this->back()
                 ->withErrors(['email' => $e->getMessage()])
                 ->withInput();
         } catch (\Exception $e) {
-            return redirectBack()
+            return $this->back()
                 ->withErrors(['general' => 'An error occurred during registration. Please try again.'])
                 ->withInput();
         }
@@ -90,9 +91,6 @@ class AuthController
     {
         $this->authService->logout();
         
-        $request->getSession()->invalidate();
-        $request->getSession()->regenerateToken();
-
-        return redirect('/login')->with('success', 'You have been logged out.');
+        return $this->redirect('/login')->withSuccess('You have been logged out.');
     }
 }

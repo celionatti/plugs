@@ -4,42 +4,48 @@ declare(strict_types=1);
 
 namespace Modules\{{name}}\Requests;
 
-use Psr\Http\Message\ServerRequestInterface;
+use Plugs\Http\Requests\FormRequest;
 
-class LoginRequest
+class LoginRequest extends FormRequest
 {
-    public readonly string $email;
-    public readonly string $password;
-    public readonly bool $remember;
-    
-    public array $errors = [];
-
-    public function __construct(ServerRequestInterface $request)
+    /**
+     * Get validation rules.
+     */
+    public function rules(): array
     {
-        $data = $request->getParsedBody() ?? [];
-        
-        $this->email = trim($data['email'] ?? '');
-        $this->password = $data['password'] ?? '';
-        $this->remember = isset($data['remember']) && $data['remember'] === 'on';
-
-        $this->validate();
+        return [
+            'email'    => 'required|email',
+            'password' => 'required'
+        ];
     }
 
-    protected function validate(): void
+    /**
+     * Get custom error messages.
+     */
+    public function messages(): array
     {
-        if (empty($this->email)) {
-            $this->errors['email'] = 'Email is required.';
-        } elseif (!filter_var($this->email, FILTER_VALIDATE_EMAIL)) {
-            $this->errors['email'] = 'Please enter a valid email address.';
-        }
-
-        if (empty($this->password)) {
-            $this->errors['password'] = 'Password is required.';
-        }
+        return [
+            'email.required' => 'Please enter your email address.',
+            'email.email'    => 'Please enter a valid email address.',
+            'password.required' => 'Please enter your password.',
+        ];
     }
 
-    public function isValid(): bool
+    /**
+     * Get data helpers.
+     */
+    public function email(): string
     {
-        return empty($this->errors);
+        return trim($this->input('email', ''));
+    }
+
+    public function password(): string
+    {
+        return $this->input('password', '');
+    }
+
+    public function remember(): bool
+    {
+        return $this->input('remember') === 'on' || $this->input('remember') === true;
     }
 }

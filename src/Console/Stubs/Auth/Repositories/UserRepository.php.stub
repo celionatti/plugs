@@ -9,7 +9,7 @@ use App\Models\User;
 class UserRepository
 {
     /**
-     * Find a user by email.
+     * Find a user by email address.
      */
     public function findByEmail(string $email): ?User
     {
@@ -17,18 +17,23 @@ class UserRepository
     }
 
     /**
-     * Check if an email already exists.
+     * Determine if an email is already taken.
      */
     public function emailExists(string $email): bool
     {
-        return User::where('email', $email)->exists();
+        return $this->findByEmail($email) !== null;
     }
 
     /**
-     * Create a new user.
+     * Create a new user record.
      */
     public function create(array $data): User
     {
-        return User::create($data);
+        return User::create([
+            'name'     => $data['name'],
+            'email'    => $data['email'],
+            'password' => $data['password'], // should be pre-hashed by the service
+            'role'     => $data['role'] ?? 'user',
+        ]);
     }
 }
