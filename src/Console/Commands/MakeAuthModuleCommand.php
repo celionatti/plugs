@@ -104,9 +104,7 @@ class MakeAuthModuleCommand extends Command
 
         $this->section('Next Steps');
         $this->numberedList([
-            "Ensure you have a `User` model at `App\Models\User`.",
-            "Run `php plugs auth:install` to publish the required migrations if you haven't already.",
-            "Run `php plugs migrate` to create the users table.",
+            "Run `php plugs auth:install` to scaffold the authenticatable User model and database tables.",
             "Visit `/login` to see your new auth system in action."
         ]);
 

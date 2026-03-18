@@ -9,7 +9,15 @@ use Plugs\Console\Support\Filesystem;
 
 class AuthInstallCommand extends Command
 {
-    protected string $description = 'Publish the authentication database migrations';
+    protected string $description = 'Publish the authentication scaffolding and migrations';
+
+    protected function defineOptions(): array
+    {
+        return [
+            '--force' => 'Overwrite existing User model if it exists',
+            '--no-migrate' => 'Skip running migrations',
+        ];
+    }
 
     public function handle(): int
     {
@@ -31,15 +39,46 @@ class AuthInstallCommand extends Command
             $this->publishSessionsMigration();
         });
 
+        $this->task('Publishing User model', function () {
+            $this->publishUserModel();
+        });
+
+        if (!$this->hasOption('no-migrate')) {
+            $this->task('Running database migrations', function () {
+                $this->call('migrate');
+                return true;
+            });
+        }
+
         $this->newLine();
         $this->box(
             "Auth scaffolding installed successfully!\n\n" .
-            "Run 'php plugs migrate' to create the tables.",
+            "Your database and models are fully configured.",
             "✅ Success",
             "success"
         );
 
         return 0;
+    }
+
+    private function publishUserModel(): void
+    {
+        $stubFile = __DIR__ . '/../Stubs/Auth/Models/User.stub';
+        $targetDir = getcwd() . '/app/Models';
+        $destination = $targetDir . '/User.php';
+
+        Filesystem::ensureDir($targetDir);
+
+        if (Filesystem::exists($destination) && !$this->hasOption('force')) {
+            $this->warning(" Model [User.php] already exists.");
+            return;
+        }
+
+        if (Filesystem::exists($stubFile)) {
+            $content = Filesystem::get($stubFile);
+            Filesystem::put($destination, $content);
+            $this->info(" Created model: User.php");
+        }
     }
 
     private function publishUsersMigration(): void
