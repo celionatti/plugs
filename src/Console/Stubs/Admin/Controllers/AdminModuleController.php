@@ -4,16 +4,15 @@ declare(strict_types=1);
 
 namespace Modules\Admin\Controllers;
 
-use Plugs\Http\ResponseFactory;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
-use App\Services\ModuleService;
+use Modules\Admin\Services\AdminModuleService;
 
 class AdminModuleController
 {
-    protected ModuleService $moduleService;
+    protected AdminModuleService $moduleService;
 
-    public function __construct(ModuleService $moduleService)
+    public function __construct(AdminModuleService $moduleService)
     {
         $this->moduleService = $moduleService;
     }
@@ -56,7 +55,8 @@ class AdminModuleController
         try {
             $this->moduleService->createModule($name);
             return redirect('/admin/modules?success=Module created successfully');
-        } catch (\Exception $e) {
+        }
+        catch (\Exception $e) {
             return redirect('/admin/modules?error=' . urlencode($e->getMessage()));
         }
     }
@@ -80,7 +80,7 @@ class AdminModuleController
     {
         $modules = $this->moduleService->getModules();
         $module = null;
-        
+
         foreach ($modules as $m) {
             if ($m['name'] === $name) {
                 $module = $m;

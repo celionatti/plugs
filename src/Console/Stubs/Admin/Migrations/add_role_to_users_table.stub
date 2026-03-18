@@ -1,0 +1,32 @@
+<?php
+
+declare(strict_types=1);
+
+use Plugs\Database\Migration;
+use Plugs\Database\Blueprint;
+use Plugs\Database\Schema;
+
+return new class extends Migration
+{
+    /**
+     * Run the migrations.
+     */
+    public function up(): void
+    {
+        Schema::table('users', function (Blueprint $table) {
+            if (!Schema::hasColumn('users', 'role')) {
+                $table->enum('role', ['user', 'admin', 'editor'])->default('user')->after('password');
+            }
+        });
+    }
+
+    /**
+     * Reverse the migrations.
+     */
+    public function down(): void
+    {
+        Schema::table('users', function (Blueprint $table) {
+            $table->dropColumn('role');
+        });
+    }
+};

@@ -31,7 +31,7 @@
     <div class="group relative bg-white dark:bg-slate-900 rounded-3xl shadow-sm border {{ $theme['active'] ? 'border-indigo-300 dark:border-indigo-600 ring-2 ring-indigo-500/20' : 'border-slate-100 dark:border-slate-800' }} overflow-hidden transition-all duration-300 hover:shadow-lg hover:-translate-y-1">
         <!-- Theme Preview Area -->
         <div class="relative h-44 bg-gradient-to-br {{ $theme['active'] ? 'from-indigo-100 via-purple-50 to-violet-100 dark:from-indigo-900/40 dark:via-purple-900/30 dark:to-violet-900/40' : 'from-slate-100 via-slate-50 to-slate-100 dark:from-slate-800 dark:via-slate-800/50 dark:to-slate-800' }} flex items-center justify-center overflow-hidden">
-            @if(!empty($theme['screenshot']))
+            @if(!empty($theme['screenshot']) && file_exists($theme['screenshot']))
             <!-- Actual Screenshot -->
             <img src="/admin/themes/{{ $slug }}/screenshot" alt="{{ $theme['name'] }}" class="w-full h-full object-cover">
             @elseif($slug === 'default')

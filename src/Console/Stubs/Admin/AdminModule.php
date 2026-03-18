@@ -39,7 +39,12 @@ class AdminModule extends AbstractFeatureModule
      */
     public function register(Container $container): void
     {
-        // Add any admin-specific service registrations here
+        $container->singleton(Services\AdminArticleService::class, fn() => new Services\AdminArticleService());
+        $container->singleton(Services\AdminUserService::class, fn() => new Services\AdminUserService());
+        $container->singleton(Services\AdminModuleService::class, fn() => new Services\AdminModuleService($container->make(\App\Services\ModuleService::class)));
+        $container->singleton(Services\AdminSettingsService::class, fn() => new Services\AdminSettingsService());
+        $container->singleton(Services\AdminLogService::class, fn() => new Services\AdminLogService($container->make('log')));
+        $container->singleton(Services\AdminMigrationService::class, fn() => new Services\AdminMigrationService());
     }
 
     /**

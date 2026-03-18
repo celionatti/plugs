@@ -104,4 +104,14 @@ class User extends PlugModel implements Authenticatable
     {
         return 'remember_token';
     }
+
+    /**
+     * Determine if the user has an admin role.
+     *
+     * @return bool
+     */
+    public function isAdmin(): bool
+    {
+        return ($this->getAttribute('role') ?? '') === 'admin';
+    }
 }

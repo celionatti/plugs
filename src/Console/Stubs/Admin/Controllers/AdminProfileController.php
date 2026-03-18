@@ -7,10 +7,18 @@ namespace Modules\Admin\Controllers;
 use Plugs\Http\ResponseFactory;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
+use Modules\Admin\Services\AdminUserService;
 use App\Models\User;
 
 class AdminProfileController
 {
+    protected AdminUserService $userService;
+
+    public function __construct(AdminUserService $userService)
+    {
+        $this->userService = $userService;
+    }
+
     /**
      * Display personal profile.
      */
@@ -30,17 +38,7 @@ class AdminProfileController
     public function update(ServerRequestInterface $request): ResponseInterface
     {
         $user = auth()->user();
-        $input = $request->getParsedBody();
-        $data = array_intersect_key($input, array_flip(['name', 'email', 'password']));
-
-        if (isset($data['password']) && !empty($data['password'])) {
-            $data['password'] = password_hash($data['password'], PASSWORD_DEFAULT);
-        } else {
-            unset($data['password']);
-        }
-
-        $user->fill($data);
-        $user->save();
+        $this->userService->updateUser($user, $request->getParsedBody());
 
         return ResponseFactory::redirect('/admin/profile')
             ->with('success', 'Profile updated successfully.');

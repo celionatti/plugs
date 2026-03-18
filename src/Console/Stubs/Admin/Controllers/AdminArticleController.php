@@ -4,17 +4,16 @@ declare(strict_types=1);
 
 namespace Modules\Admin\Controllers;
 
-use App\Services\ArticleService;
-use App\Models\Article;
+use Modules\Admin\Services\AdminArticleService;
 use Plugs\Http\ResponseFactory;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 
 class AdminArticleController
 {
-    protected ArticleService $articleService;
+    protected AdminArticleService $articleService;
 
-    public function __construct(ArticleService $articleService)
+    public function __construct(AdminArticleService $articleService)
     {
         $this->articleService = $articleService;
     }
@@ -26,7 +25,8 @@ class AdminArticleController
     {
         try {
             $articles = $this->articleService->getAllArticles();
-        } catch (\Throwable $e) {
+        }
+        catch (\Throwable $e) {
             $articles = [];
         }
 
@@ -52,7 +52,7 @@ class AdminArticleController
     public function store(ServerRequestInterface $request): ResponseInterface
     {
         $data = $request->getParsedBody();
-        
+
         $this->articleService->createArticle($data);
 
         return ResponseFactory::redirect('/admin/articles')
@@ -64,7 +64,7 @@ class AdminArticleController
      */
     public function edit(ServerRequestInterface $request, $id): ResponseInterface
     {
-        $article = $this->articleService->findArticle((int) $id);
+        $article = $this->articleService->findArticle((int)$id);
 
         if (!$article) {
             return ResponseFactory::redirect('/admin/articles')
@@ -82,7 +82,7 @@ class AdminArticleController
      */
     public function update(ServerRequestInterface $request, $id): ResponseInterface
     {
-        $article = $this->articleService->findArticle((int) $id);
+        $article = $this->articleService->findArticle((int)$id);
 
         if (!$article) {
             return ResponseFactory::redirect('/admin/articles')
@@ -101,7 +101,7 @@ class AdminArticleController
      */
     public function destroy(ServerRequestInterface $request, $id): ResponseInterface
     {
-        $article = $this->articleService->findArticle((int) $id);
+        $article = $this->articleService->findArticle((int)$id);
 
         if ($article) {
             $this->articleService->deleteArticle($article);

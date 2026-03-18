@@ -1,8 +1,8 @@
 <?php
 
-use Plugs\Database\Schema\Blueprint;
-use Plugs\Database\Schema\Schema;
-use Plugs\Database\Migrations\Migration;
+use Plugs\Database\Blueprint;
+use Plugs\Database\Schema;
+use Plugs\Database\Migration;
 
 return new class extends Migration
 {
@@ -12,10 +12,12 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('articles', function (Blueprint $table) {
-            $table->unsignedBigInteger('author_id')->nullable()->after('status');
-            
-            // If users table existe
-            $table->foreign('author_id')->references('id')->on('users')->onDelete('cascade');
+            if (!Schema::hasColumn('articles', 'author_id')) {
+                $table->unsignedBigInteger('author_id')->nullable()->after('status');
+                
+                // If users table existe
+                $table->foreign('author_id')->references('id')->on('users')->onDelete('cascade');
+            }
         });
     }
 

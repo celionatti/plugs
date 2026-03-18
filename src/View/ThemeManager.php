@@ -169,7 +169,7 @@ class ThemeManager
         // Bust the in-memory cache
         $this->cachedThemes = null;
 
-        return $result;
+        return (bool) $result;
     }
 
     // ------------------------------------------------------------------

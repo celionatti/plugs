@@ -1,11 +1,10 @@
 <?php
 
-declare(strict_types = 1)
-;
+declare(strict_types=1);
 
 namespace Modules\Admin\Controllers;
 
-use App\Services\LogService;
+use Modules\Admin\Services\AdminLogService;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 
@@ -16,9 +15,9 @@ use Psr\Http\Message\ServerRequestInterface;
  */
 class LogController
 {
-    protected LogService $logService;
+    protected AdminLogService $logService;
 
-    public function __construct(LogService $logService)
+    public function __construct(AdminLogService $logService)
     {
         $this->logService = $logService;
     }

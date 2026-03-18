@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Modules\Admin\Controllers;
 
-use App\Services\UserService;
+use Modules\Admin\Services\AdminUserService;
 use App\Models\User;
 use Plugs\Http\ResponseFactory;
 use Psr\Http\Message\ResponseInterface;
@@ -12,9 +12,9 @@ use Psr\Http\Message\ServerRequestInterface;
 
 class AdminUserController
 {
-    protected UserService $userService;
+    protected AdminUserService $userService;
 
-    public function __construct(UserService $userService)
+    public function __construct(AdminUserService $userService)
     {
         $this->userService = $userService;
     }
@@ -51,15 +51,7 @@ class AdminUserController
      */
     public function store(ServerRequestInterface $request): ResponseInterface
     {
-        $data = $request->getParsedBody();
-
-        if (isset($data['password'])) {
-            $data['password'] = password_hash($data['password'], PASSWORD_DEFAULT);
-        }
-
-        unset($data['password_confirmation'], $data['_token'], $data['_method']);
-
-        User::create($data);
+        $this->userService->createUser($request->getParsedBody());
 
         return ResponseFactory::redirect('/admin/users')
             ->with('success', 'User created successfully.');
@@ -70,7 +62,7 @@ class AdminUserController
      */
     public function show(ServerRequestInterface $request, $id): ResponseInterface
     {
-        $user = User::find($id);
+        $user = $this->userService->findUser((int) $id);
 
         if (!$user) {
             return ResponseFactory::redirect('/admin/users')
@@ -88,7 +80,7 @@ class AdminUserController
      */
     public function edit(ServerRequestInterface $request, $id): ResponseInterface
     {
-        $user = User::find($id);
+        $user = $this->userService->findUser((int) $id);
 
         if (!$user) {
             return ResponseFactory::redirect('/admin/users')
@@ -113,17 +105,7 @@ class AdminUserController
                 ->with('error', 'User not found.');
         }
 
-        $input = $request->getParsedBody();
-        $data = array_intersect_key($input, array_flip(['name', 'email', 'password']));
-
-        if (isset($data['password']) && !empty($data['password'])) {
-            $data['password'] = password_hash($data['password'], PASSWORD_DEFAULT);
-        } else {
-            unset($data['password']);
-        }
-
-        $user->fill($data);
-        $user->save();
+        $this->userService->updateUser($user, $request->getParsedBody());
 
         return ResponseFactory::redirect('/admin/users')
             ->with('success', 'User updated successfully.');
@@ -134,10 +116,10 @@ class AdminUserController
      */
     public function destroy(ServerRequestInterface $request, $id): ResponseInterface
     {
-        $user = User::find($id);
+        $user = $this->userService->findUser((int) $id);
 
         if ($user) {
-            $user->delete();
+            $this->userService->deleteUser($user);
         }
 
         return ResponseFactory::redirect('/admin/users')
