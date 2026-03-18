@@ -295,7 +295,7 @@ trait HasQueryBuilder
     /**
      * Simple paginate (lighter, no total count)
      */
-    public static function simplePaginate(int $perPage = 15, ?int $page = null, array $columns = ['*']): array
+    public static function simplePaginate(int $perPage = 15, ?int $page = null, array $columns = ['*']): \Plugs\Paginator\Pagination
     {
         return static::query()->simplePaginate($perPage, $page, $columns);
     }

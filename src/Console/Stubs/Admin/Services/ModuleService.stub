@@ -1,0 +1,87 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\Services;
+
+use App\Modules\ModuleRepository;
+use App\Modules\ModuleScaffolder;
+
+/**
+ * Orchestrates module management by delegating to focused components.
+ *
+ * This is a thin service layer — business logic lives in
+ * ModuleRepository (reads/writes) and ModuleScaffolder (creation).
+ */
+class ModuleService
+{
+    protected ModuleRepository $repository;
+    protected ModuleScaffolder $scaffolder;
+
+    public function __construct(
+        ?ModuleRepository $repository = null,
+        ?ModuleScaffolder $scaffolder = null,
+    ) {
+        $this->repository = $repository ?? new ModuleRepository();
+        $this->scaffolder = $scaffolder ?? new ModuleScaffolder();
+    }
+
+    /**
+     * Get all discovered modules with their metadata.
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    public function getModules(): array
+    {
+        return array_map(
+            fn($module) => $module->toArray(),
+            $this->repository->getAll()
+        );
+    }
+
+    /**
+     * Create a new feature module.
+     *
+     * @throws \RuntimeException
+     */
+    public function createModule(string $name): void
+    {
+        $this->scaffolder->scaffold($name);
+    }
+
+    /**
+     * Toggle a module's enabled/disabled status.
+     */
+    public function toggleModuleStatus(string $name): bool
+    {
+        return $this->repository->toggleStatus($name);
+    }
+
+    /**
+     * Get a module's settings.
+     *
+     * @return array<string, mixed>
+     */
+    public function getModuleSettings(string $name): array
+    {
+        return $this->repository->getSettings($name);
+    }
+
+    /**
+     * Update a module's settings.
+     *
+     * @param array<string, mixed> $settings
+     */
+    public function updateModuleSettings(string $name, array $settings): bool
+    {
+        return $this->repository->updateSettings($name, $settings);
+    }
+
+    /**
+     * Delete a module.
+     */
+    public function deleteModule(string $name): bool
+    {
+        return $this->repository->delete($name);
+    }
+}

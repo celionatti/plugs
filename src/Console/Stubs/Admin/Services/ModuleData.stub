@@ -1,0 +1,54 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\Modules;
+
+/**
+ * Data Transfer Object representing a feature module's metadata.
+ */
+class ModuleData
+{
+    public function __construct(
+        public readonly string $name,
+        public readonly string $description = '',
+        public readonly string $version = '1.0.0',
+        public readonly string $author = '',
+        public readonly bool $enabled = true,
+        public readonly string $path = '',
+    ) {}
+
+    /**
+     * Create from a module.json array.
+     *
+     * @param array<string, mixed> $data
+     */
+    public static function fromArray(array $data): self
+    {
+        return new self(
+            name: (string) ($data['name'] ?? ''),
+            description: (string) ($data['description'] ?? ''),
+            version: (string) ($data['version'] ?? '1.0.0'),
+            author: (string) ($data['author'] ?? ''),
+            enabled: (bool) ($data['enabled'] ?? true),
+            path: (string) ($data['path'] ?? ''),
+        );
+    }
+
+    /**
+     * Convert to an associative array.
+     *
+     * @return array<string, mixed>
+     */
+    public function toArray(): array
+    {
+        return [
+            'name' => $this->name,
+            'description' => $this->description,
+            'version' => $this->version,
+            'author' => $this->author,
+            'enabled' => $this->enabled,
+            'path' => $this->path,
+        ];
+    }
+}

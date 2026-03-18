@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Plugs\Database;
 
+use Plugs\Console\Support\Str;
+
 /*
 |--------------------------------------------------------------------------
 | Blueprint Class
@@ -695,6 +697,7 @@ class Blueprint
      */
     public function toSql(): array
     {
+        $this->addConstraintsFromColumns();
         $sql = [];
 
         // Build column definitions
@@ -728,6 +731,7 @@ class Blueprint
      */
     public function toAlterSql(): array
     {
+        $this->addConstraintsFromColumns();
         $sql = [];
 
         // Process column additions
@@ -782,6 +786,41 @@ class Blueprint
         }
 
         return $sql;
+    }
+
+    /**
+     * Add foreign key constraints from column definitions
+     */
+    private function addConstraintsFromColumns(): void
+    {
+        foreach ($this->columns as $column) {
+            if ($column->isConstrained()) {
+                $tableName = $column->getConstrainedTable();
+
+                // If table name is not provided, guess it from column name (e.g., user_id -> users)
+                if (empty($tableName)) {
+                    $columnName = $column->getName();
+                    if (str_ends_with($columnName, '_id')) {
+                        $prefix = substr($columnName, 0, -3);
+                        $tableName = Str::pluralize($prefix);
+                    }
+                }
+
+                if ($tableName) {
+                    $foreign = $this->foreign($column->getName())
+                        ->on($tableName)
+                        ->references('id');
+
+                    if ($onDelete = $column->getOnDelete()) {
+                        $foreign->onDelete($onDelete);
+                    }
+
+                    if ($onUpdate = $column->getOnUpdate()) {
+                        $foreign->onUpdate($onUpdate);
+                    }
+                }
+            }
+        }
     }
 
     /**

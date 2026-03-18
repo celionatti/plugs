@@ -1338,7 +1338,7 @@ class QueryBuilder
     /**
      * Paginate the query without a total count (lighter).
      */
-    public function simplePaginate(int $perPage = 15, ?int $page = null, array $columns = ['*']): array
+    public function simplePaginate(int $perPage = 15, ?int $page = null, array $columns = ['*']): Pagination
     {
         $page = $page ?? (int) ($_GET['page'] ?? $_REQUEST['page'] ?? 1);
         $page = max(1, $page);
@@ -1349,21 +1349,20 @@ class QueryBuilder
         $this->limit($perPage + 1)->offset($offset);
 
         $results = $this->get($columns);
-        $collection = $results instanceof Collection ? $results->all() : $results;
+        $collection = $results instanceof Collection ? $results : new Collection($results);
 
-        $hasNextPage = count($collection) > $perPage;
+        $items = $collection->all();
+        $hasNextPage = count($items) > $perPage;
 
         if ($hasNextPage) {
-            array_pop($collection);
+            array_pop($items);
         }
 
-        return [
-            'data' => $collection,
-            'current_page' => $page,
-            'per_page' => $perPage,
-            'has_next' => $hasNextPage,
-            'has_prev' => $page > 1,
-        ];
+        $paginator = new Pagination($items, $perPage, $page, null);
+        $paginator->setOptions(['simple_mode' => true]);
+        $paginator->setSimpleHasMore($hasNextPage);
+
+        return $paginator;
     }
 
     /**

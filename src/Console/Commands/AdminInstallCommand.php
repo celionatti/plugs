@@ -57,6 +57,10 @@ class AdminInstallCommand extends Command
             return $this->publishModels();
         });
 
+        $this->task('Publishing services', function () {
+            return $this->publishServices();
+        });
+
         if (!$this->hasOption('no-migrate')) {
             $this->task('Running database migrations', function () {
                 $this->call('migrate');
@@ -145,5 +149,55 @@ class AdminInstallCommand extends Command
         }
 
         return true;
+    }
+
+    private function publishServices(): bool
+    {
+        $stubsDir = __DIR__ . '/../Stubs/Admin/Services';
+
+        // Service class → app/Services/
+        $serviceStubs = [
+            'ModuleService.stub' => 'ModuleService.php',
+        ];
+
+        $servicesDir = getcwd() . '/app/Services';
+        Filesystem::ensureDir($servicesDir);
+
+        foreach ($serviceStubs as $stubName => $fileName) {
+            $this->publishStub($stubsDir, $servicesDir, $stubName, $fileName);
+        }
+
+        // Module infrastructure classes → app/Modules/
+        $moduleStubs = [
+            'ModuleData.stub'       => 'ModuleData.php',
+            'ModuleRepository.stub' => 'ModuleRepository.php',
+            'ModuleScaffolder.stub' => 'ModuleScaffolder.php',
+        ];
+
+        $modulesDir = getcwd() . '/app/Modules';
+        Filesystem::ensureDir($modulesDir);
+
+        foreach ($moduleStubs as $stubName => $fileName) {
+            $this->publishStub($stubsDir, $modulesDir, $stubName, $fileName);
+        }
+
+        return true;
+    }
+
+    private function publishStub(string $stubsDir, string $targetDir, string $stubName, string $fileName): void
+    {
+        $stubFile = $stubsDir . '/' . $stubName;
+        $destination = $targetDir . '/' . $fileName;
+
+        if (Filesystem::exists($destination) && !$this->hasOption('force')) {
+            $this->info("  - Already exists: {$fileName}");
+            return;
+        }
+
+        if (Filesystem::exists($stubFile)) {
+            $content = Filesystem::get($stubFile);
+            Filesystem::put($destination, $content);
+            $this->info("  - Published: {$fileName}");
+        }
     }
 }

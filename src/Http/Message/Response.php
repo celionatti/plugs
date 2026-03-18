@@ -1,17 +1,11 @@
 <?php
 
-declare(strict_types=1);
+declare(strict_types = 1)
+;
 
 namespace Plugs\Http\Message;
 
-/*
-|--------------------------------------------------------------------------
-| Response Class
-|--------------------------------------------------------------------------
-|
-| This class represents an HTTP response message. It can be used to
-| construct and send HTTP responses to clients.
-*/
+/* |-------------------------------------------------------------------------- | Response Class |-------------------------------------------------------------------------- | | This class represents an HTTP response message. It can be used to | construct and send HTTP responses to clients. */
 
 use InvalidArgumentException;
 use Psr\Http\Message\ResponseInterface;
@@ -38,7 +32,8 @@ class Response implements ResponseInterface
         array $headers = [],
         string $protocol = '1.1',
         string $reasonPhrase = ''
-    ) {
+        )
+    {
         $this->validateStatusCode($statusCode);
         $this->statusCode = $statusCode;
         $this->body = $body ?? new Stream(fopen('php://temp', 'r+'));
@@ -56,7 +51,7 @@ class Response implements ResponseInterface
         if ($code < 100 || $code > 599) {
             throw new InvalidArgumentException(
                 "Invalid status code: {$code}. Must be between 100 and 599."
-            );
+                );
         }
     }
 
@@ -106,12 +101,12 @@ class Response implements ResponseInterface
                 throw new InvalidArgumentException('Header value must be string or numeric');
             }
 
-            $v = (string) $v;
+            $v = (string)$v;
 
             // Check for invalid characters
             if (
-                preg_match("/(?:(?:(?<!\r)\n)|(?:\r(?!\n))|(?:\r\n(?![ \t])))/", $v) ||
-                preg_match('/[^\x09\x0a\x0d\x20-\x7E\x80-\xFE]/', $v)
+            preg_match("/(?:(?:(?<!\r)\n)|(?:\r(?!\n))|(?:\r\n(?![ \t])))/", $v) ||
+            preg_match('/[^\x09\x0a\x0d\x20-\x7E\x80-\xFE]/', $v)
             ) {
                 throw new InvalidArgumentException('Invalid header value');
             }
@@ -142,7 +137,7 @@ class Response implements ResponseInterface
 
         $new = clone $this;
         $new->statusCode = $code;
-        $new->reasonPhrase = (string) $reasonPhrase;
+        $new->reasonPhrase = (string)$reasonPhrase;
 
         return $new;
     }
@@ -169,7 +164,7 @@ class Response implements ResponseInterface
     {
         /** @phpstan-ignore-next-line */
         if (!is_string($version)) {
-            $version = (string) $version;
+            $version = (string)$version;
         }
 
         if (!preg_match('/^\d+\.\d+$/', $version)) {
@@ -231,11 +226,6 @@ class Response implements ResponseInterface
         $new->headerNames[$normalized] = $name;
         $new->headers[$name] = $value;
 
-        // Debug logging (TEMPORARY - remove after fixing)
-        if (in_array($normalized, ['x-content-type-options', 'x-frame-options', 'x-xss-protection'])) {
-            error_log("Setting header: $name = " . implode(', ', $value) . " - " . debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS, 3)[1]['class'] . '::' . debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS, 3)[1]['function']);
-        }
-
         return $new;
     }
 
@@ -250,7 +240,8 @@ class Response implements ResponseInterface
         if (isset($new->headerNames[$normalized])) {
             $originalName = $new->headerNames[$normalized];
             $new->headers[$originalName] = array_merge($new->headers[$originalName], $value);
-        } else {
+        }
+        else {
             $new->headerNames[$normalized] = $name;
             $new->headers[$name] = $value;
         }
@@ -433,7 +424,7 @@ class Response implements ResponseInterface
         }
 
         $output .= "\r\n";
-        $output .= (string) $this->body;
+        $output .= (string)$this->body;
 
         return $output;
     }
@@ -478,7 +469,7 @@ class Response implements ResponseInterface
     public function __clone()
     {
         // Create a new body stream with the same content
-        $bodyContent = (string) $this->body;
+        $bodyContent = (string)$this->body;
         $newBody = new Stream(fopen('php://temp', 'r+'));
         $newBody->write($bodyContent);
         $newBody->rewind();

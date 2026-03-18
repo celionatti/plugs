@@ -38,6 +38,8 @@ class ColumnDefinition
     private $onDelete = null;
     private $virtualAs = null;
     private $storedAs = null;
+    private $isConstrained = false;
+    private $constrainedTable = null;
 
     public function __construct(string $name, string $type)
     {
@@ -204,6 +206,69 @@ class ColumnDefinition
         $this->storedAs = $expression;
 
         return $this;
+    }
+
+    /**
+     * Indicate that the column has a foreign key constraint
+     */
+    public function constrained(?string $table = null): self
+    {
+        $this->isConstrained = true;
+        $this->constrainedTable = $table;
+
+        return $this;
+    }
+
+    /**
+     * Set the ON UPDATE action for foreign key
+     */
+    public function onUpdate(string $action): self
+    {
+        $this->onUpdate = $action;
+
+        return $this;
+    }
+
+    /**
+     * Set the ON DELETE action for foreign key
+     */
+    public function onDelete(string $action): self
+    {
+        $this->onDelete = $action;
+
+        return $this;
+    }
+
+    /**
+     * Check if the column is constrained
+     */
+    public function isConstrained(): bool
+    {
+        return $this->isConstrained;
+    }
+
+    /**
+     * Get the constrained table name
+     */
+    public function getConstrainedTable(): ?string
+    {
+        return $this->constrainedTable;
+    }
+
+    /**
+     * Get the ON UPDATE action
+     */
+    public function getOnUpdate(): ?string
+    {
+        return $this->onUpdate;
+    }
+
+    /**
+     * Get the ON DELETE action
+     */
+    public function getOnDelete(): ?string
+    {
+        return $this->onDelete;
     }
 
     /**
