@@ -389,6 +389,21 @@ class ServerRequest implements ServerRequestInterface
     // ============================================
 
     /**
+     * Get the session instance.
+     *
+     * @return \Plugs\Session\Session
+     */
+    public function getSession(): \Plugs\Session\Session
+    {
+        $container = \Plugs\Container\Container::getInstance();
+        if ($container->bound('session')) {
+            return $container->make('session');
+        }
+
+        return new \Plugs\Session\Session();
+    }
+
+    /**
      * Get input value from query or parsed body
      *
      * @param string $key

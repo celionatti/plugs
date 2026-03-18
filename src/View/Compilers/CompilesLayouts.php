@@ -34,13 +34,13 @@ trait CompilesLayouts
                     $sections[$sAttrs['name']['value']] = trim($sMatches[2]);
                 }
                 return '';
-            }, $body);
+            }, $body) ?? $body;
 
             // 2. Parse <slot:name> content </slot:name> (V5 shorthand syntax)
             $body = preg_replace_callback('/<slot:([\w:-]+)\s*>(.*?)<\/slot(?::\1)?>/is', function ($sMatches) use (&$sections) {
                 $sections[$sMatches[1]] = trim($sMatches[2]);
                 return '';
-            }, $body);
+            }, $body) ?? $body;
 
             // 3. Anything left goes to @section('content')
             $defaultContent = trim($body);
@@ -78,7 +78,7 @@ trait CompilesLayouts
         // 1. <push:name> ... </push:name>
         $content = preg_replace_callback('/<push:([\w-]+)\s*>/s', function ($m) {
             return "@push('{$m[1]}')";
-        }, $content);
+        }, $content) ?? $content;
         $content = preg_replace('/<\/push:[\w-]+\s*>/s', '@endpush', $content);
 
         // 1b. <pushOnce:stack key="..."> ... </pushOnce:stack>
@@ -88,18 +88,18 @@ trait CompilesLayouts
             $key = $attrs['key']['value'] ?? 'null';
             $inner = $m[3];
             return "@pushOnce('{$key}', '{$stack}'){$inner}@endPushOnce";
-        }, $content);
+        }, $content) ?? $content;
 
         // 2. <prepend:name> ... </prepend:name>
         $content = preg_replace_callback('/<prepend:([\w-]+)\s*>/s', function ($m) {
             return "@prepend('{$m[1]}')";
-        }, $content);
+        }, $content) ?? $content;
         $content = preg_replace('/<\/prepend:[\w-]+\s*>/s', '@endprepend', $content);
 
         // 3. <stack:name /> — self-closing, renders the stack
         $content = preg_replace_callback('/<stack:([\w-]+)\s*\/>/s', function ($m) {
             return "@stack('{$m[1]}')";
-        }, $content);
+        }, $content) ?? $content;
 
         // 4. <yield:name default="..." /> or <yield:name />
         $content = preg_replace_callback('/<yield:([\w-]+)' . $attrRegex . '\/?>/is', function ($m) {
@@ -108,7 +108,7 @@ trait CompilesLayouts
                 return "@yield('{$m[1]}', '{$attrs['default']['value']}')";
             }
             return "@yield('{$m[1]}')";
-        }, $content);
+        }, $content) ?? $content;
 
         // 6. <include view="..." :data="[...]" /> or <include view="..." />
         $content = preg_replace_callback('/<include' . $attrRegex . '\/?>/is', function ($m) {
@@ -120,7 +120,7 @@ trait CompilesLayouts
                 return "@include('{$attrs['view']['value']}')";
             }
             return $m[0];
-        }, $content);
+        }, $content) ?? $content;
 
         return $content;
     }
@@ -162,7 +162,7 @@ trait CompilesLayouts
                 );
             },
             $content
-        );
+        ) ?? $content;
     }
 
     /**
@@ -179,7 +179,7 @@ trait CompilesLayouts
         $content = preg_replace_callback('/@extends\s*\(' . $balanced . '\)/', function ($matches) {
             $view = trim($matches[1], ' "\'');
             return sprintf('<?php $__extends = \'%s\'; ?>', addslashes($view));
-        }, $content);
+        }, $content) ?? $content;
 
         // @section with inline content
         $content = preg_replace_callback(
@@ -191,7 +191,7 @@ trait CompilesLayouts
                 return sprintf('<?php $__sections[\'%s\'] = \'%s\'; ?>', $name, $sectionContent);
             },
             $content
-        );
+        ) ?? $content;
 
         // @section block
         $content = preg_replace_callback(
@@ -202,7 +202,7 @@ trait CompilesLayouts
                 return sprintf('<?php $__currentSection = \'%s\'; ob_start(); ?>', $name);
             },
             $content
-        );
+        ) ?? $content;
 
         $content = preg_replace(
             '/@endsection\s*(?:\r?\n)?/',
@@ -225,7 +225,7 @@ trait CompilesLayouts
             $default = isset($parts[1]) ? trim($parts[1], ' "\'') : '';
 
             return sprintf('<?php echo $__sections[\'%s\'] ?? \'%s\'; ?>', addslashes($section), addslashes($default));
-        }, $content);
+        }, $content) ?? $content;
 
         // @parent
         $content = preg_replace('/@parent\s*(?:\r?\n)?/', '<?php echo $__parentContent ?? \'\'; ?>', $content);
@@ -247,7 +247,7 @@ trait CompilesLayouts
         $content = preg_replace_callback('/@push\s*\(' . $balanced . '\)/', function ($matches) {
             $stackName = trim($matches[1], ' "\'');
             return sprintf('<?php $__currentStack = \'%s\'; ob_start(); ?>', addslashes($stackName));
-        }, $content);
+        }, $content) ?? $content;
 
         $content = preg_replace(
             '/@endpush\s*(?:\r?\n)?/',
@@ -266,7 +266,7 @@ trait CompilesLayouts
                 return sprintf('<?php $__currentStack = \'%s\'; $__isPrepend = true; ob_start(); ?>', $stackName);
             },
             $content
-        );
+        ) ?? $content;
 
         $content = preg_replace(
             '/@endprepend\s*(?:\r?\n)?/',
@@ -289,7 +289,7 @@ trait CompilesLayouts
                 );
             },
             $content
-        );
+        ) ?? $content;
 
         return $content;
     }
@@ -319,6 +319,6 @@ trait CompilesLayouts
                 );
             },
             $content
-        );
+        ) ?? $content;
     }
 }

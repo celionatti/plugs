@@ -488,13 +488,13 @@ class ViewCompiler
 
         // 1. Self-closing components: <ComponentName attr="value" /> or <x-component /> or <Module::Component />
         $content = preg_replace_callback(
-            '/<(x-[a-z0-9_\-\.]+|[A-Z][a-zA-Z0-9]*(?:::[A-Z][a-zA-Z0-9]*)*)' . $attrRegex . '\/>/s',
+            '/<(x-[a-z0-9_\-\.:]+|[A-Z][a-zA-Z0-9]*(?:::[A-Z][a-zA-Z0-9]*)*)' . $attrRegex . '\/>/s',
             function ($matches) {
                 $componentName = $matches[1];
                 if (str_starts_with($componentName, 'x-')) {
                     $componentName = substr($componentName, 2);
                 }
-                $componentName = str_replace('::', '.', $componentName);
+                // Don't replace :: with . here to preserve view namespaces (e.g. auth::input)
                 $attributes = $matches[2];
 
                 return $this->createComponentPlaceholder($componentName, trim($attributes), '');
@@ -504,13 +504,13 @@ class ViewCompiler
 
         // 2. Components with content: <ComponentName>...</ComponentName> or <x-component>...</x-component>
         $content = preg_replace_callback(
-            '/<(x-[a-z0-9_\-\.]+|[A-Z][a-zA-Z0-9]*(?:::[A-Z][a-zA-Z0-9]*)*)' . $attrRegex . '>(.*?)<\/\1\s*>/s',
+            '/<(x-[a-z0-9_\-\.:]+|[A-Z][a-zA-Z0-9]*(?:::[A-Z][a-zA-Z0-9]*)*)' . $attrRegex . '>(.*?)<\/\1\s*>/s',
             function ($matches) {
                 $componentName = $matches[1];
                 if (str_starts_with($componentName, 'x-')) {
                     $componentName = substr($componentName, 2);
                 }
-                $componentName = str_replace('::', '.', $componentName);
+                // Don't replace :: with . here to preserve view namespaces
                 $attributes = $matches[2];
                 $slotContent = $matches[3];
 
@@ -733,7 +733,7 @@ class ViewCompiler
      */
     protected function compileWait(string $content): string
     {
-        return preg_replace('/@wait\s*\((.+?)\)/', 'hx-trigger="wait:$1"', $content);
+        return preg_replace('/@wait\s*\((.+?)\)/', 'hx-trigger="wait:$1"', $content) ?? $content;
     }
 
     /**
@@ -768,7 +768,7 @@ class ViewCompiler
             $compiledClass = "class=\"<?php echo \Plugs\View\ComponentAttributes::escapeClass(\Plugs\View\ComponentAttributes::resolveClass($expression)); ?>\"";
 
             return "<{$tagName}{$before} {$compiledClass}{$after}>";
-        }, $content);
+        }, $content) ?? $content;
 
         // 2. Support :style="..."
         $content = preg_replace_callback('/<([a-zA-Z0-9-]+)(\s+[^>]*?):style=(["\'])(.*?)\3([^>]*?)>/is', function ($matches) {
@@ -780,7 +780,7 @@ class ViewCompiler
             $compiledStyle = "style=\"<?php echo \Plugs\View\ComponentAttributes::escapeStyle(\Plugs\View\ComponentAttributes::resolveStyle($expression)); ?>\"";
 
             return "<{$tagName}{$before} {$compiledStyle}{$after}>";
-        }, $content);
+        }, $content) ?? $content;
 
         return $content;
     }
@@ -798,7 +798,7 @@ class ViewCompiler
                 return sprintf('<script nonce="<?php echo $view->getCspNonce(); ?>"%s>', $attributes);
             }
             return $matches[0];
-        }, $content);
+        }, $content) ?? $content;
 
         // Add nonce to <style> tags safely avoiding those that already have a nonce
         $content = preg_replace_callback('/<style(?![^>]*\bnonce=)([^>]*)>/i', function ($matches) {

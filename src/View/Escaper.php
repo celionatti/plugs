@@ -32,6 +32,9 @@ class Escaper
         }
 
         if (is_object($value)) {
+            if ($value instanceof \Plugs\View\ComponentAttributes) {
+                return (string) $value;
+            }
             if (method_exists($value, '__toString')) {
                 return htmlspecialchars((string) $value, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8', $doubleEncode);
             }
@@ -69,6 +72,9 @@ class Escaper
         }
 
         if (is_object($value)) {
+            if ($value instanceof \Plugs\View\ComponentAttributes) {
+                return (string) $value;
+            }
             if (method_exists($value, '__toString')) {
                 return htmlspecialchars((string) $value, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8', $doubleEncode);
             }

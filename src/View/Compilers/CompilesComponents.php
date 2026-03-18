@@ -129,7 +129,7 @@ trait CompilesComponents
                 );
             },
             $content
-        );
+        ) ?? $content;
     }
 
     /**
@@ -156,7 +156,7 @@ trait CompilesComponents
                 );
             },
             $content
-        );
+        ) ?? $content;
 
         // 2. Short syntax: @live counter or @live counter(args)
         $content = preg_replace_callback(
@@ -172,7 +172,7 @@ trait CompilesComponents
                 );
             },
             $content
-        );
+        ) ?? $content;
 
         return $content;
     }
@@ -203,7 +203,7 @@ trait CompilesComponents
                 );
             },
             $content
-        );
+        ) ?? $content;
     }
 
     /**
@@ -237,7 +237,7 @@ trait CompilesComponents
                 );
             },
             $content
-        );
+        ) ?? $content;
     }
 
     /**
@@ -293,7 +293,7 @@ trait CompilesComponents
                 return sprintf('<?php echo \Plugs\View\Escaper::id(%s); ?>', $matches[1]);
             },
             $content
-        );
+        ) ?? $content;
     }
 
     /**
@@ -313,7 +313,7 @@ trait CompilesComponents
                 );
             },
             $content
-        );
+        ) ?? $content;
     }
 
     protected function compileAutofocus(string $content): string
@@ -354,7 +354,7 @@ trait CompilesComponents
                 );
             },
             $content
-        );
+        ) ?? $content;
     }
 
     protected function compileWordCount(string $content): string
@@ -370,7 +370,7 @@ trait CompilesComponents
                 );
             },
             $content
-        );
+        ) ?? $content;
     }
 
     protected function compileAuthDirectives(string $content): string
@@ -386,7 +386,7 @@ trait CompilesComponents
                 return "<?php if(function_exists('auth') && auth({$guard})->check()): ?>";
             },
             $content
-        );
+        ) ?? $content;
 
         // @guest('guard') or @guest
         $content = preg_replace_callback(
@@ -399,7 +399,7 @@ trait CompilesComponents
                 return "<?php if(!function_exists('auth') || auth({$guard})->guest()): ?>";
             },
             $content
-        );
+        ) ?? $content;
 
         // @role('admin')
         $content = preg_replace_callback(
@@ -409,7 +409,7 @@ trait CompilesComponents
                 return "<?php if(function_exists('auth') && auth()->check() && auth()->user()->hasRole('{$role}')): ?>";
             },
             $content
-        );
+        ) ?? $content;
 
         // @can('ability')
         $content = preg_replace_callback(
@@ -419,7 +419,7 @@ trait CompilesComponents
                 return "<?php if(function_exists('auth') && auth()->check() && auth()->user()->can('{$ability}')): ?>";
             },
             $content
-        );
+        ) ?? $content;
 
         // @cannot('ability')
         $content = preg_replace_callback(
@@ -429,7 +429,7 @@ trait CompilesComponents
                 return "<?php if(!function_exists('auth') || !auth()->check() || !auth()->user()->can('{$ability}')): ?>";
             },
             $content
-        );
+        ) ?? $content;
 
         $content = strtr($content, [
             '@endcannot' => '<?php endif; ?>',
@@ -467,7 +467,7 @@ trait CompilesComponents
                 return "<?php if((getenv('APP_ENV') ?: (\$_ENV['APP_ENV'] ?? 'production')) === '{$env}'): ?>";
             },
             $content
-        );
+        ) ?? $content;
 
         // @debug
         $content = str_replace(
@@ -506,7 +506,7 @@ trait CompilesComponents
                     . '</div>';
             },
             $content
-        );
+        ) ?? $content;
     }
 
     protected function compileActive(string $content): string
@@ -520,7 +520,7 @@ trait CompilesComponents
                 return "<?php echo (function_exists('request_path') ? request_path() : (\$_SERVER['REQUEST_URI'] ?? '')) === '/{$route}' || (function_exists('request_path') ? request_path() : (\$_SERVER['REQUEST_URI'] ?? '')) === '{$route}' ? '{$class}' : ''; ?>";
             },
             $content
-        );
+        ) ?? $content;
     }
 
     protected function compileSvg(string $content): string
@@ -553,7 +553,7 @@ trait CompilesComponents
                 );
             },
             $content
-        );
+        ) ?? $content;
     }
 
     protected function compileSkeleton(string $content): string
@@ -564,7 +564,7 @@ trait CompilesComponents
                 return $this->getSkeletonHtml($matches[1], $matches[2] ?? '100%', $matches[3] ?? '20px');
             },
             $content
-        );
+        ) ?? $content;
     }
 
     protected function compileConfirm(string $content): string
@@ -576,7 +576,7 @@ trait CompilesComponents
                 return 'onclick="return confirm(\'' . addslashes($message) . '\')"';
             },
             $content
-        );
+        ) ?? $content;
     }
 
     protected function compileTooltip(string $content): string
@@ -588,7 +588,7 @@ trait CompilesComponents
                 return 'title="' . $text . '" data-tooltip="' . $text . '"';
             },
             $content
-        );
+        ) ?? $content;
     }
 
     protected function compileAssets(string $content): string
@@ -618,7 +618,7 @@ trait CompilesComponents
                     . 'unset($__cssNonce); ?>';
             },
             $content
-        );
+        ) ?? $content;
 
         // @js('path') or @js('path', ['defer' => true])
         $content = preg_replace_callback(
@@ -645,7 +645,7 @@ trait CompilesComponents
                     . 'unset($__jsNonce); ?>';
             },
             $content
-        );
+        ) ?? $content;
 
         // @inlineCss ... @endInlineCss → <style nonce="...">...</style>
         $content = preg_replace(
@@ -684,7 +684,7 @@ trait CompilesComponents
                 return sprintf($code, $var);
             },
             $content
-        );
+        ) ?? $content;
     }
 
     protected function compileMarkdown(string $content): string
@@ -695,7 +695,7 @@ trait CompilesComponents
                 return $this->renderMarkdown($matches[1]);
             },
             $content
-        );
+        ) ?? $content;
     }
 
     protected function compileMarkdownTag(string $content): string
@@ -706,7 +706,7 @@ trait CompilesComponents
                 return $this->renderMarkdown($matches[1]);
             },
             $content
-        );
+        ) ?? $content;
     }
 
     protected function compileRawDirective(string $content): string
@@ -715,7 +715,7 @@ trait CompilesComponents
         $pattern = '/@raw\s*\((.+?)\)/s';
         return preg_replace_callback($pattern, function ($matches) {
             return "<?php echo {$matches[1]}; ?>";
-        }, $content);
+        }, $content) ?? $content;
     }
 
     protected function renderMarkdown(string $markdown): string
@@ -727,7 +727,7 @@ trait CompilesComponents
                 $md = preg_replace_callback("/```(\\\\w+)?\\\\n(.*?)```/s", function($m) {
                     $lang = $m[1] ?? "";
                     return "<pre><code class=\"language-" . htmlspecialchars($lang) . "\">" . htmlspecialchars($m[2]) . "</code></pre>";
-                }, $md);
+                }, $md) ?? $md;
                 $md = preg_replace("/`([^`]+)`/", "<code>$1</code>", $md);
                 $md = preg_replace("/^######\\\\s+(.+)$/m", "<h6>$1</h6>", $md);
                 $md = preg_replace("/^#####\\\\s+(.+)$/m", "<h5>$1</h5>", $md);
@@ -809,7 +809,7 @@ trait CompilesComponents
                 return "@fragment('{$attrs['name']['value']}')";
             }
             return $m[0];
-        }, $content);
+        }, $content) ?? $content;
         $content = preg_replace('/<\/fragment\s*>/is', '@endfragment', $content);
 
         // 2. <teleport to="..."> ... </teleport>
@@ -819,7 +819,7 @@ trait CompilesComponents
                 return "@teleport('{$attrs['to']['value']}')";
             }
             return $m[0];
-        }, $content);
+        }, $content) ?? $content;
         $content = preg_replace('/<\/teleport\s*>/is', '@endteleport', $content);
 
         // 3. <cache key="..." ttl="..."> ... </cache>
@@ -830,7 +830,7 @@ trait CompilesComponents
                 return "@cache('{$attrs['key']['value']}', {$ttl})";
             }
             return $m[0];
-        }, $content);
+        }, $content) ?? $content;
         $content = preg_replace('/<\/cache\s*>/is', '@endcache', $content);
 
         // 4. <csp />
@@ -843,7 +843,7 @@ trait CompilesComponents
                 return "@id({$attrs['value']['value']})";
             }
             return $m[0];
-        }, $content);
+        }, $content) ?? $content;
 
         // 6. <vite entry="..." />
         $content = preg_replace_callback('/<vite' . $attrRegex . '\/?>/is', function ($m) {
@@ -855,7 +855,7 @@ trait CompilesComponents
                 return "@vite('{$attrs['entry']['value']}')";
             }
             return $m[0];
-        }, $content);
+        }, $content) ?? $content;
 
         // 7. <skeleton type="..." width="..." height="..." />
         $content = preg_replace_callback('/<skeleton' . $attrRegex . '\/?>/is', function ($m) {
@@ -866,7 +866,7 @@ trait CompilesComponents
                 return "@skeleton('{$attrs['type']['value']}', '{$width}', '{$height}')";
             }
             return $m[0];
-        }, $content);
+        }, $content) ?? $content;
 
         // 8. <skeletonStyles />
         $content = preg_replace('/<skeletonStyles\s*\/?>/is', '@skeletonStyles', $content);
@@ -878,7 +878,7 @@ trait CompilesComponents
             $attrs = $this->parseAttributes($m[1]);
             $guard = $attrs['guard']['value'] ?? null;
             return $guard ? "@auth('{$guard}')" : "@auth";
-        }, $content);
+        }, $content) ?? $content;
         $content = preg_replace('/<\/auth\s*>/is', '@endauth', $content);
 
         // 10. <guest> ... </guest>
@@ -888,7 +888,7 @@ trait CompilesComponents
             $attrs = $this->parseAttributes($m[1]);
             $guard = $attrs['guard']['value'] ?? null;
             return $guard ? "@guest('{$guard}')" : "@guest";
-        }, $content);
+        }, $content) ?? $content;
         $content = preg_replace('/<\/guest\s*>/is', '@endguest', $content);
 
         // 11. <production> ... </production>
@@ -902,7 +902,7 @@ trait CompilesComponents
                 return "@envIs('{$attrs['is']['value']}')";
             }
             return $m[0];
-        }, $content);
+        }, $content) ?? $content;
         $content = preg_replace('/<\/env\s*>/is', '@endenvIs', $content);
 
         // 13. RBAC Tags
@@ -912,7 +912,7 @@ trait CompilesComponents
                 return "@can('{$attrs['ability']['value']}')";
             }
             return $m[0];
-        }, $content);
+        }, $content) ?? $content;
         $content = preg_replace('/<\/can\s*>/is', '@endcan', $content);
 
         $content = preg_replace_callback('/<cannot' . $attrRegex . '>/is', function ($m) {
@@ -921,7 +921,7 @@ trait CompilesComponents
                 return "@cannot('{$attrs['ability']['value']}')";
             }
             return $m[0];
-        }, $content);
+        }, $content) ?? $content;
         $content = preg_replace('/<\/cannot\s*>/is', '@endcannot', $content);
 
         $content = preg_replace_callback('/<role' . $attrRegex . '>/is', function ($m) {
@@ -930,7 +930,7 @@ trait CompilesComponents
                 return "@role('{$attrs['name']['value']}')";
             }
             return $m[0];
-        }, $content);
+        }, $content) ?? $content;
         $content = preg_replace('/<\/role\s*>/is', '@endrole', $content);
 
         // 14. <active route="..." class="..." />
@@ -941,7 +941,7 @@ trait CompilesComponents
                 return "@active('{$attrs['route']['value']}', '{$class}')";
             }
             return $m[0];
-        }, $content);
+        }, $content) ?? $content;
 
         // 15. <svg icon="..." class="..." />
         $content = preg_replace_callback('/<svg' . $attrRegex . '\/?>/is', function ($m) {
@@ -951,7 +951,7 @@ trait CompilesComponents
                 return "@svg('{$attrs['icon']['value']}', '{$class}')";
             }
             return $m[0];
-        }, $content);
+        }, $content) ?? $content;
 
         // 16. <async src="..."> or <async component="...">
         $content = preg_replace_callback('/<async' . $attrRegex . '>(.*?)<\/async>/is', function ($m) {
@@ -976,7 +976,7 @@ trait CompilesComponents
             }
             
             return $m[0];
-        }, $content);
+        }, $content) ?? $content;
 
         // Self-closing version
         $content = preg_replace_callback('/<async' . $attrRegex . '\/?>/is', function ($m) {
@@ -1002,7 +1002,7 @@ trait CompilesComponents
             }
             
             return $m[0];
-        }, $content);
+        }, $content) ?? $content;
 
         // 17. <fetch url="...">
         $content = preg_replace_callback('/<fetch' . $attrRegex . '>(.*?)<\/fetch>/is', function ($m) {
@@ -1029,7 +1029,7 @@ trait CompilesComponents
                    "<div class=\"plugs-fetch-initial\">{$loading}</div>" .
                    "<template class=\"plugs-fetch-success-template\">@verbatim{$success}@endverbatim</template>" .
                    "</div>";
-        }, $content);
+        }, $content) ?? $content;
 
         return $content;
     }

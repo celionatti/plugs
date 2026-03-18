@@ -74,6 +74,28 @@ class Session
         return session_regenerate_id($deleteOld);
     }
 
+    /**
+     * Invalidate the current session and regenerate the ID.
+     *
+     * @return bool
+     */
+    public function invalidate(): bool
+    {
+        $_SESSION = [];
+
+        return $this->regenerate(true);
+    }
+
+    /**
+     * Regenerate the CSRF token.
+     *
+     * @return void
+     */
+    public function regenerateToken(): void
+    {
+        \Plugs\Security\Csrf::regenerate();
+    }
+
     public function flash(string $key, $value): void
     {
         $_SESSION['_flash'][$key] = $value;

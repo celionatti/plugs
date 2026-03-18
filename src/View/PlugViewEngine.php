@@ -1289,9 +1289,10 @@ HTML;
         // Replace dots with directory separators for nested components
         $path = str_replace('.', DIRECTORY_SEPARATOR, $componentName);
         $kebab = $this->pascalToKebabPath($path);
+        $pascal = $this->anyToPascalCase($path);
 
         // Try multiple naming conventions
-        $filenames = array_unique([$path, $kebab]);
+        $filenames = array_unique([$path, $kebab, $pascal]);
 
         // Resolve base paths for resolution
         $paths = $this->getPathsForNamespace($namespace);
@@ -1369,7 +1370,7 @@ HTML;
         }
 
         // Fallback to kebab-case path if not found (default location of first path)
-        return ($namespace ? "$namespace::" : "") . $this->getPathsForNamespace($namespace)[0] . DIRECTORY_SEPARATOR . 'components' . DIRECTORY_SEPARATOR . $kebab . self::VIEW_EXTENSIONS[0];
+        return $this->getPathsForNamespace($namespace)[0] . DIRECTORY_SEPARATOR . 'components' . DIRECTORY_SEPARATOR . $kebab . self::VIEW_EXTENSIONS[0];
     }
 
     /**
