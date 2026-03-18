@@ -1,0 +1,57 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Modules\{{name}}\Services;
+
+use Modules\{{name}}\Requests\LoginRequest;
+use Modules\{{name}}\Requests\RegisterRequest;
+use Modules\{{name}}\Repositories\UserRepository;
+use Plugs\Facades\Auth;
+use Plugs\Security\Hash;
+
+class AuthService
+{
+    public function __construct(
+        protected UserRepository $userRepository = new UserRepository()
+    ) {}
+
+    /**
+     * Attempt to log the user in via the session guard.
+     */
+    public function attemptLogin(LoginRequest $request): bool
+    {
+        return Auth::attempt(
+            ['email' => $request->email, 'password' => $request->password],
+            $request->remember
+        );
+    }
+
+    /**
+     * Register a new user and log them in immediately.
+     */
+    public function registerUser(RegisterRequest $request): void
+    {
+        if ($this->userRepository->emailExists($request->email)) {
+            throw new \InvalidArgumentException('Email is already registered.');
+        }
+
+        $hashedPassword = Hash::make($request->password);
+
+        $user = $this->userRepository->create([
+            'name'     => $request->name,
+            'email'    => $request->email,
+            'password' => $hashedPassword,
+        ]);
+
+        Auth::login($user);
+    }
+
+    /**
+     * Log the user out and destroy session.
+     */
+    public function logout(): void
+    {
+        Auth::logout();
+    }
+}

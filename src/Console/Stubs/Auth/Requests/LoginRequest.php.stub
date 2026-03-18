@@ -1,0 +1,45 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Modules\{{name}}\Requests;
+
+use Psr\Http\Message\ServerRequestInterface;
+
+class LoginRequest
+{
+    public readonly string $email;
+    public readonly string $password;
+    public readonly bool $remember;
+    
+    public array $errors = [];
+
+    public function __construct(ServerRequestInterface $request)
+    {
+        $data = $request->getParsedBody() ?? [];
+        
+        $this->email = trim($data['email'] ?? '');
+        $this->password = $data['password'] ?? '';
+        $this->remember = isset($data['remember']) && $data['remember'] === 'on';
+
+        $this->validate();
+    }
+
+    protected function validate(): void
+    {
+        if (empty($this->email)) {
+            $this->errors['email'] = 'Email is required.';
+        } elseif (!filter_var($this->email, FILTER_VALIDATE_EMAIL)) {
+            $this->errors['email'] = 'Please enter a valid email address.';
+        }
+
+        if (empty($this->password)) {
+            $this->errors['password'] = 'Password is required.';
+        }
+    }
+
+    public function isValid(): bool
+    {
+        return empty($this->errors);
+    }
+}

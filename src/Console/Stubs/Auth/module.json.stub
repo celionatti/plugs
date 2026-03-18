@@ -1,0 +1,7 @@
+{
+    "name": "{{name}}",
+    "description": "Provides user authentication (Login/Register/Logout).",
+    "version": "1.0.0",
+    "author": "System",
+    "enabled": true
+}

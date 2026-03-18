@@ -65,6 +65,26 @@ use Plugs\Console\Commands\SecurityScanCommand;
 use Plugs\Console\Commands\ViewCacheCommand;
 use Plugs\Console\Commands\ViewClearCommand;
 use Plugs\Console\Commands\LogClearCommand;
+use Plugs\Console\Commands\MakeAuthModuleCommand;
+use Plugs\Console\Commands\MakeProviderCommand;
+use Plugs\Console\Commands\MakeModuleCommand;
+use Plugs\Console\Commands\MakeFeatureModuleCommand;
+use Plugs\Console\Commands\ConfigCacheCommand;
+use Plugs\Console\Commands\ConfigClearCommand;
+use Plugs\Console\Commands\OptimizeCommand;
+use Plugs\Console\Commands\OpCacheClearCommand;
+use Plugs\Console\Commands\OpCacheStatusCommand;
+use Plugs\Console\Commands\ContainerCacheCommand;
+use Plugs\Console\Commands\ContainerClearCommand;
+use Plugs\Console\Commands\UpCommand;
+use Plugs\Console\Commands\DownCommand;
+use Plugs\Console\Commands\ScheduleRunCommand;
+use Plugs\Console\Commands\ScheduleListCommand;
+use Plugs\Console\Commands\AIIndexDocsCommand;
+use Plugs\Console\Commands\ShieldCommand;
+use Plugs\Console\Commands\SecurityInstallCommand;
+use Plugs\Console\Commands\AuthInstallCommand;
+use Plugs\Console\Commands\IdentityInstallCommand;
 use Plugs\Exceptions\ConsoleException;
 
 /*
@@ -86,7 +106,7 @@ class ConsoleKernel
         'make:model' => MakeModelCommand::class,
         'make:command' => MakeCommandCommand::class,
         'make:middleware' => MakeMiddlewareCommand::class,
-        'make:provider' => \Plugs\Console\Commands\MakeProviderCommand::class,
+        'make:provider' => MakeProviderCommand::class,
         'make:migration' => MakeMigrationCommand::class,
         'make:request' => MakeRequestCommand::class,
         'make:service' => MakeServiceCommand::class,
@@ -105,8 +125,9 @@ class ConsoleKernel
         'make:listener' => MakeListenerCommand::class,
         'make:notification' => MakeNotificationCommand::class,
         'make:ai-migration' => MakeAiMigrationCommand::class,
-        'make:module' => \Plugs\Console\Commands\MakeModuleCommand::class,
-        'make:feature-module' => \Plugs\Console\Commands\MakeFeatureModuleCommand::class,
+        'make:module' => MakeModuleCommand::class,
+        'make:feature-module' => MakeFeatureModuleCommand::class,
+        'make:auth-module' => MakeAuthModuleCommand::class,
         'make:lang' => MakeLangCommand::class,
 
         'db:backup' => DatabaseBackupCommand::class,
@@ -122,13 +143,13 @@ class ConsoleKernel
         'cache:clear' => CacheClearCommand::class,
         'logs:clear' => LogClearCommand::class,
         'config:publish' => ConfigPublishCommand::class,
-        'config:cache' => \Plugs\Console\Commands\ConfigCacheCommand::class,
-        'config:clear' => \Plugs\Console\Commands\ConfigClearCommand::class,
-        'optimize' => \Plugs\Console\Commands\OptimizeCommand::class,
-        'opcache:clear' => \Plugs\Console\Commands\OpCacheClearCommand::class,
-        'opcache:status' => \Plugs\Console\Commands\OpCacheStatusCommand::class,
-        'container:cache' => \Plugs\Console\Commands\ContainerCacheCommand::class,
-        'container:clear' => \Plugs\Console\Commands\ContainerClearCommand::class,
+        'config:cache' => ConfigCacheCommand::class,
+        'config:clear' => ConfigClearCommand::class,
+        'optimize' => OptimizeCommand::class,
+        'opcache:clear' => OpCacheClearCommand::class,
+        'opcache:status' => OpCacheStatusCommand::class,
+        'container:cache' => ContainerCacheCommand::class,
+        'container:clear' => ContainerClearCommand::class,
 
         'migrate' => MigrateCommand::class,
         'migrate:rollback' => MigrateRollbackCommand::class,
@@ -141,32 +162,32 @@ class ConsoleKernel
         'queue:retry' => QueueRetryCommand::class,
         'health' => HealthCommand::class,
         'storage:link' => StorageLinkCommand::class,
-        'up' => \Plugs\Console\Commands\UpCommand::class,
-        'down' => \Plugs\Console\Commands\DownCommand::class,
-        'schedule:run' => \Plugs\Console\Commands\ScheduleRunCommand::class,
-        'schedule:list' => \Plugs\Console\Commands\ScheduleListCommand::class,
+        'up' => UpCommand::class,
+        'down' => DownCommand::class,
+        'schedule:run' => ScheduleRunCommand::class,
+        'schedule:list' => ScheduleListCommand::class,
         'type:gen' => TypeGenCommand::class,
         'ai:chat' => AIChatCommand::class,
         'ai:fix' => AiFixCommand::class,
         'ai:audit' => AiAuditCommand::class,
         'ai:agent' => AIAgentCommand::class,
         'ai:think' => AIThinkCommand::class,
-        'ai:index-docs' => \Plugs\Console\Commands\AIIndexDocsCommand::class,
+        'ai:index-docs' => AIIndexDocsCommand::class,
 
-        'shield:list' => \Plugs\Console\Commands\ShieldCommand::class,
-        'shield:unblock' => \Plugs\Console\Commands\ShieldCommand::class,
-        'shield:block' => \Plugs\Console\Commands\ShieldCommand::class,
-        'shield:clear' => \Plugs\Console\Commands\ShieldCommand::class,
-        'shield:stats' => \Plugs\Console\Commands\ShieldCommand::class,
-        'security:install' => \Plugs\Console\Commands\SecurityInstallCommand::class,
-        'security:scan' => \Plugs\Console\Commands\SecurityScanCommand::class,
+        'shield:list' => ShieldCommand::class,
+        'shield:unblock' => ShieldCommand::class,
+        'shield:block' => ShieldCommand::class,
+        'shield:clear' => ShieldCommand::class,
+        'shield:stats' => ShieldCommand::class,
+        'security:install' => SecurityInstallCommand::class,
+        'security:scan' => SecurityScanCommand::class,
         'make:ai-test' => MakeAiTestCommand::class,
         'db:analyze' => DatabaseAnalyzeCommand::class,
         'framework:scan-security' => SecurityScanCommand::class,
-        'auth:install' => \Plugs\Console\Commands\AuthInstallCommand::class,
+        'auth:install' => AuthInstallCommand::class,
         'view:cache' => ViewCacheCommand::class,
         'view:clear' => ViewClearCommand::class,
-        'identity:install' => \Plugs\Console\Commands\IdentityInstallCommand::class,
+        'identity:install' => IdentityInstallCommand::class,
         'admin:install' => AdminInstallCommand::class,
     ];
 
@@ -194,6 +215,7 @@ class ConsoleKernel
         'g:not' => 'make:notification',
         'g:mod' => 'make:module',
         'g:fmod' => 'make:feature-module',
+        'g:auth' => 'make:auth-module',
         'g:lang' => 'make:lang',
         'seed' => 'db:seed',
         'routes' => 'route:list',
@@ -238,6 +260,7 @@ class ConsoleKernel
             'make:ai-migration',
             'make:module',
             'make:feature-module',
+            'make:auth-module',
             'make:lang',
         ],
         'Routes' => ['route:list', 'route:cache', 'route:clear', 'route:test'],

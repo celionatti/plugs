@@ -1,0 +1,60 @@
+<layout name="{{lowerName}}::layouts.auth">
+    <slot:title>{{ $title ?? 'Create Account' }}</slot:title>
+    
+    <slot:icon>
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
+    </slot:icon>
+    
+    <slot:heading>Create account</slot:heading>
+    <slot:subheading>Join us today and enjoy exclusive benefits.</slot:subheading>
+
+    <form action="/register" method="POST" class="space-y-3">
+        @csrf
+
+        <div class="grid grid-cols-2 gap-3">
+            <x-{{lowerName}}::auth-input 
+                name="name" 
+                label="Full Name" 
+                placeholder="John Doe" 
+                required 
+            />
+
+            <x-{{lowerName}}::auth-input 
+                type="email" 
+                name="email" 
+                label="Email Address" 
+                placeholder="name@company.com" 
+                required 
+            />
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
+            <x-{{lowerName}}::auth-input 
+                type="password" 
+                name="password" 
+                label="Password" 
+                placeholder="••••••••" 
+                required 
+            />
+
+            <x-{{lowerName}}::auth-input 
+                type="password" 
+                name="password_confirmation" 
+                label="Confirm" 
+                placeholder="••••••••" 
+                required 
+            />
+        </div>
+
+        <x-{{lowerName}}::auth-button>
+            Create account
+        </x-{{lowerName}}::auth-button>
+    </form>
+
+    <slot:footer>
+        <p class="text-[15px] text-slate-500 dark:text-slate-400 font-semibold">
+            Already have an account? 
+            <a href="/login" class="text-black dark:text-white font-bold hover:underline font-outfit transition-all ml-1">Sign in</a>
+        </p>
+    </slot:footer>
+</layout>
