@@ -25,6 +25,9 @@ This command generates:
 - **Views**: Beautifully designed Login and Registration pages.
 - **Routes**: Pre-configured routes for all auth actions.
 
+> [!NOTE]
+> **Fully Autonomous**: The Plugs auth scaffolding is fully autonomous. When you run `php theplugs make:auth-module Auth`, it automatically publishes the `App\Models\User` authenticatable model and runs all necessary database migrations for you instantly!
+
 **Alias:** `g:auth`
 
 ### Database Migration

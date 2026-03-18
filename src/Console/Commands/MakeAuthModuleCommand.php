@@ -23,6 +23,7 @@ class MakeAuthModuleCommand extends Command
     {
         return [
             '--force' => 'Overwrite existing module files',
+            '--no-migrate' => 'Skip running migrations',
         ];
     }
 
@@ -93,6 +94,20 @@ class MakeAuthModuleCommand extends Command
             });
         }
 
+        $this->section('Publishing Global Scaffolding');
+        $this->task('Configuring Database & Models', function () {
+            $options = [];
+            if ($this->hasOption('no-migrate')) {
+                $options['--no-migrate'] = true;
+            }
+            if ($this->hasOption('force')) {
+                $options['--force'] = true;
+            }
+            
+            $this->call('auth:install', $options);
+            return true;
+        });
+
         $this->newLine();
         $this->box(
             "Auth module '{$name}' scaffolded successfully!\n\n" .
@@ -104,7 +119,6 @@ class MakeAuthModuleCommand extends Command
 
         $this->section('Next Steps');
         $this->numberedList([
-            "Run `php plugs auth:install` to scaffold the authenticatable User model and database tables.",
             "Visit `/login` to see your new auth system in action."
         ]);
 

@@ -86,6 +86,33 @@ modules/
     Migrations/
 ```
 
+> [!NOTE]
+> **Fully Autonomous**: The `make:auth-module` generator is entirely autonomous. Running it automatically publishes the global `User.php` authenticatable model and runs all required database migrations behind the scenes, setting up everything out-of-the-box in a single command.
+
+### 1.2 Scaffold an Admin Panel Module (New)
+
+For applications needing a fully-featured backend, Plugs provides an autonomous Admin Module installer:
+
+```bash
+php theplugs install:admin
+```
+
+This creates the full directory structure for the admin panel:
+
+```
+modules/
+  Admin/
+    AdminModule.php             ← Service provider
+    Controllers/
+    Middleware/
+    Routes/
+    Services/
+    Views/
+```
+
+> [!NOTE]
+> **Fully Autonomous**: The `install:admin` command is a fully autonomous installer. It safely publishes all required models (like `Setting`, `Article`, `User`), copies all its specific global services, and automatically migrates the database, leaving you with a perfectly working backend reachable at `/admin`.
+
 ### 2. Add a Controller
 
 Create `modules/Auth/Controllers/LoginController.php`:
