@@ -107,6 +107,9 @@ php theplugs make:controller UserController
 php theplugs make:model Post -m  # With migration
 php theplugs make:middleware AuthMiddleware
 php theplugs make:migration create_posts_table
+php theplugs make:module Core  # Create a simple system module
+php theplugs make:feature-module Shop  # Create a full feature module (Controllers, Models, etc.)
+php theplugs make:auth-module MemberAuth  # Create a complete Auth system (Login, Register, etc.)
 php theplugs make:event UserRegistered
 php theplugs make:listener SendWelcomeEmail
 php theplugs make:notification InvoicePaid
@@ -184,6 +187,27 @@ php theplugs make:spa-asset
 - `--force`: Overwrite existing files.
 
 **Alias:** `g:spa`
+
+### Module Generation (New)
+
+Scaffold different types of modules for your application:
+
+```bash
+# Simple system module
+php theplugs make:module [name]
+
+# Full-featured module (Controllers, Models, Routes, Views)
+php theplugs make:feature-module [name]
+
+# Ready-to-use Auth module (Login, Register, Services, Repositories)
+php theplugs make:auth-module [name]
+```
+
+**Options:**
+
+- `--force, -f`: Overwrite existing module files.
+
+**Aliases:** `g:mod`, `g:fmod`, `g:auth`
 
 ### Plugs Core Assets (New)
 

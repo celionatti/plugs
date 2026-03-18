@@ -9,6 +9,24 @@ The authentication configuration is located at `config/auth.php`. By default, it
 > [!TIP]
 > You can configure where unauthenticated users are redirected by changing the `redirect` key in `config/auth.php`.
 
+## Quick Scaffolding (New)
+
+You can quickly scaffold a complete, ready-to-use authentication system (Login, Register, Logout, Services, and Views) using the CLI:
+
+```bash
+php theplugs make:auth-module Auth
+```
+
+This command generates:
+- **Controllers**: `AuthController` for handling requests.
+- **Services**: `AuthService` for business logic.
+- **Repositories**: `UserRepository` for data access.
+- **Requests**: Validated `LoginRequest` and `RegisterRequest`.
+- **Views**: Beautifully designed Login and Registration pages.
+- **Routes**: Pre-configured routes for all auth actions.
+
+**Alias:** `g:auth`
+
 ### Database Migration
 
 Ensure your `users` table exists. A standard schema might look like this:

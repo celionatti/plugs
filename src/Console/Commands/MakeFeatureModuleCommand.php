@@ -25,6 +25,9 @@ class MakeFeatureModuleCommand extends Command
             '--force' => 'Overwrite existing module files',
             '--no-routes' => 'Skip creating route files',
             '--no-migrations' => 'Skip creating Migrations directory',
+            '--no-services' => 'Skip creating Services directory',
+            '--no-repositories' => 'Skip creating Repositories directory',
+            '--no-requests' => 'Skip creating Requests directory',
             '--prefix' => 'Custom URL prefix for the module routes (default: lowercase module name)',
         ];
     }
@@ -54,7 +57,7 @@ class MakeFeatureModuleCommand extends Command
             $basePath,
             $basePath . '/Controllers',
             $basePath . '/Models',
-            $basePath . '/Views', // Added Views directory
+            $basePath . '/Views',
         ];
 
         if (!$this->hasOption('no-routes')) {
@@ -65,22 +68,51 @@ class MakeFeatureModuleCommand extends Command
             $directories[] = $basePath . '/Migrations';
         }
 
+        if (!$this->hasOption('no-services')) {
+            $directories[] = $basePath . '/Services';
+        }
+
+        if (!$this->hasOption('no-repositories')) {
+            $directories[] = $basePath . '/Repositories';
+        }
+
+        if (!$this->hasOption('no-requests')) {
+            $directories[] = $basePath . '/Requests';
+        }
+
         foreach ($directories as $dir) {
             Filesystem::ensureDir($dir);
         }
 
-        // Create module service provider
-        $moduleContent = $this->generateModuleClass($name);
-        Filesystem::put($basePath . '/' . $name . 'Module.php', $moduleContent);
-        $this->success("  ✓ {$name}Module.php");
+        // Create Controllers
+        $controllerContent = $this->generateControllerClass($name);
+        Filesystem::put($basePath . '/Controllers/' . $name . 'Controller.php', $controllerContent);
+        $this->success("  ✓ Controllers/{$name}Controller.php");
 
-        // Create .gitkeep files for empty directories
-        foreach (['Controllers', 'Models'] as $dir) {
-            $gitkeep = $basePath . '/' . $dir . '/.gitkeep';
-            if (!Filesystem::exists($gitkeep)) {
-                Filesystem::put($gitkeep, '');
-            }
-            $this->info("  ↳ {$dir}/.gitkeep");
+        // Create Models
+        $modelContent = $this->generateModelClass($name);
+        Filesystem::put($basePath . '/Models/' . $name . '.php', $modelContent);
+        $this->success("  ✓ Models/{$name}.php");
+
+        // Create Services
+        if (!$this->hasOption('no-services')) {
+            $serviceContent = $this->generateServiceClass($name);
+            Filesystem::put($basePath . '/Services/' . $name . 'Service.php', $serviceContent);
+            $this->success("  ✓ Services/{$name}Service.php");
+        }
+
+        // Create Repositories
+        if (!$this->hasOption('no-repositories')) {
+            $repoContent = $this->generateRepositoryClass($name);
+            Filesystem::put($basePath . '/Repositories/' . $name . 'Repository.php', $repoContent);
+            $this->success("  ✓ Repositories/{$name}Repository.php");
+        }
+
+        // Create Requests
+        if (!$this->hasOption('no-requests')) {
+            $requestContent = $this->generateRequestClass($name);
+            Filesystem::put($basePath . '/Requests/' . $name . 'Request.php', $requestContent);
+            $this->success("  ✓ Requests/{$name}Request.php");
         }
 
         if (!$this->hasOption('no-migrations')) {
@@ -122,8 +154,26 @@ class MakeFeatureModuleCommand extends Command
         $this->section('Module Structure');
         $this->info("  modules/{$name}/");
         $this->info("  ├── {$name}Module.php          (Service Provider)");
-        $this->info("  ├── Controllers/               (Your controllers)");
-        $this->info("  ├── Models/                    (Your models)");
+        $this->info("  ├── Controllers/");
+        $this->info("  │   └── {$name}Controller.php  (Sample Controller)");
+        $this->info("  ├── Models/");
+        $this->info("  │   └── {$name}.php            (Sample Model)");
+        
+        if (!$this->hasOption('no-services')) {
+            $this->info("  ├── Services/");
+            $this->info("  │   └── {$name}Service.php     (Business Logic)");
+        }
+        
+        if (!$this->hasOption('no-repositories')) {
+            $this->info("  ├── Repositories/");
+            $this->info("  │   └── {$name}Repository.php  (Data Access)");
+        }
+        
+        if (!$this->hasOption('no-requests')) {
+            $this->info("  ├── Requests/");
+            $this->info("  │   └── {$name}Request.php     (Input Validation)");
+        }
+
         if (!$this->hasOption('no-routes')) {
             $this->info("  ├── Routes/");
             $this->info("  │   ├── web.php                (Web routes → /{$prefix}/...)");
@@ -138,10 +188,9 @@ class MakeFeatureModuleCommand extends Command
         $this->newLine();
         $this->section('Next Steps');
         $this->numberedList([
-            "Add controllers to modules/{$name}/Controllers/",
-            "Add models to modules/{$name}/Models/",
-            "Define routes in modules/{$name}/Routes/web.php and api.php",
-            "Add migrations to modules/{$name}/Migrations/",
+            "Update your business logic in modules/{$name}/Services/",
+            "Implement data queries in modules/{$name}/Repositories/",
+            "Define validation rules in modules/{$name}/Requests/",
             "Run `composer dump-autoload` to update autoloading",
         ]);
 
@@ -192,7 +241,7 @@ class {$name}Module extends AbstractFeatureModule
      */
     public function getMiddleware(): array
     {
-        return [];
+        return ['web'];
     }
 
     /**
@@ -200,7 +249,8 @@ class {$name}Module extends AbstractFeatureModule
      */
     public function register(Container \$container): void
     {
-        // Example: \$container->singleton('{$name}Service', fn() => new Services\\{$name}Service());
+        \$container->singleton('{$name}Repository', fn() => new Repositories\\{$name}Repository());
+        \$container->singleton('{$name}Service', fn() => new Services\\{$name}Service(\$container->get('{$name}Repository')));
     }
 
     /**
@@ -209,6 +259,214 @@ class {$name}Module extends AbstractFeatureModule
     public function boot(Plugs \$app): void
     {
         // Any boot-time logic (event listeners, etc.)
+    }
+}
+PHP;
+    }
+
+    private function generateControllerClass(string $name): string
+    {
+        $viewName = strtolower($name);
+
+        return <<<PHP
+<?php
+
+declare(strict_types=1);
+
+namespace Modules\\{$name}\\Controllers;
+
+use Modules\\{$name}\\Services\\{$name}Service;
+use Modules\\{$name}\\Requests\\{$name}Request;
+use Psr\Http\Message\ResponseInterface;
+use Psr\Http\Message\ServerRequestInterface;
+
+class {$name}Controller
+{
+    public function __construct(
+        protected {$name}Service \$service = new {$name}Service()
+    ) {}
+
+    /**
+     * Display the module index page.
+     */
+    public function index(ServerRequestInterface \$request): ResponseInterface
+    {
+        \$items = \$this->service->getAll();
+        // Render view using module namespace
+        return view('{$viewName}::index', ['items' => \$items]);
+    }
+
+    /**
+     * Handle a sample request.
+     */
+    public function store(ServerRequestInterface \$request): ResponseInterface
+    {
+        \$validated = new {$name}Request(\$request);
+
+        if (!\$validated->isValid()) {
+            // Handle validation failure
+            return back()->withError('Validation failed');
+        }
+
+        \$this->service->create(\$request->getParsedBody());
+
+        return back()->with('success', '{$name} created successfully!');
+    }
+}
+PHP;
+    }
+
+    private function generateModelClass(string $name): string
+    {
+        $table = Str::snake(Str::pluralize($name));
+
+        return <<<PHP
+<?php
+
+declare(strict_types=1);
+
+namespace Modules\\{$name}\\Models;
+
+use Plugs\\Base\\Model\\PlugModel;
+
+class {$name} extends PlugModel
+{
+    /**
+     * The table associated with the model.
+     */
+    protected string \$table = '{$table}';
+
+    /**
+     * The attributes that are mass assignable.
+     */
+    protected array \$fillable = [];
+}
+PHP;
+    }
+
+    private function generateServiceClass(string $name): string
+    {
+        return <<<PHP
+<?php
+
+declare(strict_types=1);
+
+namespace Modules\\{$name}\\Services;
+
+use Modules\\{$name}\\Repositories\\{$name}Repository;
+
+class {$name}Service
+{
+    public function __construct(
+        protected {$name}Repository \$repository = new {$name}Repository()
+    ) {}
+
+    /**
+     * Get all items.
+     */
+    public function getAll(): array
+    {
+        return \$this->repository->all();
+    }
+
+    /**
+     * Create a new item.
+     */
+    public function create(array \$data): mixed
+    {
+        return \$this->repository->create(\$data);
+    }
+}
+PHP;
+    }
+
+    private function generateRepositoryClass(string $name): string
+    {
+        return <<<PHP
+<?php
+
+declare(strict_types=1);
+
+namespace Modules\\{$name}\\Repositories;
+
+use Modules\\{$name}\\Models\\{$name};
+
+class {$name}Repository
+{
+    /**
+     * Get all records.
+     */
+    public function all(): array
+    {
+        return {$name}::all();
+    }
+
+    /**
+     * Create a new record.
+     */
+    public function create(array \$data): {$name}
+    {
+        return {$name}::create(\$data);
+    }
+
+    /**
+     * Find a record by ID.
+     */
+    public function find(int \$id): ?{$name}
+    {
+        return {$name}::find(\$id);
+    }
+}
+PHP;
+    }
+
+    private function generateRequestClass(string $name): string
+    {
+        return <<<PHP
+<?php
+
+declare(strict_types=1);
+
+namespace Modules\\{$name}\\Requests;
+
+use Psr\Http\Message\ServerRequestInterface;
+
+class {$name}Request
+{
+    public array \$errors = [];
+    protected array \$data = [];
+
+    public function __construct(ServerRequestInterface \$request)
+    {
+        \$this->data = \$request->getParsedBody() ?? [];
+        \$this->validate();
+    }
+
+    /**
+     * Validate the request data.
+     */
+    protected function validate(): void
+    {
+        // Example validation
+        if (empty(\$this->data['name'] ?? '')) {
+            \$this->errors['name'] = 'The name field is required.';
+        }
+    }
+
+    /**
+     * Check if the request is valid.
+     */
+    public function isValid(): bool
+    {
+        return empty(\$this->errors);
+    }
+
+    /**
+     * Get the validated data.
+     */
+    public function all(): array
+    {
+        return \$this->data;
     }
 }
 PHP;
@@ -227,20 +485,13 @@ declare(strict_types=1);
 |--------------------------------------------------------------------------
 | {$name} Module — Web Routes
 |--------------------------------------------------------------------------
-|
-| Routes defined here are automatically prefixed with '/{$prefix}'
-| and namespaced to Modules\\{$name}\\Controllers.
-|
-| Example:
-|   Route::get('/', [DashboardController::class, 'index']);
-|   → Accessible at: /{$prefix}/
-|
 */
 
 use Plugs\\Facades\\Route;
+use Modules\\{$name}\\Controllers\\{$name}Controller;
 
-// Define your web routes here
-
+Route::get('/', [{$name}Controller::class, 'index'])->name('index');
+Route::post('/', [{$name}Controller::class, 'store'])->name('store');
 PHP;
     }
 
@@ -257,20 +508,12 @@ declare(strict_types=1);
 |--------------------------------------------------------------------------
 | {$name} Module — API Routes
 |--------------------------------------------------------------------------
-|
-| Routes defined here are automatically prefixed with '/api/{$prefix}'
-| and namespaced to Modules\\{$name}\\Controllers.
-|
-| Example:
-|   Route::get('/items', [ItemController::class, 'index']);
-|   → Accessible at: /api/{$prefix}/items
-|
 */
 
 use Plugs\\Facades\\Route;
+use Modules\\{$name}\\Controllers\\{$name}Controller;
 
-// Define your API routes here
-
+Route::get('/', [{$name}Controller::class, 'index']);
 PHP;
     }
 

@@ -61,7 +61,15 @@ modules/
 ### 1. Scaffold a Module
 
 ```bash
-php theplugs make:feature-module Auth
+php theplugs make:feature-module Store
+```
+
+### 1.1 Scaffold an Auth Module (New)
+
+For features requiring authentication, use the specialized auth generator:
+
+```bash
+php theplugs make:auth-module Auth
 ```
 
 This creates the full directory structure:
@@ -392,7 +400,10 @@ Migrations from all modules are sorted together by filename and follow the same 
 
 ```bash
 # Full module with routes and migrations
-php theplugs make:feature-module Auth
+php theplugs make:feature-module Store
+
+# Complete Auth module with Services and Repositories
+php theplugs make:auth-module Auth
 
 # Skip route files
 php theplugs make:feature-module Auth --no-routes
