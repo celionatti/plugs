@@ -67,15 +67,26 @@ abstract class Controller
      */
     private function shareGlobalErrors(): void
     {
-        // Check if there are flashed errors in session
+        // 1. If we have actual errors in the session, they take high priority
         if (isset($_SESSION['_errors'])) {
-            $errors = $_SESSION['_errors'];
+            $sessionErrors = $_SESSION['_errors'];
             unset($_SESSION['_errors']); // Clear after retrieving
-        } else {
-            $errors = new ErrorMessage();
+            
+            // Ensure $errors is an ErrorMessage object
+            $errors = $sessionErrors instanceof ErrorMessage 
+                ? $sessionErrors 
+                : new ErrorMessage((array)$sessionErrors);
+
+            $this->view->share('errors', $errors);
+            return;
         }
 
-        $this->view->share('errors', $errors);
+        // 2. Otherwise, only share an empty ErrorMessage if one isn't already shared
+        // (to avoid overwriting errors shared by ShareErrorsFromSession middleware)
+        $existing = $this->view->getShared('errors');
+        if (!$existing instanceof ErrorMessage) {
+            $this->view->share('errors', new ErrorMessage());
+        }
     }
 
     /**

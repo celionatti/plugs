@@ -195,6 +195,9 @@ class RedirectResponse implements ResponseInterface
      */
     public function send(): void
     {
+        // Ensure flash data is stored before sending and exiting
+        $this->storeFlashData();
+
         // Flash data is strictly stored by FlashMiddleware to ensure proper lifecycle within the request pipeline.
 
         // Send headers and body from the underlying response

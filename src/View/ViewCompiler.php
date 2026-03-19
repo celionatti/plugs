@@ -682,7 +682,8 @@ class ViewCompiler
         $content = $this->compileOnce($content);
         $content = $this->compileWait($content);
         $content = $this->compileStream($content);
-        $content = $this->compileErrorDirectives($content);
+        $content = $this->compileError($content);
+        $content = $this->compileEndError($content);
 
         // Phase 6: Components & UI Elements Compilation
         $content = $this->compileFragment($content);

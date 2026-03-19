@@ -28,7 +28,7 @@ class ShareErrorsFromSession implements MiddlewareInterface
         // Share errors with view
         if ($container->bound('view')) {
             $view = $container->make('view');
-            $errors = new ErrorMessage($_SESSION['errors'] ?? []);
+            $errors = new ErrorMessage($_SESSION['_errors'] ?? []);
 
             // Share 'errors' variable with all views
             if ($view instanceof ViewEngineInterface) {
@@ -36,11 +36,8 @@ class ShareErrorsFromSession implements MiddlewareInterface
             }
 
             // Clear errors from session after sharing
-            // We use 'flash' mechanism usually, but simple unset works for now
-            // typically errors are flashed, so they persist for one redirect.
-            // If they were already in session, it means they were flashed.
-            if (isset($_SESSION['errors'])) {
-                unset($_SESSION['errors']);
+            if (isset($_SESSION['_errors'])) {
+                unset($_SESSION['_errors']);
             }
         }
 
