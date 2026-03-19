@@ -892,6 +892,14 @@ trait CompilesComponents
         $content = preg_replace('/<production\s*>/is', '@production', $content);
         $content = preg_replace('/<\/production\s*>/is', '@endproduction', $content);
 
+        // 11b. <local> ... </local>
+        $content = preg_replace('/<local\s*>/is', "@envIs('local')", $content);
+        $content = preg_replace('/<\/local\s*>/is', '@endenvIs', $content);
+
+        // 11c. <debug> ... </debug>
+        $content = preg_replace('/<debug\s*>/is', '@debug', $content);
+        $content = preg_replace('/<\/debug\s*>/is', '@enddebug', $content);
+
         // 12. <env is="..."> ... </env>
         $content = preg_replace_callback('/<env' . $attrRegex . '>/is', function ($m) {
             $attrs = $this->parseAttributes($m[1]);
@@ -905,8 +913,9 @@ trait CompilesComponents
         // 13. RBAC Tags
         $content = preg_replace_callback('/<can' . $attrRegex . '>/is', function ($m) {
             $attrs = $this->parseAttributes($m[1]);
-            if (isset($attrs['ability'])) {
-                return "@can('{$attrs['ability']['value']}')";
+            $ability = $attrs['ability']['value'] ?? ($attrs['do']['value'] ?? '');
+            if ($ability) {
+                return "@can('{$ability}')";
             }
             return $m[0];
         }, $content) ?? $content;
@@ -914,8 +923,9 @@ trait CompilesComponents
 
         $content = preg_replace_callback('/<cannot' . $attrRegex . '>/is', function ($m) {
             $attrs = $this->parseAttributes($m[1]);
-            if (isset($attrs['ability'])) {
-                return "@cannot('{$attrs['ability']['value']}')";
+            $ability = $attrs['ability']['value'] ?? ($attrs['do']['value'] ?? '');
+            if ($ability) {
+                return "@cannot('{$ability}')";
             }
             return $m[0];
         }, $content) ?? $content;

@@ -40,3 +40,4 @@ PRODUCTION_NOTES.md
 /config_backup/
 /.env_backup
 /modules
+/tmp

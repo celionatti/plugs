@@ -75,13 +75,26 @@ trait CompilesLayouts
     {
         $attrRegex = '((?:[^>"\']+|"[^"]*"|\'[^\']*\')*)';
 
-        // 1. <push:name> ... </push:name>
+        // 1. <push:name> ... </push:name> OR <push name="..."> ... </push>
         $content = preg_replace_callback('/<push:([\w-]+)\s*>/s', function ($m) {
             return "@push('{$m[1]}')";
         }, $content) ?? $content;
-        $content = preg_replace('/<\/push:[\w-]+\s*>/s', '@endpush', $content);
 
-        // 1b. <pushOnce:stack key="..."> ... </pushOnce:stack>
+        $content = preg_replace_callback('/<push' . $attrRegex . '>/is', function ($m) {
+            if (str_ends_with(trim($m[1]), ':')) return $m[0]; // Skip <push:name>
+            $attrs = $this->parseAttributes($m[1]);
+            if (isset($attrs['name'])) {
+                return "@push('{$attrs['name']['value']}')";
+            }
+            if (isset($attrs['stack'])) {
+                return "@push('{$attrs['stack']['value']}')";
+            }
+            return $m[0];
+        }, $content) ?? $content;
+
+        $content = preg_replace('/<\/push(?::[\w-]+)?\s*>/is', '@endpush', $content);
+
+        // 1b. <pushOnce:stack key="..."> ... </pushOnce:stack> OR <pushOnce name="..." key="...">
         $content = preg_replace_callback('/<pushOnce:([\w-]+)' . $attrRegex . '>(.*?)<\/pushOnce:[\w-]+\s*>/is', function ($m) {
             $stack = $m[1];
             $attrs = $this->parseAttributes($m[2]);
@@ -90,24 +103,74 @@ trait CompilesLayouts
             return "@pushOnce('{$key}', '{$stack}'){$inner}@endPushOnce";
         }, $content) ?? $content;
 
-        // 2. <prepend:name> ... </prepend:name>
+        $content = preg_replace_callback('/<pushOnce' . $attrRegex . '>(.*?)<\/pushOnce\s*>/is', function ($m) {
+            $attrs = $this->parseAttributes($m[1]);
+            $stack = $attrs['name']['value'] ?? ($attrs['stack']['value'] ?? '');
+            $key = $attrs['key']['value'] ?? 'null';
+            $inner = $m[2];
+            if ($stack) {
+                return "@pushOnce('{$key}', '{$stack}'){$inner}@endPushOnce";
+            }
+            return $m[0];
+        }, $content) ?? $content;
+
+        // 2. <prepend:name> ... </prepend:name> OR <prepend name="...">
         $content = preg_replace_callback('/<prepend:([\w-]+)\s*>/s', function ($m) {
             return "@prepend('{$m[1]}')";
         }, $content) ?? $content;
-        $content = preg_replace('/<\/prepend:[\w-]+\s*>/s', '@endprepend', $content);
 
-        // 3. <stack:name /> — self-closing, renders the stack
-        $content = preg_replace_callback('/<stack:([\w-]+)\s*\/>/s', function ($m) {
+        $content = preg_replace_callback('/<prepend' . $attrRegex . '>/is', function ($m) {
+            if (str_ends_with(trim($m[1]), ':')) return $m[0];
+            $attrs = $this->parseAttributes($m[1]);
+            if (isset($attrs['name'])) {
+                return "@prepend('{$attrs['name']['value']}')";
+            }
+            return $m[0];
+        }, $content) ?? $content;
+
+        $content = preg_replace('/<\/prepend(?::[\w-]+)?\s*>/is', '@endprepend', $content);
+
+        // 3. <stack:name /> — self-closing, renders the stack OR <stack name="..." />
+        $content = preg_replace_callback('/<stack:([\w-]+)\s*\/?>/s', function ($m) {
             return "@stack('{$m[1]}')";
         }, $content) ?? $content;
 
-        // 4. <yield:name default="..." /> or <yield:name />
+        $content = preg_replace_callback('/<stack' . $attrRegex . '\/?>/is', function ($m) {
+            if (str_ends_with(trim($m[1]), ':')) return $m[0];
+            $attrs = $this->parseAttributes($m[1]);
+            if (isset($attrs['name'])) {
+                return "@stack('{$attrs['name']['value']}')";
+            }
+            return $m[0];
+        }, $content) ?? $content;
+
+        // 4. <yield:name default="..." /> or <yield name="..." />
         $content = preg_replace_callback('/<yield:([\w-]+)' . $attrRegex . '\/?>/is', function ($m) {
             $attrs = $this->parseAttributes($m[2]);
             if (isset($attrs['default'])) {
                 return "@yield('{$m[1]}', '{$attrs['default']['value']}')";
             }
             return "@yield('{$m[1]}')";
+        }, $content) ?? $content;
+
+        $content = preg_replace_callback('/<yield' . $attrRegex . '\/?>/is', function ($m) {
+            if (str_ends_with(trim($m[1]), ':')) return $m[0];
+            $attrs = $this->parseAttributes($m[1]);
+            if (isset($attrs['name'])) {
+                $default = isset($attrs['default']) ? ", '{$attrs['default']['value']}'" : "";
+                return "@yield('{$attrs['name']['value']}'{$default})";
+            }
+            return $m[0];
+        }, $content) ?? $content;
+
+        // 5. <section name="..."> ... </section>
+        $content = preg_replace_callback('/<section' . $attrRegex . '>(.*?)<\/section\s*>/is', function ($m) {
+            $attrs = $this->parseAttributes($m[1]);
+            if (isset($attrs['name'])) {
+                $content = $m[2];
+                return "@section('{$attrs['name']['value']}'){$content}@endsection";
+            }
+            return $m[0];
         }, $content) ?? $content;
 
         // 6. <include view="..." :data="[...]" /> or <include view="..." />

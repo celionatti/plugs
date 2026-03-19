@@ -747,6 +747,7 @@ class ViewCompiler
         $content = $this->compileTagLoops($content);        // <loop>, <forelse>, <while>, <for>
         $content = $this->compileFormTags($content);        // <csrf>, <method>, <error>, etc.
         $content = $this->compileComponentTags($content);   // <fragment>, <teleport>, <auth>, etc.
+        $content = $this->compilePhpTag($content);          // <php>
         $content = $this->compileMarkdownTag($content);    // <markdown>
         $content = $this->compileAttributeDirectives($content); // :class, :style
         $content = $this->compileAutoCsp($content);        // Auto-inject CSP nonces
@@ -838,7 +839,7 @@ class ViewCompiler
 
         // Quoted attributes
         preg_match_all(
-            '/([\w:.-]+)\s*=\s*(["\'])(.*?)\2/is',
+            '/([\w:@.-]+)\s*=\s*(["\'])(.*?)\2/is',
             $attributes,
             $matches,
             PREG_SET_ORDER
@@ -883,8 +884,8 @@ class ViewCompiler
         }
 
         // Boolean attributes (flags)
-        $withoutQuoted = preg_replace('/[\w:.-]+\s*=\s*(?:(["\']).*?\1|\$[\w\[\]\'\"\-\>]+)/s', '', $attributes);
-        preg_match_all('/([\w:.-]+)/', $withoutQuoted, $matches);
+        $withoutQuoted = preg_replace('/[\w:@.-]+\s*=\s*(?:(["\']).*?\1|\$[\w\[\]\'\"\-\>]+)/s', '', $attributes);
+        preg_match_all('/([\w:@.-]+)/', $withoutQuoted, $matches);
 
         foreach ($matches[1] as $attr) {
             if (!isset($result[$attr]) && !empty(trim($attr)) && !preg_match('/^___EXPR_\d+___$/', $attr)) {

@@ -332,31 +332,40 @@ trait CompilesFormDirectives
             return $m[0];
         }, $content);
 
-        // 2. <method type="..." />
+        // 2. <method type="..." or value="..." />
         $content = preg_replace_callback('/<method' . $attrRegex . '\/?>/is', function ($m) {
             $attrs = $this->parseAttributes($m[1]);
-            if (isset($attrs['type'])) {
-                return "@method('{$attrs['type']['value']}')";
+            $type = $attrs['type']['value'] ?? ($attrs['value']['value'] ?? '');
+            if ($type) {
+                return "@method('{$type}')";
             }
             return $m[0];
         }, $content);
 
-        // <error field="..." />
+        // <error field="..."> or <error name="...">
         $content = preg_replace_callback('/<error' . $attrRegex . '>/is', function ($m) {
             $attrs = $this->parseAttributes($m[1]);
-            if (isset($attrs['field'])) {
+            $field = $attrs['field']['value'] ?? ($attrs['name']['value'] ?? '');
+            if ($field) {
                 if (str_ends_with(trim($m[1]), '/')) {
-                    return "@error('{$attrs['field']['value']}') <?php echo \$message; ?> @enderror";
+                    return "@error('{$field}') <?php echo \$message; ?> @enderror";
                 }
-                return "@error('{$attrs['field']['value']}')";
+                return "@error('{$field}')";
             }
             return $m[0];
         }, $content);
         $content = preg_replace('/<\/error\s*>/is', '@enderror', $content);
 
 
-        // 4. <errors> ... </errors>
-        $content = preg_replace('/<errors\s*>/is', '@errors', $content);
+        // 4. <errors [field="..."]> ... </errors>
+        $content = preg_replace_callback('/<errors' . $attrRegex . '>/is', function ($m) {
+            $attrs = $this->parseAttributes($m[1]);
+            $field = $attrs['field']['value'] ?? ($attrs['name']['value'] ?? '');
+            if ($field) {
+                return "@errors('{$field}')";
+            }
+            return '@errors';
+        }, $content);
         $content = preg_replace('/<\/errors\s*>/is', '@enderrors', $content);
 
         // <class :map="..." />
@@ -399,38 +408,52 @@ trait CompilesFormDirectives
             return $m[0];
         }, $content);
 
-        // <checked :when="..." />
+        // <checked when="..." or if="..." or test="..." or check="..." or expr="..." />
         $content = preg_replace_callback('/<checked' . $attrRegex . '\/?>/is', function ($m) {
             $attrs = $this->parseAttributes($m[1]);
-            if (isset($attrs['when'])) {
-                return "@checked({$attrs['when']['value']})";
+            $condition = $attrs['when']['value'] ?? ($attrs['if']['value'] ?? ($attrs['test']['value'] ?? ($attrs['check']['value'] ?? ($attrs['expr']['value'] ?? ''))));
+            if ($condition) {
+                return "@checked({$condition})";
             }
             return $m[0];
         }, $content);
 
-        // <selected :when="..." />
+        // <selected when="..." or if="..." or test="..." or check="..." or expr="..." />
         $content = preg_replace_callback('/<selected' . $attrRegex . '\/?>/is', function ($m) {
             $attrs = $this->parseAttributes($m[1]);
-            if (isset($attrs['when'])) {
-                return "@selected({$attrs['when']['value']})";
+            $condition = $attrs['when']['value'] ?? ($attrs['if']['value'] ?? ($attrs['test']['value'] ?? ($attrs['check']['value'] ?? ($attrs['expr']['value'] ?? ''))));
+            if ($condition) {
+                return "@selected({$condition})";
             }
             return $m[0];
         }, $content);
 
-        // <disabled :when="..." />
+        // <disabled when="..." or if="..." or test="..." or check="..." or expr="..." />
         $content = preg_replace_callback('/<disabled' . $attrRegex . '\/?>/is', function ($m) {
             $attrs = $this->parseAttributes($m[1]);
-            if (isset($attrs['when'])) {
-                return "@disabled({$attrs['when']['value']})";
+            $condition = $attrs['when']['value'] ?? ($attrs['if']['value'] ?? ($attrs['test']['value'] ?? ($attrs['check']['value'] ?? ($attrs['expr']['value'] ?? ''))));
+            if ($condition) {
+                return "@disabled({$condition})";
             }
             return $m[0];
         }, $content);
 
-        // <readonly :when="..." />
-        $content = preg_replace_callback('/<readonly\s+([^>]+)\/?>/is', function ($m) {
+        // <readonly when="..." or if="..." or test="..." or check="..." or expr="..." />
+        $content = preg_replace_callback('/<readonly' . $attrRegex . '\/?>/is', function ($m) {
             $attrs = $this->parseAttributes($m[1]);
-            if (isset($attrs['when'])) {
-                return "@readonly({$attrs['when']['value']})";
+            $condition = $attrs['when']['value'] ?? ($attrs['if']['value'] ?? ($attrs['test']['value'] ?? ($attrs['check']['value'] ?? ($attrs['expr']['value'] ?? ''))));
+            if ($condition) {
+                return "@readonly({$condition})";
+            }
+            return $m[0];
+        }, $content);
+
+        // <required when="..." or if="..." or test="..." or check="..." or expr="..." />
+        $content = preg_replace_callback('/<required' . $attrRegex . '\/?>/is', function ($m) {
+            $attrs = $this->parseAttributes($m[1]);
+            $condition = $attrs['when']['value'] ?? ($attrs['if']['value'] ?? ($attrs['test']['value'] ?? ($attrs['check']['value'] ?? ($attrs['expr']['value'] ?? ''))));
+            if ($condition) {
+                return "@required({$condition})";
             }
             return $m[0];
         }, $content);
