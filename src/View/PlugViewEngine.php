@@ -1096,6 +1096,18 @@ class PlugViewEngine implements ViewEngineInterface
         // Resolve base paths for resolution
         $paths = $this->getPathsForNamespace($namespace);
 
+        // 1. Central Theme Override for Namespaced Views (e.g. modules)
+        // Checks: {main_view_path}/themes/{theme}/modules/{namespace}/{view}.plug.php
+        if ($namespace && $this->theme && $this->theme !== 'default') {
+            foreach (self::VIEW_EXTENSIONS as $extension) {
+                $centralOverridePath = $this->viewPath . DIRECTORY_SEPARATOR . 'themes' . DIRECTORY_SEPARATOR . $this->theme . DIRECTORY_SEPARATOR . 'modules' . DIRECTORY_SEPARATOR . $namespace . DIRECTORY_SEPARATOR . $view . $extension;
+
+                if ($this->fileExistsCached($centralOverridePath)) {
+                    return $centralOverridePath;
+                }
+            }
+        }
+
         foreach ($paths as $path) {
             // Check theme path first if theme is set
             if ($this->theme && $this->theme !== 'default') {
