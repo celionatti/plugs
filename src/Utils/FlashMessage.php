@@ -328,8 +328,14 @@ CSS;
             return true;
         }
 
-        foreach ($_SESSION[self::SESSION_KEY] as $flash) {
-            if ($flash['type'] === $type) {
+        foreach ($_SESSION[self::SESSION_KEY] as $key => $flash) {
+            // Check if key matches type (RedirectResponse format)
+            if ($key === $type) {
+                return true;
+            }
+
+            // Check if it's a structured array with matching type property
+            if (is_array($flash) && isset($flash['type']) && $flash['type'] === $type) {
                 return true;
             }
         }
@@ -353,22 +359,60 @@ CSS;
 
         if ($type === null) {
             foreach ($allFlsh as $key => $flash) {
-                // Filter out internal keys like _delete_next if present
+                // Skip internal keys like _delete_next
                 if (is_string($key) && str_starts_with($key, '_')) {
                     continue;
                 }
 
-                $messages[$key] = $flash;
+                // Normalize simple string flash (from RedirectResponse)
+                if (!is_array($flash)) {
+                    $flash = [
+                        'type' => is_string($key) ? $key : 'info',
+                        'message' => (string)$flash,
+                        'title' => null,
+                        'timestamp' => time()
+                    ];
+                }
+
+                $messages[] = $flash;
+
                 if ($clear) {
                     unset($_SESSION[self::SESSION_KEY][$key]);
                 }
             }
+
+            // If we cleared individual keys, check if we should clear the whole bucket
+            if ($clear && empty($_SESSION[self::SESSION_KEY])) {
+                unset($_SESSION[self::SESSION_KEY]);
+            }
         } else {
-            if (isset($allFlsh[$type])) {
-                $content = $allFlsh[$type];
-                $messages = is_array($content) && !isset($content['message']) ? $content : [$content];
-                if ($clear) {
-                    unset($_SESSION[self::SESSION_KEY][$type]);
+            // Get messages of a specific type
+            foreach ($allFlsh as $key => $flash) {
+                $isMatch = false;
+                $normalized = $flash;
+
+                // Check key match
+                if ($key === $type) {
+                    $isMatch = true;
+                    if (!is_array($flash)) {
+                        $normalized = [
+                            'type' => $type,
+                            'message' => (string)$flash,
+                            'title' => null,
+                            'timestamp' => time()
+                        ];
+                    }
+                }
+                // Check structured array match
+                elseif (is_array($flash) && isset($flash['type']) && $flash['type'] === $type) {
+                    $isMatch = true;
+                }
+
+                if ($isMatch) {
+                    $messages[] = $normalized;
+                    if ($clear) {
+                        unset($_SESSION[self::SESSION_KEY][$key]);
+                    }
                 }
             }
         }

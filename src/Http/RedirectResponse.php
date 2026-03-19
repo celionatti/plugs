@@ -1,6 +1,7 @@
 <?php
 
-declare(strict_types=1);
+declare(strict_types = 1)
+;
 
 namespace Plugs\Http;
 
@@ -125,15 +126,17 @@ class RedirectResponse implements ResponseInterface
     {
         if ($errors instanceof \Plugs\View\ErrorMessage) {
             $this->flashErrors['_errors'] = $errors;
-        } elseif (is_array($errors)) {
+        }
+        elseif (is_array($errors)) {
             $current = $this->flashErrors['_errors'] ?? new \Plugs\View\ErrorMessage();
             foreach ($errors as $field => $message) {
-                $current->add(is_numeric($field) ? 'general' : (string) $field, $message);
+                $current->add(is_numeric($field) ? 'general' : (string)$field, $message);
             }
             $this->flashErrors['_errors'] = $current;
-        } else {
+        }
+        else {
             $current = $this->flashErrors['_errors'] ?? new \Plugs\View\ErrorMessage();
-            $current->add('general', (string) $errors);
+            $current->add('general', (string)$errors);
             $this->flashErrors['_errors'] = $current;
         }
 
@@ -192,13 +195,13 @@ class RedirectResponse implements ResponseInterface
      */
     public function send(): void
     {
-        // Store flash data in session
-        $this->storeFlashData();
+        // Flash data is strictly stored by FlashMiddleware to ensure proper lifecycle within the request pipeline.
 
         // Send headers and body from the underlying response
         if (method_exists($this->response, 'send')) {
             $this->response->send();
-        } else {
+        }
+        else {
             // Manual fallback if not framework response
             if (!headers_sent()) {
                 header("HTTP/1.1 {$this->status}");
@@ -215,7 +218,7 @@ class RedirectResponse implements ResponseInterface
     /**
      * Store flash data in session
      */
-    protected function storeFlashData(): void
+    public function storeFlashData(): void
     {
         if (session_status() === PHP_SESSION_NONE) {
             session_start();
@@ -227,7 +230,14 @@ class RedirectResponse implements ResponseInterface
         }
 
         foreach ($this->flashData as $key => $value) {
-            $_SESSION['_flash'][$key] = $value;
+            if (is_array($value) && isset($value['type'], $value['message'])) {
+                // Structured flash from withFlash() — pass message and title correctly
+                \Plugs\Utils\FlashMessage::set($value['type'], $value['message'], $value['title'] ?? null);
+            }
+            else {
+                // Simple key-value flash from with()
+                \Plugs\Utils\FlashMessage::set($key, (string)$value);
+            }
         }
 
         if (!empty($this->flashErrors['_errors'])) {
@@ -334,7 +344,7 @@ class RedirectResponse implements ResponseInterface
     {
         // For CLI or when someone forgot to return the response
         if (PHP_SAPI !== 'cli' && !headers_sent() && $this->status >= 300 && $this->status < 400) {
-            // $this->send(); // Optional: Automatic send can be dangerous if not careful
+        // $this->send(); // Optional: Automatic send can be dangerous if not careful
         }
     }
 

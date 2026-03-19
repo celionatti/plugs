@@ -31,16 +31,39 @@ class FlashMiddleware implements MiddlewareInterface
             session_start();
         }
 
-        // Mark previous flash data for deletion
-        $this->ageFlashData();
+        // Only age flash data if it's NOT an AJAX/SPA request
+        // This prevents background SPA/AJAX requests from clearing the main page's flash
+        if (!$this->isAjaxRequest($request)) {
+            $this->ageFlashData();
+        }
 
         // Process the request
         $response = $handler->handle($request);
 
-        // Note: Actual cleanup happens on next request
-        // This allows flash data to be available for one full request cycle
+        // If response is a RedirectResponse, store its flash data now
+        if ($response instanceof \Plugs\Http\RedirectResponse) {
+            $response->storeFlashData();
+        }
 
         return $response;
+    }
+
+    /**
+     * Check if the request is an AJAX/SPA request that should not age flash data
+     */
+    protected function isAjaxRequest(ServerRequestInterface $request): bool
+    {
+        // Standard AJAX check
+        if (strtolower($request->getHeaderLine('X-Requested-With')) === 'xmlhttprequest') {
+            return true;
+        }
+
+        // SPA-specific checks
+        if ($request->hasHeader('X-Plugs-SPA') || $request->hasHeader('X-Plugs-Section')) {
+            return true;
+        }
+
+        return false;
     }
 
     /**
@@ -52,11 +75,17 @@ class FlashMiddleware implements MiddlewareInterface
             return;
         }
 
-        // If flash data was marked for deletion, delete it now
-        if (isset($_SESSION['_flash']['_delete_next']) && $_SESSION['_flash']['_delete_next'] === true) {
-            unset($_SESSION['_flash']);
-        } else {
+        // We no longer unset the entire $_SESSION['_flash'] here.
+        // Instead, FlashMessage::get() is responsible for clearing messages 
+        // after they are read, avoiding issues with concurrent requests or 
+        // the middleware clearing data before the layout renders.
+        // 
+        // We still mark it so older messages could theoretically be cleaned 
+        // up, but in practice get() clears them.
+
+        if (!isset($_SESSION['_flash']['_delete_next']) || $_SESSION['_flash']['_delete_next'] !== true) {
             // Mark current flash data for deletion on next request
+            // (Used as a general age indicator, though actual clearing happens in get())
             $_SESSION['_flash']['_delete_next'] = true;
         }
     }

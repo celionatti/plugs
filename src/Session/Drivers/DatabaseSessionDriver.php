@@ -39,6 +39,12 @@ class DatabaseSessionDriver implements SessionDriverInterface
         [$id]
         );
 
+        $payload = '';
+        if ($result) {
+            $payload = $result['payload'] ?? '';
+        }
+
+
         if ($result) {
             return $result['payload'] ?? '';
         }
