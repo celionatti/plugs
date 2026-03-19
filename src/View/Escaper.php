@@ -133,7 +133,26 @@ class Escaper
 
         // Basic protocol sanitization
         $dangerProtocols = ['javascript:', 'data:', 'vbscript:', 'file:'];
+        
+        // Remove whitespace, control characters, and common HTML entities that can hide protocols
         $cleanValue = strtolower(trim($value));
+        $cleanValue = str_replace(['&Tab;', '&NewLine;'], '', $cleanValue);
+        $cleanValue = preg_replace('/[\x00-\x1F\x7F]/', '', $cleanValue); // Remove control characters including null byte
+        $cleanValue = preg_replace('/\s+/', '', $cleanValue);
+
+        // Handle encoded characters like &#x6A; (j)
+        if (str_contains($cleanValue, '&#')) {
+            $decoded = html_entity_decode($cleanValue, ENT_QUOTES | ENT_HTML5, 'UTF-8');
+            $decoded = preg_replace('/\s+/', '', strtolower($decoded));
+            foreach ($dangerProtocols as $protocol) {
+                if (str_starts_with($decoded, $protocol)) {
+                    if ($protocol === 'data:' && str_starts_with($decoded, 'data:image/')) {
+                        continue;
+                    }
+                    return '#';
+                }
+            }
+        }
 
         foreach ($dangerProtocols as $protocol) {
             if (str_starts_with($cleanValue, $protocol)) {
@@ -149,12 +168,6 @@ class Escaper
     }
 
     /**
-     * Escape for JSON context (proxy to js for safe injection).
-     * 
-     * @param mixed $value
-     * @return string
-     */
-    /**
      * Escape for CSS context (style attributes).
      * Blocks dangerous CSS values that could enable CSS injection.
      * 
@@ -169,8 +182,12 @@ class Escaper
             return '';
         }
 
-        // Check for dangerous CSS keywords (case-insensitive)
-        $dangerous = ['expression', 'javascript', 'vbscript', 'url(', 'import', 'behavior', 'binding', '-moz-binding'];
+        // Check for dangerous CSS keywords and patterns (case-insensitive)
+        $dangerous = [
+            'expression', 'javascript', 'vbscript', 'url(', 'import', 
+            'behavior', 'binding', '-moz-binding', '@import', 
+            'content:', 'position:fixed', 'position:absolute'
+        ];
         $clean = strtolower(trim($value));
 
         foreach ($dangerous as $keyword) {
@@ -179,8 +196,9 @@ class Escaper
             }
         }
 
-        // Strip characters that could break out of CSS context
-        return preg_replace('/[^a-zA-Z0-9\s#.,;:%()\-_\/\'"!+*>~\[\]=]/', '', $value);
+        // Strip characters that could break out of CSS context: \ ( ) [ ] { } ; :
+        // We allow some if they are common in safe CSS but block the dangerous ones.
+        return preg_replace('/[\\\\<>\"\'&]/', '', $value);
     }
 
     /**

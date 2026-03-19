@@ -60,8 +60,9 @@ class DatabaseUserProvider implements UserProviderInterface
         }
 
         $rememberToken = $user->getRememberToken();
+        $tokenHash = hash('sha256', $token);
 
-        return $rememberToken && hash_equals($rememberToken, $token) ? $user : null;
+        return $rememberToken && hash_equals($rememberToken, $tokenHash) ? $user : null;
     }
 
     /**
@@ -69,7 +70,8 @@ class DatabaseUserProvider implements UserProviderInterface
      */
     public function updateRememberToken(Authenticatable $user, string $token): void
     {
-        $user->setRememberToken($token);
+        $tokenHash = !empty($token) ? hash('sha256', $token) : '';
+        $user->setRememberToken($tokenHash);
 
         // Persist using the model's save method if available
         if (method_exists($user, 'save')) {
@@ -109,7 +111,20 @@ class DatabaseUserProvider implements UserProviderInterface
             return false;
         }
 
-        return Hash::verify($credentials['password'], $user->getAuthPassword());
+        $result = Hash::verifyAndRehash(
+            $credentials['password'],
+            $user->getAuthPassword(),
+            function ($newHash) use ($user) {
+                if (method_exists($user, 'setAttribute')) {
+                    $user->setAttribute('password', $newHash);
+                }
+                if (method_exists($user, 'save')) {
+                    $user->save();
+                }
+            }
+        );
+
+        return $result['verified'];
     }
 
     /**

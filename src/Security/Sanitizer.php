@@ -92,9 +92,12 @@ class Sanitizer
         }
 
         $tagString = '<' . implode('><', $allowedTags) . '>';
-        $content = strip_tags((string) $value, $tagString);
-
-        return self::cleanAttributes($content);
+        
+        // Clean attributes and dangerous tags WITH their content FIRST
+        $content = self::cleanAttributes((string) $value);
+        
+        // Then strip remaining disallowed tags
+        return strip_tags($content, $tagString);
     }
 
     /**

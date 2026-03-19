@@ -359,12 +359,31 @@ class Csrf
      */
     private static function getTokenFromRequest(): ?string
     {
-        // Check POST data
+        // 1. Check if we can get it from a global request instance (PSR-7)
+        $container = \Plugs\Container\Container::getInstance();
+        if ($container->bound(\Psr\Http\Message\ServerRequestInterface::class)) {
+            $request = $container->make(\Psr\Http\Message\ServerRequestInterface::class);
+            
+            // Check parsed body
+            $parsedBody = $request->getParsedBody();
+            if (is_array($parsedBody) && isset($parsedBody['_token']) && is_string($parsedBody['_token'])) {
+                return $parsedBody['_token'];
+            }
+
+            // Check headers
+            $token = $request->getHeaderLine('X-CSRF-TOKEN');
+            if ($token !== '') return $token;
+            
+            $token = $request->getHeaderLine('X-XSRF-TOKEN');
+            if ($token !== '') return $token;
+        }
+
+        // 2. Fallback to standard $_POST
         if (isset($_POST['_token']) && is_string($_POST['_token'])) {
             return $_POST['_token'];
         }
 
-        // Check JSON body
+        // 3. Fallback to raw input for non-PSR-7 JSON requests (legacy)
         if (
             isset($_SERVER['CONTENT_TYPE']) &&
             stripos($_SERVER['CONTENT_TYPE'], 'application/json') !== false
@@ -378,7 +397,7 @@ class Csrf
             }
         }
 
-        // Check headers
+        // 4. Fallback to standard Server headers
         $headers = [
             'HTTP_X_CSRF_TOKEN',
             'HTTP_X_XSRF_TOKEN',

@@ -217,23 +217,19 @@ trait CompilesComponents
                 $input = trim($matches[1]);
                 $mode = $matches[2] ?? 'default';
 
-                $allowedTags = match ($mode) {
-                    'strict' => '',
-                    'basic' => '<p><br><strong><em><b><i>',
-                    'rich' => '<p><br><strong><em><b><i><ul><ol><li><a><h1><h2><h3><h4><h5><h6><blockquote><code><pre>',
-                    default => '<p><br><strong><em><b><i><ul><ol><li><a>',
+                $tags = match ($mode) {
+                    'strict' => [],
+                    'basic' => ['p', 'br', 'b', 'i', 'strong', 'em'],
+                    'rich' => ['p', 'br', 'b', 'i', 'strong', 'em', 'ul', 'ol', 'li', 'a', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'blockquote', 'code', 'pre'],
+                    default => ['p', 'br', 'b', 'i', 'strong', 'em', 'ul', 'ol', 'li', 'a'],
                 };
 
+                $tagsExpr = "['" . implode("', '", $tags) . "']";
+
                 return sprintf(
-                    '<?php 
-                    $__sanitized = strip_tags(%s, \'%s\'); 
-                    $__sanitized = preg_replace(\'/\s+on\w+\s*=\s*(["\\\'])(?:(?!\1).)*\1/i\', \'\', $__sanitized);
-                    $__sanitized = preg_replace(\'/(href|src|style)\s*=\s*(["\\\'])\s*(javascript|data|vbscript):(?:(?!\2).)*\2/i\', \'\', $__sanitized);
-                    echo $__sanitized;
-                    unset($__sanitized);
-                    ?>',
+                    '<?php echo \Plugs\Security\Sanitizer::safeHtml(%s, %s); ?>',
                     $input,
-                    $allowedTags
+                    $tagsExpr
                 );
             },
             $content
@@ -533,6 +529,7 @@ trait CompilesComponents
 
                 return sprintf(
                     '<?php echo (function($name, $class) {
+                    $name = \Plugs\Security\Sanitizer::path($name);
                     $paths = [
                         rtrim($_SERVER["DOCUMENT_ROOT"] ?? "", "/") . "/../resources/svg/" . $name . ".svg",
                         rtrim($_SERVER["DOCUMENT_ROOT"] ?? "", "/") . "/assets/svg/" . $name . ".svg",
@@ -723,7 +720,7 @@ trait CompilesComponents
         $md = addslashes(trim($markdown));
 
         return sprintf(
-            '<?php echo (function($md) {
+            '<?php echo \Plugs\Security\Sanitizer::safeHtml((function($md) {
                 $md = preg_replace_callback("/```(\\\\w+)?\\\\n(.*?)```/s", function($m) {
                     $lang = $m[1] ?? "";
                     return "<pre><code class=\"language-" . htmlspecialchars($lang) . "\">" . htmlspecialchars($m[2]) . "</code></pre>";
@@ -748,7 +745,7 @@ trait CompilesComponents
                 $md = "<p>" . $md . "</p>";
                 $md = str_replace("<p></p>", "", $md);
                 return $md;
-            })(\'%s\'); ?>',
+            })(\'%s\')); ?>',
             $md
         );
     }

@@ -154,13 +154,15 @@ class ThreatDetector
         }
 
         $score = 0;
-        // Use preg_match_all to find all occurrences in one pass if needed, 
-        // but here we just need to know how many patterns matched.
-        // Actually, the original logic added 5 points PER PATTERN that matched.
-        // To maintain compatibility, we check each capture group or just use the consolidated one.
-
+        
         // Performance optimization: check if any pattern matches first
-        if (preg_match(self::$consolidatedPattern, $value)) {
+        $match = @preg_match(self::$consolidatedPattern, $value);
+        if ($match === false) {
+            // Log regex error if needed, but for now just move on or treat as non-match
+            return self::$requestScanCache[$value] = 0;
+        }
+
+        if ($match) {
             // If it matches, we go deeper to count matches for scoring
             foreach (self::$suspiciousPatterns as $pattern) {
                 if (@preg_match($pattern, $value)) {
@@ -205,20 +207,30 @@ class ThreatDetector
             if (method_exists($file, 'getClientFilename')) {
                 $name = $file->getClientFilename() ?? '';
 
-                // Check for path traversal in filename
-                if (preg_match('/\.\.[\\/\\\\]/', $name) || str_contains($name, "\0")) {
+                // Check for path traversal in filename (handle encoded versions)
+                $decodedName = urldecode($name);
+                if (preg_match('/\.\.[\\/\\\\]/', $name) || preg_match('/\.\.[\\/\\\\]/', $decodedName) || str_contains($name, "\0")) {
                     $score += 10;
                 }
 
                 // Check for dangerous extensions (double extension attacks)
-                $extension = strtolower(pathinfo($name, PATHINFO_EXTENSION));
+                $parts = explode('.', strtolower($name));
+                
+                // If the last extension is dangerous, it's a high risk
+                $extension = end($parts);
                 if (in_array($extension, $dangerousExtensions, true)) {
                     $score += 8;
                 }
 
-                // Double extension: file.php.jpg
-                if (preg_match('/\.(' . implode('|', $dangerousExtensions) . ')\.\w+$/i', $name)) {
-                    $score += 8;
+                // If ANY previous part is dangerous, it's also a high risk (e.g., file.php.jpg)
+                if (count($parts) > 2) {
+                    $middleParts = array_slice($parts, 0, -1);
+                    foreach ($middleParts as $part) {
+                        if (in_array($part, $dangerousExtensions, true)) {
+                            $score += 8;
+                            break;
+                        }
+                    }
                 }
             }
         }
