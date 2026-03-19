@@ -45,6 +45,33 @@ class FlashMiddleware implements MiddlewareInterface
             $response->storeFlashData();
         }
 
+        // For AJAX/SPA requests, inject the X-Plugs-Flash header
+        if ($this->isAjaxRequest($request)) {
+            $response = $this->processAjaxFlash($request, $response);
+        }
+
+        return $response;
+    }
+
+    /**
+     * Process flash messages for AJAX/SPA requests.
+     * Injects them as a JSON header for the SPA script to handle.
+     */
+    protected function processAjaxFlash(ServerRequestInterface $request, ResponseInterface $response): ResponseInterface
+    {
+        $messages = \Plugs\Utils\FlashMessage::get(clear: true);
+        
+        if (!empty($messages)) {
+            // Encode the first message or all? plugs-spa.js seems to handle it.
+            // Documentation says: header('X-Plugs-Flash: ' . json_encode(['type' => 'success', 'message' => 'Saved!']));
+            // But if there are multiple, we should probably send them all if the JS supports it.
+            // Looking at plugs-spa.js, it does JSON.parse(flashHeader).
+            
+            // If we send the first one as requested by docs:
+            $flash = $messages[0];
+            return $response->withHeader('X-Plugs-Flash', json_encode($flash));
+        }
+
         return $response;
     }
 

@@ -976,10 +976,11 @@ class ServerRequest implements ServerRequestInterface
             }
 
             // For web requests, flash errors and old input, then redirect back
-            if (function_exists('flash')) {
-                flash('errors', $validator->errors()->toArray());
-                flash('_old_input', $data);
+            if (session_status() === PHP_SESSION_NONE) {
+                session_start();
             }
+            $_SESSION['_errors'] = $validator->errors()->toArray();
+            $_SESSION['_old_input'] = $data;
 
             $backUrl = $this->getReferer() ?? '/';
             $redirect = new \Plugs\Http\RedirectResponse($backUrl);

@@ -273,12 +273,24 @@ CSS;
             $type = 'info';
         }
 
-        $_SESSION[self::SESSION_KEY][] = [
+        $newMessage = [
             'type' => $type,
             'message' => $message,
             'title' => $title,
             'timestamp' => time(),
         ];
+
+        // Prevent exact duplicates in the same request/session
+        foreach ($_SESSION[self::SESSION_KEY] as $existing) {
+            if (is_array($existing) && 
+                ($existing['type'] ?? '') === $type && 
+                ($existing['message'] ?? '') === $message &&
+                ($existing['title'] ?? null) === $title) {
+                return;
+            }
+        }
+
+        $_SESSION[self::SESSION_KEY][] = $newMessage;
     }
 
     /**

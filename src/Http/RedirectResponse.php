@@ -241,7 +241,7 @@ class RedirectResponse implements ResponseInterface
         }
 
         if (!empty($this->flashErrors['_errors'])) {
-            $_SESSION['errors'] = $this->flashErrors['_errors']->toArray();
+            $_SESSION['_errors'] = $this->flashErrors['_errors']->toArray();
         }
 
         if (!empty($this->flashInput)) {

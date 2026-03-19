@@ -163,8 +163,7 @@ abstract class Controller
      */
     protected function flash(string $key, $value, ?string $title = null): void
     {
-        /** @phpstan-ignore arguments.count */
-        flash($key, $value, $title);
+        \Plugs\Utils\FlashMessage::set($key, (string)$value, $title);
     }
 
     /**

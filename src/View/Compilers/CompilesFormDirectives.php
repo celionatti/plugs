@@ -241,14 +241,14 @@ trait CompilesFormDirectives
         $content = $this->compileClass($content);
         $content = $this->compileStyle($content);
         $content = $this->compileVite($content);
-        $content = $this->compileFlush($content);
+        $content = $this->compileOutputFlush($content);
 
         return $content;
     }
 
-    protected function compileFlush(string $content): string
+    protected function compileOutputFlush(string $content): string
     {
-        return preg_replace('/@flush\s*/', '<?php flush(); ?>', $content);
+        return preg_replace('/@outputFlush\s*/', '<?php flush(); ?>', $content);
     }
 
     protected function compileFormHelpers(string $content): string
