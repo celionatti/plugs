@@ -119,7 +119,7 @@ class NebulaThemeCommand extends Command
     <div class="ambient-orb w-[500px] h-[500px] bg-indigo-900/20 -top-20 -left-20"></div>
     <div class="ambient-orb w-[400px] h-[400px] bg-purple-900/20 bottom-0 right-0" style="animation-delay: -5s;"></div>
     
-    <slot></slot>
+    <yield:content />
 </body>
 </html>
 HTML;
