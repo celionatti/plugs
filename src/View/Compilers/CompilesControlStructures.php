@@ -200,30 +200,30 @@ trait CompilesControlStructures
     {
         $attrRegex = '((?:[^>"\']+|"[^"]*"|\'[^\']*\')*)';
 
-        // <if condition="..." or check="..." or test="..." or :when="...">
+        // <if condition="..." or check="..." or test="..." or expr="..." or when="..." or if="...">
         $content = preg_replace_callback('/<if' . $attrRegex . '>/i', function ($m) {
             $attrs = $this->parseAttributes($m[1]);
-            $condition = $attrs['condition']['value'] ?? ($attrs['check']['value'] ?? ($attrs['test']['value'] ?? ($attrs['when']['value'] ?? '')));
+            $condition = $attrs['condition']['value'] ?? ($attrs['check']['value'] ?? ($attrs['test']['value'] ?? ($attrs['expr']['value'] ?? ($attrs['when']['value'] ?? ($attrs['if']['value'] ?? '')))));
             if ($condition) {
                 return "@if({$condition})";
             }
             return $m[0];
         }, $content);
 
-        // <unless condition="..." or check="..." or test="...">
+        // <unless condition="..." or check="..." or test="..." or expr="..." or when="..." or if="...">
         $content = preg_replace_callback('/<unless' . $attrRegex . '>/i', function ($m) {
             $attrs = $this->parseAttributes($m[1]);
-            $condition = $attrs['condition']['value'] ?? ($attrs['check']['value'] ?? ($attrs['test']['value'] ?? ''));
+            $condition = $attrs['condition']['value'] ?? ($attrs['check']['value'] ?? ($attrs['test']['value'] ?? ($attrs['expr']['value'] ?? ($attrs['when']['value'] ?? ($attrs['if']['value'] ?? '')))));
             if ($condition) {
                 return "@unless({$condition})";
             }
             return $m[0];
         }, $content);
 
-        // <elseif condition="..." or check="..." or test="...">
+        // <elseif condition="..." or check="..." or test="..." or expr="..." or when="..." or if="...">
         $content = preg_replace_callback('/<elseif' . $attrRegex . '\s*\/?>/i', function ($m) {
             $attrs = $this->parseAttributes($m[1]);
-            $condition = $attrs['condition']['value'] ?? ($attrs['check']['value'] ?? ($attrs['test']['value'] ?? ''));
+            $condition = $attrs['condition']['value'] ?? ($attrs['check']['value'] ?? ($attrs['test']['value'] ?? ($attrs['expr']['value'] ?? ($attrs['when']['value'] ?? ($attrs['if']['value'] ?? '')))));
             if ($condition) {
                 return "@elseif({$condition})";
             }
@@ -279,7 +279,7 @@ trait CompilesControlStructures
         // <while condition="...">
         $content = preg_replace_callback('/<while' . $attrRegex . '>/i', function ($m) {
             $attrs = $this->parseAttributes($m[1]);
-            $condition = $attrs['condition']['value'] ?? ($attrs['check']['value'] ?? ($attrs['test']['value'] ?? ''));
+            $condition = $attrs['condition']['value'] ?? ($attrs['check']['value'] ?? ($attrs['test']['value'] ?? ($attrs['expr']['value'] ?? ($attrs['when']['value'] ?? ($attrs['if']['value'] ?? '')))));
 
             if ($condition) {
                 return "@while({$condition})";
@@ -292,7 +292,7 @@ trait CompilesControlStructures
             $attrs = $this->parseAttributes($m[1]);
 
             $init = $attrs['init']['value'] ?? '';
-            $cond = $attrs['condition']['value'] ?? ($attrs['check']['value'] ?? ($attrs['test']['value'] ?? ''));
+            $cond = $attrs['condition']['value'] ?? ($attrs['check']['value'] ?? ($attrs['test']['value'] ?? ($attrs['expr']['value'] ?? ($attrs['when']['value'] ?? ($attrs['if']['value'] ?? '')))));
             $step = $attrs['step']['value'] ?? '';
 
             if ($init && $cond && $step) {
