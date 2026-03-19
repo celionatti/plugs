@@ -58,11 +58,11 @@ While all keywords function identically, choosing the right one can make your te
 ### Loops
 | Tag Syntax | Directive Syntax | Condition Attributes (for `while`/`for`) |
 | :--- | :--- | :--- |
-| `<foreach items="..." as="...">` | `@foreach(... as ...)` | - |
+| `<foreach ...>` or `<loop ...>` | `@foreach(... as ...)` | - |
 | `<forelse items="..." as="...">` | `@forelse(... as ...)` | - |
 | `<empty />` | `@empty` | - |
-| `<for init="..." condition="..." step="...">` | `@for(...)` | `condition`, `check`, `test`, `expr`, `when`, `if` |
-| `<while condition="...">` | `@while(...)` | `condition`, `check`, `test`, `expr`, `when`, `if` |
+| `<for ...>` | `@for(...)` | `condition`, `check`, `test`, `expr`, `when`, `if` |
+| `<while ...>` | `@while(...)` | `condition`, `check`, `test`, `expr`, `when`, `if` |
 
 **Example:**
 ```html
@@ -70,10 +70,34 @@ While all keywords function identically, choosing the right one can make your te
     <li>{{ post.title }}</li>
 </foreach>
 
-<while check="count(items) > 0">
-    <php>$item = array_pop($items);</php>
-    {{ item }}
-</while>
+<loop items="users" as="user">
+    <div>{{ user.name }}</div>
+</loop>
+
+#### 🔄 The Loop Variable ($loop)
+Inside any `<loop>`, `<foreach>`, or `<forelse>`, a special `$loop` object is automatically available. It provides helpful metadata about the current iteration:
+
+| Property | Description |
+| :--- | :--- |
+| `$loop->index` | The current loop index (0-based). |
+| `$loop->iteration` | The current iteration count (1-based). |
+| `$loop->count` | Total number of items in the loop (if known). |
+| `$loop->remaining()` | Remaining items (returns `null` for generators). |
+| `$loop->first()` | Returns `true` if this is the first iteration. |
+| `$loop->last()` | Returns `true` if this is the last iteration. |
+| `$loop->even()` | Returns `true` if this is an even iteration. |
+| `$loop->odd()` | Returns `true` if this is an odd iteration. |
+| `$loop->depth` | The nesting level of the current loop. |
+| `$loop->parent` | Reference to the parent loop (if nested). |
+
+**Example:**
+```html
+<loop items="users" as="user">
+    <div class="{{ $loop->even() ? 'bg-gray' : 'bg-white' }}">
+        {{ $loop->iteration }}. {{ user.name }}
+        <if check="$loop->last()"> (END) </if>
+    </div>
+</loop>
 ```
 
 ---
