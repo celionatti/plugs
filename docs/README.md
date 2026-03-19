@@ -39,6 +39,8 @@ Welcome to the official documentation for the **Plugs** framework. Plugs is a li
 - [Logging](file:///docs/the-basics/logging.md) (Updated)
 - [Helper Functions](file:///docs/the-basics/helpers.md) (Updated)
 - [Views & Components](file:///docs/views/README.md)
+- [Themes & Customization](file:///docs/views/themes.md) (Updated)
+  - [Theme Module Overrides](file:///docs/features/theme-overrides.md) (New)
 - [Debugging & Performance](file:///docs/the-basics/debugging.md)
 - [Filesystem Storage](file:///docs/the-basics/storage.md)
 - [Asset Management (Vite)](file:///docs/the-basics/assets.md) (New)

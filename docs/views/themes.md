@@ -60,6 +60,34 @@ This allows you to customize the look and feel of your entire UI by only overrid
 
 ---
 
+## 🧩 Theme Module Overrides
+
+The Plugs framework allows themes to override views from modules (namespaces) globally. This ensures a consistent look across the entire application, even for views provided by external or internal modules (like `Auth` or `Admin`).
+
+### Module Lookup Priority
+
+When a namespaced view is requested (e.g., `auth::login`), the engine checks:
+
+1.  **Central Theme Override**: `resources/views/themes/{theme_name}/modules/{namespace}/{view}.plug.php`
+2.  **Module Theme Override**: `{module_path}/Views/themes/{theme_name}/{view}.plug.php`
+3.  **Default Module View**: `{module_path}/Views/{view}.plug.php`
+
+### Example Structure
+
+To override the `login` view of the `Auth` module in the `nebula` theme:
+
+```text
+resources/
+└── views/
+    └── themes/
+        └── nebula/
+            └── modules/
+                └── auth/
+                    └── login.plug.php  <-- Nebula version of login
+```
+
+---
+
 ## 💡 Pro Tips
 
 ### Dynamic Theme Switching
