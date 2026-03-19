@@ -85,6 +85,11 @@ class Str
         return str_replace('_', '-', self::snake($name));
     }
 
+    public static function title(string $name): string
+    {
+        return ucwords(str_replace(['-', '_'], ' ', $name));
+    }
+
     public static function uuid(): string
     {
         $data = random_bytes(16);

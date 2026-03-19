@@ -85,6 +85,8 @@ use Plugs\Console\Commands\ShieldCommand;
 use Plugs\Console\Commands\SecurityInstallCommand;
 use Plugs\Console\Commands\AuthInstallCommand;
 use Plugs\Console\Commands\IdentityInstallCommand;
+use Plugs\Console\Commands\MakeThemeCommand;
+use Plugs\Console\Commands\NebulaThemeCommand;
 use Plugs\Exceptions\ConsoleException;
 
 /*
@@ -129,6 +131,8 @@ class ConsoleKernel
         'make:feature-module' => MakeFeatureModuleCommand::class,
         'make:auth-module' => MakeAuthModuleCommand::class,
         'make:lang' => MakeLangCommand::class,
+        'make:theme' => MakeThemeCommand::class,
+        'theme:nebula' => NebulaThemeCommand::class,
 
         'db:backup' => DatabaseBackupCommand::class,
         'db:restore' => DatabaseRestoreCommand::class,
@@ -217,6 +221,7 @@ class ConsoleKernel
         'g:fmod' => 'make:feature-module',
         'g:auth' => 'make:auth-module',
         'g:lang' => 'make:lang',
+        'g:theme' => 'make:theme',
         'seed' => 'db:seed',
         'routes' => 'route:list',
         'route:show' => 'route:list',
@@ -262,6 +267,8 @@ class ConsoleKernel
             'make:feature-module',
             'make:auth-module',
             'make:lang',
+            'make:theme',
+            'theme:nebula',
         ],
         'Routes' => ['route:list', 'route:cache', 'route:clear', 'route:test'],
         'Utility' => ['serve', 'cache:clear', 'logs:clear', 'view:cache', 'view:clear', 'config:publish', 'config:cache', 'optimize', 'opcache:clear', 'opcache:status', 'queue:work', 'queue:failed', 'queue:retry', 'health', 'storage:link', 'type:gen', 'ai:chat', 'ai:fix', 'ai:audit', 'make:ai-test', 'ai:agent', 'ai:think', 'framework:scan-security', 'auth:install', 'identity:install'],

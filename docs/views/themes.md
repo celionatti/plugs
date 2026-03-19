@@ -18,6 +18,18 @@ The `PlugViewEngine` uses a hierarchical lookup system. When a theme is active, 
 
 ## 🚀 Setting Up a Theme
 
+### 0. CLI Scaffolding (Recommended)
+
+The fastest way to create a new theme is using the `theplugs` CLI tool:
+
+```bash
+# Create a new theme named 'carbon'
+php theplugs make:theme carbon
+
+# Install the premium Nebula (Space) theme
+php theplugs theme:nebula
+```
+
 ### 1. Configuration
 
 You can set the default theme in your `config/app.php` or `config/view.php` file:

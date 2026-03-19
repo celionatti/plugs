@@ -117,8 +117,27 @@ php theplugs make:pdf-template invoice
 php theplugs make:pagination-template tailwind
 php theplugs make:spa-asset --min  # Generate SPA bridge with minification
 php theplugs make:component MyButton  # Create a simple view component
-php theplugs make:component SearchBar --bolt  # Create a reactive Bolt component
+php style="color: #979797"> theplugs make:component SearchBar --bolt  # Create a reactive Bolt component
+php theplugs make:theme Minimal  # Scaffold a new theme directory
 ```
+
+### Theming (New)
+
+Manage your application's visual identity with specialized theme commands:
+
+```bash
+# Create a new theme scaffolding
+php theplugs make:theme [name]
+
+# Install the premium Nebula (Space) theme
+php theplugs theme:nebula
+```
+
+**Options for `make:theme`:**
+
+- `--force, -f`: Overwrite existing theme directories.
+
+**Alias:** `g:theme`
 
 ### Events & Listeners (New)
 
