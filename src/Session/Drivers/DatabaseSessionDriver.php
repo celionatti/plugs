@@ -1,31 +1,14 @@
 <?php
 
-declare(strict_types=1);
+declare(strict_types = 1)
+;
 
 namespace Plugs\Session\Drivers;
 
 use Plugs\Database\Connection;
 use Plugs\Session\SessionDriverInterface;
 
-/*
-|--------------------------------------------------------------------------
-| Database Session Driver
-|--------------------------------------------------------------------------
-|
-| Stores sessions in a database table. Requires a `sessions` table with
-| columns: id (VARCHAR), payload (TEXT), last_activity (INT), user_id (INT|NULL).
-|
-| Migration example:
-|   CREATE TABLE sessions (
-|       id VARCHAR(255) PRIMARY KEY,
-|       payload TEXT NOT NULL,
-|       last_activity INT UNSIGNED NOT NULL,
-|       user_id INT UNSIGNED NULL,
-|       ip_address VARCHAR(45) NULL,
-|       user_agent TEXT NULL,
-|       INDEX sessions_last_activity_index (last_activity)
-|   );
-*/
+/* |-------------------------------------------------------------------------- | Database Session Driver |-------------------------------------------------------------------------- | | Stores sessions in a database table. Requires a `sessions` table with | columns: id (VARCHAR), payload (TEXT), last_activity (INT), user_id (INT|NULL). | | Migration example: |   CREATE TABLE sessions ( |       id VARCHAR(255) PRIMARY KEY, |       payload TEXT NOT NULL, |       last_activity INT UNSIGNED NOT NULL, |       user_id INT UNSIGNED NULL, |       ip_address VARCHAR(45) NULL, |       user_agent TEXT NULL, |       INDEX sessions_last_activity_index (last_activity) |   ); */
 
 class DatabaseSessionDriver implements SessionDriverInterface
 {
@@ -53,7 +36,7 @@ class DatabaseSessionDriver implements SessionDriverInterface
         // 1. Try Database (Authenticated)
         $result = $this->connection->fetch(
             "SELECT payload FROM {$this->table} WHERE id = ?",
-            [$id]
+        [$id]
         );
 
         if ($result) {
@@ -64,7 +47,7 @@ class DatabaseSessionDriver implements SessionDriverInterface
         // This ensures CSRF tokens work without cluttering the database with guest rows.
         $cookieKey = 'guest_sess_' . $id;
         $cookie = $this->getCookieJar();
-        return $cookie ? (string) $cookie->get($cookieKey, '') : '';
+        return $cookie ? (string)$cookie->get($cookieKey, '') : '';
     }
 
     public function write(string $id, string $data): bool
@@ -73,10 +56,15 @@ class DatabaseSessionDriver implements SessionDriverInterface
         $ipAddress = $_SERVER['REMOTE_ADDR'] ?? null;
         $userAgent = $_SERVER['HTTP_USER_AGENT'] ?? null;
 
-        $existing = $this->connection->fetch(
-            "SELECT id FROM {$this->table} WHERE id = ?",
+        try {
+            $existing = $this->connection->fetch(
+                "SELECT id FROM {$this->table} WHERE id = ?",
             [$id]
-        );
+            );
+        }
+        catch (\Exception $e) {
+            return false;
+        }
 
         $cookieKey = 'guest_sess_' . $id;
         $cookie = $this->getCookieJar();
@@ -97,19 +85,33 @@ class DatabaseSessionDriver implements SessionDriverInterface
             $cookie->forget($cookieKey);
         }
 
+        // Clean up any stale sessions for this user (from session ID regeneration or re-login)
+        if ($userId !== null) {
+            try {
+                $this->connection->execute(
+                    "DELETE FROM {$this->table} WHERE user_id = ? AND id != ?",
+                    [$userId, $id]
+                );
+            } catch (\Exception $e) {
+                // Non-critical: proceed even if cleanup fails
+            }
+        }
+
         try {
             if ($existing) {
                 $this->connection->execute(
                     "UPDATE {$this->table} SET payload = ?, last_activity = ?, user_id = ?, ip_address = ?, user_agent = ? WHERE id = ?",
-                    [$data, time(), $userId, $ipAddress, $userAgent, $id]
-                );
-            } else {
-                $this->connection->execute(
-                    "INSERT INTO {$this->table} (id, payload, last_activity, user_id, ip_address, user_agent) VALUES (?, ?, ?, ?, ?, ?)",
-                    [$id, $data, time(), $userId, $ipAddress, $userAgent]
+                [$data, time(), $userId, $ipAddress, $userAgent, $id]
                 );
             }
-        } catch (\Exception $e) {
+            else {
+                $this->connection->execute(
+                    "INSERT INTO {$this->table} (id, payload, last_activity, user_id, ip_address, user_agent) VALUES (?, ?, ?, ?, ?, ?)",
+                [$id, $data, time(), $userId, $ipAddress, $userAgent]
+                );
+            }
+        }
+        catch (\Exception $e) {
             return false;
         }
 
@@ -133,7 +135,7 @@ class DatabaseSessionDriver implements SessionDriverInterface
         // Match both integer (i:123;) and string (s:3:"123";) IDs
         if (preg_match('/login_[a-zA-Z0-9_]+\|(?:i:(\d+)|s:\d+:"(\d+)")/', $data, $matches)) {
             // Return whichever group matched
-            return isset($matches[2]) ? (int) $matches[2] : (int) $matches[1];
+            return isset($matches[2]) ? (int)$matches[2] : (int)$matches[1];
         }
 
         return null;
@@ -143,8 +145,8 @@ class DatabaseSessionDriver implements SessionDriverInterface
     {
         // Clear both database and guest cookie
         $this->connection->execute(
-            "DELETE FROM sessions WHERE id = ?",
-            [$id]
+            "DELETE FROM {$this->table} WHERE id = ?",
+        [$id]
         );
 
         $cookie = $this->getCookieJar();
@@ -161,7 +163,7 @@ class DatabaseSessionDriver implements SessionDriverInterface
 
         return $this->connection->execute(
             "DELETE FROM {$this->table} WHERE last_activity < ?",
-            [$cutoff]
+        [$cutoff]
         );
     }
 }

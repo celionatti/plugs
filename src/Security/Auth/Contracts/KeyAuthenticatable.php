@@ -51,4 +51,11 @@ interface KeyAuthenticatable extends Authenticatable
      * @return string
      */
     public function getEmail(): string;
+
+    /**
+     * Persist the current state of the model to storage.
+     *
+     * @return bool
+     */
+    public function save(): bool;
 }

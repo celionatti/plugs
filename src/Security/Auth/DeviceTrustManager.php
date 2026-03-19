@@ -45,9 +45,9 @@ class DeviceTrustManager
      */
     public function isTrusted(Authenticatable $user, ?string $ip = null): bool
     {
-        // 1. If user is not an Identity user (no public key), they don't use device trust
+        // 1. If user is not an Identity user (no public key method), they don't use device trust
         // We allow standard password-based sessions to pass through.
-        if (method_exists($user, 'getPublicKey') && !$user->getPublicKey()) {
+        if (!method_exists($user, 'getPublicKey') || !$user->getPublicKey()) {
             return true;
         }
 

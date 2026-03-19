@@ -204,9 +204,7 @@ class IdentityManager
             $user->setPromptIds($newPromptIds);
         }
 
-        if (method_exists($user, 'save')) {
-            $user->save();
-        }
+        $user->save();
 
         // Fire event
         $this->fireEvent(new IdentityRecovered($user, $publicKeyEncoded));

@@ -474,6 +474,21 @@ abstract class PlugModel implements \JsonSerializable
         return $saved;
     }
 
+    /**
+     * Update the model in the database.
+     *
+     * @param  array  $attributes
+     * @return bool
+     */
+    public function update(array $attributes = []): bool
+    {
+        if (! $this->exists()) {
+            return false;
+        }
+
+        return $this->fill($attributes)->save();
+    }
+
     protected function performInsert(): bool
     {
         $data = $this->attributes;
