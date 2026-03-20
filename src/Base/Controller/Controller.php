@@ -70,7 +70,6 @@ abstract class Controller
         // 1. If we have actual errors in the session, they take high priority
         if (isset($_SESSION['_errors'])) {
             $sessionErrors = $_SESSION['_errors'];
-            unset($_SESSION['_errors']); // Clear after retrieving
             
             // Ensure $errors is an ErrorMessage object
             $errors = $sessionErrors instanceof ErrorMessage 
@@ -113,17 +112,16 @@ abstract class Controller
         return $default;
     }
 
-    /**
-     * Render a view
-     */
     protected function view(string $view, array $data = []): ResponseInterface
     {
         try {
             $html = $this->view->render($view, $data);
 
-            // Clear old input after successful render (only if no errors)
-            if (!isset($_SESSION['_errors'])) {
-                $this->clearOldInput();
+            // Clear old input and flashed errors after successful render
+            $this->clearOldInput();
+            
+            if (isset($_SESSION['_errors'])) {
+                unset($_SESSION['_errors']);
             }
 
             return ResponseFactory::html($html);

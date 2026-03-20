@@ -35,11 +35,10 @@ class ShareErrorsFromSession implements MiddlewareInterface
                 $view->share('errors', $errors);
             }
 
-            // Clear errors from session after sharing
-            if (isset($_SESSION['_errors'])) {
-                unset($_SESSION['_errors']);
-            }
+            // We no longer unset $_SESSION['_errors'] here to prevent race conditions
+            // with parallel asset requests. It is unset in Controller::view() instead.
         }
+
 
         return $handler->handle($request);
     }

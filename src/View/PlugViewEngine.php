@@ -1,17 +1,11 @@
 <?php
 
-declare(strict_types=1);
+declare(strict_types = 1)
+;
 
 namespace Plugs\View;
 
-/*
-|--------------------------------------------------------------------------
-| ViewEngine Class
-|--------------------------------------------------------------------------
-|
-| This class is responsible for rendering views using a specified templating engine.
-| It manages view paths, caching, and shared data across views.
-*/
+/* |-------------------------------------------------------------------------- | ViewEngine Class |-------------------------------------------------------------------------- | | This class is responsible for rendering views using a specified templating engine. | It manages view paths, caching, and shared data across views. */
 
 use Plugs\Exceptions\ViewException;
 use Plugs\Debug\Profiler;
@@ -298,7 +292,7 @@ class PlugViewEngine implements ViewEngineInterface
 
     private function checkCompilationRateLimit(): void
     {
-        // Rate limiting removed to prevent production issues during high load/deployments
+    // Rate limiting removed to prevent production issues during high load/deployments
     }
 
     /**
@@ -333,7 +327,7 @@ class PlugViewEngine implements ViewEngineInterface
 
     public function composer(string|array $views, callable $callback): void
     {
-        $views = (array) $views;
+        $views = (array)$views;
         foreach ($views as $view) {
             if (!isset($this->composers[$view])) {
                 $this->composers[$view] = [];
@@ -458,20 +452,6 @@ class PlugViewEngine implements ViewEngineInterface
             return "<?php echo \\Plugs\\Utils\\FlashMessage::renderType($expression); ?>";
         });
 
-        $this->directive('error', function ($expression) {
-            $key = trim($expression ?? '', " '\"");
-
-            return "<?php if (isset(\$errors) && \$errors->has('$key')): \$errors_key = '$key'; ?>";
-        });
-
-        $this->directive('message', function () {
-            return "<?php echo isset(\$message) ? \$message : (isset(\$errors_key) ? \$errors->first(\$errors_key) : ''); ?>";
-        });
-
-        $this->directive('enderror', function () {
-            return "<?php unset(\$errors_key); endif; ?>";
-        });
-
         $this->directive('errors', function ($expression) {
             $key = trim($expression ?? '', " '\"");
             if (empty($key)) {
@@ -531,7 +511,7 @@ class PlugViewEngine implements ViewEngineInterface
 
         $this->directive('frameworkScripts', function () {
             return '<script src="/plugs/plugs-spa.js" defer></script>' . "\n" .
-                   '<script src="/plugs/plugs-lazy.js" defer></script>';
+            '<script src="/plugs/plugs-lazy.js" defer></script>';
         });
     }
 
@@ -570,7 +550,8 @@ class PlugViewEngine implements ViewEngineInterface
             $viewFile = $isComponent
                 ? $this->getComponentPath($view)
                 : $this->getViewPath($view);
-        } catch (ViewException $e) {
+        }
+        catch (ViewException $e) {
             if ($e->getFrameworkCode() === ViewException::VIEW_NOT_FOUND && !$isComponent) {
                 return $this->renderThemeNotFoundPage($view, $e->getMessage());
             }
@@ -584,7 +565,7 @@ class PlugViewEngine implements ViewEngineInterface
                 null,
                 $view,
                 ViewException::VIEW_NOT_FOUND
-            );
+                );
         }
 
         $content = $this->cacheEnabled
@@ -595,7 +576,7 @@ class PlugViewEngine implements ViewEngineInterface
         if (!$isComponent && !$this->isLayoutSuppressed() && !\Plugs\View\FragmentRenderer::isPartialRequest()) {
             if (strpos($content, '</body>') !== false && strpos($content, '/plugs/plugs-spa.js') === false) {
                 $scripts = '<script src="/plugs/plugs-spa.js" defer></script>' . "\n" .
-                           '<script src="/plugs/plugs-lazy.js" defer></script>';
+                    '<script src="/plugs/plugs-lazy.js" defer></script>';
                 $content = str_replace('</body>', $scripts . "\n</body>", $content);
             }
         }
@@ -644,7 +625,7 @@ class PlugViewEngine implements ViewEngineInterface
                     null,
                     $componentName,
                     ViewException::COMPONENT_NOT_FOUND
-                );
+                    );
             }
 
             $slot = $data['slot'] ?? '';
@@ -674,7 +655,8 @@ class PlugViewEngine implements ViewEngineInterface
                         'name' => $componentName,
                         'data' => $componentData
                     ]);
-                } else {
+                }
+                else {
                     // Standard component: inject attributes as constructor arguments
                     $component = $this->container->make($className, $componentData);
                 }
@@ -689,18 +671,21 @@ class PlugViewEngine implements ViewEngineInterface
                     $html = '';
                     if ($view instanceof View) {
                         $html = $view->withData($dataToMerge)->render();
-                    } elseif (is_string($view)) {
+                    }
+                    elseif (is_string($view)) {
                         if (strpos($view, '<') === false) {
                             // Smart detection: Check if it exists as a component first
                             try {
                                 $componentPath = $this->getComponentPath($view);
                                 $isComponent = file_exists($componentPath);
-                            } catch (ViewException $e) {
+                            }
+                            catch (ViewException $e) {
                                 $isComponent = false;
                             }
 
                             $html = $this->render($view, $dataToMerge, $isComponent);
-                        } else {
+                        }
+                        else {
                             $html = $view;
                         }
                     }
@@ -709,7 +694,7 @@ class PlugViewEngine implements ViewEngineInterface
                     $attributes = $component->getAttributes();
                     $attrString = '';
                     foreach ($attributes as $key => $value) {
-                        $attrString .= sprintf(' %s="%s"', $key, htmlspecialchars((string) $value));
+                        $attrString .= sprintf(' %s="%s"', $key, htmlspecialchars((string)$value));
                     }
 
                     // Wrap in reactive container
@@ -742,7 +727,8 @@ class PlugViewEngine implements ViewEngineInterface
                         try {
                             $componentPath = $this->getComponentPath($view);
                             $isComponent = file_exists($componentPath);
-                        } catch (ViewException $e) {
+                        }
+                        catch (ViewException $e) {
                             $isComponent = false;
                         }
                         return $this->render($view, $dataToMerge, $isComponent);
@@ -754,7 +740,8 @@ class PlugViewEngine implements ViewEngineInterface
 
             // 3. View-only component (no class)
             return $this->render($componentName, $componentData, true);
-        } catch (Throwable $e) {
+        }
+        catch (Throwable $e) {
             throw $this->wrapViewException($e, sprintf('Error rendering component [%s]', $componentName), $componentName);
         }
     }
@@ -842,7 +829,8 @@ class PlugViewEngine implements ViewEngineInterface
             error_reporting($previousErrorLevel);
 
             return $result;
-        } catch (Throwable $e) {
+        }
+        catch (Throwable $e) {
             error_reporting($previousErrorLevel);
 
             throw $this->wrapViewException($e, 'Error executing compiled content');
@@ -893,7 +881,8 @@ class PlugViewEngine implements ViewEngineInterface
                 include $compiled;
                 error_reporting($previousErrorLevel);
                 return ''; // Content already echoed
-            } catch (Throwable $e) {
+            }
+            catch (Throwable $e) {
                 error_reporting($previousErrorLevel);
                 throw $this->wrapViewException($e, 'Error rendering compiled view (streaming)', $compiled);
             }
@@ -913,7 +902,7 @@ class PlugViewEngine implements ViewEngineInterface
 
             if ($__extends && !$this->suppressLayout) {
                 // FIX: Pass stacks and childContent to parent layout
-                return (string) $this->renderParent(
+                return (string)$this->renderParent(
                     $__extends,
                     array_merge($data, ['childContent' => $childContent]),
                     $__sections,
@@ -927,7 +916,8 @@ class PlugViewEngine implements ViewEngineInterface
             }
 
             return $childContent;
-        } catch (Throwable $e) {
+        }
+        catch (Throwable $e) {
             if (ob_get_level() > 0) {
                 ob_end_clean();
             }
@@ -963,7 +953,7 @@ class PlugViewEngine implements ViewEngineInterface
             $__stacks = $localVars['__stacks'] ?? [];
 
             if (isset($__extends) && $__extends && !$this->suppressLayout) {
-                return (string) $this->renderParentDirect(
+                return (string)$this->renderParentDirect(
                     $__extends,
                     array_merge($data, ['childContent' => $childContent]),
                     $__sections,
@@ -976,7 +966,8 @@ class PlugViewEngine implements ViewEngineInterface
             }
 
             return $childContent;
-        } catch (Throwable $e) {
+        }
+        catch (Throwable $e) {
             error_reporting($previousErrorLevel);
 
             throw $this->wrapViewException($e, 'Error rendering view', $viewFile);
@@ -994,7 +985,7 @@ class PlugViewEngine implements ViewEngineInterface
                 null,
                 $parentView,
                 ViewException::VIEW_NOT_FOUND
-            );
+                );
         }
 
         if ($this->cspNonce !== null && !isset($data['cspNonce'])) {
@@ -1030,7 +1021,7 @@ class PlugViewEngine implements ViewEngineInterface
                 null,
                 $parentView,
                 ViewException::VIEW_NOT_FOUND
-            );
+                );
         }
 
         $parentContent = file_get_contents($parentFile);
@@ -1055,7 +1046,8 @@ class PlugViewEngine implements ViewEngineInterface
             error_reporting($previousErrorLevel);
 
             return $result;
-        } catch (Throwable $e) {
+        }
+        catch (Throwable $e) {
             error_reporting($previousErrorLevel);
 
             throw $this->wrapViewException($e, sprintf('Error rendering parent view [%s]', $parentView), $parentView);
@@ -1128,9 +1120,9 @@ class PlugViewEngine implements ViewEngineInterface
                     $realBasePath = realpath($path);
 
                     if (
-                        $realViewPath === false ||
-                        $realBasePath === false ||
-                        strpos($realViewPath, $realBasePath) !== 0
+                    $realViewPath === false ||
+                    $realBasePath === false ||
+                    strpos($realViewPath, $realBasePath) !== 0
                     ) {
                         throw new ViewException(
                             sprintf('Invalid view path: %s', $view),
@@ -1138,7 +1130,7 @@ class PlugViewEngine implements ViewEngineInterface
                             null,
                             $view,
                             ViewException::INVALID_PATH
-                        );
+                            );
                     }
 
                     return $viewPath;
@@ -1158,17 +1150,17 @@ class PlugViewEngine implements ViewEngineInterface
 
         throw new ViewException(
             sprintf(
-                'View [%s] not found in the current theme [%s]. Looked in: %s.%s',
-                ($namespace ? "$namespace::" : '') . $view,
-                $this->theme ?? 'default',
-                implode(', ', $paths),
-                $themeHint
-            ),
+            'View [%s] not found in the current theme [%s]. Looked in: %s.%s',
+            ($namespace ? "$namespace::" : '') . $view,
+            $this->theme ?? 'default',
+            implode(', ', $paths),
+            $themeHint
+        ),
             0,
             null,
             $view,
             ViewException::VIEW_NOT_FOUND
-        );
+            );
     }
 
     /**
@@ -1222,9 +1214,9 @@ class PlugViewEngine implements ViewEngineInterface
     private function renderThemeNotFoundPage(string $view, string $errorMessage): string
     {
         $currentTheme = htmlspecialchars($this->theme ?? 'default', ENT_QUOTES, 'UTF-8');
-        $viewName     = htmlspecialchars($view, ENT_QUOTES, 'UTF-8');
-        $isDebug      = self::isDebugMode();
-        $detailBlock  = '';
+        $viewName = htmlspecialchars($view, ENT_QUOTES, 'UTF-8');
+        $isDebug = self::isDebugMode();
+        $detailBlock = '';
 
         if ($isDebug) {
             $safeMessage = htmlspecialchars($errorMessage, ENT_QUOTES, 'UTF-8');
@@ -1295,7 +1287,7 @@ HTML;
                 null,
                 $componentName,
                 ViewException::INVALID_PATH
-            );
+                );
         }
 
         // Replace dots with directory separators for nested components
@@ -1326,9 +1318,9 @@ HTML;
                                 $realBaseComponentPath = realpath($componentPathBase);
 
                                 if (
-                                    $realComponentPath === false ||
-                                    $realBaseComponentPath === false ||
-                                    strpos($realComponentPath, $realBaseComponentPath) !== 0
+                                $realComponentPath === false ||
+                                $realBaseComponentPath === false ||
+                                strpos($realComponentPath, $realBaseComponentPath) !== 0
                                 ) {
                                     throw new ViewException(
                                         sprintf('Invalid component path: %s', $componentName),
@@ -1336,7 +1328,7 @@ HTML;
                                         null,
                                         $componentName,
                                         ViewException::INVALID_PATH
-                                    );
+                                        );
                                 }
                                 return $fullPath;
                             }
@@ -1362,9 +1354,9 @@ HTML;
                         $realBaseComponentPath = realpath($componentPathBase);
 
                         if (
-                            $realComponentPath === false ||
-                            $realBaseComponentPath === false ||
-                            strpos($realComponentPath, $realBaseComponentPath) !== 0
+                        $realComponentPath === false ||
+                        $realBaseComponentPath === false ||
+                        strpos($realComponentPath, $realBaseComponentPath) !== 0
                         ) {
                             throw new ViewException(
                                 sprintf('Invalid component path: %s', $componentName),
@@ -1372,7 +1364,7 @@ HTML;
                                 null,
                                 $componentName,
                                 ViewException::INVALID_PATH
-                            );
+                                );
                         }
 
                         return $componentPath;
@@ -1390,7 +1382,7 @@ HTML;
      */
     public function addNamespace(string $namespace, string|array $paths): self
     {
-        $paths = (array) $paths;
+        $paths = (array)$paths;
 
         if (!isset($this->namespaces[$namespace])) {
             $this->namespaces[$namespace] = [];
@@ -1451,7 +1443,8 @@ HTML;
                 $compiled = $this->getCompiledPath($viewName);
                 $this->compile($file, $compiled);
                 $compiledCount++;
-            } catch (Throwable $e) {
+            }
+            catch (Throwable $e) {
                 $errors[] = $file . ': ' . $e->getMessage();
             }
         }
@@ -1475,7 +1468,8 @@ HTML;
 
             if (is_dir($path)) {
                 $files = array_merge($files, $this->getAllViewFiles($path));
-            } else {
+            }
+            else {
                 foreach (self::VIEW_EXTENSIONS as $ext) {
                     if (str_ends_with($path, $ext)) {
                         $files[] = $path;
@@ -1516,7 +1510,7 @@ HTML;
         }
 
         if (defined('APP_DEBUG')) {
-            return self::$debugModeCache = (bool) constant('APP_DEBUG');
+            return self::$debugModeCache = (bool)constant('APP_DEBUG');
         }
 
         if (isset($_ENV['APP_DEBUG'])) {
@@ -1548,7 +1542,7 @@ HTML;
             if (!mkdir($path, 0755, true) && !is_dir($path)) {
                 throw new RuntimeException(
                     sprintf('Failed to create directory: %s', $path)
-                );
+                    );
             }
         }
     }
@@ -1635,7 +1629,8 @@ HTML;
             }
 
             return $__result;
-        } catch (Throwable $__e) {
+        }
+        catch (Throwable $__e) {
             if (ob_get_level() > 0) {
                 ob_end_clean();
             }
@@ -1659,7 +1654,8 @@ HTML;
 
         if ($this->requestedSection && isset($sections[$this->requestedSection])) {
             $output = $sections[$this->requestedSection];
-        } elseif (isset($sections['content'])) {
+        }
+        elseif (isset($sections['content'])) {
             $output = $sections['content'];
         }
 
@@ -1676,7 +1672,7 @@ HTML;
 
         // Include layout information for SPA to detect if a full reload is needed
         if ($extends) {
-            $output = "<meta name=\"plugs-layout\" content=\"" . (string) $extends . "\">\n" . $output;
+            $output = "<meta name=\"plugs-layout\" content=\"" . (string)$extends . "\">\n" . $output;
         }
 
         return $output;
@@ -1850,14 +1846,15 @@ HTML;
                     0,
                     null,
                     $view
-                );
+                    );
             }
 
             // Append teleport scripts if any were captured during this render
             $scripts = $this->getTeleportScripts();
 
             $result = $content . $scripts;
-        } finally {
+        }
+        finally {
             // Restore previous layout suppression state
             $this->suppressLayout($previousSuppress);
         }
@@ -1914,7 +1911,8 @@ HTML;
 
             if (empty($content)) {
                 yield ''; // Already flushed/echoed or empty
-            } else {
+            }
+            else {
                 // Stream in 8KB chunks if any content was buffered
                 $chunkSize = 8192;
                 $length = strlen($content);
@@ -1923,7 +1921,8 @@ HTML;
                     yield substr($content, $i, $chunkSize);
                 }
             }
-        } finally {
+        }
+        finally {
             $this->isStreaming = $previousStreaming;
         }
     }
@@ -2007,8 +2006,9 @@ HTML;
             if (!empty($requestedFragment)) {
                 try {
                     return $this->renderFragment($view, $requestedFragment, $data);
-                } catch (ViewException) {
-                    // Fragment not found, render full view
+                }
+                catch (ViewException) {
+                // Fragment not found, render full view
                 }
             }
 
@@ -2074,7 +2074,8 @@ HTML;
     {
         if ($path !== null) {
             unset($this->fileExistsCache[$path]);
-        } else {
+        }
+        else {
             $this->fileExistsCache = [];
         }
 
@@ -2311,7 +2312,7 @@ HTML;
     private function wrapViewException(Throwable $e, string $context, ?string $view = null): ViewException
     {
         $message = $e->getMessage();
-        $code = (int) $e->getCode();
+        $code = (int)$e->getCode();
         $frameworkCode = null;
 
         if ($e instanceof ViewException) {
@@ -2320,7 +2321,8 @@ HTML;
                 return $e;
             }
             $message = "{$context} -> " . $message;
-        } else {
+        }
+        else {
             $message = "{$context}: {$message}";
             $frameworkCode = ViewException::RUNTIME_ERROR;
         }
