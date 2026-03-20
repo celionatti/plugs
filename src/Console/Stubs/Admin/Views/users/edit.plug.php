@@ -16,7 +16,7 @@
 </div>
 
 <div class="max-w-3xl">
-    <form action="/admin/users/{{ $user->id }}" method="POST" class="bg-white dark:bg-slate-900 rounded-3xl shadow-sm border border-slate-100 dark:border-slate-800 p-8 space-y-6">
+    <form action="/admin/users/{{ $user->id }}" method="POST" class="bg-white dark:bg-slate-900 rounded-3xl shadow-sm border border-slate-100 dark:border-slate-800 p-8 space-y-6" onsubmit="this.querySelector('button[type=submit]').disabled = true; this.querySelector('button[type=submit]').innerHTML = 'Saving...';">
         @csrf
         <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>

@@ -33,9 +33,9 @@ class AuthController extends Controller
      */
     public function login(ServerRequestInterface $request): ResponseInterface
     {
-        $this->validate(LoginRequest::class);
+        $validated = $this->validate(LoginRequest::class);
         
-        $loginRequest = new LoginRequest($request->getParsedBody());
+        $loginRequest = new LoginRequest($validated);
 
         if ($this->authService->attemptLogin($loginRequest)) {
             $user = Auth::user();
@@ -63,9 +63,9 @@ class AuthController extends Controller
      */
     public function register(ServerRequestInterface $request): ResponseInterface
     {
-        $this->validate(RegisterRequest::class);
+        $validated = $this->validate(RegisterRequest::class);
 
-        $registerRequest = new RegisterRequest($request->getParsedBody());
+        $registerRequest = new RegisterRequest($validated);
 
         try {
             $this->authService->registerUser($registerRequest);
