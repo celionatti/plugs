@@ -27,6 +27,9 @@ class AssetController
         
         $contentType = $type === 'js' ? 'application/javascript' : ($type === 'css' ? 'text/css' : 'application/octet-stream');
 
+        // Check if we can serve a minified version if the requested one doesn't exist? 
+        // No, we are pointing directly to the .min.js in the engine.
+
         return response($content, 200, [
             'Content-Type' => $contentType,
             'Cache-Control' => 'public, max-age=31536000',

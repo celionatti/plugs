@@ -510,8 +510,7 @@ class PlugViewEngine implements ViewEngineInterface
         });
 
         $this->directive('frameworkScripts', function () {
-            return '<script src="/plugs/plugs-spa.js" defer></script>' . "\n" .
-            '<script src="/plugs/plugs-lazy.js" defer></script>';
+            return '<script src="/plugs/plugs-framework.min.js" defer></script>';
         });
     }
 
@@ -574,9 +573,8 @@ class PlugViewEngine implements ViewEngineInterface
 
         // Auto-inject framework scripts if it's a full page render and not an HTMX partial
         if (!$isComponent && !$this->isLayoutSuppressed() && !\Plugs\View\FragmentRenderer::isPartialRequest()) {
-            if (strpos($content, '</body>') !== false && strpos($content, '/plugs/plugs-spa.js') === false) {
-                $scripts = '<script src="/plugs/plugs-spa.js" defer></script>' . "\n" .
-                    '<script src="/plugs/plugs-lazy.js" defer></script>';
+            if (strpos($content, '</body>') !== false && strpos($content, '/plugs/plugs-framework.min.js') === false) {
+                $scripts = '<script src="/plugs/plugs-framework.min.js" defer></script>';
                 $content = str_replace('</body>', $scripts . "\n</body>", $content);
             }
         }
