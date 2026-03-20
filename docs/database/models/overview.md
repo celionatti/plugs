@@ -41,9 +41,13 @@ class Product extends PlugModel
     protected $casts = [
         'is_active' => 'boolean',
         'price'     => 'float',
+        'password'  => 'encrypted', // Secure Encrypt-then-MAC
     ];
 }
 ```
+
+### Encryption Security
+Attributes cast as `encrypted` use **Encrypt-then-MAC** (AES-256-CBC + HMAC-SHA256). This ensures data integrity and prevents padding oracle attacks.
 
 > [!TIP]
 > If you omit `$table`, Plugs automatically derives it from the class name using **snake_case + plural** convention — `Product` becomes `products`, `BlogPost` becomes `blog_posts`.
@@ -218,6 +222,31 @@ User::enableCache(ttl: 600);   // cache for 10 minutes
 User::flushCache();
 User::disableCache();
 ```
+
+---
+
+## AI & Advanced Search
+
+### Keyword Search
+The `Searchable` trait provides a `keywordSearch` scope that supports searching across relationships:
+
+```php
+// Search name in users AND bio in profiles relationship
+$users = User::keywordSearch('developer')->get();
+```
+
+To configure searchable columns:
+```php
+protected $searchable = ['name', 'profile.bio'];
+```
+
+### AI Queries
+Generate queries from natural language prompts:
+```php
+$users = User::ai('find all active users from Lagos who joined last month')->get();
+```
+> [!NOTE]
+> AI-generated queries are restricted to `SELECT` operations for safety.
 
 ---
 

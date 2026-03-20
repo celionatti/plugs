@@ -60,7 +60,25 @@ The `SecurityHeadersMiddleware` automatically injects industry-standard headers 
 
 ---
 
-## 4. Production Hardening
+## 4. Data Encryption
+
+Plugs provides a secure, easy-to-use encryption system for sensitive data stored in your database.
+
+### Model Encryption
+By casting an attribute as `encrypted` in your model, the data is automatically encrypted on save and decrypted on retrieval using **Encrypt-then-MAC** (AES-256-CBC + HMAC-SHA256).
+
+```php
+protected $casts = [
+    'ssn' => 'encrypted',
+];
+```
+
+### Key Management
+Encryption uses the `APP_KEY` defined in your `.env` file. Ensure this key is protected and backed up. If the key is lost, encrypted data cannot be recovered.
+
+---
+
+## 5. Production Hardening
 
 When deploying to production (`APP_ENV=production`), Plugs enforces stricter security rules:
 - **Secure Cookies**: Cookies are only sent over HTTPS.

@@ -13,6 +13,9 @@ use Plugs\Facades\DB;
 $users = DB::table('users')->get();
 $user = DB::table('users')->where('id', 1)->first();
 $email = DB::table('users')->value('email');
+
+// Fallback logic
+$user = DB::table('users')->where('id', 1)->firstOr(fn() => create_guest_user());
 ```
 
 ### Exception Handling
@@ -36,6 +39,13 @@ $users = DB::table('users')
     ->where('votes', '>', 100)
     ->where('status', 'active')
     ->get();
+```
+
+### Magic Where Methods
+You can also use dynamic "magic" where methods for cleaner code:
+```php
+$user = DB::table('users')->whereEmail('jane@example.com')->first();
+$activeUsers = DB::table('users')->whereStatus('active')->get();
 ```
 
 ### Advanced Wheres
@@ -88,8 +98,12 @@ $users = DB::table('users')->paginate(15);
 // Insert
 DB::table('users')->insert(['email' => 'jane@example.com']);
 
-// Update or Insert (Upsert)
-DB::table('users')->updateOrInsert(['email' => 'john@example.com'], ['votes' => 1]);
+// Update
+DB::table('users')->where('id', 1)->update(['votes' => 1]);
+
+// Atomic Increment/Decrement
+DB::table('users')->where('id', 1)->increment('votes');
+DB::table('users')->where('id', 1)->decrement('votes', 5);
 
 // Delete
 DB::table('users')->where('votes', '<', 50)->delete();

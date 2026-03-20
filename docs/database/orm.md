@@ -98,5 +98,24 @@ $activeUsers = User::active()->get();
 
 ---
 
-## Next Steps
-Master complex queries using the [Query Builder](./query-builder.md).
+## 5. Persistence & Deletion
+
+### Standard Persistence
+```php
+$user = new User(['name' => 'John']);
+$user->save();
+
+$user->update(['name' => 'Jane']);
+```
+
+### Advanced Persistence
+- **Quiet Updates**: Update without firing events or timestamps: `$user->updateQuietly(['last_login' => now()])`.
+- **Atomic Operations**: `User::where('id', 1)->increment('votes', 5)`.
+- **Cloning**: Create a copy without primary keys: `$clone = $user->replicate()`.
+- **Change Tracking**: Check what happened: `if ($user->wasChanged('email')) { ... }`.
+
+### Deletion
+```php
+$user->delete();
+User::destroy(1);
+```

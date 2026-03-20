@@ -978,6 +978,21 @@ class QueryBuilder
         });
     }
 
+    /**
+     * Execute the query and get the first result or call a callback.
+     *
+     * @param  \Closure  $callback
+     * @return mixed
+     */
+    public function firstOr(Closure $callback)
+    {
+        if (!is_null($model = $this->first())) {
+            return $model;
+        }
+
+        return $callback();
+    }
+
     public function find($id, array $columns = ['*']): mixed
     {
         return $this->where('id', '=', $id)->first($columns);
@@ -1251,51 +1266,59 @@ class QueryBuilder
         return (clone $this)->where($attributes)->limit(1)->update($values) > 0;
     }
 
-    public function update(array $data): int
+    public function update(array $values): int
     {
-        return $this->runThroughPipeline(function ($builder) use ($data) {
+        return $this->runThroughPipeline(function ($builder) use ($values) {
+            if (empty($values)) {
+                return 0;
+            }
+
+            $sql = "UPDATE " . QueryUtils::wrapIdentifier($builder->table) . " SET ";
             $sets = [];
-            $params = $builder->params;
 
-            foreach ($data as $column => $value) {
-                $placeholder = ":set_{$column}";
-                $wrappedColumn = QueryUtils::wrapIdentifier($column);
-                $sets[] = "{$wrappedColumn} = {$placeholder}";
-                $params[$placeholder] = $value;
+            foreach ($values as $column => $value) {
+                if ($value instanceof Raw) {
+                    $sets[] = QueryUtils::wrapIdentifier($column) . " = {$value}";
+                } else {
+                    $placeholder = ":update_" . count($builder->params) . "_" . str_replace('.', '_', $column);
+                    $sets[] = QueryUtils::wrapIdentifier($column) . " = {$placeholder}";
+                    $builder->params[$placeholder] = $value;
+                }
             }
 
-            $sql = "UPDATE " . QueryUtils::wrapIdentifier($builder->table) . " SET " . implode(', ', $sets);
+            $sql .= implode(', ', $sets);
             $sql .= $builder->getWhereClause();
 
-            return $builder->connection->execute($sql, $params);
+            return $builder->connection->execute($sql, $builder->params);
         });
     }
 
-    public function increment(string $column, $amount = 1, array $extra = []): int
+    /**
+     * Increment a column's value by a given amount.
+     */
+    public function increment(string $column, float|int $amount = 1, array $extra = []): int
     {
-        return $this->runThroughPipeline(function ($builder) use ($column, $amount, $extra) {
-            $wrappedColumn = QueryUtils::wrapIdentifier($column);
-            $placeholder = ":inc_{$column}";
-            $params = array_merge($builder->params, ["{$placeholder}" => $amount]);
-
-            $sets = ["{$wrappedColumn} = {$wrappedColumn} + {$placeholder}"];
-
-            foreach ($extra as $extraColumn => $value) {
-                $extraPlaceholder = ":set_{$extraColumn}";
-                $sets[] = QueryUtils::wrapIdentifier($extraColumn) . " = {$extraPlaceholder}";
-                $params[$extraPlaceholder] = $value;
-            }
-
-            $sql = "UPDATE " . QueryUtils::wrapIdentifier($builder->table) . " SET " . implode(', ', $sets);
-            $sql .= $builder->getWhereClause();
-
-            return $builder->connection->execute($sql, $params);
-        });
+        return $this->incrementOrDecrement($column, $amount, $extra, '+');
     }
 
-    public function decrement(string $column, $amount = 1, array $extra = []): int
+    /**
+     * Decrement a column's value by a given amount.
+     */
+    public function decrement(string $column, float|int $amount = 1, array $extra = []): int
     {
-        return $this->increment($column, -$amount, $extra);
+        return $this->incrementOrDecrement($column, $amount, $extra, '-');
+    }
+
+    /**
+     * Run an increment or decrement of a given column.
+     */
+    protected function incrementOrDecrement(string $column, float|int $amount, array $extra, string $operator): int
+    {
+        $wrapped = QueryUtils::wrapIdentifier($column);
+
+        $columns = array_merge([$column => new Raw("{$wrapped} {$operator} {$amount}")], $extra);
+
+        return $this->update($columns);
     }
 
     public function delete(): int
@@ -1851,6 +1874,12 @@ class QueryBuilder
 
                 return $instance->$scopeMethod(...$parameters);
             }
+        }
+
+        // Handle magic where methods (e.g. whereEmail)
+        if (str_starts_with($method, 'where') && strlen($method) > 5) {
+            $column = strtolower(preg_replace('/([a-z])([A-Z])/', '$1_$2', substr($method, 5)));
+            return $this->where($column, '=', $parameters[0]);
         }
 
         throw new BadMethodCallException("Method [{$method}] does not exist on the query builder.");

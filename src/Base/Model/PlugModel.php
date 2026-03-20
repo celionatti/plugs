@@ -71,6 +71,9 @@ abstract class PlugModel implements \JsonSerializable
         HasScopes::addGlobalScope as addGlobalQueryScope;
     }
 
+    protected $with = [];
+    protected $middleware = [];
+    protected $changedAtLastSave = [];
     protected $table;
     protected $primaryKey = 'id';
 
@@ -359,10 +362,12 @@ abstract class PlugModel implements \JsonSerializable
 
     // ==================== CACHE & LOGGING ====================
 
-    public static function enableCache(int $ttl = 3600): void
+    public static function enableCache(?int $ttl = null): void
     {
         static::$cacheEnabled = true;
-        static::$cacheTTL = $ttl;
+        if ($ttl !== null) {
+            static::$cacheTTL = $ttl;
+        }
     }
 
     public static function disableCache(): void
@@ -372,7 +377,7 @@ abstract class PlugModel implements \JsonSerializable
 
     public static function flushCache(): void
     {
-        \Plugs\Facades\Cache::driver()->clear();
+        \Plugs\Facades\Cache::clear();
     }
 
     /**
@@ -411,6 +416,7 @@ abstract class PlugModel implements \JsonSerializable
             \Plugs\Facades\Cache::set($key, $data, static::$cacheTTL);
         }
     }
+
 
     public static function enableQueryLog(): void
     {
@@ -502,6 +508,37 @@ abstract class PlugModel implements \JsonSerializable
         return $this->fill($attributes)->save();
     }
 
+    /**
+     * Update the model without firing events or updating timestamps.
+     *
+     * @param  array  $attributes
+     * @return bool
+     */
+    public function updateQuietly(array $attributes = []): bool
+    {
+        if (! $this->exists()) {
+            return false;
+        }
+
+        $this->fill($attributes);
+        $dirty = $this->getDirty();
+
+        if (empty($dirty)) {
+            return true;
+        }
+
+        $result = static::query()
+            ->where($this->primaryKey, '=', $this->attributes[$this->primaryKey])
+            ->update($dirty);
+
+        if ($result > 0) {
+            $this->changedAtLastSave = array_keys($dirty);
+            $this->original = $this->attributes;
+        }
+
+        return $result > 0;
+    }
+
     protected function performInsert(): bool
     {
         $data = $this->attributes;
@@ -569,6 +606,7 @@ abstract class PlugModel implements \JsonSerializable
         }
 
         if ($result > 0) {
+            $this->changedAtLastSave = array_keys($dirty);
             $this->original = $this->attributes;
 
             $this->fireModelEvent('updated', ['dirty' => $dirty]);
@@ -599,6 +637,69 @@ abstract class PlugModel implements \JsonSerializable
         }
 
         return $result;
+    }
+
+    /**
+     * Increment a column's value by a given amount.
+     */
+    public function increment(string $column, float|int $amount = 1, array $extra = []): bool
+    {
+        return $this->incrementOrDecrement($column, $amount, $extra, 'increment');
+    }
+
+    /**
+     * Decrement a column's value by a given amount.
+     */
+    public function decrement(string $column, float|int $amount = 1, array $extra = []): bool
+    {
+        return $this->incrementOrDecrement($column, $amount, $extra, 'decrement');
+    }
+
+    /**
+     * Run an increment or decrement of a given column.
+     */
+    protected function incrementOrDecrement(string $column, float|int $amount, array $extra, string $method): bool
+    {
+        if (!$this->exists()) {
+            return false;
+        }
+
+        $result = static::query()
+            ->where($this->primaryKey, '=', $this->attributes[$this->primaryKey])
+            ->$method($column, $amount, $extra);
+
+        if ($result > 0) {
+            $this->refresh();
+        }
+
+        return $result > 0;
+    }
+
+    /**
+     * Clone the model into a new, non-existing instance.
+     */
+    public function replicate(array $except = []): static
+    {
+        $defaults = [$this->primaryKey, 'created_at', 'updated_at'];
+        $except = array_merge($defaults, $except);
+
+        $attributes = array_diff_key($this->attributes, array_flip($except));
+
+        return new static($attributes);
+    }
+
+    /**
+     * Determine if any of the given attributes were changed during the last save.
+     */
+    public function wasChanged($attributes = null): bool
+    {
+        if (is_null($attributes)) {
+            return count($this->changedAtLastSave) > 0;
+        }
+
+        $attributes = is_array($attributes) ? $attributes : func_get_args();
+
+        return count(array_intersect($attributes, $this->changedAtLastSave)) > 0;
     }
 
     /**

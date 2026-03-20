@@ -68,5 +68,25 @@ Models dispatch lifecycle events that you can listen to for auditing or side eff
 
 ---
 
+## 5. Query Caching
+
+Improve application performance by caching expensive database results.
+
+### Basic Caching
+Enable caching globally or per model:
+```php
+User::enableCache(ttl: 3600); // Cache for 1 hour
+```
+
+### Strategic Caching
+Use the `remember()` method on a specific query:
+```php
+$stats = DB::table('orders')->remember(600)->sum('price');
+```
+
+When caching is enabled, Plugs generates a unique cache key based on the SQL and its bindings. Subsequent identical queries will hit the cache instead of the database.
+
+---
+
 ## Next Steps
 Secure your application with [Security Best Practices](../security/overview.md).
