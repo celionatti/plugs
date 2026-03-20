@@ -1,0 +1,181 @@
+<layout name="layouts.app">
+    <style>
+        body { 
+            background-color: #fcfaf8 !important; 
+            color: #1a1a1a !important; 
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            margin: 0;
+            padding: 0;
+            min-height: 100vh;
+        }
+
+        .text-emerald { color: #10b981; }
+        .bg-emerald { background-color: #10b981; }
+        .border-emerald { border-color: #10b981; }
+        
+        .nav-link {
+            color: #4a5568;
+            font-weight: 500;
+            transition: color 0.2s;
+        }
+        .nav-link:hover { color: #10b981; }
+
+        .btn-deploy {
+            background-color: #1a1a1a;
+            color: white;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-weight: 600;
+            transition: background-color 0.2s;
+        }
+        .btn-deploy:hover { background-color: #333; }
+
+        .isometric-container {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            background: linear-gradient(135deg, #fff5f0 0%, #fcfaf8 100%);
+            border-left: 1px solid #eee;
+        }
+
+        .isometric-image {
+            max-width: 90%;
+            max-height: 90%;
+            object-fit: contain;
+            filter: drop-shadow(0 20px 40px rgba(0,0,0,0.1));
+            animation: float 6s ease-in-out infinite;
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translateY(0px); }
+            50% { transform: translateY(-15px); }
+        }
+
+        .stepper-line {
+            position: absolute;
+            left: 11px;
+            top: 24px;
+            bottom: -24px;
+            width: 1px;
+            background-color: #e2e8f0;
+        }
+        
+        .step-circle {
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            border: 2px solid #e2e8f0;
+            background: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            z-index: 10;
+        }
+        
+        .step-circle-inner {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background-color: #e2e8f0;
+        }
+        
+        .step-item:hover .step-circle { border-color: #10b981; }
+        .step-item:hover .step-circle-inner { background-color: #10b981; }
+    </style>
+
+    <div class="min-h-screen flex flex-col">
+        <!-- Navigation -->
+        <nav class="w-full max-w-7xl mx-auto px-6 py-8 flex justify-between items-center z-50">
+            <div class="flex items-center gap-2">
+                <div class="w-10 h-10 rounded-xl bg-emerald-500 flex items-center justify-center text-white shadow-lg shadow-emerald-500/20">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M13 10V3L4 14h7v7l9-11h-7z" />
+                    </svg>
+                </div>
+                <span class="text-2xl font-bold tracking-tight font-outfit">Plugs</span>
+            </div>
+
+            <div class="flex items-center gap-8">
+                @if(\Plugs\FeatureModule\FeatureModuleManager::getInstance()->hasModule('Auth'))
+                    @if(\Plugs\Facades\Auth::check())
+                        <a href="/dashboard" class="nav-link">Dashboard</a>
+                    @else
+                        <a href="/login" class="nav-link">Log in</a>
+                        <a href="/register" class="btn-deploy py-2 px-6">Register</a>
+                    @endif
+                @endif
+            </div>
+        </nav>
+
+        <main class="flex-grow flex flex-col lg:flex-row">
+            <!-- Left Content Area -->
+            <div class="w-full lg:w-1/2 flex items-center justify-center p-8 lg:p-16">
+                <div class="max-w-md w-full space-y-10">
+                    <div class="space-y-4">
+                        <h2 class="text-2xl font-bold text-gray-900">Let's get started</h2>
+                        <p class="text-gray-500 leading-relaxed text-lg">
+                            Plugs has an incredibly rich ecosystem. We suggest starting with the following.
+                        </p>
+                    </div>
+
+                    <div class="space-y-12">
+                        <!-- Step 1 -->
+                        <div class="step-item flex gap-6 relative group">
+                            <div class="stepper-line"></div>
+                            <div class="step-circle">
+                                <div class="step-circle-inner"></div>
+                            </div>
+                            <div class="space-y-1">
+                                <h3 class="text-lg font-medium text-gray-800">
+                                    Read the <a href="https://plugs-framework.com/docs" class="text-emerald hover:underline font-bold underline-offset-4 decoration-2">Documentation &nearr;</a>
+                                </h3>
+                            </div>
+                        </div>
+
+                        <!-- Step 2 -->
+                        <div class="step-item flex gap-6 relative group">
+                            <div class="step-circle">
+                                <div class="step-circle-inner"></div>
+                            </div>
+                            <div class="space-y-1">
+                                <h3 class="text-lg font-medium text-gray-800">
+                                    Watch video tutorials at <a href="https://plugs-framework.com/academy" class="text-emerald hover:underline font-bold underline-offset-4 decoration-2">Plugs Academy &nearr;</a>
+                                </h3>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="pt-4">
+                        <a href="https://plugs-framework.com/deploy" class="btn-deploy inline-flex items-center gap-2 shadow-xl shadow-black/10">
+                            Deploy now
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right Graphic Area -->
+            <div class="w-full lg:w-1/2 min-h-[400px] lg:min-h-0">
+                <div class="isometric-container">
+                    <img src="/assets/images/plugs-6.png" alt="Plugs 6 Isometric" class="isometric-image">
+                </div>
+            </div>
+        </main>
+
+        <!-- Footer -->
+        <footer class="w-full max-w-7xl mx-auto px-6 py-10 flex flex-col sm:flex-row justify-between items-center border-t border-gray-100 mt-auto text-sm text-gray-400">
+            <div>
+                Plugs Framework &copy; 2026. Built with efficiency.
+            </div>
+            <div class="flex gap-4 mt-4 sm:mt-0">
+                <span>Plugs v{{ \Plugs\Plugs::version() }}</span>
+                <span class="text-gray-200">|</span>
+                <span>PHP v{{ PHP_VERSION }}</span>
+            </div>
+        </footer>
+    </div>
+</layout>

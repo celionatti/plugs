@@ -87,6 +87,7 @@ use Plugs\Console\Commands\AuthInstallCommand;
 use Plugs\Console\Commands\IdentityInstallCommand;
 use Plugs\Console\Commands\MakeThemeCommand;
 use Plugs\Console\Commands\NebulaThemeCommand;
+use Plugs\Console\Commands\MakeWelcomeCommand;
 use Plugs\Exceptions\ConsoleException;
 
 /*
@@ -132,6 +133,7 @@ class ConsoleKernel
         'make:auth-module' => MakeAuthModuleCommand::class,
         'make:lang' => MakeLangCommand::class,
         'make:theme' => MakeThemeCommand::class,
+        'make:welcome' => MakeWelcomeCommand::class,
         'theme:nebula' => NebulaThemeCommand::class,
 
         'db:backup' => DatabaseBackupCommand::class,
