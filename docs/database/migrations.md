@@ -1,26 +1,27 @@
-# Database: Migrations
+# Migrations & Seeding
 
-Migrations are version control for your database, allowing your team to define and share the application's database schema.
+Migrations are version control for your database, allowing you to define and share your application's schema. Seeders and Factories provide a way to populate your database with test or initial data.
 
-## Creating Migrations
+---
 
+## 1. Migrations
+
+### Creating Migrations
+Generate a new migration for a table:
 ```bash
 php theplugs make:migration create_users_table
 ```
 
-## Migration Structure
-
-Plugs uses anonymous classes for migrations:
+### Migration Structure
+Migrations use anonymous classes for simplicity:
 
 ```php
 use Plugs\Database\Migration;
 use Plugs\Database\Blueprint;
 use Plugs\Database\Schema;
 
-return new class extends Migration
-{
-    public function up(): void
-    {
+return new class extends Migration {
+    public function up(): void {
         Schema::create('users', function (Blueprint $table) {
             $table->id();
             $table->string('name');
@@ -29,44 +30,64 @@ return new class extends Migration
         });
     }
 
-    public function down(): void
-    {
-        Schema::dropIfExists('users');
-    }
+    public function down(): void { Schema::dropIfExists('users'); }
 };
 ```
 
-## Available Column Types
+### Running Migrations
+- `php theplugs migrate`: Run pending migrations.
+- `php theplugs migrate:rollback`: Rollback the latest batch.
+- `php theplugs migrate:fresh`: Wipe the database and re-run all migrations.
 
-| Method                           | Description                    |
-| -------------------------------- | ------------------------------ |
-| `$table->id()`                   | Auto-incrementing Primary Key. |
-| `$table->string('name', 255)`    | VARCHAR column.                |
-| `$table->text('body')`           | TEXT column.                   |
-| `$table->integer('votes')`       | INT column.                    |
-| `$table->decimal('price', 8, 2)` | DECIMAL column.                |
-| `$table->boolean('active')`      | BOOLEAN column.                |
-| `$table->json('options')`        | JSON column.                   |
-| `$table->timestamps()`           | `created_at` and `updated_at`. |
-| `$table->softDeletes()`          | `deleted_at` for soft deletes. |
+---
 
-## Running Migrations
+## 2. Seeders
 
+Seeders allow you to populate your database with initial data.
+
+### Creating Seeders
 ```bash
-# Run pending migrations
-php theplugs migrate
-
-# Rollback latest batch
-php theplugs migrate:rollback
-
-# Wipe database and restart
-php theplugs migrate:fresh
+php theplugs make:seeder UserSeeder
 ```
 
-## Integrity & Audit
+### Usage
+```php
+class UserSeeder extends Seeder {
+    public function run(): void {
+        DB::table('users')->insert([
+            'name' => 'Admin',
+            'email' => 'admin@example.com'
+        ]);
+    }
+}
+```
 
-Plugs automatically tracks migration integrity:
+Run seeders via `php theplugs db:seed` or `php theplugs migrate:fresh --seed`.
 
-- **Checksums**: Verifies that migration files haven't been tampered with after execution.
-- **Audit Logs**: Every change is logged in `migration_logs` with SQL queries and execution time.
-- **Status**: Use `php theplugs migrate:status` for a detailed integrity report.
+---
+
+## 3. Factories
+
+Factories define how to generate "fake" models for testing and development.
+
+### Defining Factories
+```php
+class UserFactory extends Factory {
+    public function definition(): array {
+        return [
+            'name' => 'User ' . uniqid(),
+            'email' => 'user' . uniqid() . '@example.com',
+        ];
+    }
+}
+```
+
+### Using Factories
+```php
+User::factory()->count(10)->create();
+```
+
+---
+
+## Next Steps
+Explore [Advanced Database Features](./advanced.md) for master-slave setups and backups.

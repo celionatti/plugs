@@ -1,53 +1,72 @@
-# Installation
+# Installation Guide
 
-Getting started with Plugs is easy. Follow these steps to set up your environment and create your first project.
+Follow these steps to set up your environment and create your first **Plugs** project.
 
-## Prerequisites
+---
 
-- **PHP**: 8.1 or higher
-- **Extensions**: PDO, OpenSSL, Mbstring, Tokenizer, XML, Ctype, JSON
-- **Web Server**: Apache, Nginx, or the built-in PHP server
-- **Database**: MySQL, PostgreSQL, or SQLite
+## 1. Prerequisites
 
-## Setup via Composer
+Before installing Plugs, ensure your local machine meets the following requirements:
 
-To create a new project using Plugs, run:
+- **PHP**: 8.1 or higher (PHP 8.2+ recommended for Fibers/Concurrency support).
+- **Composer**: Latest version.
+- **Extensions**: `pdo_mysql`, `openssl`, `mbstring`, `xml`, `ctype`, `json`, `bcmath`, `curl`.
+- **Database**: MySQL 5.7+ (or MariaDB), PostgreSQL, or SQLite.
+
+---
+
+## 2. Create Your Project
+
+The most common way to install Plugs is via Composer's `create-project` command:
+
+```bash
+composer create-project plugs/plugs-skeleton my-app
+```
+
+Alternatively, if you're adding Plugs to an existing Composer project:
 
 ```bash
 composer require plugs/plugs
 ```
 
-## Directory Permissions
+---
 
-After installation, ensure the following directories are writable by your web server:
+## 3. Directory Permissions
 
-- `storage`
-- `bootstrap/cache`
+Plugs requires write access to the `storage` and `bootstrap/cache` directories. If you're on a Linux/macOS system, run:
 
 ```bash
 chmod -R 775 storage bootstrap/cache
 ```
 
-## Environment Configuration
+---
 
-Copy the `.env.example` file to `.env` and configure your settings:
+## 4. Environment Configuration
 
-```bash
-cp .env.example .env
-```
+1. **Initialize .env**: Copy the provided template.
+   ```bash
+   cp .env.example .env
+   ```
+2. **Generate App Key**: This key is used for session encryption and secure cookies.
+   ```bash
+   php theplugs key:generate
+   ```
+3. **Database Setup**: Open `.env` and configure your `DB_HOST`, `DB_DATABASE`, and credentials.
 
-Generate an application key:
+---
 
-```bash
-php theplugs key:generate
-```
+## 5. Local Development Server
 
-## Local Development Server
-
-You can quickly serve your application using the built-in server:
+You can quickly serve your application using the built-in CLI tool:
 
 ```bash
 php theplugs serve
 ```
 
-Your application will be available at `http://localhost:8000`.
+Your application will be live at `http://localhost:8000`.
+
+---
+
+## Next Steps
+
+Now that you're up and running, learn how to [Configure Your Application](./configuration.md) or dive into [Core Architecture](../architecture/lifecycle.md).

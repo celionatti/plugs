@@ -33,20 +33,31 @@ resources/views/components/
 
 ### Usage
 
-Plugs V5 uses **PascalCase** tags to distinguish components from regular HTML tags.
+Plugs V5 supports two syntaxes for components:
+
+1.  **Direct PascalCase (Recommended):** Any tag starting with an uppercase letter is treated as a component.
+2.  **Explicit `x-` Prefix:** Any tag starting with `x-` is treated as a component, regardless of casing.
 
 ```html
-{{-- Root level component --}}
+{{-- Root level component (No x- needed if PascalCase) --}}
 <Alert type="success" message="Operation completed!" />
 
 {{-- Nested component (Maps to Forms/Input.plug.php) --}}
+{{-- Note: Each segment must be PascalCase to omit x- --}}
 <Forms::Input type="text" name="email" label="Email" />
+
+{{-- Lowercase components REQUIRE the x- prefix --}}
+<x-alert type="info">Message</x-alert>
 
 {{-- Component with content (Slots) --}}
 <Alert type="warning">
   This is a warning message with <strong>HTML</strong>.
 </Alert>
 ```
+
+> [!IMPORTANT]
+> When using the `::` separator without the `x-` prefix, **every segment** must start with an uppercase letter (e.g., `<Admin::Users::Button />`). If any segment is lowercase, you must use the prefix (e.g., `<x-admin::users::button />`).
+
 
 ---
 

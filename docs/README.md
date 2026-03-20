@@ -4,77 +4,68 @@
 
 Welcome to the official documentation for the **Plugs** framework. Plugs is a lightweight, modular, and high-performance PHP framework designed for modern web development.
 
-> [!NOTE]
-> Plugs is designed for developers who want a balance between simplicity and powerful features like SPA integration and a robust security shield.
+---
 
-## Documentation Sections
+## 🚀 Getting Started
+Build your foundation with the core setup guides.
+- **[Introduction](./getting-started/introduction.md)**: What is Plugs?
+- **[Installation](./getting-started/installation.md)**: Server requirements and setup.
+- **[Configuration](./getting-started/configuration.md)**: Environment and system settings.
 
-### 🚀 Getting Started
+---
 
-- [Introduction](file:///docs/getting-started/introduction.md)
-- [Installation](file:///docs/getting-started/installation.md)
-- [Configuration](file:///docs/getting-started/configuration.md)
+## 🏗️ Architecture
+Understand the modular philosophy powering Plugs.
+- **[Modular Design](./architecture/modular-architecture.md)**: Feature-based organization.
+- **[Request Lifecycle](./architecture/lifecycle.md)**: How requests are handled.
+- **[DI Container](./architecture/container.md)**: Dependency Injection and Providers.
 
-### 🛠️ Building APIs (New)
+---
 
-- [**Production API Guide**](file:///docs/api-guide/introduction.md)
-  - [Step 1: Modeling & Data](file:///docs/api-guide/step-1-modeling.md)
-  - [Step 2: Resources & Transformation](file:///docs/api-guide/step-2-resources.md)
-  - [Step 3: Validation & Requests](file:///docs/api-guide/step-3-requests.md)
-  - [Step 4: Controllers & Routes](file:///docs/api-guide/step-4-controllers-routes.md)
-  - [Step 5: Verification & Testing](file:///docs/api-guide/step-5-testing.md)
-  - [**Full Implementation Example**](file:///docs/api-guide/full-example.md)
+## 🧩 The Basics
+Master the essential building blocks.
+- **[Routing](./basics/routing.md)**: Directing traffic with a high-performance router.
+- **[Controllers](./basics/controllers.md)**: Handling logic and requests.
+- **[Validation](./basics/validation.md)**: Securely validating user input.
+- **[Responses](./basics/responses.md)**: API JSON and session-based alerts.
+- **[Helpers](./basics/helpers.md)**: Global utility functions.
 
-### 🏗️ Architecture
+---
 
-- [**Modular First Architecture**](file:///docs/architecture/modular-architecture.md) (New)
-- [**Feature Modules**](file:///docs/architecture/feature-modules.md) (New)
-- [Request Lifecycle](file:///docs/architecture/lifecycle.md) (Updated)
+## 🎨 View Layer
+Create stunning, reactive user interfaces.
+- **[View Engine](./views/engine.md)**: Modern tag syntax (V5) and directives.
+- **[Hybrid Reactivity](./views/reactivity.md)**: Live Components, SWR, and HTMX.
+- **[Themes](./views/themes.md)**: Visual identity and custom layouts.
+- **[Asset Management](./views/asset-management.md)**: Vite and Asset Manager.
 
-### 🧩 The Basics
+---
 
-- [Routing](file:///docs/the-basics/routing.md)
-- [Controllers](file:///docs/the-basics/controllers.md)
-- [Requests](file:///docs/the-basics/requests.md) (Updated)
-- [Logging](file:///docs/the-basics/logging.md) (Updated)
-- [Helper Functions](file:///docs/the-basics/helpers.md) (Updated)
-- [Views & Components](file:///docs/views/README.md)
-- [Themes & Customization](file:///docs/views/themes.md) (Updated)
-  - [Theme Module Overrides](file:///docs/features/theme-overrides.md) (New)
-- [Debugging & Performance](file:///docs/the-basics/debugging.md)
-- [Filesystem Storage](file:///docs/the-basics/storage.md)
-- [Asset Management (Vite)](file:///docs/the-basics/assets.md) (New)
+## 🗄️ Data Layer
+Manage your data with an expressive ORM.
+- **[ORM](./database/orm.md)**: Models, Relationships, and Scopes.
+- **[Query Builder](./database/query-builder.md)**: Fluent database querying.
+- **[Migrations](./database/migrations.md)**: Version-controlled schema and seeding.
+- **[Advanced DB](./database/advanced.md)**: Master-Slave, Backups, and Observability.
 
-### 🗄️ Database
+---
 
-- [Introduction](file:///docs/database/getting-started.md)
-- [Query Builder](file:///docs/database/query-builder.md)
-- [Smart Relationship Engine](file:///docs/database/smart-relationship-engine.md) (New)
-- [Migrations](file:///docs/database/migrations.md)
-- [Models](file:///docs/database/models.md)
-- [Pagination](file:///docs/database/pagination.md)
-- [Backup & Restoration](file:///docs/database/backup-restoration.md) (New)
+## 🛡️ Security & Infrastructure
+Deploy with confidence on a hardened infrastructure.
+- **[Security Overview](./security/overview.md)**: Shield, CSRF, and Headers.
+- **[Auth & Authz](./security/authentication-authorization.md)**: Guards, JWT, and Gates.
+- **[Console CLI](./infrastructure/console.md)**: Scaffolding and automation.
+- **[Filesystem](./infrastructure/filesystem.md)**: Local and Cloud storage.
+- **[Logging](./infrastructure/logging.md)**: PSR-3 compliant logging.
+- **[Queues](./infrastructure/queues-scheduling.md)**: Background jobs and scheduling.
 
-### 🛡️ Security & Features
+---
 
-- [AI Overview](file:///docs/ai/overview.md) (New)
-  - [AI-Enhanced Query Assistant](file:///docs/ai/query-assistant.md) (New)
-  - [AI Performance & SWR](file:///docs/ai/performance.md) (New)
-- [Authentication](file:///docs/features/authentication.md) (Updated)
-- [Validation](file:///docs/features/validation.md) (Updated)
-- [Payments (Elite)](file:///docs/features/payments.md) (New)
-- [Payouts (Elite)](file:///docs/features/payouts.md) (New)
-- [Billing & Tax](file:///docs/features/billing.md) (New)
-- [Payment Adapters](file:///docs/features/payment-adapters.md) (New)
-- [Caching](file:///docs/features/caching.md) (Updated)
-- [Sitemap Generation](file:///docs/features/sitemap-generation.md) (New)
-- [CSRF Protection](file:///docs/security/csrf-protection.md)
-- [Security Shield](file:///docs/security/security-shield.md)
-- [Rate Limiting](file:///docs/security/rate-limiting.md) (New)
-
-### ⚡ Advanced Features
-
-- [Queues & Background Jobs](file:///docs/advanced/queues.md) (Updated)
-- [Task Scheduling](file:///docs/advanced/scheduling.md)
-- [Asset Management](file:///docs/advanced/asset-management.md)
-- [CLI Tool (theplugs)](file:///docs/advanced/cli-commands.md)
+## ⚡ Advanced Features
+Take your application to the next level.
+- **[AI & Agents](./advanced/ai.md)**: Natural language querying and agents.
+- **[Performance](./advanced/performance.md)**: Concurrency with Fibers and Caching.
+- **[Payments](./advanced/payments.md)**: Subscriptions and Payouts.
+- **[Events](./advanced/events-notifications.md)**: Decoupled logic and alerts.
+- **[Observability](./advanced/observability.md)**: Health checks and diagnostics.
+- **[SEO](./advanced/seo.md)**: Automated sitemaps and metadata.

@@ -1,409 +1,87 @@
-# Advanced View Usage
+# Advanced View Features
 
-Advanced features for complex applications including streaming, debugging, and performance optimization.
+This guide covers the high-performance features of the Plug View Engine designed for complex, data-heavy applications.
 
-## Streaming Rendering
+---
 
-For large views or long-running processes, Plugs supports various streaming modes to improve Time To First Byte (TTFB) and memory efficiency.
+## 1. View Streaming
 
-### True Unbuffered Streaming
+For pages with large datasets or long-running processes, **Streaming** sends the response in chunks to the browser, significantly improving the Time To First Byte (TTFB).
 
-You can enable true unbuffered streaming, where content is echoed directly to the browser as it is processed. This is ideal for extremely large datasets or dashboards with many components.
+### Enabling Streaming
+Enable it globally via `.env` or programmatically in your controller:
 
-**Enabling Globally via `.env`:**
-
-```bash
+```env
 VIEW_STREAMING=true
 VIEW_AUTO_FLUSH=50
 ```
 
-**Enabling Programmatically:**
-
 ```php
-$viewEngine->enableStreaming(true);
-$viewEngine->enableAutoFlush(50); // Optional: auto-flush every N loop iterations
+return view('reports.large', $data)->stream();
 ```
 
-> [!WARNING]
-> When `VIEW_STREAMING` is enabled, headers are sent immediately. You cannot use `header()` redirects or set cookies inside your view logic.
-
-### Automatic Loop Flushing
-
-When streaming is enabled, Plugs automatically flushes the output buffer during `@foreach` and `@forelse` loops. This prevents the buffer from becoming too large and ensures the user sees data as it's processed.
-
-```blade
-@foreach($largeDataset as $item)
-    {{-- Every 50 items, the buffer flushes automatically --}}
-    <div>...</div>
-@endforeach
-```
-
-### Generator-Based Streaming
-
-If you need manual control over chunks, use the `stream` method:
-
-```php
-foreach ($viewEngine->stream('large-report', $data) as $chunk) {
-    echo $chunk;
-    flush();
-}
-```
+### Automatic Flush
+When streaming is enabled, Plugs automatically flushes the buffer during `@foreach` loops (every 50 iterations by default), allowing the user to see the page render progressively.
 
 ---
 
-## Performance & Memory Optimization
+## 2. Compilation Caching
 
-### Support for Generators
+To maximize performance, Plugs compiles your templates into plain PHP files.
 
-Loop directives (`@foreach`, `@forelse`) now support non-countable iterables like PHP Generators. This allows you to iterate over millions of rows with virtually zero memory overhead.
-
-```php
-// In Controller
-$data['users'] = function() {
-    foreach (DB::cursor('SELECT * FROM users') as $user) {
-        yield $user;
-    }
-};
-
-// In View
-@foreach($users() as $user)
-    {{ $user->name }}
-@endforeach
-```
-
----
-
-## Parallel Rendering
-
-Render multiple views efficiently:
+### Fast Cache (Production)
+In production, enable `Fast Cache` to skip expensive file modification checks:
 
 ```php
-$results = $viewEngine->renderMany([
-    'partials.header' => ['user' => $user],
-    'partials.sidebar' => ['menu' => $menu],
-    'partials.content' => ['data' => $data],
-], ['appName' => 'My App']);
-
-// Returns: ['partials.header' => '...', 'partials.sidebar' => '...', ...]
-```
-
----
-
-## Debugging
-
-### Dump View Data
-
-```php
-// Dump data and continue
-view('page', $data)->dump();
-
-// Dump data and die
-view('page', $data)->dd();
-```
-
-### Get Debug Information
-
-```php
-$debug = view('page', $data)->debug();
-// [
-//     'view' => 'page',
-//     'data' => [...],
-//     'headers' => [...],
-//     'status_code' => 200,
-//     'excluded_sections' => [],
-//     'engine_class' => 'Plugs\View\ViewEngine'
-// ]
-```
-
-### View Existence Check
-
-```php
-if ($viewEngine->exists('emails.welcome')) {
-    return view('emails.welcome', $data);
-} else {
-    return view('emails.generic', $data);
-}
-```
-
----
-
-## Response Handling
-
-### Chainable Response Methods
-
-```php
-return view('dashboard', $data)
-    ->withStatus(200)
-    ->withHeaders([
-        'Cache-Control' => 'private, max-age=3600',
-        'X-Custom-Header' => 'value'
-    ])
-    ->withHeader('Content-Language', 'en')
-    ->send();
-```
-
-### JSON Response
-
-Convert view to JSON for AJAX:
-
-```php
-return response(view('partials.card', $data)->toJson())
-    ->header('Content-Type', 'application/json');
-```
-
-Returns:
-
-```json
-{
-  "html": "<div class=\"card\">...</div>",
-  "view": "partials.card"
-}
-```
-
-### HTMX Response Helper
-
-```php
-return view('dashboard', $data)->htmxResponse();
-```
-
-This automatically:
-
-- Sends appropriate headers
-- Handles teleport content
-- Sends the rendered view
-
----
-
-## Path Resolution Caching
-
-Improve performance by caching file path lookups:
-
-```php
-// Use cached path resolution
-$path = $viewEngine->getViewPathCached('users.profile');
-
-// Clear path cache (after adding new views)
-$viewEngine->clearPathCache();
-```
-
----
-
-## Custom Directives
-
-Register custom directives:
-
-```php
-$viewEngine->registerDirective('datetime', function($expression) {
-    return "<?php echo date('Y-m-d H:i:s', $expression); ?>";
-});
-```
-
-Usage:
-
-```blade
-@datetime(strtotime($post->created_at))
-```
-
----
-
-## View Composers
-
-Run logic before specific views render:
-
-```php
-// Single view
-$viewEngine->composer('profile', function($view) {
-    $view->with('countries', Country::all());
-});
-
-// Multiple views
-$viewEngine->composer(['profile', 'settings'], function($view) {
-    $view->with('timezones', Timezone::all());
-});
-
-// Wildcard
-$viewEngine->composer('admin.*', function($view) {
-    $view->with('adminMenu', $this->getAdminMenu());
-});
-```
-
----
-
-## Conditional Rendering
-
-### Section Exclusion
-
-Exclude sections from output:
-
-```php
-return view('page', $data)->without(['ads', 'newsletter']);
-```
-
-In template:
-
-```blade
-@unless(in_array('ads', $__excludedSections ?? []))
-    <div class="ads">...</div>
-@endunless
-```
-
-### Render Only Specific Section
-
-```php
-// Render only the 'content' fragment
-$html = view('page', $data)->renderOnly('content');
-```
-
----
-
-## Error Handling
-
-### Debug Mode Errors
-
-When `APP_DEBUG=true`, detailed errors are shown:
-
-```blade
-{{-- Displays: view name, error message, file, line, stack trace --}}
-```
-
-### Production Mode
-
-When `APP_DEBUG=false`:
-
-- Errors are logged
-- No stack traces exposed
-
-### Production Error Static Caching
-
-In production mode (`APP_DEBUG=false`), the Plugs framework uses a static HTML cache for the generic 500 error page. This ensures that even under heavy load or cascading failures, the overhead of rendering the error page is virtually zero, as it bypasses template re-allocation.
-
-### Custom Error Handling
-
-```php
-try {
-    return view('page', $data)->render();
-} catch (RuntimeException $e) {
-    Log::error('View error', ['message' => $e->getMessage()]);
-    return view('errors.500')->render();
-}
-```
-
----
-
-## Performance Tips
-
-### 1. Enable Caching in Production
-
-```php
-$viewEngine = new ViewEngine($viewPath, $cachePath, cacheEnabled: true);
 $viewEngine->setFastCache(true);
 ```
 
-### 2. Preload Common Views
+> [!WARNING]
+> When Fast Cache is enabled, you must manually clear the cache during deployment:
+> `php theplugs view:clear`
 
-```php
-$viewEngine->preload(['layouts.app', 'partials.nav']);
-```
+---
 
-### 3. Warm Cache on Deploy
+## 3. Block Caching
 
-```bash
-php artisan view:cache
-```
-
-### 4. Use Block Caching for Expensive Content
+Cache expensive parts of your view independently using the `@cache` directive.
 
 ```blade
-@cache('navigation', 3600)
-    {{-- Database queries here --}}
+@cache('sidebar-nav', 3600)
+    {{-- This complex menu is cached for 1 hour --}}
+    @foreach($categories as $cat)
+        <li>{{ $cat->name }}</li>
+    @endforeach
 @endcache
 ```
 
-### 5. Stream Large Views
-
-```php
-$viewEngine->renderToStream('large-report', $data);
-```
-
-### 6. Avoid Heavy Logic in Views
-
-```php
-// Bad: Heavy logic in view
-@foreach(User::where('active', true)->with('posts')->get() as $user)
-
-// Good: Pass data from controller
-@foreach($activeUsers as $user)
+### Dynamic Keys
+Include variables in keys for specific versions (e.g., per user):
+```blade
+@cache('user-settings-' . user.id, 1800)
 ```
 
 ---
 
-## Security
+## 4. Performance Optimizations
 
-### XSS Protection
-
-Always use escaped echo for user content:
-
-```blade
-{{-- Safe --}}
-{{ $userInput }}
-
-{{-- Only for trusted content --}}
-{!! $trustedHtml !!}
-```
-
-### Sanitize User HTML
-
-```blade
-@sanitize($userContent, 'basic')
-```
-
-### CSP Nonce Support
+### Support for Generators
+Loop directives support **PHP Generators**. This allows you to iterate over millions of database rows with virtually zero memory overhead.
 
 ```php
-$viewEngine->setCspNonce($nonce);
+// In Controller
+$users = function() {
+    foreach (DB::cursor('SELECT * FROM users') as $user) { yield $user; }
+};
+
+// In View
+@foreach($users() as $user) ... @endforeach
 ```
 
-```blade
-<script nonce="{{ $view->getCspNonce() }}">
-    // Inline script
-</script>
-
-#### Auto-CSP Injection
-
-The Plugs `ViewCompiler` supports **Auto-CSP Injection**. When enabled, the compiler automatically analyzes your templates for `<script>` and `<style>` tags that lack a `nonce` attribute and injects one automatically.
-
-This ensures that inline scripts and styles are always secure without requiring manual `nonce` attributes everywhere.
-
-> [!NOTE]
-> Auto-injection only targets inline tags or scripts without a `src` attribute (unless marked as `inline`).
-```
+### OPcache Integration
+Plugs can automatically compile views into the PHP **OPcache**, making template execution nearly as fast as static PHP files.
 
 ---
 
-## Extending the View System
-
-### Custom View Class
-
-```php
-class MyView extends View
-{
-    public function withFlash(): self
-    {
-        return $this->with('flash', session()->getFlash());
-    }
-}
-```
-
-### Custom Compiler Methods
-
-Extend `ViewCompiler` to add functionality:
-
-```php
-class MyViewCompiler extends ViewCompiler
-{
-    protected function compileMyDirective(string $content): string
-    {
-        return preg_replace('/@myDirective/', '<?php ...?>', $content);
-    }
-}
-```
+## Next Steps
+Now that the frontend is optimized, learn about the [Data Layer](../database/orm.md).

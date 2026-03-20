@@ -1,26 +1,21 @@
 # Modular First Architecture
 
-Plugs is built with a **Modular First** philosophy. This means that the core engine is kept as minimal as possible, and all high-level features (Session, Database, Auth, AI, etc.) are implemented as independent, plug-and-play **Modules**.
+Plugs is built on a **Modular First** philosophy. The core engine is kept as minimal as possible, with all high-level features (Session, Database, AI, etc.) implemented as independent, plug-and-play **Core Modules**.
 
-## Core Concept
+---
 
-In a traditional framework, the core often has hardcoded dependencies on various services. In Plugs, the core only knows how to boot modules. This allows you to:
+## 1. The Core Philosophy
 
-- **Disable any feature**: Instantly turn off sessions, storage, or even the database.
-- **Go Stateless**: Disable the `Session` module and your app becomes completely stateless.
-- **Reduce Footprint**: Only boot the modules your application actually needs for its current context (Web, API, CLI, etc.).
+In traditional frameworks, the core often has hardcoded dependencies on various services. In Plugs:
+- The core only knows how to **register** and **boot** modules.
+- **Stateless by Choice**: Disable the `Session` module and your app becomes completely stateless effortlessly.
+- **Context-Aware**: Modules only boot when their specific context (Web, CLI, API) is active.
 
-## The Module Interface
+## 2. The Module Interface
 
-Every module must implement the `Plugs\Module\ModuleInterface`:
+Every core module must implement the `Plugs\Module\ModuleInterface`. This ensures a consistent lifecycle across the framework.
 
 ```php
-namespace Plugs\Module;
-
-use Plugs\Bootstrap\ContextType;
-use Plugs\Container\Container;
-use Plugs\Plugs;
-
 interface ModuleInterface
 {
     public function getName(): string;
@@ -30,123 +25,50 @@ interface ModuleInterface
 }
 ```
 
-## Usage
-
-### Dynamically Disabling Modules
-
-You can disable any core or custom module before the framework boots. This is typically done in your entry point (e.g., `public/index.php` or a custom bootstrap file).
-
-```php
-use Plugs\Framework;
-
-// Make the application completely stateless
-Framework::disableModule('Session');
-
-// Disable AI features if not needed
-Framework::disableModule('Ai');
-```
-
-### Checking Module Status
-
-```php
-if (Framework::isModuleEnabled('Database')) {
-    // Perform database operations
-}
-```
-
-## Sample: Custom Module
-
-Creating a custom module is straightforward.
-
-1. **Create the Module Class**:
-
-```php
-namespace App\Modules;
-
-use Plugs\Module\ModuleInterface;
-use Plugs\Bootstrap\ContextType;
-use Plugs\Container\Container;
-use Plugs\Plugs;
-
-class MyCustomModule implements ModuleInterface
-{
-    public function getName(): string
-    {
-        return 'CustomAnalytics';
-    }
-
-    public function shouldBoot(ContextType $context): bool
-    {
-        // Only boot in Web context
-        return $context === ContextType::Web;
-    }
-
-    public function register(Container $container): void
-    {
-        $container->singleton('analytics', function() {
-            return new AnalyticsService();
-        });
-    }
-
-    public function boot(Plugs $app): void
-    {
-        // Initialization logic after all modules are registered
-    }
-}
-```
-
-2. **Register the Module**:
-
-```php
-use Plugs\Framework;
-use App\Modules\MyCustomModule;
-
-Framework::addModule(MyCustomModule::class);
-```
-
-## Module Generator (CLI)
-
-You can easily scaffold a new custom module using the `theplugs` CLI tool. This will create a module class in `app/Modules/`.
-
-```bash
-# Create a standard module
-php theplugs make:module MyModule
-
-# Create a web-only module
-php theplugs make:module MyModule --web
-
-# Create an API-only module
-php theplugs make:module MyModule --api
-```
-
-### Registry & Booting
-
-After creating your module, you must register it in your application's bootstrap process (e.g., `src/Bootstrap/Bootstrapper.php` or `bootstrap/boot.php`):
-
-```php
-use Plugs\Module\ModuleManager;
-use App\Modules\MyModule;
-
-ModuleManager::getInstance()->addModule(MyModule::class);
-```
-
-## Core Modules List
-
-Below are some of the core modules you can interact with:
-
-| Module Name  | Description                         | Default Context |
-| ------------ | ----------------------------------- | --------------- |
-| `Session`    | Session management and cookies      | Web             |
-| `Database`   | DB Connection and Model support     | All             |
-| `Auth`       | User authentication system          | All             |
-| `Cache`      | Caching and Rate Limiting           | All             |
-| `Log`        | System logging                      | All             |
-| `View`       | Template engine and view management | Web             |
-| `Ai`         | AI Integration and LLM support      | All             |
-| `Encryption` | Security and Hashing                | All             |
-| `Events`     | Event Dispatcher                    | All             |
+- **`register()`**: Bind services into the DI Container.
+- **`boot()`**: Execute logic after all other modules have registered their services.
 
 ---
 
-> [!TIP]
-> Use `Framework::disableModule('Session');` when building high-performance APIs to eliminate session overhead entirely.
+## 3. Managing Modules
+
+### Disabling Core Modules
+You can disable any core module before the framework boots, usually in `public/index.php`.
+
+```php
+use Plugs\Framework;
+
+// Disable the built-in AI module if not needed
+Framework::disableModule('Ai');
+
+// Make the app completely stateless
+Framework::disableModule('Session');
+```
+
+### Checking Module Status
+Check if a feature is available before using it:
+
+```php
+if (Framework::isModuleEnabled('Database')) {
+    // Database logic here
+}
+```
+
+---
+
+## 4. Default Core Modules
+
+Plugs comes with these essential modules enabled by default:
+
+| Module | Purpose | Context |
+| --- | --- | --- |
+| `Database` | ORM and Query Builder support | All |
+| `Session` | State management and cookies | Web |
+| `View` | Template engine and components | Web |
+| `Ai` | LLM and AI Agent integration | All |
+| `Queue` | Background job processing | All |
+
+---
+
+## Next Steps
+Now that you understand the framework's internal modularity, learn how to organize your own application code using [Feature Modules](./feature-modules.md).

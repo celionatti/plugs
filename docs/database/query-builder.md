@@ -1,461 +1,101 @@
-# Database: Query Builder
+# Query Builder
 
-The Plugs query builder provides a fluent, convenient interface to creating and running database queries. It can be used to perform most database operations in your application and works perfectly with all supported database systems.
+The Plugs Query Builder provides a fluent, convenient interface for creating and running database queries. It uses PDO parameter binding to protect your application against SQL injection attacks.
 
-## Retrieving Results
+---
 
-### Retrieving All Rows From A Table
+## 1. Retrieving Results
 
+### Basic Retrieval
 ```php
 use Plugs\Facades\DB;
 
 $users = DB::table('users')->get();
-
-foreach ($users as $user) {
-    echo $user->name;
-}
+$user = DB::table('users')->where('id', 1)->first();
+$email = DB::table('users')->value('email');
 ```
 
-### Retrieving A Single Row / Column From A Table
-
-````php
-$user = DB::table('users')->where('name', 'John')->first();
-
-echo $user->email;
-
-### Retrieving Results Or Throwing Exceptions
-
-If you would like to retrieve a record or throw an exception if none is found, use the `findOrFail` or `firstOrFail` methods:
-
+### Exception Handling
 ```php
-$user = DB::table('users')->where('active', true)->firstOrFail();
-
-$user = DB::table('users')->findOrFail(1);
-````
-
-### Retrieving Multiple Records By ID
-
-```php
-$users = DB::table('users')->findMany([1, 2, 3]);
+$user = DB::table('users')->findOrFail(5); // Throws 404 if not found
 ```
 
-### Retrieving A Single Value (Pluck & Value)
-
-If you need a single column's value from the first row, you can use the `value` method:
-
+### Aggregates
 ```php
-$email = DB::table('users')->where('name', 'John')->value('email');
+$count = DB::table('users')->count();
+$maxPrice = DB::table('orders')->max('price');
 ```
 
-If you would like to retrieve an array containing the values of a single column, you may use the `pluck` method:
+---
 
-```php
-$titles = DB::table('roles')->pluck('title');
+## 2. Where Clauses
 
-// With custom keys
-$roles = DB::table('roles')->pluck('title', 'name');
-```
-
-````
-
-## Aggregates
-
-The query builder also provides a variety of methods for retrieving aggregate values like `count`, `max`, `min`, `avg`, and `sum`.
-
-```php
-$users = DB::table('users')->count();
-
-$price = DB::table('orders')->max('price');
-
-$total = DB::table('orders')->where('status', 'completed')->sum('price');
-````
-
-## Select Statements
-
+### Basic Wheres
 ```php
 $users = DB::table('users')
-            ->select('name', 'email as user_email')
-            ->get();
-```
-
-### Distinct Results
-
-The `distinct` method allows you to force the query to return distinct results:
-
-```php
-$users = DB::table('users')->distinct()->get();
-```
-
-## Where Clauses
-
-### Basic Where Clauses
-
-```php
-$users = DB::table('users')
-                ->where('votes', '=', 100)
-                ->where('age', '>', 35)
-                ->get();
-```
-
-### Or Where Clauses
-
-```php
-$users = DB::table('users')
-                    ->where('votes', '>', 100)
-                    ->orWhere('name', 'John')
-                    ->get();
-```
-
-### Logical Grouping (nestedWhere)
-
-Sometimes you may need to group several "where" clauses within parentheses to achieve a specific logical grouping. You can use the `nestedWhere` or `orNestedWhere` methods for this:
-
-```php
-$users = DB::table('users')
-           ->where('name', '=', 'John')
-           ->nestedWhere(function ($query) {
-               $query->where('votes', '>', 100)
-                     ->orWhere('title', '=', 'Admin');
-           })
-           ->get();
-```
-
-As you can see, passing a `Closure` into the `nestedWhere` method instructs the query builder to begin a constraint group. The `Closure` will receive a query builder instance which you can use to set the constraints that should be contained within the parenthesis group.
-
-### Null Where Clauses
-
-The `whereNull` method verifies that the value of the given column is `NULL`:
-
-```php
-$users = DB::table('users')
-                ->whereNull('updated_at')
-                ->get();
-```
-
-The `whereNotNull` method verifies that the column's value is not `NULL`:
-
-```php
-$users = DB::table('users')
-                ->whereNotNull('updated_at')
-                ->get();
-```
-
-### Additional Where Clauses
-
-- `whereBetween` / `whereNotBetween`
-- `whereIn` / `whereNotIn`
-- `whereNull` / `whereNotNull`
-- `whereDate` / `whereMonth` / `whereDay` / `whereYear`
-
-### Subquery Where Clauses
-
-Sometimes you may need to construct a where clause that compares the results of a subquery. You may achieve this by passing a Closure to the `where` method:
-
-```php
-$users = DB::table('users')
-            ->where('id', 'IN', function ($query) {
-                $query->select('user_id')
-                      ->from('orders')
-                      ->where('amount', '>', 100);
-            })
-            ->get();
-```
-
-## Joins
-
-### Inner Join Clause
-
-The query builder may also be used to add join clauses to your queries. To perform a basic "inner join", you may use the `join` method on a query builder instance. The first argument passed to the `join` method is the name of the table you need to join to, while the remaining arguments specify the column constraints for the join:
-
-```php
-$users = DB::table('users')
-            ->join('contacts', 'users.id', '=', 'contacts.user_id')
-            ->select('users.*', 'contacts.phone')
-            ->get();
-```
-
-### Left Join / Right Join Clause
-
-If you would like to perform a "left join" or "right join" instead of an "inner join", use the `leftJoin` or `rightJoin` methods:
-
-```php
-$users = DB::table('users')
-            ->leftJoin('posts', 'users.id', '=', 'posts.user_id')
-            ->get();
-
-$users = DB::table('users')
-            ->rightJoin('posts', 'users.id', '=', 'posts.user_id')
-            ->get();
-```
-
-### Join Subqueries
-
-You may use the `join`, `leftJoin`, and `rightJoin` methods to join to a subquery. First, pass a Closure (or a QueryBuilder instance) that constructs the subquery, followed by an alias name, and finally the constraints:
-
-```php
-$users = DB::table('users')
-    ->join(function ($query) {
-        $query->select('user_id', DB::raw('SUM(amount) as total'))
-              ->from('orders')
-              ->groupBy('user_id');
-    }, 'o', 'users.id', '=', 'o.user_id')
+    ->where('votes', '>', 100)
+    ->where('status', 'active')
     ->get();
 ```
 
-## Ordering, Grouping, Limit & Offset
+### Advanced Wheres
+- **Logical Groups**: Use closures for nested conditions.
+- **Null Checks**: `whereNull('deleted_at')`.
+- **Collections**: `whereIn('id', [1, 2, 3])`.
+- **Dates**: `whereDate('created_at', '2023-01-01')`.
+
+```php
+$users = DB::table('users')
+    ->where('name', 'John')
+    ->nestedWhere(function ($query) {
+        $query->where('votes', '>', 50)->orWhere('title', 'Admin');
+    })->get();
+```
+
+---
+
+## 3. Joins
+
+```php
+$users = DB::table('users')
+    ->join('profiles', 'users.id', '=', 'profiles.user_id')
+    ->select('users.*', 'profiles.bio')
+    ->get();
+```
+
+Supports `leftJoin`, `rightJoin`, and joining to subqueries via closures.
+
+---
+
+## 4. Ordering, Limit & Pagination
 
 ### Ordering
-
 ```php
-$users = DB::table('users')
-                ->orderBy('name', 'desc')
-                ->get();
-
-$user = DB::table('users')
-                ->latest()
-                ->first();
-
-$user = DB::table('users')
-                ->oldest()
-                ->first();
+$users = DB::table('users')->orderBy('name', 'desc')->latest()->get();
 ```
 
-### Grouping and Having
-
-The `groupBy` and `having` methods may be used to group the query results. The `having` method's signature is similar to that of the `where` method:
-
+### Pagination
+Plugs handles the current page detection and link generation automatically.
 ```php
-$users = DB::table('users')
-                ->groupBy('account_id')
-                ->having('account_id', '>', 100)
-                ->get();
+$users = DB::table('users')->paginate(15);
 ```
 
-You may pass multiple arguments to the `groupBy` method to group by multiple columns:
+---
+
+## 5. Inserts, Updates & Deletes
 
 ```php
-$users = DB::table('users')
-                ->groupBy('first_name', 'status')
-                ->having('status', '=', 'active')
-                ->get();
+// Insert
+DB::table('users')->insert(['email' => 'jane@example.com']);
+
+// Update or Insert (Upsert)
+DB::table('users')->updateOrInsert(['email' => 'john@example.com'], ['votes' => 1]);
+
+// Delete
+DB::table('users')->where('votes', '<', 50)->delete();
 ```
 
-### Limit and Offset
+---
 
-```php
-$users = DB::table('users')
-                ->skip(10)
-                ->take(5)
-                ->get();
-```
-
-## Chunking Results
-
-If you need to work with thousands of database records, consider using the `chunk` method. This method retrieves a small chunk of the results at a time and feeds each chunk into a `Closure` for processing. This method is very useful for writing console commands that process thousands of records. For example, let's work with the entire `users` table in chunks of 100 records at a time:
-
-```php
-DB::table('users')->orderBy('id')->chunk(100, function ($users) {
-    foreach ($users as $user) {
-        //
-    }
-});
-```
-
-You may stop further chunks from being processed by returning `false` from the `Closure`:
-
-```php
-DB::table('users')->orderBy('id')->chunk(100, function ($users) {
-    // Process the records...
-
-    return false;
-});
-```
-
-### Chunking By ID
-
-If you are updating database records while chunking results, your chunk results could change in unexpected ways. So, when updating records while chunking, it is always best to use the `chunkById` method. This method will automatically paginate the results based on the record's primary key:
-
-```php
-DB::table('users')->where('active', false)
-    ->chunkById(100, function ($users) {
-        foreach ($users as $user) {
-            DB::table('users')
-                ->where('id', $user->id)
-                ->update(['active' => true]);
-        }
-    });
-```
-
-## Inserts, Updates, Deletes
-
-### Insert
-
-```php
-DB::table('users')->insert([
-    'email' => 'kayla@example.com',
-    'votes' => 0
-]);
-```
-
-### Update
-
-```php
-DB::table('users')
-    ->where('id', 1)
-    ->update(['votes' => 1]);
-```
-
-### Update Or Insert
-
-Sometimes you may want to update an existing record in the database or create it if no matching record exists. In this scenario, the `updateOrInsert` method may be used:
-
-```php
-DB::table('users')->updateOrInsert(
-    ['email' => 'john@example.com', 'name' => 'John'],
-    ['votes' => 2]
-);
-```
-
-### Increment & Decrement
-
-The query builder also provides convenient methods for incrementing or decrementing the value of a given column. Both methods accept at least one argument: the column to modify. A second argument may optionally be passed to specify the amount.
-
-```php
-DB::table('users')->increment('votes');
-
-DB::table('users')->increment('votes', 5, ['updated_at' => date('Y-m-d H:i:s')]);
-
-DB::table('users')->decrement('votes');
-```
-
-### Delete
-
-```php
-DB::table('users')->where('votes', '>', 100)->delete();
-```
-
-## Conditional Clauses
-
-Sometimes you may want certain query clauses to apply to a query only when something else is true. For instance, you may only want to apply a `where` statement if a given input value is present on the incoming HTTP request. You may accomplish this using the `when` method:
-
-```php
-$role = $request->input('role');
-
-$users = DB::table('users')
-                ->when($role, function ($query, $role) {
-                    $query->where('role_id', $role);
-                })
-                ->get();
-```
-
-The `when` method only executes the given closure when the first argument is `true`. If the first argument is `false`, the closure will not be executed.
-
-You may pass another closure as the third argument to the `when` method. This closure will execute if the first argument evaluates as `false`:
-
-```php
-$sortBy = null;
-
-$users = DB::table('users')
-                ->when($sortBy, function ($query, $sortBy) {
-                    $query->orderBy($sortBy);
-                }, function ($query) {
-                    $query->orderBy('name');
-                })
-                ->get();
-```
-
-The `unless` method is the inverse of `when`. The given closure will only execute if the first argument is `false`:
-
-```php
-$is_admin = $user->isAdmin();
-
-$users = DB::table('users')
-                ->unless($is_admin, function ($query) {
-                    $query->where('active', 1);
-                })
-                ->get();
-```
-
-## Relationship Queries (whereHas)
-
-Query records based on the existence of related records:
-
-```php
-// Get all posts that have at least one comment
-$posts = Post::query()
-    ->whereHas('comments')
-    ->get();
-
-// Get all posts with approved comments
-$posts = Post::query()
-    ->whereHas('comments', function($query) {
-        $query->where('approved', true);
-    })
-    ->get();
-
-// With OR condition
-$posts = Post::query()
-    ->whereHas('comments')
-    ->orWhereHas('likes')
-    ->get();
-```
-
-### whereDoesntHave
-
-The `whereDoesntHave` method works similarly to `whereHas`, but filters results that **do not** have matching related records:
-
-```php
-// Get all posts that don't have any comments
-$posts = Post::whereDoesntHave('comments')->get();
-
-// Get all posts that don't have any spam comments
-$posts = Post::whereDoesntHave('comments', function($query) {
-    $query->where('type', 'spam');
-})->get();
-
-// With OR condition
-$posts = Post::where('status', 'draft')
-             ->orWhereDoesntHave('author')
-             ->get();
-```
-
-## Raw Expressions
-
-For complex queries requiring raw SQL:
-
-```php
-use Plugs\Database\Raw;
-
-// Column-to-column comparison
-$users = DB::table('users')
-    ->where('views', '>', new Raw('likes * 2'))
-    ->get();
-
-// In calculations
-$users = DB::table('users')
-    ->where('balance', '>', new Raw('credit_limit - used_credit'))
-    ->get();
-```
-
-## Query Filtering
-
-For advanced filtering from request parameters, see the [Query Filtering](query-filtering.md) documentation.
-
-## API Response Helpers
-
-The query builder provides several methods to return standardized API responses directly from the query:
-
-```php
-// Standardized paginated response
-return DB::table('posts')->paginateResponse(15);
-
-// Standardized single record response
-return DB::table('posts')->where('slug', $slug)->firstResponse();
-
-// Standardized list response
-return DB::table('posts')->where('status', 'active')->allResponse();
-```
-
-## Pagination
-
-For details on paginating query builder results, see the [Pagination documentation](pagination.md).
+## Next Steps
+Automate your database schema with [Migrations](./migrations.md).

@@ -1,55 +1,73 @@
-# Security & Protection
+# Security Overview
 
-Plugs is "Secure by Default." The framework includes an advanced **Security Shield** that monitors and blocks malicious activity.
+Plugs is built with a "Security-First" philosophy, providing multiple layers of protection out of the box to keep your application and users safe.
 
-## 1. The Security Shield
+---
 
-The Shield is a high-performance middleware that analyzes every request for:
+## 1. Security Shield (DDoS & Bot Protection)
 
-- SQL Injection patterns
-- XSS Payloads
-- Path Traversal attempts
-- Suspicious User Agents
+The **Security Shield** is a proactive defense layer that analyzes request patterns to block malicious bots and mitigate DDoS attacks.
 
-```php
-// .env
-SECURITY_SHIELD=true
-```
-
-## 2. Threat Detector
-
-Logs and tracks potential attackers. If a client hits too many security rules, they can be automatically rate-limited or blocked.
-
-## 3. Rate Limiting
-
-Plugs includes a built-in rate limiting system to protect your application from brute-force attacks and API abuse. You can define custom limits for routes using the `throttle` middleware.
-
-Learn more in the [Rate Limiting guide](rate-limiting.md).
-
-## 4. Mass Assignment Guard
-
-Standard in all Models to prevent illicit data modification.
+### How it Works
+It assigns a risk score to every IP. If the score exceeds the threshold, the request is either challenged (CAPTCHA) or denied.
 
 ```php
-class User extends Model {
-    protected array $fillable = ['name', 'email'];
-}
+// config/security.php
+'security_shield' => [
+    'enabled' => true,
+    'risk_thresholds' => [
+        'deny' => 0.85,           // Immediately block
+        'challenge_high' => 0.70, // High friction challenge
+    ],
+],
 ```
 
-## 5. View Security (Context-Aware)
+### Manual Threat Detection
+You can manually flag suspicious activity from your controllers:
+```php
+use Plugs\Security\ThreatDetector;
 
-Plugs V5 includes a context-aware escaping engine. It automatically detects the output context and sanitizes it accordingly:
+ThreatDetector::logSuspiciousActivity($ip, score: 20);
+```
 
-- **Body**: Standard HTML escaping (`e()`).
-- **Attributes**: Quote and special character escaping (`attr()`).
-- **Scripts**: Safe JSON encoding (`js()`).
-- **URLs**: Protocol-aware sanitization (`safeUrl()`).
+---
 
-## 6. Zero-Config Security Headers
+## 2. CSRF Protection
 
-Plugs automatically injects hardened HTTP headers:
+Cross-Site Request Forgery protection is enabled by default for all `POST`, `PUT`, `PATCH`, and `DELETE` requests.
 
-- `X-Content-Type-Options: nosniff`
-- `X-Frame-Options: SAMEORIGIN`
-- `Content-Security-Policy` (configurable)
-- `Strict-Transport-Security`
+### Usage in Forms
+```html
+<form method="POST" action="/update">
+    @csrf
+    <button type="submit">Update</button>
+</form>
+```
+
+### AJAX & SPAs
+Plugs uses the "Cookie-to-Header" pattern. It sets an `XSRF-TOKEN` cookie that your JavaScript should send back in the `X-XSRF-TOKEN` header.
+
+---
+
+## 3. Security Headers
+
+The `SecurityHeadersMiddleware` automatically injects industry-standard headers to prevent common attacks:
+
+- **X-Frame-Options**: `SAMEORIGIN` (Prevents Clickjacking)
+- **X-Content-Type-Options**: `nosniff` (Prevents MIME sniffing)
+- **X-XSS-Protection**: `1; mode=block` (Legacy XSS protection)
+- **Content-Security-Policy**: Customizable CSP to prevent XSS and data injection.
+
+---
+
+## 4. Production Hardening
+
+When deploying to production (`APP_ENV=production`), Plugs enforces stricter security rules:
+- **Secure Cookies**: Cookies are only sent over HTTPS.
+- **Strict Transport Security (HSTS)**: Forces browsers to use HTTPS.
+- **Error Obfuscation**: Detailed stack traces are disabled and replaced with generic error pages.
+
+---
+
+## Next Steps
+Manage user access using [Authentication & Authorization](./authentication-authorization.md).
