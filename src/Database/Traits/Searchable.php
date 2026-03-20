@@ -18,7 +18,7 @@ trait Searchable
      * @param string $term
      * @return \Plugs\Database\QueryBuilder
      */
-    public function scopeSearch($query, string $term)
+    public function scopeKeywordSearch($query, string $term)
     {
         $columns = $this->getSearchableColumns();
 
@@ -30,10 +30,19 @@ trait Searchable
 
         return $query->where(function ($q) use ($columns, $term) {
             foreach ($columns as $index => $column) {
-                if ($index === 0) {
-                    $q->where($column, 'LIKE', $term);
+                $method = $index === 0 ? 'where' : 'orWhere';
+
+                if (str_contains($column, '.')) {
+                    $parts = explode('.', $column);
+                    $attribute = array_pop($parts);
+                    $relation = implode('.', $parts);
+
+                    $hasMethod = $index === 0 ? 'whereHas' : 'orWhereHas';
+                    $q->$hasMethod($relation, function ($relQuery) use ($attribute, $term) {
+                        $relQuery->where($attribute, 'LIKE', $term);
+                    });
                 } else {
-                    $q->orWhere($column, 'LIKE', $term);
+                    $q->$method($column, 'LIKE', $term);
                 }
             }
         });

@@ -660,14 +660,19 @@ trait HasAttributes
     {
         $key = getenv('APP_KEY') ?: throw new Exception('APP_KEY not set');
 
-        // Derive a proper key
+        // Derive keys: 32 bytes for encryption, 32 bytes for HMAC
         $salt = random_bytes(16);
-        $derivedKey = hash_pbkdf2('sha256', $key, $salt, 10000, 32, true);
+        $derivedKey = hash_pbkdf2('sha256', $key, $salt, 10000, 64, true);
+        $encryptionKey = substr($derivedKey, 0, 32);
+        $hmacKey = substr($derivedKey, 32, 32);
 
         $iv = random_bytes(16);
-        $encrypted = openssl_encrypt($value, 'AES-256-CBC', $derivedKey, OPENSSL_RAW_DATA, $iv);
+        $encrypted = openssl_encrypt($value, 'AES-256-CBC', $encryptionKey, OPENSSL_RAW_DATA, $iv);
 
-        return base64_encode($salt . $iv . $encrypted);
+        $payload = $salt . $iv . $encrypted;
+        $hmac = hash_hmac('sha256', $payload, $hmacKey, true);
+
+        return base64_encode($hmac . $payload);
     }
 
     protected function decrypt(string $value): string
@@ -675,13 +680,35 @@ trait HasAttributes
         $key = getenv('APP_KEY') ?: throw new Exception('APP_KEY not set');
         $data = base64_decode($value);
 
-        $salt = substr($data, 0, 16);
-        $iv = substr($data, 16, 16);
-        $encrypted = substr($data, 32);
+        // Minimum length check: HMAC(32) + Salt(16) + IV(16) + Encrypted(min 1)
+        if (strlen($data) < 65) {
+            throw new Exception('Invalid encrypted data format or corrupted content.');
+        }
 
-        $derivedKey = hash_pbkdf2('sha256', $key, $salt, 10000, 32, true);
+        $hmac = substr($data, 0, 32);
+        $payload = substr($data, 32);
 
-        return openssl_decrypt($encrypted, 'AES-256-CBC', $derivedKey, OPENSSL_RAW_DATA, $iv);
+        $salt = substr($payload, 0, 16);
+        $iv = substr($payload, 16, 16);
+        $encrypted = substr($payload, 32);
+
+        $derivedKey = hash_pbkdf2('sha256', $key, $salt, 10000, 64, true);
+        $encryptionKey = substr($derivedKey, 0, 32);
+        $hmacKey = substr($derivedKey, 32, 32);
+
+        $calculatedHmac = hash_hmac('sha256', $payload, $hmacKey, true);
+
+        if (!hash_equals($hmac, $calculatedHmac)) {
+            throw new Exception('Encrypted data integrity check failed.');
+        }
+
+        $decrypted = openssl_decrypt($encrypted, 'AES-256-CBC', $encryptionKey, OPENSSL_RAW_DATA, $iv);
+
+        if ($decrypted === false) {
+            throw new Exception('Decryption failed.');
+        }
+
+        return $decrypted;
     }
 
     private function getDirty(): array

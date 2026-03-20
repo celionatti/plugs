@@ -175,12 +175,25 @@ abstract class PlugModel implements \JsonSerializable
         $generator = new \Plugs\AI\QueryGenerator();
         $result = $generator->generate(static::class, $prompt);
 
-        // Optional: Log/Review mode can be implemented here or in Connection
-        if (defined('AI_QUERY_REVIEW') && AI_QUERY_REVIEW) {
-            error_log("AI Generated SQL for " . static::class . ": " . $result['sql']);
+        $sql = $result['sql'];
+        $params = $result['params'];
+
+        // Security Safeguard: Only allow SELECT statements via the ai() query helper
+        if (!preg_match('/^\s*SELECT\s/i', $sql)) {
+            throw new Exception("AI generated an unauthorized non-SELECT query.");
         }
 
-        return static::query()->rawSql($result['sql'], $result['params']);
+        // Security Safeguard: Prevent multiple statements (SQL injection attempt in prompt)
+        if (str_contains($sql, ';')) {
+            throw new Exception("AI generated a multi-statement query which is prohibited.");
+        }
+
+        // Optional: Log/Review mode
+        if (defined('AI_QUERY_REVIEW') && AI_QUERY_REVIEW) {
+            error_log("AI Generated SQL for " . static::class . ": " . $sql);
+        }
+
+        return static::query()->rawSql($sql, $params);
     }
 
     protected static function boot(): void
@@ -378,12 +391,12 @@ abstract class PlugModel implements \JsonSerializable
         return $builder;
     }
 
-    protected function getCacheKey(string $sql, array $bindings): string
+    public static function getCacheKey(string $sql, array $bindings): string
     {
         return md5($sql . (json_encode($bindings) ?: ''));
     }
 
-    protected function getFromCache(string $key)
+    public static function getFromCache(string $key)
     {
         if (!static::$cacheEnabled) {
             return null;
@@ -392,7 +405,7 @@ abstract class PlugModel implements \JsonSerializable
         return \Plugs\Facades\Cache::get($key);
     }
 
-    protected function putInCache(string $key, $data): void
+    public static function putInCache(string $key, $data): void
     {
         if (static::$cacheEnabled) {
             \Plugs\Facades\Cache::set($key, $data, static::$cacheTTL);

@@ -42,6 +42,8 @@ class QueryBuilder
     protected $with = [];
     protected $joins = [];
     protected $middleware = [];
+    protected bool $useCache = false;
+    protected int $cacheTTL = 3600;
 
     public function __construct(Connection $connection)
     {
@@ -52,6 +54,22 @@ class QueryBuilder
     {
         $this->rawSql = $sql;
         $this->params = $params;
+
+        return $this;
+    }
+
+    /**
+     * Enable query caching for this request.
+     *
+     * @param int|null $ttl Time to live in seconds
+     * @return $this
+     */
+    public function remember(?int $ttl = null): self
+    {
+        $this->useCache = true;
+        if ($ttl !== null) {
+            $this->cacheTTL = $ttl;
+        }
 
         return $this;
     }
@@ -128,6 +146,9 @@ class QueryBuilder
         if ($column instanceof Closure) {
             $query = new static($this->connection);
             $query->table($this->table);
+            if ($this->model) {
+                $query->setModel($this->model);
+            }
             $column($query);
 
             $nestedWhere = $query->getWhereClause();
@@ -862,6 +883,16 @@ class QueryBuilder
                 $sql = $builder->buildSelectSql();
             }
 
+            // Caching check
+            $cacheKey = null;
+            if ($builder->useCache && $builder->model) {
+                $cacheKey = $builder->model::getCacheKey($sql, $builder->params);
+                $cached = $builder->model::getFromCache($cacheKey);
+                if ($cached !== null) {
+                    return $cached;
+                }
+            }
+
             $results = $builder->connection->fetchAll($sql, $builder->params);
 
             // Get the last query ID from monitor
@@ -879,18 +910,22 @@ class QueryBuilder
                     return $model;
                 }, $results);
 
-                if (!empty($builder->with)) {
-                    $collection = new Collection($models);
-                    $collection->setModelsCollectionContext();
-                    $builder->model::loadRelations($collection, $builder->with);
-
-                    return $collection;
-                }
-
                 $collection = new Collection($models);
                 $collection->setModelsCollectionContext();
 
+                if (!empty($builder->with)) {
+                    $builder->model::loadRelations($collection, $builder->with);
+                }
+
+                if ($builder->useCache && $cacheKey) {
+                    $builder->model::putInCache($cacheKey, $collection);
+                }
+
                 return $collection;
+            }
+
+            if ($builder->useCache && $cacheKey && !empty($results)) {
+                $builder->model::putInCache($cacheKey, $results);
             }
 
             return $results;
@@ -907,6 +942,17 @@ class QueryBuilder
             }
 
             $sql = $builder->buildSelectSql();
+
+            // Caching check
+            $cacheKey = null;
+            if ($builder->useCache && $builder->model) {
+                $cacheKey = $builder->model::getCacheKey($sql, $builder->params);
+                $cached = $builder->model::getFromCache($cacheKey);
+                if ($cached !== null) {
+                    return $cached;
+                }
+            }
+
             $result = $builder->connection->fetch($sql, $builder->params);
 
             if ($builder->model && $result) {
@@ -917,7 +963,15 @@ class QueryBuilder
                     $builder->model::loadRelations($collection, $builder->with);
                 }
 
+                if ($builder->useCache && $cacheKey) {
+                    $builder->model::putInCache($cacheKey, $model);
+                }
+
                 return $model;
+            }
+
+            if ($builder->useCache && $cacheKey && $result) {
+                $builder->model::putInCache($cacheKey, $result);
             }
 
             return $result;
