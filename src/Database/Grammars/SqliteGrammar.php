@@ -4,8 +4,6 @@ declare(strict_types=1);
 
 namespace Plugs\Database\Grammars;
  
-use Plugs\Database\Blueprint;
-use Plugs\Database\ColumnDefinition;
 
 class SqliteGrammar extends Grammar
 {
@@ -96,7 +94,7 @@ class SqliteGrammar extends Grammar
         return "PRAGMA foreign_keys = " . ($enable ? 'ON' : 'OFF');
     }
 
-    public function compileCreate(Blueprint $blueprint): array
+    public function compileCreate(\Plugs\Database\Blueprint $blueprint): array
     {
         $columns = array_map([$this, 'compileColumn'], $blueprint->getColumns());
         $commands = array_filter(array_map(fn($cmd) => $this->compileCommand($blueprint, $cmd), $blueprint->getCommands()));
@@ -111,7 +109,7 @@ class SqliteGrammar extends Grammar
         return [$sql];
     }
 
-    public function compileAlter(Blueprint $blueprint): array
+    public function compileAlter(\Plugs\Database\Blueprint $blueprint): array
     {
         $sql = [];
 
@@ -122,7 +120,7 @@ class SqliteGrammar extends Grammar
         return array_filter($sql);
     }
 
-    public function compileColumn(ColumnDefinition $column): string
+    public function compileColumn(\Plugs\Database\ColumnDefinition $column): string
     {
         $sql = $this->wrapIdentifier($column->getName()) . " " . $this->getType($column);
 
@@ -148,7 +146,7 @@ class SqliteGrammar extends Grammar
         return $sql;
     }
 
-    protected function getType(ColumnDefinition $column): string
+    protected function getType(\Plugs\Database\ColumnDefinition $column): string
     {
         $type = strtoupper($column->type);
 
@@ -167,7 +165,7 @@ class SqliteGrammar extends Grammar
         return "'{$value}'";
     }
 
-    protected function compileCommand(Blueprint $blueprint, array $command): ?string
+    protected function compileCommand(\Plugs\Database\Blueprint $blueprint, array $command): ?string
     {
         return null;
     }

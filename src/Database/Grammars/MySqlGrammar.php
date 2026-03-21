@@ -4,8 +4,6 @@ declare(strict_types=1);
 
 namespace Plugs\Database\Grammars;
  
-use Plugs\Database\Blueprint;
-use Plugs\Database\ColumnDefinition;
 
 class MySqlGrammar extends Grammar
 {
@@ -93,7 +91,7 @@ class MySqlGrammar extends Grammar
         return "SET FOREIGN_KEY_CHECKS=" . ($enable ? '1' : '0');
     }
 
-    public function compileCreate(Blueprint $blueprint): array
+    public function compileCreate(\Plugs\Database\Blueprint $blueprint): array
     {
         $columns = array_map([$this, 'compileColumn'], $blueprint->getColumns());
         $commands = array_filter(array_map(fn($cmd) => $this->compileCommand($blueprint, $cmd), $blueprint->getCommands()));
@@ -108,7 +106,7 @@ class MySqlGrammar extends Grammar
         return [$sql];
     }
 
-    public function compileAlter(Blueprint $blueprint): array
+    public function compileAlter(\Plugs\Database\Blueprint $blueprint): array
     {
         $sql = [];
 
@@ -123,7 +121,7 @@ class MySqlGrammar extends Grammar
         return array_filter($sql);
     }
 
-    public function compileColumn(ColumnDefinition $column): string
+    public function compileColumn(\Plugs\Database\ColumnDefinition $column): string
     {
         $sql = $this->wrapIdentifier($column->getName()) . " " . $column->type;
 
@@ -178,14 +176,14 @@ class MySqlGrammar extends Grammar
         return "'{$value}'";
     }
 
-    protected function compileCommand(Blueprint $blueprint, array $command): ?string
+    protected function compileCommand(\Plugs\Database\Blueprint $blueprint, array $command): ?string
     {
         // Handle indexes, foreign keys, etc.
         // Simplified for now, just to show the structure
         return null; 
     }
 
-    protected function compileAlterCommand(Blueprint $blueprint, array $command): ?string
+    protected function compileAlterCommand(\Plugs\Database\Blueprint $blueprint, array $command): ?string
     {
         return null;
     }

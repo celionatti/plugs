@@ -1,6 +1,7 @@
 <?php
 
-declare(strict_types=1);
+declare(strict_types = 1)
+;
 
 namespace Plugs\Config;
 
@@ -9,27 +10,27 @@ class DefaultConfig
     public static function get(string $key): array
     {
         return match ($key) {
-            'app' => self::app(),
-            'auth' => self::auth(),
-            'assets' => self::assets(),
-            'cache' => self::cache(),
-            'database' => self::database(),
-            'filesystems' => self::filesystems(),
-            'hash' => self::hash(),
-            'logging' => self::logging(),
-            'mail' => self::mail(),
-            'middleware' => self::middleware(),
-            'queue' => self::queue(),
-            'security' => self::security(),
-            'services' => self::services(),
-            'ai' => self::ai(),
-            'seo' => self::seo(),
-            'opcache' => self::opcache(),
-            'view' => self::view(),
-            'billing' => self::billing(),
-            'modules' => self::modules(),
-            default => [],
-        };
+                'app' => self::app(),
+                'auth' => self::auth(),
+                'assets' => self::assets(),
+                'cache' => self::cache(),
+                'database' => self::database(),
+                'filesystems' => self::filesystems(),
+                'hash' => self::hash(),
+                'logging' => self::logging(),
+                'mail' => self::mail(),
+                'middleware' => self::middleware(),
+                'queue' => self::queue(),
+                'security' => self::security(),
+                'services' => self::services(),
+                'ai' => self::ai(),
+                'seo' => self::seo(),
+                'opcache' => self::opcache(),
+                'view' => self::view(),
+                'billing' => self::billing(),
+                'modules' => self::modules(),
+                default => [],
+            };
     }
 
     private static function app(): array
@@ -54,7 +55,7 @@ class DefaultConfig
                 'function' => base_path('utils/function.php'),
             ],
             'providers' => array_merge([
-                \App\Providers\AppServiceProvider::class,
+                \App\Providers\AppServiceProvider::class ,
             ], self::discoverProviders()),
         ];
     }
@@ -195,7 +196,7 @@ class DefaultConfig
                 ],
                 'sqlite' => [
                     'driver' => 'sqlite',
-                    'database' => env('DB_DATABASE', base_path('storage/database.sqlite')),
+                    'database' => env('DB_DATABASE', base_path('database/database.sqlite')),
                     'prefix' => '',
                 ],
             ],
@@ -362,20 +363,20 @@ class DefaultConfig
         return [
             'driver' => env('HASH_DRIVER', 'argon2id'),
             'bcrypt' => [
-                'rounds' => (int) (env('BCRYPT_ROUNDS', 12)),
+                'rounds' => (int)(env('BCRYPT_ROUNDS', 12)),
             ],
             'argon' => [
-                'memory' => (int) (env('ARGON_MEMORY', 65536)),
-                'time' => (int) (env('ARGON_TIME', 4)),
-                'threads' => (int) (env('ARGON_THREADS', 3)),
+                'memory' => (int)(env('ARGON_MEMORY', 65536)),
+                'time' => (int)(env('ARGON_TIME', 4)),
+                'threads' => (int)(env('ARGON_THREADS', 3)),
             ],
             'argon2id' => [
-                'memory' => (int) (env('ARGON2ID_MEMORY', 65536)),
-                'time' => (int) (env('ARGON2ID_TIME', 4)),
-                'threads' => (int) (env('ARGON2ID_THREADS', 3)),
+                'memory' => (int)(env('ARGON2ID_MEMORY', 65536)),
+                'time' => (int)(env('ARGON2ID_TIME', 4)),
+                'threads' => (int)(env('ARGON2ID_THREADS', 3)),
             ],
             'verify' => [
-                'auto_rehash' => (bool) (env('HASH_AUTO_REHASH', false)),
+                'auto_rehash' => (bool)(env('HASH_AUTO_REHASH', false)),
             ],
         ];
     }
@@ -405,7 +406,7 @@ class DefaultConfig
         return [
             'driver' => env('MAIL_DRIVER', 'smtp'),
             'host' => env('MAIL_HOST', 'smtp.mailtrap.io'),
-            'port' => (int) (env('MAIL_PORT', 2525)),
+            'port' => (int)(env('MAIL_PORT', 2525)),
             'username' => env('MAIL_USERNAME', ''),
             'password' => env('MAIL_PASSWORD', ''),
             'encryption' => env('MAIL_ENCRYPTION', 'tls'),
@@ -420,19 +421,19 @@ class DefaultConfig
     {
         return [
             'aliases' => [
-                'csrf' => \Plugs\Http\Middleware\CsrfMiddleware::class,
-                'guest' => \App\Http\Middleware\GuestMiddleware::class,
-                'auth' => \Plugs\Http\Middleware\AuthenticateMiddleware::class,
-                'ai.optimize' => \Plugs\Http\Middleware\AIOptimizeMiddleware::class,
-                'trusted_proxy' => \Plugs\Http\Middleware\TrustedProxyMiddleware::class,
+                'csrf' => \Plugs\Http\Middleware\CsrfMiddleware::class ,
+                'guest' => \App\Http\Middleware\GuestMiddleware::class ,
+                'auth' => \Plugs\Http\Middleware\AuthenticateMiddleware::class ,
+                'ai.optimize' => \Plugs\Http\Middleware\AIOptimizeMiddleware::class ,
+                'trusted_proxy' => \Plugs\Http\Middleware\TrustedProxyMiddleware::class ,
             ],
 
             'groups' => [
                 'web' => [
-                    \Plugs\Http\Middleware\ShareErrorsFromSession::class,
+                    \Plugs\Http\Middleware\ShareErrorsFromSession::class ,
                 ],
                 'api' => [
-                    \Plugs\Http\Middleware\ForceJsonMiddleware::class,
+                    \Plugs\Http\Middleware\ForceJsonMiddleware::class ,
                 ],
             ],
         ];
@@ -454,7 +455,7 @@ class DefaultConfig
                 'redis' => [
                     'driver' => 'redis',
                     'host' => env('REDIS_HOST', '127.0.0.1'),
-                    'port' => (int) env('REDIS_PORT', 6379),
+                    'port' => (int)env('REDIS_PORT', 6379),
                     'password' => env('REDIS_PASSWORD', null),
                     'queue' => env('REDIS_QUEUE', 'default'),
                     'prefix' => env('REDIS_PREFIX', 'plugs:queue:'),
@@ -541,7 +542,7 @@ class DefaultConfig
             'driver' => env('VIEW_DRIVER', 'plug'),
             'streaming' => [
                 'enabled' => filter_var(env('VIEW_STREAMING', false), FILTER_VALIDATE_BOOLEAN),
-                'auto_flush' => (int) env('VIEW_AUTO_FLUSH', 50),
+                'auto_flush' => (int)env('VIEW_AUTO_FLUSH', 50),
             ],
             'theme' => env('APP_THEME', 'default'),
             'paths' => [
@@ -555,23 +556,23 @@ class DefaultConfig
     {
         return [
             /*
-            |--------------------------------------------------------------------------
-            | Default Tax Settings
-            |--------------------------------------------------------------------------
-            |
-            | This value is used when no specific tax rate is provided.
-            |
-            */
+     |--------------------------------------------------------------------------
+     | Default Tax Settings
+     |--------------------------------------------------------------------------
+     |
+     | This value is used when no specific tax rate is provided.
+     |
+     */
             'tax_rate' => 0,
 
             /*
-            |--------------------------------------------------------------------------
-            | Regional Tax Rates
-            |--------------------------------------------------------------------------
-            |
-            | You can define specific tax rates for different regions.
-            |
-            */
+     |--------------------------------------------------------------------------
+     | Regional Tax Rates
+     |--------------------------------------------------------------------------
+     |
+     | You can define specific tax rates for different regions.
+     |
+     */
             'regional_tax_rates' => [
                 'NG' => 7.5, // Nigeria VAT
                 'US-NY' => 8.875, // New York
@@ -579,13 +580,13 @@ class DefaultConfig
             ],
 
             /*
-            |--------------------------------------------------------------------------
-            | Fee Settings
-            |--------------------------------------------------------------------------
-            |
-            | Configuration for various fee calculators.
-            |
-            */
+     |--------------------------------------------------------------------------
+     | Fee Settings
+     |--------------------------------------------------------------------------
+     |
+     | Configuration for various fee calculators.
+     |
+     */
             'fees' => [
                 'paystack' => [
                     'waive_fixed_under' => 2500,

@@ -5,8 +5,6 @@ declare(strict_types=1);
 namespace Plugs\Database\Grammars;
 
 use Plugs\Database\Support\QueryUtils;
-use Plugs\Database\Blueprint;
-use Plugs\Database\ColumnDefinition;
 
 abstract class Grammar
 {
@@ -135,17 +133,17 @@ abstract class Grammar
     /**
      * Compile a create table command.
      */
-    public abstract function compileCreate(Blueprint $blueprint): array;
+    public abstract function compileCreate(\Plugs\Database\Blueprint $blueprint): array;
 
     /**
      * Compile an alter table command.
      */
-    public abstract function compileAlter(Blueprint $blueprint): array;
+    public abstract function compileAlter(\Plugs\Database\Blueprint $blueprint): array;
 
     /**
      * Compile a column definition.
      */
-    public abstract function compileColumn(ColumnDefinition $column): string;
+    public abstract function compileColumn(\Plugs\Database\ColumnDefinition $column): string;
 
     /**
      * Compile a "show tables" query.
