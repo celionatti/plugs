@@ -20,6 +20,11 @@ class {{name}}Module extends AbstractFeatureModule
         return ''; // We want /login and /register directly, not /{{lowerName}}/login
     }
 
+    public function getRouteNamePrefix(): string
+    {
+        return '';
+    }
+
     public function getMiddleware(): array
     {
         return ['web'];

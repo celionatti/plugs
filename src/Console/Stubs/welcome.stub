@@ -103,7 +103,9 @@
             <div class="flex items-center gap-8">
                 @if(\Plugs\FeatureModule\FeatureModuleManager::getInstance()->hasModule('Auth'))
                     @if(\Plugs\Facades\Auth::check())
-                        <a href="/dashboard" class="nav-link">Dashboard</a>
+                        @if(\Plugs\Facades\Auth::user()->isAdmin())
+                            <a href="/admin" class="nav-link">Admin Dashboard</a>
+                        @endif
                     @else
                         <a href="/login" class="nav-link">Log in</a>
                         <a href="/register" class="btn-deploy py-2 px-6">Register</a>

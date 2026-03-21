@@ -39,7 +39,7 @@ class AuthController extends Controller
 
         if ($this->authService->attemptLogin($loginRequest)) {
             $user = Auth::user();
-            $redirectPath = ($user && method_exists($user, 'isAdmin') && $user->isAdmin()) ? '/admin' : '/dashboard';
+            $redirectPath = ($user && method_exists($user, 'isAdmin') && $user->isAdmin()) ? '/admin' : '/';
             
             return $this->redirect($redirectPath)->withSuccess('Welcome back!');
         }
@@ -71,7 +71,7 @@ class AuthController extends Controller
             $this->authService->registerUser($registerRequest);
             
             $user = Auth::user();
-            $redirectPath = ($user && method_exists($user, 'isAdmin') && $user->isAdmin()) ? '/admin' : '/dashboard';
+            $redirectPath = ($user && method_exists($user, 'isAdmin') && $user->isAdmin()) ? '/admin' : '/';
 
             return $this->redirect($redirectPath)->withSuccess('Account created successfully!');
         } catch (\InvalidArgumentException $e) {

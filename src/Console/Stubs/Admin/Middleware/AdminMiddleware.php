@@ -27,7 +27,7 @@ class AdminMiddleware implements MiddlewareInterface
                 return ResponseFactory::json(['message' => 'Unauthorized. Admin access required.'], 403);
             }
 
-            return ResponseFactory::redirect('/dashboard');
+            return ResponseFactory::redirect('/');
         }
 
         return $handler->handle($request);
