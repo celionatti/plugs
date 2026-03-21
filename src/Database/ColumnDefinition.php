@@ -15,31 +15,29 @@ namespace Plugs\Database;
 
 class ColumnDefinition
 {
-    private $name;
-    private $type;
-    private $nullable = false;
-    private $default = null;
-    private $hasDefault = false;
-    private $unsigned = false;
-    private $autoIncrement = false;
-    private $primary = false;
-    private $unique = false;
-    private $index = false;
-    private $comment = null;
-    private $after = null;
-    private $first = false;
-    private $charset = null;
-    private $collation = null;
-    private $useCurrent = false;
-    private $useCurrentOnUpdate = false;
-    /** @phpstan-ignore property.onlyWritten */
-    private $onUpdate = null;
-    /** @phpstan-ignore property.onlyWritten */
-    private $onDelete = null;
-    private $virtualAs = null;
-    private $storedAs = null;
-    private $isConstrained = false;
-    private $constrainedTable = null;
+    public $name;
+    public $type;
+    public $nullable = false;
+    public $default = null;
+    public $hasDefault = false;
+    public $unsigned = false;
+    public $autoIncrement = false;
+    public $primary = false;
+    public $unique = false;
+    public $index = false;
+    public $comment = null;
+    public $after = null;
+    public $first = false;
+    public $charset = null;
+    public $collation = null;
+    public $useCurrent = false;
+    public $useCurrentOnUpdate = false;
+    public $onUpdate = null;
+    public $onDelete = null;
+    public $virtualAs = null;
+    public $storedAs = null;
+    public $isConstrained = false;
+    public $constrainedTable = null;
 
     public function __construct(string $name, string $type)
     {

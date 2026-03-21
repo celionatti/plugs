@@ -27,6 +27,7 @@ use Plugs\Paginator\Pagination;
 class QueryBuilder
 {
     private $connection;
+    protected \Plugs\Database\Grammars\Grammar $grammar;
     private $table;
     private $select = ['*'];
     private $where = [];
@@ -45,9 +46,10 @@ class QueryBuilder
     protected bool $useCache = false;
     protected int $cacheTTL = 3600;
 
-    public function __construct(Connection $connection)
+    public function __construct(Connection $connection, ?\Plugs\Database\Grammars\Grammar $grammar = null)
     {
         $this->connection = $connection;
+        $this->grammar = $grammar ?? new \Plugs\Database\Grammars\MySqlGrammar();
     }
 
     public function rawSql(string $sql, array $params = []): self
@@ -97,6 +99,16 @@ class QueryBuilder
     public function getTable(): ?string
     {
         return $this->table;
+    }
+
+    /**
+     * Get the driver being used by the connection.
+     *
+     * @return string
+     */
+    public function getDriver(): string
+    {
+        return $this->connection->getDriverName();
     }
 
     public function select(array $columns = ['*']): self
@@ -190,7 +202,7 @@ class QueryBuilder
                 $sql = str_replace($key, $newKey, $sql);
             }
 
-            $wrappedColumn = QueryUtils::wrapIdentifier((string) $column);
+            $wrappedColumn = $this->grammar->wrapIdentifier((string) $column);
             $this->where[] = [
                 'type' => 'Subquery',
                 'query' => "{$wrappedColumn} {$operator} ({$sql})",
@@ -216,7 +228,7 @@ class QueryBuilder
             ];
         } else {
             $placeholder = ':where_' . count($this->params) . '_' . str_replace('.', '_', (string) $column);
-            $wrappedColumn = QueryUtils::wrapIdentifier((string) $column);
+            $wrappedColumn = $this->grammar->wrapIdentifier((string) $column);
 
             $this->where[] = [
                 'type' => 'Basic',
@@ -492,7 +504,7 @@ class QueryBuilder
                 $sql = str_replace($key, $newKey, $sql);
             }
 
-            $tableSql = "({$sql}) AS " . QueryUtils::wrapIdentifier($alias);
+            $tableSql = "({$sql}) AS " . $this->grammar->wrapIdentifier($alias);
 
             $joinFirst = $operator;
             $joinOperator = func_num_args() >= 5 ? $second : '=';
@@ -501,9 +513,9 @@ class QueryBuilder
 
             $this->joins[] = [
                 'table' => $tableSql,
-                'first' => QueryUtils::wrapIdentifier($joinFirst),
+                'first' => $this->grammar->wrapIdentifier($joinFirst),
                 'operator' => $joinOperator,
-                'second' => QueryUtils::wrapIdentifier($joinSecond),
+                'second' => $this->grammar->wrapIdentifier($joinSecond),
                 'type' => strtoupper($joinType),
                 'isRaw' => true,
             ];
@@ -533,7 +545,7 @@ class QueryBuilder
 
     public function whereNull(string $column, string $boolean = 'AND'): self
     {
-        $wrappedColumn = QueryUtils::wrapIdentifier($column);
+        $wrappedColumn = $this->grammar->wrapIdentifier($column);
         $this->where[] = [
             'type' => 'Null',
             'query' => "{$wrappedColumn} IS NULL",
@@ -545,7 +557,7 @@ class QueryBuilder
 
     public function whereNotNull(string $column, string $boolean = 'AND'): self
     {
-        $wrappedColumn = QueryUtils::wrapIdentifier($column);
+        $wrappedColumn = $this->grammar->wrapIdentifier($column);
         $this->where[] = [
             'type' => 'NotNull',
             'query' => "{$wrappedColumn} IS NOT NULL",
@@ -591,7 +603,7 @@ class QueryBuilder
 
         $this->where[] = [
             'type' => 'In',
-            'query' => QueryUtils::wrapIdentifier($column) . " IN (" . implode(', ', $placeholders) . ")",
+            'query' => $this->grammar->wrapIdentifier($column) . " IN (" . implode(', ', $placeholders) . ")",
             'boolean' => 'AND',
         ];
 
@@ -611,7 +623,7 @@ class QueryBuilder
 
         $this->where[] = [
             'type' => 'NotIn',
-            'query' => QueryUtils::wrapIdentifier($column) . " NOT IN (" . implode(', ', $placeholders) . ")",
+            'query' => $this->grammar->wrapIdentifier($column) . " NOT IN (" . implode(', ', $placeholders) . ")",
             'boolean' => 'AND',
         ];
 
@@ -627,7 +639,7 @@ class QueryBuilder
 
         $this->where[] = [
             'type' => 'Between',
-            'query' => QueryUtils::wrapIdentifier($column) . " BETWEEN {$placeholder1} AND {$placeholder2}",
+            'query' => $this->grammar->wrapIdentifier($column) . " BETWEEN {$placeholder1} AND {$placeholder2}",
             'boolean' => 'AND',
         ];
 
@@ -646,7 +658,7 @@ class QueryBuilder
 
         $this->where[] = [
             'type' => 'NotBetween',
-            'query' => QueryUtils::wrapIdentifier($column) . " NOT BETWEEN {$placeholder1} AND {$placeholder2}",
+            'query' => $this->grammar->wrapIdentifier($column) . " NOT BETWEEN {$placeholder1} AND {$placeholder2}",
             'boolean' => 'AND',
         ];
 
@@ -668,7 +680,7 @@ class QueryBuilder
 
         $this->where[] = [
             'type' => 'Date',
-            'query' => "DATE(" . QueryUtils::wrapIdentifier($column) . ") {$operator} {$placeholder}",
+            'query' => $this->grammar->compileWhereDate($this->grammar->wrapIdentifier($column), $operator, $placeholder),
             'boolean' => 'AND',
         ];
 
@@ -689,7 +701,7 @@ class QueryBuilder
 
         $this->where[] = [
             'type' => 'Month',
-            'query' => "MONTH(" . QueryUtils::wrapIdentifier($column) . ") {$operator} {$placeholder}",
+            'query' => $this->grammar->compileWhereMonth($this->grammar->wrapIdentifier($column), $operator, $placeholder),
             'boolean' => 'AND',
         ];
 
@@ -710,7 +722,7 @@ class QueryBuilder
 
         $this->where[] = [
             'type' => 'Day',
-            'query' => "DAY(" . QueryUtils::wrapIdentifier($column) . ") {$operator} {$placeholder}",
+            'query' => $this->grammar->compileWhereDay($this->grammar->wrapIdentifier($column), $operator, $placeholder),
             'boolean' => 'AND',
         ];
 
@@ -731,7 +743,7 @@ class QueryBuilder
 
         $this->where[] = [
             'type' => 'Year',
-            'query' => "YEAR(" . QueryUtils::wrapIdentifier($column) . ") {$operator} {$placeholder}",
+            'query' => $this->grammar->compileWhereYear($this->grammar->wrapIdentifier($column), $operator, $placeholder),
             'boolean' => 'AND',
         ];
 
@@ -752,7 +764,7 @@ class QueryBuilder
 
         $this->where[] = [
             'type' => 'Time',
-            'query' => "TIME(" . QueryUtils::wrapIdentifier($column) . ") {$operator} {$placeholder}",
+            'query' => $this->grammar->compileWhereTime($this->grammar->wrapIdentifier($column), $operator, $placeholder),
             'boolean' => 'AND',
         ];
 
@@ -768,7 +780,7 @@ class QueryBuilder
 
         $this->where[] = [
             'type' => 'JsonContains',
-            'query' => "JSON_CONTAINS(" . QueryUtils::wrapIdentifier($column) . ", {$placeholder})",
+            'query' => $this->grammar->compileJsonContains($this->grammar->wrapIdentifier($column), $placeholder),
             'boolean' => 'AND',
         ];
 
@@ -808,7 +820,7 @@ class QueryBuilder
     public function orderBy(string $column, string $direction = 'ASC'): self
     {
         QueryUtils::sanitizeColumn($column);
-        $this->orderBy[] = QueryUtils::wrapIdentifier($column) . " " . (strtoupper($direction) === 'DESC' ? 'DESC' : 'ASC');
+        $this->orderBy[] = $this->grammar->wrapIdentifier($column) . " " . (strtoupper($direction) === 'DESC' ? 'DESC' : 'ASC');
 
         return $this;
     }
@@ -819,7 +831,7 @@ class QueryBuilder
 
         foreach ($columns as $column) {
             QueryUtils::sanitizeColumn($column);
-            $this->groupBy[] = QueryUtils::wrapIdentifier($column);
+            $this->groupBy[] = $this->grammar->wrapIdentifier($column);
         }
 
         return $this;
@@ -831,7 +843,7 @@ class QueryBuilder
         $placeholder = ":having_" . count($this->params) . "_" . str_replace('.', '_', $column);
 
         $this->having[] = [
-            'column' => QueryUtils::wrapIdentifier($column),
+            'column' => $this->grammar->wrapIdentifier($column),
             'operator' => $operator,
             'value' => $placeholder,
             'boolean' => $boolean,
@@ -1198,7 +1210,7 @@ class QueryBuilder
             $placeholders[] = '(' . implode(', ', $rowPlaceholders) . ')';
         }
 
-        $sql = "INSERT INTO " . QueryUtils::wrapIdentifier($this->table) . " (" . implode(', ', array_map([QueryUtils::class, 'wrapIdentifier'], $columns)) . ") VALUES " . implode(', ', $placeholders);
+        $sql = "INSERT INTO " . $this->grammar->wrapIdentifier($this->table) . " (" . implode(', ', array_map(fn($col) => $this->grammar->wrapIdentifier($col), $columns)) . ") VALUES " . implode(', ', $placeholders);
 
         return $this->connection->execute($sql, $params) > 0;
     }
@@ -1242,10 +1254,10 @@ class QueryBuilder
 
         $updateSql = [];
         foreach ($update as $column) {
-            $updateSql[] = QueryUtils::wrapIdentifier($column) . " = VALUES(" . QueryUtils::wrapIdentifier($column) . ")";
+            $updateSql[] = $this->grammar->wrapIdentifier($column) . " = VALUES(" . $this->grammar->wrapIdentifier($column) . ")";
         }
 
-        $sql = "INSERT INTO " . QueryUtils::wrapIdentifier($this->table) . " (" . implode(', ', array_map([QueryUtils::class, 'wrapIdentifier'], $columns)) . ") VALUES " . implode(', ', $placeholders);
+        $sql = "INSERT INTO " . $this->grammar->wrapIdentifier($this->table) . " (" . implode(', ', array_map(fn($col) => $this->grammar->wrapIdentifier($col), $columns)) . ") VALUES " . implode(', ', $placeholders);
         $sql .= " ON DUPLICATE KEY UPDATE " . implode(', ', $updateSql);
 
         return $this->connection->execute($sql, $params);
@@ -1273,15 +1285,15 @@ class QueryBuilder
                 return 0;
             }
 
-            $sql = "UPDATE " . QueryUtils::wrapIdentifier($builder->table) . " SET ";
+            $sql = "UPDATE " . $this->grammar->wrapIdentifier($builder->table) . " SET ";
             $sets = [];
 
             foreach ($values as $column => $value) {
                 if ($value instanceof Raw) {
-                    $sets[] = QueryUtils::wrapIdentifier($column) . " = {$value}";
+                    $sets[] = $this->grammar->wrapIdentifier($column) . " = {$value}";
                 } else {
                     $placeholder = ":update_" . count($builder->params) . "_" . str_replace('.', '_', $column);
-                    $sets[] = QueryUtils::wrapIdentifier($column) . " = {$placeholder}";
+                    $sets[] = $this->grammar->wrapIdentifier($column) . " = {$placeholder}";
                     $builder->params[$placeholder] = $value;
                 }
             }
@@ -1314,7 +1326,7 @@ class QueryBuilder
      */
     protected function incrementOrDecrement(string $column, float|int $amount, array $extra, string $operator): int
     {
-        $wrapped = QueryUtils::wrapIdentifier($column);
+        $wrapped = $this->grammar->wrapIdentifier($column);
 
         $columns = array_merge([$column => new Raw("{$wrapped} {$operator} {$amount}")], $extra);
 
@@ -1324,7 +1336,7 @@ class QueryBuilder
     public function delete(): int
     {
         return $this->runThroughPipeline(function ($builder) {
-            $sql = "DELETE FROM " . QueryUtils::wrapIdentifier($builder->table);
+            $sql = "DELETE FROM " . $this->grammar->wrapIdentifier($builder->table);
             $sql .= $builder->getWhereClause();
 
             return $builder->connection->execute($sql, $builder->params);
@@ -1334,8 +1346,8 @@ class QueryBuilder
     public function count(string $column = '*'): int
     {
         return $this->runThroughPipeline(function ($builder) use ($column) {
-            $column = $column === '*' ? $column : QueryUtils::wrapIdentifier($column);
-            $sql = "SELECT COUNT({$column}) as count FROM " . QueryUtils::wrapIdentifier($builder->table);
+            $column = $column === '*' ? $column : $this->grammar->wrapIdentifier($column);
+            $sql = "SELECT COUNT({$column}) as count FROM " . $this->grammar->wrapIdentifier($builder->table);
 
             if (!empty($builder->joins)) {
                 $driver = $builder->connection->getConfig()['driver'] ?? 'mysql';
@@ -1343,9 +1355,9 @@ class QueryBuilder
                     if (isset($join['isRaw']) && $join['isRaw']) {
                         $sql .= " {$join['type']} JOIN {$join['table']} ON {$join['first']} {$join['operator']} {$join['second']}";
                     } else {
-                        $wrappedTable = QueryUtils::wrapIdentifier($join['table'], $driver);
-                        $wrappedFirst = QueryUtils::wrapIdentifier($join['first'], $driver);
-                        $wrappedSecond = QueryUtils::wrapIdentifier($join['second'], $driver);
+                        $wrappedTable = $builder->grammar->wrapIdentifier($join['table']);
+                        $wrappedFirst = $builder->grammar->wrapIdentifier($join['first']);
+                        $wrappedSecond = $builder->grammar->wrapIdentifier($join['second']);
                         $sql .= " {$join['type']} JOIN {$wrappedTable} ON {$wrappedFirst} {$join['operator']} {$wrappedSecond}";
                     }
                 }
@@ -1382,10 +1394,10 @@ class QueryBuilder
     protected function aggregate(string $function, string $column)
     {
         QueryUtils::sanitizeColumn($column);
-        $wrappedColumn = QueryUtils::wrapIdentifier($column);
+        $wrappedColumn = $this->grammar->wrapIdentifier($column);
 
         return $this->runThroughPipeline(function ($builder) use ($function, $wrappedColumn) {
-            $sql = "SELECT {$function}({$wrappedColumn}) as aggregate FROM " . QueryUtils::wrapIdentifier($builder->table);
+            $sql = "SELECT {$function}({$wrappedColumn}) as aggregate FROM " . $this->grammar->wrapIdentifier($builder->table);
             $sql .= $builder->getWhereClause();
 
             $result = $builder->connection->fetch($sql, $builder->params);
@@ -1607,16 +1619,15 @@ class QueryBuilder
 
     public function buildSelectSql(): string
     {
-        $driver = $this->connection->getConfig()['driver'] ?? 'mysql';
-        $columns = array_map(function ($col) use ($driver) {
+        $columns = array_map(function ($col) {
             if ($col instanceof \Plugs\Database\Raw) {
                 return (string) $col;
             }
-            return QueryUtils::wrapIdentifier((string) $col, $driver);
+            return $this->grammar->wrapIdentifier((string) $col);
         }, $this->select);
 
         $distinct = $this->distinct ? 'DISTINCT ' : '';
-        $sql = "SELECT {$distinct}" . implode(', ', $columns) . " FROM " . QueryUtils::wrapIdentifier($this->table, $driver);
+        $sql = "SELECT {$distinct}" . implode(', ', $columns) . " FROM " . $this->grammar->wrapIdentifier($this->table);
 
         if (!empty($this->joins)) {
             foreach ($this->joins as $join) {
@@ -1624,9 +1635,9 @@ class QueryBuilder
                 if (isset($join['isRaw']) && $join['isRaw']) {
                     $sql .= " {$type} JOIN {$join['table']} ON {$join['first']} {$join['operator']} {$join['second']}";
                 } else {
-                    $wrappedTable = QueryUtils::wrapIdentifier($join['table'], $driver);
-                    $wrappedFirst = QueryUtils::wrapIdentifier($join['first'], $driver);
-                    $wrappedSecond = QueryUtils::wrapIdentifier($join['second'], $driver);
+                    $wrappedTable = $this->grammar->wrapIdentifier($join['table']);
+                    $wrappedFirst = $this->grammar->wrapIdentifier($join['first']);
+                    $wrappedSecond = $this->grammar->wrapIdentifier($join['second']);
                     $sql .= " {$type} JOIN {$wrappedTable} ON {$wrappedFirst} {$join['operator']} {$wrappedSecond}";
                 }
             }
@@ -1650,13 +1661,7 @@ class QueryBuilder
             $sql .= " ORDER BY " . implode(', ', $this->orderBy);
         }
 
-        if ($this->limit !== null) {
-            $sql .= " LIMIT {$this->limit}";
-        }
-
-        if ($this->offset !== null) {
-            $sql .= " OFFSET {$this->offset}";
-        }
+        $sql .= $this->grammar->compileLimitOffset($this->limit, $this->offset);
 
         return $sql;
     }
@@ -1844,7 +1849,7 @@ class QueryBuilder
 
             $sql = $subQuery->buildSelectSql();
 
-            $this->selectRaw("({$sql}) AS " . QueryUtils::wrapIdentifier("{$relation}_count"), $subQuery->getParams());
+            $this->selectRaw("({$sql}) AS " . $this->grammar->wrapIdentifier("{$relation}_count"), $subQuery->getParams());
         }
 
         return $this;

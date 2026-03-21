@@ -21,15 +21,16 @@ trait HasQueryBuilder
     public static function query(): QueryBuilder
     {
         $connection = Connection::getInstance();
+        $grammar = $connection->getGrammar();
 
         // Search for a dedicated Query class in the same namespace or sub-namespace
         $modelClass = static::class;
         $queryClass = $modelClass . 'Query';
 
         if (class_exists($queryClass)) {
-            $builder = new $queryClass($connection);
+            $builder = new $queryClass($connection, $grammar);
         } else {
-            $builder = new QueryBuilder($connection);
+            $builder = new QueryBuilder($connection, $grammar);
         }
 
         /** @phpstan-ignore new.static */

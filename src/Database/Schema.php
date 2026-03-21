@@ -80,7 +80,7 @@ class Schema
     public static function dropIfExists(string $table): void
     {
         $connection = self::getConnection();
-        $sql = "DROP TABLE IF EXISTS `{$table}`";
+        $sql = $connection->getGrammar()->compileDropTable($table, true);
         $connection->execute($sql);
     }
 
@@ -90,7 +90,7 @@ class Schema
     public static function drop(string $table): void
     {
         $connection = self::getConnection();
-        $sql = "DROP TABLE `{$table}`";
+        $sql = $connection->getGrammar()->compileDropTable($table, false);
         $connection->execute($sql);
     }
 
@@ -100,7 +100,7 @@ class Schema
     public static function rename(string $from, string $to): void
     {
         $connection = self::getConnection();
-        $sql = "RENAME TABLE `{$from}` TO `{$to}`";
+        $sql = $connection->getGrammar()->compileRenameTable($from, $to);
         $connection->execute($sql);
     }
 
@@ -137,22 +137,8 @@ class Schema
      */
     protected static function getTableColumns(string $table, bool $full = false): array
     {
-        if (isset(self::$schemaCache[$table])) {
-            return $full ? self::$schemaCache[$table]['full'] : self::$schemaCache[$table]['names'];
-        }
-
         $connection = self::getConnection();
-        $sql = "SHOW COLUMNS FROM `{$table}`";
-        $results = $connection->fetchAll($sql);
-
-        $names = array_column($results, 'Field');
-
-        self::$schemaCache[$table] = [
-            'full' => $results,
-            'names' => $names,
-        ];
-
-        return $full ? $results : $names;
+        return $connection->getTableColumns($table); // Use the already dialect-aware Connection method
     }
 
     /**
@@ -161,7 +147,7 @@ class Schema
     public static function getTables(): array
     {
         $connection = self::getConnection();
-        $sql = "SHOW TABLES";
+        $sql = $connection->getGrammar()->compileShowTables();
         $results = $connection->fetchAll($sql);
 
         $tables = [];
@@ -178,7 +164,7 @@ class Schema
     public static function truncate(string $table): void
     {
         $connection = self::getConnection();
-        $sql = "TRUNCATE TABLE `{$table}`";
+        $sql = $connection->getGrammar()->compileTruncate($table);
         $connection->execute($sql);
     }
 
@@ -188,7 +174,7 @@ class Schema
     public static function disableForeignKeyConstraints(): void
     {
         $connection = self::getConnection();
-        $connection->execute("SET FOREIGN_KEY_CHECKS=0");
+        $connection->execute($connection->getGrammar()->compileForeignKeyConstraints(false));
     }
 
     /**
@@ -197,7 +183,7 @@ class Schema
     public static function enableForeignKeyConstraints(): void
     {
         $connection = self::getConnection();
-        $connection->execute("SET FOREIGN_KEY_CHECKS=1");
+        $connection->execute($connection->getGrammar()->compileForeignKeyConstraints(true));
     }
 
     /**

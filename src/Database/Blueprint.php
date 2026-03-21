@@ -18,16 +18,16 @@ use Plugs\Console\Support\Str;
 
 class Blueprint
 {
-    private Connection $connection;
-    private string $table;
+    public Connection $connection;
+    public string $table;
     /** @var array<int, array<string, mixed>> */
-    private array $commands = [];
+    public array $commands = [];
     /** @var ColumnDefinition[] */
-    private array $columns = [];
-    private string $engine = 'InnoDB';
-    private string $charset = 'utf8mb4';
-    private string $collation = 'utf8mb4_unicode_ci';
-    private bool $temporary = false;
+    public array $columns = [];
+    public string $engine = 'InnoDB';
+    public string $charset = 'utf8mb4';
+    public string $collation = 'utf8mb4_unicode_ci';
+    public bool $temporary = false;
 
     public function __construct(Connection $connection, string $table)
     {
@@ -689,6 +689,13 @@ class Blueprint
 
         return $this;
     }
+    public function getTable(): string { return $this->table; }
+    public function getColumns(): array { return $this->columns; }
+    public function getCommands(): array { return $this->commands; }
+    public function isTemporary(): bool { return $this->temporary; }
+    public function getEngine(): string { return $this->engine; }
+    public function getCharset(): string { return $this->charset; }
+    public function getCollation(): string { return $this->collation; }
 
     // ==================== BUILD SQL ====================
 
@@ -697,33 +704,7 @@ class Blueprint
      */
     public function toSql(): array
     {
-        $this->addConstraintsFromColumns();
-        $sql = [];
-
-        // Build column definitions
-        $columnDefinitions = [];
-        foreach ($this->columns as $column) {
-            $columnDefinitions[] = $column->toSql();
-        }
-
-        // Build command definitions (indexes, foreign keys, etc.)
-        $commandDefinitions = [];
-        foreach ($this->commands as $command) {
-            $commandDefinitions[] = $this->buildCommand($command);
-        }
-
-        // Combine all definitions
-        $definitions = array_merge($columnDefinitions, array_filter($commandDefinitions));
-
-        // Build CREATE TABLE statement
-        $temp = $this->temporary ? 'TEMPORARY ' : '';
-        $createSql = "CREATE {$temp}TABLE IF NOT EXISTS `{$this->table}` (\n  "
-            . implode(",\n  ", $definitions)
-            . "\n) ENGINE={$this->engine} DEFAULT CHARSET={$this->charset} COLLATE={$this->collation}";
-
-        $sql[] = $createSql;
-
-        return $sql;
+        return $this->connection->getGrammar()->compileCreate($this);
     }
 
     /**
@@ -731,61 +712,7 @@ class Blueprint
      */
     public function toAlterSql(): array
     {
-        $this->addConstraintsFromColumns();
-        $sql = [];
-
-        // Process column additions
-        foreach ($this->columns as $column) {
-            $sql[] = "ALTER TABLE `{$this->table}` ADD COLUMN " . $column->toSql();
-        }
-
-        // Process commands
-        foreach ($this->commands as $command) {
-            switch ($command['type']) {
-                case 'dropColumn':
-                    foreach ($command['columns'] as $col) {
-                        $sql[] = "ALTER TABLE `{$this->table}` DROP COLUMN `{$col}`";
-                    }
-
-                    break;
-
-                case 'renameColumn':
-                    $sql[] = "ALTER TABLE `{$this->table}` CHANGE `{$command['from']}` `{$command['to']}`";
-
-                    break;
-
-                case 'dropPrimary':
-                    $sql[] = "ALTER TABLE `{$this->table}` DROP PRIMARY KEY";
-
-                    break;
-
-                case 'dropUnique':
-                case 'dropIndex':
-                case 'dropSpatialIndex':
-                    foreach ($command['index'] as $index) {
-                        $sql[] = "ALTER TABLE `{$this->table}` DROP INDEX `{$index}`";
-                    }
-
-                    break;
-
-                case 'dropForeign':
-                    foreach ($command['index'] as $index) {
-                        $sql[] = "ALTER TABLE `{$this->table}` DROP FOREIGN KEY `{$index}`";
-                    }
-
-                    break;
-
-                default:
-                    $commandSql = $this->buildCommand($command);
-                    if ($commandSql) {
-                        $sql[] = "ALTER TABLE `{$this->table}` ADD " . $commandSql;
-                    }
-
-                    break;
-            }
-        }
-
-        return $sql;
+        return $this->connection->getGrammar()->compileAlter($this);
     }
 
     /**
@@ -885,13 +812,5 @@ class Blueprint
         foreach ($statements as $sql) {
             $this->connection->execute($sql);
         }
-    }
-
-    /**
-     * Get the table name
-     */
-    public function getTable(): string
-    {
-        return $this->table;
     }
 }

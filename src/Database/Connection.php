@@ -95,14 +95,42 @@ class Connection
      */
     protected $transactions = 0;
 
+    /**
+     * The grammar implementation for the connection.
+     *
+     * @var \Plugs\Database\Grammars\Grammar|null
+     */
+    protected $grammar = null;
+
     public function __construct(array $config, string $connectionName = 'default')
     {
         $this->connectionName = $connectionName;
         $this->poolId = bin2hex(random_bytes(16));
         $this->sticky = $config['sticky'] ?? false;
         self::$config[$connectionName] = $config;
+        $this->grammar = $this->resolveGrammar($config['driver'] ?? 'mysql');
         $this->optimizationManager = new \Plugs\Database\Optimization\OptimizationManager($this, $config['optimizations'] ?? []);
         // Connection deferred until first query (Lazy Loading)
+    }
+
+    /**
+     * Resolve the appropriate grammar for the connection.
+     */
+    protected function resolveGrammar(string $driver): \Plugs\Database\Grammars\Grammar
+    {
+        return match ($driver) {
+            'pgsql' => new \Plugs\Database\Grammars\PostgreSqlGrammar(),
+            'sqlite' => new \Plugs\Database\Grammars\SqliteGrammar(),
+            default => new \Plugs\Database\Grammars\MySqlGrammar(),
+        };
+    }
+
+    /**
+     * Get the grammar implementation for the connection.
+     */
+    public function getGrammar(): \Plugs\Database\Grammars\Grammar
+    {
+        return $this->grammar ?: $this->resolveGrammar($this->getConfig()['driver'] ?? 'mysql');
     }
 
     /**
@@ -221,28 +249,21 @@ class Connection
 
     private function createPdo(array $config): PDO
     {
-        $driver = $config['driver'] ?? 'mysql';
         $attempt = 0;
 
         while ($attempt < $this->maxRetries) {
             $attempt++;
 
             try {
-                if ($driver === 'sqlite') {
-                    $database = $config['database'];
-                    $dsn = "sqlite:{$database}";
-                    $pdo = new PDO($dsn);
-                } else {
-                    $dsn = $this->buildDsn($config);
-                    $options = $this->buildOptions($config);
+                $dsn = $this->buildDsn($config);
+                $options = $this->buildOptions($config);
 
-                    $pdo = new PDO(
-                        $dsn,
-                        $config['username'] ?? '',
-                        $config['password'] ?? '',
-                        $options
-                    );
-                }
+                $pdo = new PDO(
+                    $dsn,
+                    $config['username'] ?? '',
+                    $config['password'] ?? '',
+                    $options
+                );
 
                 // Security Best Practices
                 $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
@@ -279,25 +300,43 @@ class Connection
     private function buildDsn(array $config): string
     {
         $driver = $config['driver'];
-        $host = $config['host'];
+        $host = $config['host'] ?? null;
 
         if (is_array($host)) {
             $host = $this->selectHost($config);
         }
 
-        $port = $config['port'] ?? ($driver === 'mysql' ? 3306 : 5432);
-        $database = $config['database'];
+        $database = $config['database'] ?? null;
 
-        if ($driver === 'mysql') {
-            $charset = $config['charset'] ?? 'utf8mb4';
+        switch ($driver) {
+            case 'mysql':
+                $port = $config['port'] ?? 3306;
+                $charset = $config['charset'] ?? 'utf8mb4';
+                return "mysql:host={$host};port={$port};dbname={$database};charset={$charset}";
 
-            return "mysql:host={$host};port={$port};dbname={$database};charset={$charset}";
-        }
+            case 'pgsql':
+                $port = $config['port'] ?? 5432;
+                $charset = $config['charset'] ?? 'utf8';
+                return "pgsql:host={$host};port={$port};dbname={$database};options='--client_encoding={$charset}'";
 
-        if ($driver === 'pgsql') {
-            $charset = $config['charset'] ?? 'utf8';
+            case 'sqlsrv':
+                $port = $config['port'] ?? 1433;
+                return "sqlsrv:Server={$host},{$port};Database={$database}";
 
-            return "pgsql:host={$host};port={$port};dbname={$database};options='--client_encoding={$charset}'";
+            case 'oci':
+                $port = $config['port'] ?? 1521;
+                $charset = $config['charset'] ?? 'AL32UTF8';
+                return "oci:dbname=//{$host}:{$port}/{$database};charset={$charset}";
+
+            case 'firebird':
+                $port = $config['port'] ?? 3050;
+                return "firebird:dbname={$host}/{$port}:{$database}";
+
+            case 'sqlite':
+                return "sqlite:{$database}";
+
+            case 'odbc':
+                return $config['dsn'] ?? "odbc:{$database}";
         }
 
         throw ConfigurationException::unsupportedDriver($driver);
@@ -814,7 +853,7 @@ class Connection
         if ($this->transactions === 0) {
             $result = $this->pdo->beginTransaction();
         } else {
-            $this->pdo->exec("SAVEPOINT trans{$this->transactions}");
+            $this->pdo->exec($this->grammar->compileSavepoint("trans{$this->transactions}"));
             $result = true;
         }
 
@@ -835,7 +874,7 @@ class Connection
             return false;
         }
 
-        $this->pdo->exec("RELEASE SAVEPOINT trans{$this->transactions}");
+        $this->pdo->exec($this->grammar->compileSavepointRelease("trans{$this->transactions}"));
 
         return true;
     }
@@ -856,7 +895,7 @@ class Connection
             return false;
         }
 
-        $this->pdo->exec("ROLLBACK TO SAVEPOINT trans{$this->transactions}");
+        $this->pdo->exec($this->grammar->compileSavepointRollback("trans{$this->transactions}"));
 
         return true;
     }
@@ -933,6 +972,16 @@ class Connection
     public function getName(): string
     {
         return $this->connectionName;
+    }
+
+    /**
+     * Get the name of the PDO driver.
+     *
+     * @return string
+     */
+    public function getDriverName(): string
+    {
+        return $this->getPdo()->getAttribute(PDO::ATTR_DRIVER_NAME);
     }
 
     public function getStats(): array
@@ -1248,15 +1297,22 @@ class Connection
         $driver = $this->pdo->getAttribute(PDO::ATTR_DRIVER_NAME);
         $columns = [];
 
+        $sql = $this->grammar->compileTableColumns($table);
+        $stmt = $this->pdo->query($sql);
+        
+        $results = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
         if ($driver === 'mysql') {
-            $stmt = $this->pdo->query("DESCRIBE `{$table}`");
-            foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
+            foreach ($results as $row) {
                 $columns[] = $row['Field'];
             }
         } elseif ($driver === 'sqlite') {
-            $stmt = $this->pdo->query("PRAGMA table_info(`{$table}`)");
-            foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
+            foreach ($results as $row) {
                 $columns[] = $row['name'];
+            }
+        } elseif ($driver === 'pgsql') {
+            foreach ($results as $row) {
+                $columns[] = $row['column_name'];
             }
         }
 
