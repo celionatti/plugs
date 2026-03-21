@@ -638,6 +638,39 @@ class Connection
         return in_array($e->getCode(), $connectionErrors, true);
     }
 
+    /**
+     * Test a database connection with the given configuration.
+     *
+     * @param array $config
+     * @return array
+     */
+    public static function testConnection(array $config): array
+    {
+        try {
+            // Create a temporary connection instance
+            // We use a random name to avoid collisions with existing instances
+            $tmpName = 'test_connection_' . bin2hex(random_bytes(4));
+            $instance = new self($config, $tmpName);
+
+            // Attempt to get PDO which triggers the connection
+            $pdo = $instance->getPdo();
+
+            // Run a simple query to verify communication
+            $pdo->query('SELECT 1');
+
+            // Explicitly disconnect to free resources immediately
+            $instance->disconnect();
+
+            return ['success' => true];
+        } catch (\Throwable $e) {
+            return [
+                'success' => false,
+                'error' => $e->getMessage(),
+                'code' => $e->getCode(),
+            ];
+        }
+    }
+
     // Standard connection method (without pooling)
     public static function getInstance(array|null $config = null, string $connectionName = 'default'): self
     {
