@@ -12,6 +12,7 @@ use Modules\Admin\Controllers\AdminThemeController;
 use Modules\Admin\Controllers\AdminArticleController;
 use Modules\Admin\Controllers\LogController;
 use Modules\Admin\Controllers\MigrationController;
+use Modules\Admin\Controllers\AiPromptController;
 
 /*
 |--------------------------------------------------------------------------
@@ -76,3 +77,8 @@ Route::get('/migrations', [MigrationController::class, 'index'])->name('migratio
 Route::post('/migrations/run', [MigrationController::class, 'migrate'])->name('migrations.run');
 Route::post('/migrations/rollback', [MigrationController::class, 'rollback'])->name('migrations.rollback');
 Route::post('/migrations/fresh', [MigrationController::class, 'fresh'])->name('migrations.fresh');
+
+// AI Prompt Section
+Route::get('/ai-prompt', [AiPromptController::class, 'index'])->name('ai-prompt.index');
+Route::get('/ai-prompt/status', [AiPromptController::class, 'status'])->name('ai-prompt.status');
+Route::post('/ai-prompt/generate', [AiPromptController::class, 'generate'])->name('ai-prompt.generate');
