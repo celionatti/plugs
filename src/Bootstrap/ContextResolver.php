@@ -60,8 +60,8 @@ class ContextResolver
             return ContextType::Api;
         }
 
-        // 4. Exception: Framework reactive component routes use JSON but require Web context
-        if (self::isReactiveComponentRoute($server)) {
+        // 4. Exception: Framework reactive component routes and Admin routes use JSON but require Web context
+        if (self::isReactiveComponentRoute($server) || self::isAdminRoute($server)) {
             return ContextType::Web;
         }
 
@@ -147,6 +147,19 @@ class ContextResolver
 
         return str_starts_with($path, '/plugs/component') || 
                str_starts_with($path, '/_plugs/component');
+    }
+
+    /**
+     * Check if the route belongs to the Admin module.
+     * Admin routes require session authentication despite potentially using JSON for API requests.
+     */
+    private static function isAdminRoute(array $server): bool
+    {
+        $uri = $server['REQUEST_URI'] ?? '';
+        $path = parse_url($uri, PHP_URL_PATH) ?: '';
+        $path = rtrim($path, '/');
+
+        return str_starts_with($path, '/admin');
     }
 
     /**

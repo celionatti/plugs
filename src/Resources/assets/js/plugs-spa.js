@@ -1423,7 +1423,12 @@ class PlugsSPA {
         });
 
         // Inject extracted scripts into <body>
+        const existingScripts = Array.from(document.querySelectorAll("script"));
         scriptFragments.forEach((oldScript) => {
+          if (oldScript.hasAttribute("data-spa-ignore")) return;
+          if (oldScript.src && existingScripts.some(s => s.src === oldScript.src)) return;
+          if (!oldScript.src && oldScript.innerHTML && existingScripts.some(s => s.innerHTML === oldScript.innerHTML)) return;
+
           const newScript = document.createElement("script");
           Array.from(oldScript.attributes).forEach((attr) =>
             newScript.setAttribute(attr.name, attr.value),

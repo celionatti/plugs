@@ -16,7 +16,7 @@ class GeminiDriver extends AIBaseDriver
     {
         parent::__construct($config);
 
-        $this->apiVersion = $config['version'] ?? (str_contains($this->model, 'preview') ? 'v1beta' : 'v1');
+        $this->apiVersion = $config['version'] ?? 'v1beta';
 
         $this->client = new Client([
             'headers' => [
