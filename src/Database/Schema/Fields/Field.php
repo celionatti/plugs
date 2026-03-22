@@ -145,7 +145,7 @@ abstract class Field
     /**
      * Build the complete validation rule string for this field.
      */
-    public function getValidationRules(?string $table = null): string
+    public function getValidationRules(?string $table = null, $ignoreId = null): string
     {
         $rules = [];
 
@@ -164,7 +164,11 @@ abstract class Field
             $uniqueColumn = $this->uniqueColumn ?? $this->name;
 
             if ($uniqueTable) {
-                $rules[] = "unique:{$uniqueTable},{$uniqueColumn}";
+                $uniqueRule = "unique:{$uniqueTable},{$uniqueColumn}";
+                if ($ignoreId !== null) {
+                    $uniqueRule .= ",{$ignoreId}";
+                }
+                $rules[] = $uniqueRule;
             } else {
                 $rules[] = 'unique';
             }

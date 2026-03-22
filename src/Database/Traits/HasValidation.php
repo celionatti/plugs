@@ -68,7 +68,9 @@ trait HasValidation
         // Start with schema-derived rules (if schema exists)
         $schemaRules = [];
         if (method_exists($this, 'getSchemaRules')) {
-            $schemaRules = $this->getSchemaRules() ?? [];
+            $isExisting = method_exists($this, 'exists') ? $this->exists() : ($this->exists ?? false);
+            $ignoreId = $isExisting ? $this->getKey() : null;
+            $schemaRules = $this->getSchemaRules($ignoreId) ?? [];
         }
 
         // Get explicit rules (from property or method)

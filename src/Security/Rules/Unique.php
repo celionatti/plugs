@@ -15,10 +15,12 @@ class Unique implements RuleInterface
     protected array $wheres = [];
     protected string $message = 'The :attribute has already been taken.';
 
-    public function __construct(string $table, ?string $column = null)
+    public function __construct(string $table, ?string $column = null, $ignoreId = null, string $idColumn = 'id')
     {
         $this->table = $table;
         $this->column = $column ?? '';
+        $this->ignoreId = $ignoreId;
+        $this->idColumn = $idColumn;
     }
 
     /**

@@ -131,11 +131,11 @@ trait HasSchema
      *
      * @return array<string, string>|null  Returns null if no schema is defined
      */
-    public function getSchemaRules(): ?array
+    public function getSchemaRules($ignoreId = null): ?array
     {
         $schema = $this->getSchemaDefinition();
 
-        return $schema?->getValidationRules();
+        return $schema?->getValidationRules($ignoreId);
     }
 
     /**

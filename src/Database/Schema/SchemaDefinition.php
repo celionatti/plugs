@@ -126,12 +126,12 @@ class SchemaDefinition
      *
      * @return array<string, string>
      */
-    public function getValidationRules(): array
+    public function getValidationRules($ignoreId = null): array
     {
         $rules = [];
 
         foreach ($this->fields as $name => $field) {
-            $ruleString = $field->getValidationRules($this->tableName);
+            $ruleString = $field->getValidationRules($this->tableName, $ignoreId);
             if ($ruleString !== '') {
                 $rules[$name] = $ruleString;
             }
