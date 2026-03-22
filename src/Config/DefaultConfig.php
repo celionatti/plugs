@@ -200,6 +200,9 @@ class DefaultConfig
                     'prefix' => '',
                 ],
             ],
+            'monitoring' => [
+                'enabled' => env('DB_MONITORING', false),
+            ],
         ];
     }
 

@@ -16,6 +16,7 @@ class RelationMonitor
 
     private function __construct()
     {
+        $this->enabled = (bool) config('database.monitoring.enabled', true);
     }
 
     public static function getInstance(): self

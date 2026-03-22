@@ -61,4 +61,5 @@ $user->notify(new InvoicePaid($invoice));
 ---
 
 ## Next Steps
-Integrate with financial services using [Payments](./payments.md).
+-   Learn how to process background tasks with **[Queues](../infrastructure/queues-scheduling.md)**.
+-   Integrate with financial services using **[Payments](./payments.md)**.
