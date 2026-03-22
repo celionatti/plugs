@@ -36,10 +36,19 @@ interface QueueDriverInterface
     public function pop($queue = null);
 
     /**
-     * Get the size of the queue.
+     * Release a job back onto the queue.
      *
-     * @param string|null $queue
-     * @return int
+     * @param object $job
+     * @param int $delay
+     * @return void
      */
-    public function size($queue = null): int;
+    public function release(object $job, int $delay = 0): void;
+
+    /**
+     * Delete a job from the queue.
+     *
+     * @param int|string $id
+     * @return bool
+     */
+    public function delete($id): bool;
 }

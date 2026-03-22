@@ -30,6 +30,21 @@ class SyncQueueDriver implements QueueDriverInterface
         return 0;
     }
 
+    public function release(object $job, int $delay = 0): void
+    {
+        if ($delay > 0) {
+            sleep($delay);
+        }
+
+        $payload = unserialize($job->payload);
+        $this->push($payload['job'], $payload['data']);
+    }
+
+    public function delete($id): bool
+    {
+        return true;
+    }
+
     protected function resolveAndExecute($job, $data)
     {
         if ($job instanceof \Closure) {

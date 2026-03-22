@@ -107,6 +107,16 @@ class QueueManager
         return $this->driver()->size($queue);
     }
 
+    public function release(object $job, int $delay = 0): void
+    {
+        $this->driver()->release($job, $delay);
+    }
+
+    public function delete($id): bool
+    {
+        return $this->driver()->delete($id);
+    }
+
     /**
      * Pass dynamic methods to the default driver.
      */

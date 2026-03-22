@@ -33,7 +33,7 @@ class DatabaseQueueDriver implements QueueDriverInterface
                 $table->id();
                 $table->string('queue')->index();
                 $table->longText('payload');
-                $table->tinyInteger('attempts')->unsigned();
+                $table->unsignedInteger('attempts');
                 $table->unsignedInteger('reserved_at')->nullable();
                 $table->unsignedInteger('available_at');
                 $table->unsignedInteger('created_at');
@@ -62,14 +62,15 @@ class DatabaseQueueDriver implements QueueDriverInterface
             $this->connection->beginTransaction();
 
             // Select and lock the next available job
-            // Using raw query because QueryBuilder doesn't support FOR UPDATE and LIMIT on UPDATE
+            $isSqlite = $this->connection->getDriverName() === 'sqlite';
+            $lock = $isSqlite ? "" : " FOR UPDATE";
+
             $sql = "SELECT id FROM {$this->table} 
                     WHERE queue = ? 
                     AND available_at <= ? 
                     AND reserved_at IS NULL 
                     ORDER BY id ASC 
-                    LIMIT 1 
-                    FOR UPDATE";
+                    LIMIT 1" . $lock;
 
             $stmt = $this->connection->query($sql, [$queue, $currentTime]);
             $jobId = $stmt->fetchColumn();
@@ -111,11 +112,22 @@ class DatabaseQueueDriver implements QueueDriverInterface
             ->count();
     }
 
-    public function delete(int $id): bool
+    public function release(object $job, int $delay = 0): void
+    {
+        (new QueryBuilder($this->connection))
+            ->table($this->table)
+            ->where('id', '=', (int) $job->id)
+            ->update([
+                'reserved_at' => null,
+                'available_at' => time() + $delay,
+            ]);
+    }
+
+    public function delete($id): bool
     {
         return (bool) (new QueryBuilder($this->connection))
             ->table($this->table)
-            ->where('id', '=', $id)
+            ->where('id', '=', (int) $id)
             ->delete();
     }
 

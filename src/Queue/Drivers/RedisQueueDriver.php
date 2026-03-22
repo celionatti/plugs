@@ -72,10 +72,25 @@ class RedisQueueDriver implements QueueDriverInterface
             $this->redis->zCard($this->getQueueKey($queue) . ':delayed');
     }
 
-    public function delete(int $id): bool
+    public function release(object $job, int $delay = 0): void
+    {
+        $payload = unserialize($job->payload);
+        $queue = $job->queue ?: $this->defaultQueue;
+
+        if ($delay > 0) {
+            $this->redis->zAdd(
+                $this->getQueueKey($queue) . ':delayed',
+                time() + $delay,
+                json_encode($payload)
+            );
+        } else {
+            $this->redis->rPush($this->getQueueKey($queue), json_encode($payload));
+        }
+    }
+
+    public function delete($id): bool
     {
         // Redis pop already removes the item. 
-        // If we implement a reserved set later, we'd delete from there.
         return true;
     }
 

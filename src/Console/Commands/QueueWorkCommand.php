@@ -86,21 +86,11 @@ class QueueWorkCommand extends Command
         $this->warning("Job (ID: {$jobData->id}) failed, will retry (Attempt {$jobData->attempts})");
 
         $queueManager = Container::getInstance()->make('queue');
-        $driver = $queueManager->driver();
 
         // If backoff is enabled, calculate delay (retry_count * backoff)
         $delay = $jobData->attempts * $backoff;
 
-        // Re-push to queue with delay
-        $payload = unserialize($jobData->payload);
-
-        // Use 'later' for delayed retry
-        $queueManager->later($delay, $payload['job'], $payload['data'], $queueName);
-
-        // Delete current record from queue (it's been re-pushed)
-        if (method_exists($driver, 'delete')) {
-            $driver->delete((int) $jobData->id);
-        }
+        $queueManager->release($jobData, $delay);
     }
 
     protected function failJob($jobData, \Throwable $e): void
