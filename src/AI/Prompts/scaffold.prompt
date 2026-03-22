@@ -527,9 +527,13 @@ class BlogModule extends AbstractFeatureModule
     "description": "Blog management module.",
     "version": "1.0.0",
     "author": "System",
-    "enabled": true
+    "enabled": true,
+    "require": {
+        "admin": "^1.0"
+    }
 }
 ```
+*Note: Make sure to always generate this file when scaffolding a module, including any 'require' dependencies if requested.*
 
 ### Module Directory Layout
 
@@ -965,6 +969,41 @@ $this->validate($request, [
 `between:min,max`, `size:N`, `confirmed`, `unique:table,column`, `exists:table,column`,
 `alpha`, `alpha_num`, `alpha_dash`, `regex:pattern`, `after:date`, `before:date`,
 `accepted`, `json`, `ip`, `uuid`.
+
+================================================================================
+12. THEMES
+================================================================================
+
+Themes in Plugs are stored in `resources/views/themes/{ThemeName}/` and require a `theme.json` manifest file to be detected by the system.
+
+### Directory Structure
+
+```
+resources/views/themes/MyTheme/
+├── theme.json            # Required metadata manifest
+├── screenshot.png        # Optional dashboard preview image
+├── layouts/
+│   └── app.plug.php      # Main theme layout
+└── pages/
+    └── index.plug.php    # Theme views
+```
+
+### theme.json
+
+```json
+{
+  "name": "MyTheme",
+  "description": "A beautiful custom theme.",
+  "author": "System",
+  "version": "1.0.0",
+  "screenshot": "screenshot.png",
+  "tags": ["frontend", "blog"],
+  "require": {
+    "module:blog": "^1.0"
+  }
+}
+```
+*Note: The `theme.json` file is STRICTLY REQUIRED for a theme to function. Ensure you generate it exactly in this format.*
 
 ================================================================================
 OUTPUT FORMAT
