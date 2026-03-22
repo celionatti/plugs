@@ -18,21 +18,71 @@ class ServeCommand extends Command
 
     public function handle(): int
     {
-        $host = $this->option('host') ?? '127.0.0.1';
-        $port = $this->option('port') ?? 8000;
+        $this->clear();
 
-        $this->advancedHeader('Development Server', 'Running your application locally');
+        $host = $this->option('host') ?? '127.0.0.1';
+        $port = (int) ($this->option('port') ?? 8000);
+        $publicPath = BASE_PATH . 'public';
+
+        // Ensure the port is available, try next if not (Port Auto-Increment)
+        while ($this->isPortInUse($host, $port)) {
+            $port++;
+        }
+
+        $url = "http://{$host}:{$port}";
+
+        $this->advancedHeader('Plugs Framework', 'Development Server');
 
         $this->panel(
-            "Server URL: http://{$host}:{$port}\n" .
-            "Document Root: " . getcwd() . "/public\n" .
-            "Press Ctrl+C to stop",
+            "Local Address:  <info>{$url}</info>\n" .
+            "Document Root:  <comment>{$publicPath}</comment>\n" .
+            "Router Script:  " . ($this->getRouterScript() ?: '<dim>None</dim>') . "\n\n" .
+            "Press <comment>Ctrl+C</comment> to stop the server",
             "🚀 Server Information"
         );
 
-        $command = "php -S {$host}:{$port} -t public";
+        $command = sprintf(
+            'php -S %s:%d -t %s%s',
+            escapeshellarg($host),
+            $port,
+            escapeshellarg($publicPath),
+            $this->getRouterScript() ? ' ' . escapeshellarg($this->getRouterScript()) : ''
+        );
 
-        return $this->execRealtime($command);
+        // We use passthru to allow the PHP server to handle its own I/O and signals
+        passthru($command, $status);
+
+        $this->newLine();
+        $this->info("Server stopped gracefully. Goodbye!");
+
+        return $status;
+    }
+
+    /**
+     * Check if a port is already in use.
+     */
+    protected function isPortInUse(string $host, int $port): bool
+    {
+        $connection = @fsockopen($host, $port);
+
+        if (is_resource($connection)) {
+            fclose($connection);
+            return true;
+        }
+
+        return false;
+    }
+
+    /**
+     * Get the router script path if it exists.
+     */
+    protected function getRouterScript(): ?string
+    {
+        if (file_exists(BASE_PATH . 'server.php')) {
+            return BASE_PATH . 'server.php';
+        }
+
+        return null;
     }
 
     protected function defineOptions(): array
