@@ -1,0 +1,58 @@
+@layout('layouts.app')
+
+@section('content')
+<div class="container mx-auto px-4 py-8">
+    <div class="flex justify-between items-center mb-6">
+        <h1 class="text-3xl font-bold text-gray-800">{{ $title }}</h1>
+        <a href="{{ route($routePrefix . '.create') }}" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded transition duration-300">
+            Create New
+        </a>
+    </div>
+
+    @session('success')
+        <div class="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded relative mb-4" role="alert">
+            <span class="block sm:inline">{{ $value }}</span>
+        </div>
+    @endsession
+
+    <div class="bg-white shadow-md rounded-lg overflow-hidden">
+        <table class="min-w-full leading-normal">
+            <thead>
+                <tr>
+                    <th class="px-5 py-3 border-b-2 border-gray-200 bg-gray-100 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                        ID
+                    </th>
+                    <!-- Add more columns here -->
+                    <th class="px-5 py-3 border-b-2 border-gray-200 bg-gray-100 text-right text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                        Actions
+                    </th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach($items as $item)
+                <tr>
+                    <td class="px-5 py-5 border-b border-gray-200 bg-white text-sm">
+                        {{ $item->id }}
+                    </td>
+                    <td class="px-5 py-5 border-b border-gray-200 bg-white text-sm text-right">
+                        <div class="flex justify-end gap-2">
+                            <a href="{{ route($routePrefix . '.show', $item->id) }}" class="text-blue-600 hover:text-blue-900">Show</a>
+                            <a href="{{ route($routePrefix . '.edit', $item->id) }}" class="text-yellow-600 hover:text-yellow-900">Edit</a>
+                            <form action="{{ route($routePrefix . '.destroy', $item->id) }}" method="POST" class="inline" onsubmit="return confirm('Are you sure?')">
+                                @csrf
+                                @method('DELETE')
+                                <button type="submit" class="text-red-600 hover:text-red-900">Delete</button>
+                            </form>
+                        </div>
+                    </td>
+                </tr>
+                @endforeach
+            </tbody>
+        </table>
+    </div>
+
+    <div class="mt-4">
+        {{ $items->links() }}
+    </div>
+</div>
+@endsection

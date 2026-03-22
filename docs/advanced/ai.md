@@ -44,9 +44,20 @@ php theplugs ai:agent "Help me build a multi-tenant subscription system"
 ```
 
 ### Features
-- **Task Decomposition**: Breaks high-level goals into migrations, models, and controllers.
+- **Project Scaffolding (`ai:scaffold`)**: Generate entire resource stacks from a single prompt. It reads your intent, identifies all required components (Model, Controller, Migration, Views), and executes the plan non-interactively.
+  ```bash
+  php theplugs ai:scaffold "A task manager with tags and deadlines"
+  ```
+- **Task Decomposition**: Breaks high-level goals into migrations, models, and controllers via `ai:agent`.
 - **Context Persistence**: Maintains state throughout your conversation.
 - **Architectural Reasoning**: Use `ai:think` for deep analysis of specific bugs or designs.
+
+> [!TIP]
+> **Prototyping AI Logic with `tinker`**
+> The `tinker` shell is the fastest way to test your AI prompts and driver configurations. You can call the `ai()` helper directly from the REPL:
+> ```php
+> >>> ai()->prompt("Write a short poem about clean code")
+> ```
 
 ---
 

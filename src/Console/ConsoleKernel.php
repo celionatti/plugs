@@ -88,6 +88,11 @@ use Plugs\Console\Commands\IdentityInstallCommand;
 use Plugs\Console\Commands\MakeThemeCommand;
 use Plugs\Console\Commands\NebulaThemeCommand;
 use Plugs\Console\Commands\MakeWelcomeCommand;
+use Plugs\Console\Commands\MakeCrudCommand;
+use Plugs\Console\Commands\TinkerCommand;
+use Plugs\Console\Commands\EnvSyncCommand;
+use Plugs\Console\Commands\ShareCommand;
+use Plugs\Console\Commands\AiScaffoldCommand;
 use Plugs\Exceptions\ConsoleException;
 
 /*
@@ -134,6 +139,7 @@ class ConsoleKernel
         'make:lang' => MakeLangCommand::class,
         'make:theme' => MakeThemeCommand::class,
         'make:welcome' => MakeWelcomeCommand::class,
+        'make:crud' => MakeCrudCommand::class,
         'theme:nebula' => NebulaThemeCommand::class,
 
         'db:backup' => DatabaseBackupCommand::class,
@@ -144,7 +150,7 @@ class ConsoleKernel
         'route:cache' => RouteCacheCommand::class,
         'route:clear' => RouteClearCommand::class,
         'route:test' => RouteTestCommand::class,
-
+        'tinker' => TinkerCommand::class,
         'serve' => ServeCommand::class,
         'cache:clear' => CacheClearCommand::class,
         'logs:clear' => LogClearCommand::class,
@@ -152,6 +158,7 @@ class ConsoleKernel
         'config:cache' => ConfigCacheCommand::class,
         'config:clear' => ConfigClearCommand::class,
         'optimize' => OptimizeCommand::class,
+        'env:sync' => EnvSyncCommand::class,
         'opcache:clear' => OpCacheClearCommand::class,
         'opcache:status' => OpCacheStatusCommand::class,
         'container:cache' => ContainerCacheCommand::class,
@@ -178,7 +185,9 @@ class ConsoleKernel
         'ai:audit' => AiAuditCommand::class,
         'ai:agent' => AIAgentCommand::class,
         'ai:think' => AIThinkCommand::class,
+        'ai:scaffold' => AiScaffoldCommand::class,
         'ai:index-docs' => AIIndexDocsCommand::class,
+        'share' => ShareCommand::class,
 
         'shield:list' => ShieldCommand::class,
         'shield:unblock' => ShieldCommand::class,
@@ -210,6 +219,7 @@ class ConsoleKernel
         'g:enum' => 'make:enum',
         'g:dto' => 'make:dto',
         'g:res' => 'make:resource',
+        'g:crud' => 'make:crud',
         'g:repo' => 'make:repository',
         'g:con' => 'make:connector',
         'g:areq' => 'make:api-request',
@@ -231,12 +241,16 @@ class ConsoleKernel
         'cc' => 'cache:clear',
         'lc' => 'logs:clear',
         'oc' => 'optimize',
+        't' => 'tinker',
+        'sync' => 'env:sync',
         'i' => 'inspire',
         'm' => 'migrate',
         'm:r' => 'migrate:rollback',
         'm:s' => 'migrate:status',
         'dba' => 'db:analyze',
         'dbb' => 'db:backup',
+        'share' => 'share',
+        'ais' => 'ai:scaffold',
     ];
 
     protected array $commandGroups = [
@@ -270,10 +284,11 @@ class ConsoleKernel
             'make:auth-module',
             'make:lang',
             'make:theme',
+            'make:crud',
             'theme:nebula',
         ],
         'Routes' => ['route:list', 'route:cache', 'route:clear', 'route:test'],
-        'Utility' => ['serve', 'cache:clear', 'logs:clear', 'view:cache', 'view:clear', 'config:publish', 'config:cache', 'optimize', 'opcache:clear', 'opcache:status', 'queue:work', 'queue:failed', 'queue:retry', 'health', 'storage:link', 'type:gen', 'ai:chat', 'ai:fix', 'ai:audit', 'make:ai-test', 'ai:agent', 'ai:think', 'framework:scan-security', 'auth:install', 'identity:install'],
+        'Utility' => ['serve', 'tinker', 'env:sync', 'share', 'ai:scaffold', 'cache:clear', 'logs:clear', 'view:cache', 'view:clear', 'config:publish', 'config:cache', 'optimize', 'opcache:clear', 'opcache:status', 'queue:work', 'queue:failed', 'queue:retry', 'health', 'storage:link', 'type:gen', 'ai:chat', 'ai:fix', 'ai:audit', 'make:ai-test', 'ai:agent', 'ai:think', 'framework:scan-security', 'auth:install', 'identity:install'],
 
         'Scheduling' => ['schedule:run', 'schedule:list'],
         'Database' => ['migrate', 'migrate:rollback', 'migrate:status', 'migrate:fresh', 'migrate:validate', 'migrate:reset', 'make:migration', 'db:seed', 'db:analyze', 'db:backup', 'db:restore'],

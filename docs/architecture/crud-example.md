@@ -2,6 +2,11 @@
 
 This guide demonstrates how to build a fully structured CRUD (Create, Read, Update, Delete) feature using all layers of the Plugs framework.
 
+> [!TIP]
+> **Scaffold Faster with `make:crud`**
+> You can automatically generate the Model, Migration, Controller, and Views for a resource using a single command:
+> `php theplugs make:crud ResourceName`
+
 ---
 
 ## 1. The Model

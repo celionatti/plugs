@@ -9,6 +9,7 @@ Plugs includes a variety of global "helper" PHP functions. These functions are d
 | Helper | Description |
 | --- | --- |
 | `app()` | Get the service container instance or resolve a class. |
+| `ai()` | Get the AI manager instance for LLM operations. |
 | `config()` | Get or set configuration values. |
 | `env()` | Retrieve an environment variable with a fallback. |
 | `logger()` | Log a message to the system logs. |
