@@ -646,6 +646,14 @@ class PlugViewEngine implements ViewEngineInterface
             $pascalSegments = array_map([$this, 'anyToPascalCase'], $segments);
             $className = "App\\Components\\" . implode('\\', $pascalSegments);
 
+            // Fallback: check framework-provided component classes (Plugs\View\Components\*)
+            if (!class_exists($className)) {
+                $frameworkClassName = "Plugs\\View\\Components\\" . implode('\\', $pascalSegments);
+                if (class_exists($frameworkClassName)) {
+                    $className = $frameworkClassName;
+                }
+            }
+
             if (class_exists($className)) {
                 // Determine creation parameters based on type
                 if (is_subclass_of($className, \Plugs\View\ReactiveComponent::class)) {
@@ -1371,7 +1379,32 @@ HTML;
             }
         }
 
-        // Fallback to kebab-case path if not found (default location of first path)
+        // Fallback: search framework built-in components directory
+        $frameworkComponentPath = dirname(__DIR__) . DIRECTORY_SEPARATOR . 'View' . DIRECTORY_SEPARATOR . 'components';
+        foreach ($filenames as $filename) {
+            // Check for folder-based framework component
+            $folderPath = $frameworkComponentPath . DIRECTORY_SEPARATOR . $filename;
+            if (is_dir($folderPath)) {
+                foreach (self::VIEW_EXTENSIONS as $extension) {
+                    foreach (['view', 'index'] as $viewBase) {
+                        $fullPath = $folderPath . DIRECTORY_SEPARATOR . $viewBase . $extension;
+                        if ($this->fileExistsCached($fullPath)) {
+                            return $fullPath;
+                        }
+                    }
+                }
+            }
+
+            // Check for single-file framework component
+            foreach (self::VIEW_EXTENSIONS as $extension) {
+                $builtinPath = $frameworkComponentPath . DIRECTORY_SEPARATOR . $filename . $extension;
+                if ($this->fileExistsCached($builtinPath)) {
+                    return $builtinPath;
+                }
+            }
+        }
+
+        // Final fallback to kebab-case path if not found (default location of first path)
         return $this->getPathsForNamespace($namespace)[0] . DIRECTORY_SEPARATOR . 'components' . DIRECTORY_SEPARATOR . $kebab . self::VIEW_EXTENSIONS[0];
     }
 
