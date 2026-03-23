@@ -27,6 +27,7 @@ class MiddlewareRegistry
         'throttle' => RateLimitMiddleware::class,
         'spa' => SPAMiddleware::class,
         'ai.moderate' => AIContentModerationMiddleware::class,
+        'verified' => EnsureEmailIsVerified::class,
     ];
 
     /**
@@ -39,6 +40,7 @@ class MiddlewareRegistry
             'spa',
             'csrf',
             'cors',
+            'verified',
         ],
         'api' => [
             'json',
@@ -57,6 +59,7 @@ class MiddlewareRegistry
         FlashMiddleware::class,
         ShareErrorsFromSession::class,
         HandleValidationExceptions::class,
+        EnsureEmailIsVerified::class,
     ];
 
     /**
@@ -90,6 +93,7 @@ class MiddlewareRegistry
         ShareErrorsFromSession::class => 70,
         HandleValidationExceptions::class => 80,
         AuthenticateMiddleware::class => 100,
+        EnsureEmailIsVerified::class => 110,
     ];
 
 

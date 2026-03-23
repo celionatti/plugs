@@ -23,11 +23,8 @@ class MailModule implements ModuleInterface
 
     public function register(Container $container): void
     {
-        $container->singleton('mail', function () use ($container) {
-            $mail = new \Plugs\Mail\MailServiceProvider($container);
-            $mail->register();
-            return $mail;
-        });
+        $provider = new \Plugs\Mail\MailServiceProvider($container);
+        $provider->register();
     }
 
     public function boot(Plugs $app): void
