@@ -4,13 +4,13 @@ declare(strict_types=1);
 
 namespace Modules\{{name}}\Controllers;
 
-use Plugs\Http\Request;
-use Plugs\Http\Response;
-use Plugs\Facades\Auth;
-use Plugs\Facades\View;
 use Modules\{{name}}\Services\AuthService;
+use Plugs\Base\Controller\Controller;
+use Plugs\Facades\Auth;
+use Psr\Http\Message\ResponseInterface;
+use Psr\Http\Message\ServerRequestInterface;
 
-class VerifyEmailController
+class VerifyEmailController extends Controller
 {
     private AuthService $authService;
 
@@ -19,43 +19,43 @@ class VerifyEmailController
         $this->authService = $authService;
     }
 
-    public function show(): Response
+    public function show(ServerRequestInterface $request): ResponseInterface
     {
         if (Auth::user()?->hasVerifiedEmail()) {
-            return redirect('/');
+            return $this->redirect('/');
         }
 
-        return View::render('{{lowerName}}::verify-email');
+        return $this->view('{{lowerName}}::verify-email', ['title' => 'Verify Email']);
     }
 
-    public function verify(Request $request): Response
+    public function verify(ServerRequestInterface $request): ResponseInterface
     {
-        $id = $request->route('id');
-        $hash = $request->route('hash');
+        $id = $request->getAttribute('id');
+        $hash = $request->getAttribute('hash');
 
         if (!Auth::check() || (string) Auth::id() !== $id) {
-            return redirect('/login')->with('error', 'Invalid verification link.');
+            return $this->redirect('/login')->withError('Invalid verification link.');
         }
 
         if (Auth::user()?->hasVerifiedEmail()) {
-            return redirect('/')->with('success', 'Email already verified.');
+            return $this->redirect('/')->withSuccess('Email already verified.');
         }
 
         if ($this->authService->verifyEmail((int) $id, $hash)) {
-            return redirect('/')->with('success', 'Email verified successfully!');
+            return $this->redirect('/')->withSuccess('Email verified successfully!');
         }
 
-        return redirect('/verify-email')->with('error', 'Invalid or expired verification link.');
+        return $this->redirect('/verify-email')->withError('Invalid or expired verification link.');
     }
 
-    public function resend(): Response
+    public function resend(ServerRequestInterface $request): ResponseInterface
     {
         if (Auth::user()?->hasVerifiedEmail()) {
-            return redirect('/');
+            return $this->redirect('/');
         }
 
         $this->authService->sendEmailVerificationNotification(Auth::user());
 
-        return back()->with('status', 'Verification link sent!');
+        return $this->back()->withSuccess('Verification link sent!');
     }
 }

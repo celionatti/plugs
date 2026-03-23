@@ -797,7 +797,7 @@ trait CompilesComponents
      */
     protected function compileComponentTags(string $content): string
     {
-        $attrRegex = '((?:[^>"\']+|"[^"]*"|\'[^\']*\')*)';
+        $attrRegex = '((?:[^>"\']|"[^"]*"|\'[^\']*\')*)';
 
         // 1. <fragment name="..."> ... </fragment>
         $content = preg_replace_callback('/<fragment' . $attrRegex . '>/is', function ($m) {

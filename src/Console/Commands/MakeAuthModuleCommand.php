@@ -14,9 +14,7 @@ class MakeAuthModuleCommand extends Command
 
     protected function defineArguments(): array
     {
-        return [
-            'name' => 'The name of the authentication module (e.g., MemberAuth, CustomerAuth)',
-        ];
+        return [];
     }
 
     protected function defineOptions(): array
@@ -31,14 +29,8 @@ class MakeAuthModuleCommand extends Command
     {
         $this->advancedHeader('Auth Module Generator', 'Scaffolding full authentication systems');
 
-        $name = $this->argument('0');
-
-        if (!$name) {
-            $name = $this->ask('Auth module name', 'Auth');
-        }
-
-        $name = Str::studly($name);
-        $lowerName = strtolower($name);
+        $name = 'Auth';
+        $lowerName = 'auth';
         $basePath = getcwd() . '/modules/' . $name;
 
         if (Filesystem::isDirectory($basePath) && !$this->hasOption('force')) {

@@ -1,4 +1,4 @@
-<layout name=\"{{lowerName}}::layouts.auth">
+<layout name="{{lowerName}}::layouts.auth">
     <slot:title>{{ $title ?? 'Create Account' }}</slot:title>
     
     <slot:icon>
