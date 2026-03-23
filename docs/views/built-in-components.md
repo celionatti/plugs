@@ -129,6 +129,9 @@ class PricingCard extends Component
 | [Pagination](#pagination) | `<x-pagination>` | `currentPage`, `totalPages`, `baseUrl` |
 | [Spinner](#spinner) | `<x-spinner>` | `size`, `color` |
 | [Toast](#toast) | `<x-toast>` | `type`, `message`, `position`, `duration` |
+| [Async](#async) | `<x-async>` | `src`, `component`, `props` |
+| [Lazy](#lazy) | `<x-lazy>` | `component`, `props` |
+| [Fetch](#fetch) | `<x-fetch>` | `url` |
 
 ---
 
@@ -320,6 +323,110 @@ A drop-in replacement for standard `<a>` tags that automatically enables SPA-sty
 
 > [!TIP]
 > The `<x-link>` component automatically determines if it's the current "active" page based on the `href` and the current URL. If it matches, it automatically applies the `active-class` (or `active-style`).
+
+---
+
+## Advanced SPA Components
+
+The Plugs framework (`plugs-spa.js`) supports advanced, interactive component loading mechanisms. These built-in wrappers let you utilize them effortlessly.
+
+### Async
+
+Loads a component or an HTML fragment immediately via AJAX *after* the initial page load. Perfect for deferring heavy or non-critical content to speed up the initial render.
+
+**Props:**
+
+| Prop | Type | Default | Description |
+|---|---|---|---|
+| `src` | string | `null` | URL returning HTML to inject |
+| `component` | string | `null` | Framework component class name to render dynamically |
+| `props` | array | `[]` | Props to pass to the dynamic component |
+
+**Examples:**
+
+```html
+{{-- Load an external HTML snippet --}}
+<x-async src="/api/stats/html">
+    <x-spinner size="sm" /> Loading latest stats...
+</x-async>
+
+{{-- Load a backend component dynamically (handled automatically by Plugs) --}}
+<x-async component="Admin::HeavyChart" :props="['days' => 30]">
+    <div class="placeholder glow">Loading chart...</div>
+</x-async>
+```
+
+---
+
+### Lazy
+
+Infers rendering until the element scrolls into the viewport. This uses the `IntersectionObserver` under the hood. It's the best way to load heavy widgets "below the fold" only when the user actually sees them.
+
+**Props:**
+
+| Prop | Type | Default | Description |
+|---|---|---|---|
+| `component` | string | `null` | Framework component class name to render |
+| `props` | array | `[]` | Props to pass to the dynamic component |
+
+**Examples:**
+
+```html
+{{-- Will only load when the user scrolls down to it --}}
+<x-lazy component="UserComments" :props="['postId' => $post->id]">
+    <div style="height: 300px" class="animate-pulse bg-gray-200">
+        Scrolling down to load comments...
+    </div>
+</x-lazy>
+```
+
+---
+
+### Fetch
+
+Fetches JSON from an endpoint and renders it using a client-side template string natively within `plugs-spa.js` (no Vue or Alpine required for basic loops/logic).
+
+**Props:**
+
+| Prop | Type | Default | Description |
+|---|---|---|---|
+| `url` | string | `null` | The JSON API endpoint |
+
+**Slots:**
+
+- `initial` — What to show while fetching
+- `template` — The HTML template to render with the JSON data
+
+**Template Syntax:**
+- Display values: `{{ item.name }}`
+- For loops: `@for item in key` 
+- If statements: `@if(item.isValid)`
+
+**Examples:**
+
+```html
+<x-fetch url="/api/users/active">
+    
+    {{-- Temporary loading state --}}
+    <slot:initial>Fetching users...</slot:initial>
+
+    {{-- Rendered once JSON arrives --}}
+    <slot:template>
+        <div class="user-grid">
+            @for user in data
+                <x-card>
+                    <h3>{{ user.name }}</h3>
+                    <p>{{ user.email }}</p>
+                    @if(user.is_admin)
+                        <x-badge type="danger">Admin</x-badge>
+                    @endif
+                </x-card>
+            @endfor
+        </div>
+    </slot:template>
+    
+</x-fetch>
+```
 
 ---
 
