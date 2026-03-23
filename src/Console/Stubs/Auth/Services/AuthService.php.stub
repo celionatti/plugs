@@ -30,10 +30,7 @@ class AuthService
         );
     }
 
-    /**
-     * Register a new user and log them in immediately.
-     */
-    public function registerUser(RegisterRequest $request): void
+    public function registerUser(RegisterRequest $request): object
     {
         // Double check uniqueness
         if ($this->userRepository->emailExists($request->email())) {
@@ -43,14 +40,11 @@ class AuthService
         // Hash the password manually since User model might not have auto-hash mutator
         $hashedPassword = Hash::make($request->password());
 
-        $user = $this->userRepository->create([
+        return $this->userRepository->create([
             'name'     => $request->name(),
             'email'    => $request->email(),
             'password' => $hashedPassword,
         ]);
-
-        // Login the user after registration
-        Auth::login($user);
     }
 
     /**

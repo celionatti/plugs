@@ -39,6 +39,12 @@ class AuthController extends Controller
 
         if ($this->authService->attemptLogin($loginRequest)) {
             $user = Auth::user();
+
+            // Check if email is verified
+            if ($user && method_exists($user, 'hasVerifiedEmail') && !$user->hasVerifiedEmail()) {
+                return $this->redirect('/verify-email')->withSuccess('Please verify your email address.');
+            }
+
             $redirectPath = ($user && method_exists($user, 'isAdmin') && $user->isAdmin()) ? '/admin' : '/';
             
             return $this->redirect($redirectPath)->withSuccess('Welcome back!');
@@ -68,17 +74,15 @@ class AuthController extends Controller
         $registerRequest = new RegisterRequest($validated);
 
         try {
-            $this->authService->registerUser($registerRequest);
-            $user = Auth::user();
+            $user = $this->authService->registerUser($registerRequest);
             
-            // Send email verification if using standard Plugs User features
-            if ($user && method_exists($user, 'hasVerifiedEmail') && !$user->hasVerifiedEmail()) {
-                $this->authService->sendEmailVerificationNotification($user);
-            }
+            // Send email verification
+            $this->authService->sendEmailVerificationNotification($user);
             
-            $redirectPath = ($user && method_exists($user, 'isAdmin') && $user->isAdmin()) ? '/admin' : '/';
+            // Login the user after registration so they can see the verify-email page
+            Auth::login($user);
 
-            return $this->redirect($redirectPath)->withSuccess('Account created successfully!');
+            return $this->redirect('/verify-email')->withSuccess('Account created! Please check your email for a verification link.');
         } catch (\InvalidArgumentException $e) {
             return $this->back()
                 ->withErrors(['email' => $e->getMessage()])

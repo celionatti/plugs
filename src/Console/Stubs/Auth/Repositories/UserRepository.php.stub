@@ -44,4 +44,13 @@ class UserRepository
     {
         return User::find($id);
     }
+
+    /**
+     * Mark the given user's email as verified.
+     */
+    public function markEmailAsVerified(int $userId): bool
+    {
+        $user = $this->findById($userId);
+        return $user ? $user->markEmailAsVerified() : false;
+    }
 }
