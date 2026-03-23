@@ -36,4 +36,12 @@ class UserRepository
             'role'     => $data['role'] ?? 'user',
         ]);
     }
+
+    /**
+     * Find a user by ID.
+     */
+    public function findById(int $id): ?User
+    {
+        return User::find($id);
+    }
 }

@@ -8,7 +8,10 @@ use Modules\{{name}}\Requests\LoginRequest;
 use Modules\{{name}}\Requests\RegisterRequest;
 use Modules\{{name}}\Repositories\UserRepository;
 use Plugs\Facades\Auth;
+use Plugs\Facades\DB;
 use Plugs\Security\Hash;
+use Plugs\Utils\Str;
+
 
 class AuthService
 {
@@ -65,9 +68,9 @@ class AuthService
         $user = $this->userRepository->findByEmail($email);
         if (!$user) return; // Don't throw to prevent email enumeration
 
-        $token = Plugs\Facades\Str::random(60);
+        $token = Str::random(60);
         // Assuming there is a DB facade or model for password_reset_tokens
-        Plugs\Facades\DB::table('password_reset_tokens')->updateOrInsert(
+        DB::table('password_reset_tokens')->updateOrInsert(
             ['email' => $email],
             ['token' => $token, 'created_at' => now()]
         );
@@ -89,7 +92,7 @@ class AuthService
      */
     public function resetPassword(string $email, string $password, string $token): bool
     {
-        $resetRecord = Plugs\Facades\DB::table('password_reset_tokens')->where('email', $email)->first();
+        $resetRecord = DB::table('password_reset_tokens')->where('email', $email)->first();
 
         if (!$resetRecord || $resetRecord->token !== $token) {
             return false;
@@ -101,7 +104,7 @@ class AuthService
         $user->password = Hash::make($password);
         $user->save();
 
-        Plugs\Facades\DB::table('password_reset_tokens')->where('email', $email)->delete();
+        DB::table('password_reset_tokens')->where('email', $email)->delete();
 
         return true;
     }
