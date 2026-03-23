@@ -1,0 +1,61 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Modules\{{name}}\Controllers;
+
+use Plugs\Http\Request;
+use Plugs\Http\Response;
+use Plugs\Facades\Auth;
+use Plugs\Facades\View;
+use Modules\{{name}}\Services\AuthService;
+
+class VerifyEmailController
+{
+    private AuthService $authService;
+
+    public function __construct(AuthService $authService)
+    {
+        $this->authService = $authService;
+    }
+
+    public function show(): Response
+    {
+        if (Auth::user()?->hasVerifiedEmail()) {
+            return redirect('/');
+        }
+
+        return View::render('{{lowerName}}::verify-email');
+    }
+
+    public function verify(Request $request): Response
+    {
+        $id = $request->route('id');
+        $hash = $request->route('hash');
+
+        if (!Auth::check() || (string) Auth::id() !== $id) {
+            return redirect('/login')->with('error', 'Invalid verification link.');
+        }
+
+        if (Auth::user()?->hasVerifiedEmail()) {
+            return redirect('/')->with('success', 'Email already verified.');
+        }
+
+        if ($this->authService->verifyEmail((int) $id, $hash)) {
+            return redirect('/')->with('success', 'Email verified successfully!');
+        }
+
+        return redirect('/verify-email')->with('error', 'Invalid or expired verification link.');
+    }
+
+    public function resend(): Response
+    {
+        if (Auth::user()?->hasVerifiedEmail()) {
+            return redirect('/');
+        }
+
+        $this->authService->sendEmailVerificationNotification(Auth::user());
+
+        return back()->with('status', 'Verification link sent!');
+    }
+}

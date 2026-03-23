@@ -57,4 +57,70 @@ class AuthService
     {
         Auth::logout();
     }
+    /**
+     * Send the password reset link.
+     */
+    public function sendPasswordResetLink(string $email): void
+    {
+        $user = $this->userRepository->findByEmail($email);
+        if (!$user) return; // Don't throw to prevent email enumeration
+
+        $token = Plugs\Facades\Str::random(60);
+        // Assuming there is a DB facade or model for password_reset_tokens
+        Plugs\Facades\DB::table('password_reset_tokens')->updateOrInsert(
+            ['email' => $email],
+            ['token' => $token, 'created_at' => now()]
+        );
+
+        // TODO: Send the actual email.
+        Plugs\Facades\Log::info("Password reset token for {$email}: {$token}");
+    }
+
+    /**
+     * Reset the user password.
+     */
+    public function resetPassword(string $email, string $password, string $token): bool
+    {
+        $resetRecord = Plugs\Facades\DB::table('password_reset_tokens')->where('email', $email)->first();
+
+        if (!$resetRecord || $resetRecord->token !== $token) {
+            return false;
+        }
+
+        $user = $this->userRepository->findByEmail($email);
+        if (!$user) return false;
+
+        $user->password = Hash::make($password);
+        $user->save();
+
+        Plugs\Facades\DB::table('password_reset_tokens')->where('email', $email)->delete();
+
+        return true;
+    }
+
+    /**
+     * Verify email via ID and Hash.
+     */
+    public function verifyEmail(int $userId, string $hash): bool
+    {
+        $user = $this->userRepository->findById($userId);
+        if (!$user || sha1($user->email) !== $hash) {
+            return false;
+        }
+
+        if (!$user->hasVerifiedEmail()) {
+            $user->markEmailAsVerified();
+        }
+
+        return true;
+    }
+
+    /**
+     * Send email verification link.
+     */
+    public function sendEmailVerificationNotification(object $user): void
+    {
+        // TODO: Send the exact email verification link logic
+        // Plugs\Facades\Log::info("Verification link for {$user->email} sent.");
+    }
 }

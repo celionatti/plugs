@@ -69,8 +69,13 @@ class AuthController extends Controller
 
         try {
             $this->authService->registerUser($registerRequest);
-            
             $user = Auth::user();
+            
+            // Send email verification if using standard Plugs User features
+            if ($user && method_exists($user, 'hasVerifiedEmail') && !$user->hasVerifiedEmail()) {
+                $this->authService->sendEmailVerificationNotification($user);
+            }
+            
             $redirectPath = ($user && method_exists($user, 'isAdmin') && $user->isAdmin()) ? '/admin' : '/';
 
             return $this->redirect($redirectPath)->withSuccess('Account created successfully!');

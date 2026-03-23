@@ -1,0 +1,25 @@
+<?php
+
+declare(strict_types=1);
+
+?>
+@extends('{{lowerName}}::layouts.auth')
+
+@section('heading', 'Verify your email')
+@section('subheading', 'Thanks for signing up! Before getting started, could you verify your email address by clicking on the link we just emailed to you? If you didn\'t receive the email, we will gladly send you another.')
+
+@section('content')
+    <form action="/email/verification-notification" method="POST" class="mt-4">
+        <x-{{lowerName}}::auth-button type="submit">
+            Resend Verification Email
+        </x-{{lowerName}}::auth-button>
+    </form>
+@endsection
+
+@section('footer')
+    <form action="/logout" method="POST" class="inline">
+        <button type="submit" class="text-sm font-semibold text-slate-500 dark:text-slate-400 hover:text-indigo-500 transition-colors underline underline-offset-4">
+            Log Out
+        </button>
+    </form>
+@endsection

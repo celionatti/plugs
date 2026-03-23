@@ -7,7 +7,7 @@
     <form action="/login" method="POST" class="space-y-4">
         @csrf
 
-        <x-auth::auth-input 
+        <x-{{lowerName}}::auth-input 
             name="email" 
             type="email" 
             label="Email address" 
@@ -19,9 +19,9 @@
             <slot:icon>
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
             </slot:icon>
-        </x-auth::auth-input>
+        </x-{{lowerName}}::auth-input>
 
-        <x-auth::auth-input 
+        <x-{{lowerName}}::auth-input 
             name="password" 
             type="password" 
             label="Password" 
@@ -31,19 +31,19 @@
             <slot:icon>
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
             </slot:icon>
-        </x-auth::auth-input>
+        </x-{{lowerName}}::auth-input>
 
         <div class="flex items-center justify-between px-1 py-1">
             <label class="flex items-center gap-2.5 cursor-pointer group">
                 <input type="checkbox" name="remember" class="w-4.5 h-4.5 rounded border-2 border-slate-200 text-black focus:ring-black/20 transition-all cursor-pointer">
                 <span class="text-sm font-bold text-slate-500 group-hover:text-slate-700 dark:group-hover:text-slate-300 transition-colors">Remember me</span>
             </label>
-            <a href="/password/reset" class="text-sm font-bold text-black dark:text-white hover:underline transition-all">Forgot password?</a>
+            <a href="/forgot-password" class="text-sm font-bold text-black dark:text-white hover:underline transition-all">Forgot password?</a>
         </div>
 
-        <x-auth::auth-button class="py-3">
+        <x-{{lowerName}}::auth-button class="py-3">
             Sign in
-        </x-auth::auth-button>
+        </x-{{lowerName}}::auth-button>
     </form>
 
     <slot:footer>
