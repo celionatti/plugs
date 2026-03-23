@@ -117,6 +117,7 @@ class PricingCard extends Component
 | [Badge](#badge) | `<x-badge>` | `type`, `pill`, `size` |
 | [Button](#button) | `<x-button>` | `variant`, `size`, `href`, `disabled` |
 | [Card](#card) | `<x-card>` | `shadow`, `padding`, `bordered` |
+| [Link](#link) | `<x-link>` | `href`, `target`, `method`, `confirm` |
 | [Modal](#modal) | `<x-modal>` | `id`, `title`, `size`, `closable` |
 | [Dropdown](#dropdown) | `<x-dropdown>` | `label`, `align` |
 | [Avatar](#avatar) | `<x-avatar>` | `src`, `alt`, `size`, `fallback` |
@@ -272,6 +273,53 @@ A content wrapper with optional header and footer slots.
     <p>Compact content area.</p>
 </x-card>
 ```
+
+---
+
+### Link
+
+A drop-in replacement for standard `<a>` tags that automatically enables SPA-style navigation (via `plugs-spa.js`). It prevents full page reloads and provides smooth transitions.
+
+**Props:**
+
+| Prop | Type | Default | Description |
+|---|---|---|---|
+| `href` | string | `#` | URL to navigate to |
+| `target` | string | `''` | CSS selector for partial update (e.g., `#main-content`) |
+| `method` | string | `GET` | HTTP method (`GET`, `POST`, `PUT`, `DELETE`) |
+| `confirm` | string | `''` | Confirmation prompt text before navigating |
+| `prefetch` | bool | `true` | Pre-fetch the page on hover |
+| `active-class` | string | `''` | CSS class to apply when the current URL matches `href` |
+
+**Examples:**
+
+```html
+{{-- Basic SPA navigation --}}
+<x-link href="/dashboard">Dashboard</x-link>
+
+{{-- Styling the active link --}}
+<x-link href="/users" class="nav-link" active-class="text-blue-600 font-bold">
+    Users
+</x-link>
+
+{{-- Partial page update (only updates #main area) --}}
+<x-link href="/settings/profile" target="#main">
+    Profile Settings
+</x-link>
+
+{{-- Trigger a POST request (e.g., Logout) --}}
+<x-link href="/logout" method="POST">
+    Logout
+</x-link>
+
+{{-- Require confirmation before action --}}
+<x-link href="/posts/1/delete" method="POST" confirm="Are you sure you want to delete this post?">
+    <x-button variant="danger" size="sm">Delete</x-button>
+</x-link>
+```
+
+> [!TIP]
+> The `<x-link>` component automatically determines if it's the current "active" page based on the `href` and the current URL. If it matches, it automatically applies the `active-class` (or `active-style`).
 
 ---
 
