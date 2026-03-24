@@ -176,12 +176,12 @@ class AuthService
         }
 
         // Check if token matches
-        if ($record->token !== $code) {
+        if ($record['token'] !== $code) {
             return false;
         }
 
         // Check if token has expired
-        if (isset($record->expires_at) && strtotime($record->expires_at) < time()) {
+        if (isset($record['expires_at']) && strtotime($record['expires_at']) < time()) {
             DB::table('email_verification_tokens')->where('email', $email)->delete();
             return false;
         }
