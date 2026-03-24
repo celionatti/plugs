@@ -6,22 +6,101 @@ declare(strict_types=1);
 @extends('{{lowerName}}::layouts.auth')
 
 @section('heading', 'Verify your email')
-@section('subheading', 'Thanks for signing up! Before getting started, could you verify your email address by clicking on the link we just emailed to you? If you didn\'t receive the email, we will gladly send you another.')
+@section('subheading')
+    We've sent a 6-digit verification code to <strong>{{ $email ?? 'your email' }}</strong>. Please enter the code below to verify your account.
+@endsection
 
 @section('content')
-    <form action="/email/verification-notification" method="POST" class="mt-4">
+    <form action="/verify-email" method="POST" class="mt-4" id="verify-form">
         @csrf
-        <x-{{lowerName}}::auth-button type="submit">
-            Resend Verification Email
+
+        <!-- 6-Digit Code Input -->
+        <div class="flex justify-center gap-2 sm:gap-3 mb-6" id="code-inputs">
+            @for($i = 1; $i <= 6; $i++)
+                <input
+                    type="text"
+                    name="digit{{ $i }}"
+                    id="digit{{ $i }}"
+                    maxlength="1"
+                    inputmode="numeric"
+                    pattern="[0-9]"
+                    autocomplete="one-time-code"
+                    class="w-11 h-14 sm:w-13 sm:h-16 text-center text-xl sm:text-2xl font-bold rounded-xl border-2 border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800/50 text-slate-900 dark:text-white focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 outline-none transition-all duration-200"
+                    required
+                />
+            @endfor
+        </div>
+
+        <x-{{lowerName}}::auth-button type="submit" class="py-3">
+            Verify Email
         </x-{{lowerName}}::auth-button>
     </form>
+
+    <!-- Resend Section -->
+    <div class="mt-6 text-center">
+        <p class="text-sm text-slate-500 dark:text-slate-400 mb-3">Didn't receive the code?</p>
+        <form action="/email/verification-notification" method="POST" class="inline">
+            @csrf
+            <button type="submit" class="text-sm font-bold text-indigo-600 dark:text-indigo-400 hover:text-indigo-500 hover:underline transition-all underline-offset-4">
+                Resend Code
+            </button>
+        </form>
+    </div>
 @endsection
 
 @section('footer')
-    <form action="/logout" method="POST" class="inline">
-        @csrf
-        <button type="submit" class="text-sm font-semibold text-slate-500 dark:text-slate-400 hover:text-indigo-500 transition-colors underline underline-offset-4">
-            Log Out
-        </button>
-    </form>
+    @if(\Plugs\Facades\Auth::check())
+        <form action="/logout" method="POST" class="inline">
+            @csrf
+            <button type="submit" class="text-sm font-semibold text-slate-500 dark:text-slate-400 hover:text-indigo-500 transition-colors underline underline-offset-4">
+                Log Out
+            </button>
+        </form>
+    @else
+        <a href="/login" class="text-sm font-semibold text-indigo-600 hover:text-indigo-500 underline underline-offset-4">
+            Back to Login
+        </a>
+    @endif
 @endsection
+
+@push('scripts')
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const inputs = document.querySelectorAll('#code-inputs input');
+
+    inputs.forEach((input, index) => {
+        // Auto-focus next input on digit entry
+        input.addEventListener('input', function(e) {
+            const val = this.value.replace(/[^0-9]/g, '');
+            this.value = val;
+            if (val.length === 1 && index < inputs.length - 1) {
+                inputs[index + 1].focus();
+            }
+        });
+
+        // Handle backspace to go to previous input
+        input.addEventListener('keydown', function(e) {
+            if (e.key === 'Backspace' && !this.value && index > 0) {
+                inputs[index - 1].focus();
+                inputs[index - 1].value = '';
+            }
+        });
+
+        // Handle paste of full code
+        input.addEventListener('paste', function(e) {
+            e.preventDefault();
+            const pastedData = (e.clipboardData || window.clipboardData).getData('text').replace(/[^0-9]/g, '');
+            if (pastedData.length >= inputs.length) {
+                inputs.forEach((inp, i) => {
+                    inp.value = pastedData[i] || '';
+                });
+                inputs[inputs.length - 1].focus();
+            }
+        });
+    });
+
+    // Auto-focus first input
+    if (inputs[0]) inputs[0].focus();
+});
+</script>
+@endpush

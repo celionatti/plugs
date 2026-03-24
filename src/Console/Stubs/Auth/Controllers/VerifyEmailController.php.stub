@@ -21,41 +21,119 @@ class VerifyEmailController extends Controller
 
     public function show(ServerRequestInterface $request): ResponseInterface
     {
-        if (Auth::user()?->hasVerifiedEmail()) {
+        if (Auth::check() && Auth::user()?->hasVerifiedEmail()) {
             return $this->redirect('/');
         }
 
-        return $this->view('{{lowerName}}::verify-email', ['title' => 'Verify Email']);
+        if (session_status() === PHP_SESSION_NONE) {
+            session_start();
+        }
+        $email = $_SESSION['auth.verify_email'] ?? Auth::user()?->email;
+
+        if (!$email && !Auth::check()) {
+            return $this->redirect('/login');
+        }
+
+        return $this->view('{{lowerName}}::verify-email', [
+            'title' => 'Verify Email',
+            'email' => $email
+        ]);
+
     }
+
 
     public function verify(ServerRequestInterface $request): ResponseInterface
     {
         $id = $request->getAttribute('id');
         $hash = $request->getAttribute('hash');
 
-        if (!Auth::check() || (string) Auth::id() !== $id) {
-            return $this->redirect('/login')->withError('Invalid verification link.');
+        // We allow verifying without being logged in
+        $user = (new \Modules\{{name}}\Repositories\UserRepository())->findById((int)$id);
+
+        if (!$user || sha1($user->email) !== $hash) {
+            return $this->redirect('/login')->withError('Invalid or expired verification link.');
         }
 
-        if (Auth::user()?->hasVerifiedEmail()) {
-            return $this->redirect('/')->withSuccess('Email already verified.');
+        if (method_exists($user, 'hasVerifiedEmail') && $user->hasVerifiedEmail()) {
+            return $this->redirect('/login')->withSuccess('Email already verified. Please login.');
         }
+
 
         if ($this->authService->verifyEmail((int) $id, $hash)) {
-            return $this->redirect('/')->withSuccess('Email verified successfully!');
+            // Remove the temporary session email if it exists
+            if (session_status() === PHP_SESSION_NONE) {
+                session_start();
+            }
+            unset($_SESSION['auth.verify_email']);
+
+            return $this->redirect('/login')->withSuccess('Email verified successfully! You can now login.');
         }
 
-        return $this->redirect('/verify-email')->withError('Invalid or expired verification link.');
+        return $this->redirect('/login')->withError('Invalid or expired verification link.');
+
     }
 
     public function resend(ServerRequestInterface $request): ResponseInterface
     {
-        if (Auth::user()?->hasVerifiedEmail()) {
+        if (Auth::check() && Auth::user()?->hasVerifiedEmail()) {
             return $this->redirect('/');
         }
 
-        $this->authService->sendEmailVerificationNotification(Auth::user());
+        if (session_status() === PHP_SESSION_NONE) {
+            session_start();
+        }
+        $email = $_SESSION['auth.verify_email'] ?? Auth::user()?->email;
 
-        return $this->back()->withSuccess('Verification link sent!');
+        if (!$email) {
+            return $this->redirect('/login')->withError('Please login first.');
+        }
+
+        $user = (new \Modules\{{name}}\Repositories\UserRepository())->findByEmail($email);
+        if ($user) {
+            $this->authService->sendEmailVerificationNotification($user);
+        }
+
+        return $this->back()->withSuccess('A new verification code has been sent to your email!');
     }
+
+    /**
+     * Verify email using the submitted 6-digit code.
+     */
+    public function verifyCode(ServerRequestInterface $request): ResponseInterface
+    {
+        $body = $request->getParsedBody();
+
+        if (session_status() === PHP_SESSION_NONE) {
+            session_start();
+        }
+        $email = $_SESSION['auth.verify_email'] ?? Auth::user()?->email;
+
+        if (!$email) {
+            return $this->redirect('/login')->withError('Session expired. Please login and try again.');
+        }
+
+        // Collect individual digit fields into a single code
+        $code = '';
+        for ($i = 1; $i <= 6; $i++) {
+            $code .= $body["digit{$i}"] ?? '';
+        }
+
+        // Fallback: accept a single 'code' field too
+        if (strlen($code) !== 6 && isset($body['code'])) {
+            $code = trim((string) $body['code']);
+        }
+
+        if (strlen($code) !== 6 || !ctype_digit($code)) {
+            return $this->back()->withError('Please enter a valid 6-digit verification code.');
+        }
+
+        if ($this->authService->verifyEmailWithCode($email, $code)) {
+            unset($_SESSION['auth.verify_email']);
+
+            return $this->redirect('/login')->withSuccess('Email verified successfully! You can now login.');
+        }
+
+        return $this->back()->withError('Invalid or expired verification code. Please try again or request a new one.');
+    }
+
 }

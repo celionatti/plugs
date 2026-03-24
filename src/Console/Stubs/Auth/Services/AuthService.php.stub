@@ -121,7 +121,7 @@ class AuthService
     }
 
     /**
-     * Send email verification link.
+     * Send email verification code.
      */
     public function sendEmailVerificationNotification(object $user): void
     {
@@ -129,18 +129,76 @@ class AuthService
             return;
         }
 
-        $appUrl = rtrim((string) config('app.url', 'http://localhost'), '/');
-        $id = $user->id ?? 0;
-        $hash = sha1($user->email ?? '');
-        $verifyUrl = $appUrl . "/verify-email/{$id}/{$hash}";
+        $tokenLength = (int) config('auth.email_verification.token_length', 6);
+        $expiryHours = (int) config('auth.email_verification.expiry_hours', 24);
 
+        // Generate a numeric verification code
+        $code = str_pad((string) random_int(0, (int) str_repeat('9', $tokenLength)), $tokenLength, '0', STR_PAD_LEFT);
+
+        // Store token in database
+        DB::table('email_verification_tokens')->updateOrInsert(
+            ['email' => $user->email],
+            [
+                'token' => $code,
+                'created_at' => date('Y-m-d H:i:s'),
+                'expires_at' => date('Y-m-d H:i:s', strtotime("+{$expiryHours} hours")),
+            ]
+        );
+
+        $appName = config('app.name', 'Our App');
         $name = $user->name ?? 'User';
-        $body = "<h2>Verify Your Email Address</h2>
-                 <p>Hi {$name},</p>
-                 <p>Thank you for registering! Please verify your email address by clicking the button below:</p>
-                 <a href=\"{$verifyUrl}\" style=\"display:inline-block;padding:10px 20px;background-color:#4F46E5;color:white;text-decoration:none;border-radius:5px;\">Verify Email Address</a>
-                 <p>If you did not create an account, no further action is required.</p>";
 
-        \Plugs\Facades\Mail::send($user->email, 'Verify Your Email Address', $body, true);
+        $body = "<div style=\"font-family: 'Segoe UI', Arial, sans-serif; max-width: 520px; margin: 0 auto; padding: 40px 0;\">
+                  <h2 style=\"color: #1e293b; font-size: 24px; margin-bottom: 8px;\">Verify Your Email Address</h2>
+                  <p style=\"color: #475569; font-size: 15px; line-height: 1.6;\">Hi {$name},</p>
+                  <p style=\"color: #475569; font-size: 15px; line-height: 1.6;\">Thank you for registering with {$appName}! Use the verification code below to verify your email address:</p>
+                  <div style=\"background: linear-gradient(135deg, #4F46E5, #7C3AED); border-radius: 16px; padding: 32px; text-align: center; margin: 24px 0;\">
+                      <span style=\"font-family: 'Courier New', monospace; font-size: 36px; font-weight: bold; letter-spacing: 8px; color: #ffffff;\">{$code}</span>
+                  </div>
+                  <p style=\"color: #475569; font-size: 14px; line-height: 1.6;\">This code will expire in {$expiryHours} hours.</p>
+                  <p style=\"color: #94a3b8; font-size: 13px; line-height: 1.6; margin-top: 24px;\">If you did not create an account, no further action is required.</p>
+                 </div>";
+
+        \Plugs\Facades\Mail::send($user->email, 'Your Verification Code', $body, true);
+    }
+
+    /**
+     * Verify email using a 6-digit code.
+     */
+    public function verifyEmailWithCode(string $email, string $code): bool
+    {
+        $record = DB::table('email_verification_tokens')
+            ->where('email', $email)
+            ->first();
+
+        if (!$record) {
+            return false;
+        }
+
+        // Check if token matches
+        if ($record->token !== $code) {
+            return false;
+        }
+
+        // Check if token has expired
+        if (isset($record->expires_at) && strtotime($record->expires_at) < time()) {
+            DB::table('email_verification_tokens')->where('email', $email)->delete();
+            return false;
+        }
+
+        // Mark email as verified
+        $user = $this->userRepository->findByEmail($email);
+        if (!$user) {
+            return false;
+        }
+
+        if (method_exists($user, 'markEmailAsVerified')) {
+            $user->markEmailAsVerified();
+        }
+
+        // Clean up the token
+        DB::table('email_verification_tokens')->where('email', $email)->delete();
+
+        return true;
     }
 }

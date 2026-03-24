@@ -133,6 +133,6 @@ class User extends PlugModel implements Authenticatable
      */
     public function markEmailAsVerified(): bool
     {
-        return $this->update(['email_verified_at' => now()]);
+        return $this->update(['email_verified_at' => date('Y-m-d H:i:s')]);
     }
 }

@@ -26,12 +26,16 @@ Route::middleware(['web', 'guest'])->group(function () {
 // Authenticated Routes
 Route::middleware(['web', 'auth'])->group(function () {
     Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
+});
 
+// Verification Routes
+Route::middleware(['web'])->group(function () {
     Route::get('/verify-email', [VerifyEmailController::class, 'show'])->name('verification.notice');
+    Route::post('/verify-email', [VerifyEmailController::class, 'verifyCode'])->name('verification.code');
     Route::get('/verify-email/{id}/{hash}', [VerifyEmailController::class, 'verify'])
-        ->middleware(['signed'])
         ->name('verification.verify');
     Route::post('/email/verification-notification', [VerifyEmailController::class, 'resend'])
         ->middleware(['throttle:6,1'])
         ->name('verification.send');
 });
+

@@ -42,7 +42,16 @@ class AuthController extends Controller
 
             // Check if email is verified
             if ($user && method_exists($user, 'hasVerifiedEmail') && !$user->hasVerifiedEmail()) {
-                return $this->redirect('/verify-email')->withSuccess('Please verify your email address.');
+                $email = $user->email;
+                Auth::logout();
+                
+                // Store email in session to show on notice page
+                if (session_status() === PHP_SESSION_NONE) {
+                    session_start();
+                }
+                $_SESSION['auth.verify_email'] = $email;
+                
+                return $this->redirect('/verify-email')->withError('Please verify your email address.');
             }
 
             $redirectPath = ($user && method_exists($user, 'isAdmin') && $user->isAdmin()) ? '/admin' : '/';
@@ -79,17 +88,25 @@ class AuthController extends Controller
             // Send email verification
             $this->authService->sendEmailVerificationNotification($user);
             
-            // Login the user after registration so they can see the verify-email page
-            Auth::login($user);
+            // Don't login the user after registration if we want them to verify first
+            // But we store their email in session so the verify page knows who they are
+            if (session_status() === PHP_SESSION_NONE) {
+                session_start();
+            }
+            $_SESSION['auth.verify_email'] = $user->email;
 
-            return $this->redirect('/verify-email')->withSuccess('Account created! Please check your email for a verification link.');
+            return $this->redirect('/verify-email')->withSuccess('Account created! Please check your email for a verification code.');
+
         } catch (\InvalidArgumentException $e) {
             return $this->back()
+                ->withError($e->getMessage())
                 ->withErrors(['email' => $e->getMessage()])
                 ->withInput();
         } catch (\Exception $e) {
+            error_log('Registration Error: ' . $e->getMessage() . ' in ' . $e->getFile() . ':' . $e->getLine());
             return $this->back()
-                ->withErrors(['general' => 'An error occurred during registration. Please try again.'])
+                ->withError('Application Error: ' . $e->getMessage())
+                ->withErrors(['general' => 'Application Error: ' . $e->getMessage()])
                 ->withInput();
         }
     }

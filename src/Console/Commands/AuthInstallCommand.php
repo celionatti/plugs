@@ -31,6 +31,10 @@ class AuthInstallCommand extends Command
             $this->publishPasswordResetTokensMigration();
         });
 
+        $this->task('Publishing email_verification_tokens migration', function () {
+            $this->publishEmailVerificationTokensMigration();
+        });
+
         $this->task('Publishing personal_access_tokens migration', function () {
             $this->publishPersonalAccessTokensMigration();
         });
@@ -352,6 +356,70 @@ return new class extends Migration {
     public function down(): void
     {
         Schema::dropIfExists('password_reset_tokens');
+    }
+};
+EOT;
+    }
+
+    private function publishEmailVerificationTokensMigration(): void
+    {
+        $migrationFile = 'create_email_verification_tokens_table.php';
+        $basePath = base_path('database/migrations');
+
+        if (!is_dir($basePath)) {
+            mkdir($basePath, 0755, true);
+        }
+
+        // Check if it already exists
+        $files = glob($basePath . '/*_' . $migrationFile);
+        if (!empty($files)) {
+            $this->warning(" Migration [{$migrationFile}] already exists.");
+            return;
+        }
+
+        $timestamp = date('Y_m_d_His');
+        $filename = $timestamp . '_' . $migrationFile;
+        $path = $basePath . '/' . $filename;
+
+        $content = $this->getEmailVerificationTokensMigrationContent();
+        Filesystem::put($path, $content);
+
+        $this->info(" Created migration: {$filename}");
+        sleep(1);
+    }
+
+    private function getEmailVerificationTokensMigrationContent(): string
+    {
+        return <<<'EOT'
+<?php
+
+declare(strict_types=1);
+
+use Plugs\Database\Migration;
+use Plugs\Database\Schema;
+use Plugs\Database\Blueprint;
+
+return new class extends Migration {
+    /**
+     * Run the migrations.
+     */
+    public function up(): void
+    {
+        Schema::create('email_verification_tokens', function (Blueprint $table) {
+            $table->id();
+            $table->string('email')->index();
+            $table->string('token', 10);
+            $table->timestamp('created_at')->nullable();
+            $table->timestamp('expires_at')->nullable();
+        });
+    }
+
+    /**
+     * Reverse the migrations.
+     */
+    public function down(): void
+    {
+        Schema::dropIfExists('email_verification_tokens');
     }
 };
 EOT;
