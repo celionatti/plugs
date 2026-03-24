@@ -365,7 +365,7 @@ class DefaultConfig
     private static function hash(): array
     {
         return [
-            'driver' => env('HASH_DRIVER', 'argon2id'),
+            'driver' => env('HASH_DRIVER', 'bcrypt'),
             'bcrypt' => [
                 'rounds' => (int)(env('BCRYPT_ROUNDS', 12)),
             ],
