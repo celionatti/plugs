@@ -43,15 +43,21 @@ class AuthController extends Controller
             // Check if email is verified
             if ($user && method_exists($user, 'hasVerifiedEmail') && !$user->hasVerifiedEmail()) {
                 $email = $user->email;
-                Auth::logout();
-                
                 // Store email in session to show on notice page
                 if (session_status() === PHP_SESSION_NONE) {
                     session_start();
                 }
+                
+                // Soft logout to preserve session (Auth::logout() destroys flashes)
+                foreach ($_SESSION as $key => $value) {
+                    if (is_string($key) && str_starts_with($key, 'login_')) {
+                        unset($_SESSION[$key]);
+                    }
+                }
+                
                 $_SESSION['auth.verify_email'] = $email;
                 
-                return $this->redirect('/verify-email')->withError('Please verify your email address.');
+                return $this->redirect('/verify-email')->withError('Please verify your email address before logging in.');
             }
 
             $redirectPath = ($user && method_exists($user, 'isAdmin') && $user->isAdmin()) ? '/admin' : '/';
