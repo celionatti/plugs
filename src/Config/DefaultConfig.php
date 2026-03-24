@@ -92,6 +92,7 @@ class DefaultConfig
     {
         return [
             'user_model' => null,
+            'login_route' => '/login',
             'table' => 'users',
             'primary_key' => 'id',
             'email_column' => 'email',
@@ -127,7 +128,7 @@ class DefaultConfig
             'created_at_column' => 'created_at',
             'updated_at_column' => 'updated_at',
             'email_verification' => [
-                'enabled' => env('AUTH_VERIFICATION', false),
+                'enabled' => env('AUTH_VERIFICATION', true),
                 'token_length' => 6,
                 'expiry_hours' => 24,
                 'send_welcome_email' => true,
