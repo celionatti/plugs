@@ -86,7 +86,7 @@ class MakeCrudCommand extends Command
         Filesystem::ensureDir($viewPath);
 
         $stubs = ['index', 'create', 'edit', 'show'];
-        $stubPath = BASE_PATH . 'stubs/crud';
+        $stubPath = BASE_PATH . 'src/stubs/crud';
 
         foreach ($stubs as $stub) {
             $content = $this->loadStub($stubPath . "/{$stub}.stub");
