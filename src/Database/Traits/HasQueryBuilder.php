@@ -105,6 +105,18 @@ trait HasQueryBuilder
         return static::query()->findOrFail($id, $columns);
     }
 
+    /**
+     * Find a model by its primary key or execute a callback.
+     *
+     * @param  mixed  $id
+     * @param  \Closure  $callback
+     * @return mixed
+     */
+    public static function findOr($id, \Closure $callback)
+    {
+        return static::query()->findOr($id, $callback);
+    }
+
     public static function findMany(array $ids, array $columns = ['*']): array|Collection
     {
         return static::query()->findMany($ids, $columns);
@@ -126,6 +138,20 @@ trait HasQueryBuilder
     public static function firstOrFail(array $columns = ['*'])
     {
         return static::query()->firstOrFail($columns);
+    }
+
+    /**
+     * Find the first record matching the attributes or instantiate a new model instance.
+     *
+     * @param  array  $attributes
+     * @return self
+     */
+    public static function firstOrNew(array $attributes): self
+    {
+        $instance = static::where($attributes)->first();
+
+        /** @phpstan-ignore new.static */
+        return $instance ?: new static($attributes);
     }
 
     public static function insert(array|object $data): Collection|self
@@ -184,7 +210,7 @@ trait HasQueryBuilder
         return static::query()->chunkById($count, $callback, $column, $alias);
     }
 
-    public static function where(string $column, $operator = null, $value = null): QueryBuilder
+    public static function where($column, $operator = null, $value = null): QueryBuilder
     {
         return static::query()->where($column, $operator, $value);
     }

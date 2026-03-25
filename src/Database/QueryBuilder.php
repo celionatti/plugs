@@ -1005,6 +1005,22 @@ class QueryBuilder
         return $callback();
     }
 
+    /**
+     * Get the first result or execute a callback.
+     *
+     * @param  mixed  $id
+     * @param  \Closure  $callback
+     * @return mixed
+     */
+    public function findOr($id, Closure $callback)
+    {
+        if (!is_null($model = $this->find($id))) {
+            return $model;
+        }
+
+        return $callback();
+    }
+
     public function find($id, array $columns = ['*']): mixed
     {
         return $this->where('id', '=', $id)->first($columns);
@@ -1086,6 +1102,16 @@ class QueryBuilder
     public function exists(): bool
     {
         return $this->first() !== null;
+    }
+
+    /**
+     * Determine if no records exist for the current query.
+     *
+     * @return bool
+     */
+    public function doesntExist(): bool
+    {
+        return !$this->exists();
     }
 
     /**
@@ -1853,6 +1879,37 @@ class QueryBuilder
         }
 
         return $this;
+    }
+
+    /**
+     * Pass the query to a given closure.
+     *
+     * @param  \Closure  $callback
+     * @return $this
+     */
+    public function tap(Closure $callback): self
+    {
+        $callback($this);
+
+        return $this;
+    }
+
+    /**
+     * Get the raw SQL with bindings injected for easier debugging.
+     *
+     * @return string
+     */
+    public function toSearchSql(): string
+    {
+        $sql = $this->buildSelectSql();
+        $params = $this->params;
+
+        foreach ($params as $key => $value) {
+            $formattedValue = is_string($value) ? "'" . $value . "'" : $value;
+            $sql = str_replace($key, (string) $formattedValue, $sql);
+        }
+
+        return $sql;
     }
 
     public function __call($method, $parameters)

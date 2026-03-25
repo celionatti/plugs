@@ -16,6 +16,18 @@ $email = DB::table('users')->value('email');
 
 // Fallback logic
 $user = DB::table('users')->where('id', 1)->firstOr(fn() => create_guest_user());
+$user = DB::table('users')->findOr(5, fn() => null);
+```
+
+### Existence Checks
+```php
+if (DB::table('users')->where('email', $email)->exists()) {
+    // User exists...
+}
+
+if (DB::table('users')->where('email', $email)->doesntExist()) {
+    // User does not exist...
+}
 ```
 
 ### Exception Handling
@@ -107,6 +119,28 @@ DB::table('users')->where('id', 1)->decrement('votes', 5);
 
 // Delete
 DB::table('users')->where('votes', '<', 50)->delete();
+```
+
+---
+
+## 6. Debugging & Utilities
+
+### Inspecting SQL
+The `toSearchSql()` method returns the compiled SQL with all parameters injected, making it very easy to copy-paste into a database client for testing.
+```php
+$sql = DB::table('users')->where('status', 'active')->toSearchSql();
+// Output: SELECT * FROM `users` WHERE `status` = 'active'
+```
+
+### The Tap Method
+The `tap()` method allows you to "tap" into the query chain to perform side effects (like logging or conditional logic) without breaking the chain.
+```php
+$users = DB::table('users')
+    ->where('active', 1)
+    ->tap(function ($query) {
+        Log::info("Running query with filters", ['params' => $query->getParams()]);
+    })
+    ->get();
 ```
 
 ---

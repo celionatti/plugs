@@ -62,7 +62,33 @@ public function imageable() { return $this->morphTo(); }
 
 ---
 
-## 3. Querying & Execution
+## 3. Model Retrieval
+
+In addition to standard query builder methods, models provide several high-level retrieval helpers:
+
+### Basic Retrieval
+```php
+$user = User::find(1);
+$user = User::findOrFail(1);
+$user = User::findOr(1, fn() => "Fallback logic");
+
+$user = User::where('active', 1)->first();
+$user = User::where('active', 1)->firstOrFail();
+```
+
+### Existence Check
+Models support the same `exists()` and `doesntExist()` methods as the query builder:
+```php
+if (User::where('email', $email)->exists()) {
+    // ...
+}
+```
+
+### Instantiating if Missing
+The `firstOrNew` method finds the first record matching attributes or returns a new model instance if not found. Note that this instance is **not** persisted to the database until you call `save()`.
+```php
+$user = User::firstOrNew(['email' => 'new@example.com']);
+```
 
 ### Lazy vs Eager Loading
 - **Lazy Loading**: Relationship data is loaded only when you access the property.
@@ -112,6 +138,8 @@ $user->update(['name' => 'Jane']);
 - **Quiet Updates**: Update without firing events or timestamps: `$user->updateQuietly(['last_login' => now()])`.
 - **Atomic Operations**: `User::where('id', 1)->increment('votes', 5)`.
 - **Cloning**: Create a copy without primary keys: `$clone = $user->replicate()`.
+- **Finding or Creating**: `User::firstOrCreate(['email' => '...'])` finds or saves a new record.
+- **Updating or Creating**: `User::updateOrCreate(['email' => '...'], ['name' => '...'])`.
 - **Change Tracking**: Check what happened: `if ($user->wasChanged('email')) { ... }`.
 
 ### Deletion

@@ -30,6 +30,11 @@ DB::enableQueryLog();
 $log = DB::getQueryLog();
 ```
 
+For immediate debugging of a single query, you can also use `toSearchSql()` directly on any query builder instance to get the final SQL with all parameters injected:
+```php
+$sql = User::where('active', 1)->toSearchSql();
+```
+
 ### Diagnostics CLI
 Use the CLI to inspect your database health:
 ```bash
