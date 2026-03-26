@@ -11,6 +11,7 @@ use Plugs\Payment\DTO\PaymentVerification;
 use Plugs\Payment\DTO\RefundResponse;
 
 use Plugs\Payment\Traits\HasHttpCalls;
+use Plugs\Payment\Utils\AmountConverter;
 
 class FlutterwavePaymentDriver implements PaymentDriverInterface
 {
@@ -37,7 +38,7 @@ class FlutterwavePaymentDriver implements PaymentDriverInterface
     {
         $paymentData = [
             'tx_ref' => $payload['reference'] ?? $this->generateReference(),
-            'amount' => $payload['amount'] ?? 0,
+            'amount' => (float) AmountConverter::toDecimal($payload['amount'] ?? 0, $payload['currency'] ?? 'NGN'),
             'currency' => $payload['currency'] ?? 'NGN',
             'redirect_url' => $payload['callback_url'] ?? '',
             'customer' => [

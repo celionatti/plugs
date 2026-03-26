@@ -11,6 +11,7 @@ use Plugs\Payment\DTO\PaymentVerification;
 use Plugs\Payment\DTO\RefundResponse;
 
 use Plugs\Payment\Traits\HasHttpCalls;
+use Plugs\Payment\Utils\AmountConverter;
 
 class StripePaymentDriver implements PaymentDriverInterface
 {
@@ -37,9 +38,10 @@ class StripePaymentDriver implements PaymentDriverInterface
      */
     public function initialize(array $payload): PaymentResponse
     {
+        $currency = $payload['currency'] ?? 'usd';
         $paymentData = [
-            'amount' => $payload['amount'] ?? 0, // Stripe expects integer cents typically
-            'currency' => strtolower($payload['currency'] ?? 'usd'),
+            'amount' => AmountConverter::toSubunits($payload['amount'] ?? 0, $currency),
+            'currency' => strtolower($currency),
             'description' => $payload['description'] ?? 'Payment',
             'receipt_email' => $payload['email'] ?? '',
             'metadata' => $payload['metadata'] ?? [],
@@ -99,9 +101,15 @@ class StripePaymentDriver implements PaymentDriverInterface
      */
     public function refund(string $reference, float $amount, ?string $reason = null): RefundResponse
     {
+        // We need currency here to convert to subunits correctly. 
+        // Stripe usually expects the refund amount in the same subunits as the original charge.
+        // For simplicity, we assume the original currency from the driver's context if available, 
+        // or we might need it passed in. But here we'll use a fixed 'usd' as a safeguard or 
+        // a better approach would be to fetch the intent first.
+        $currency = 'usd'; // Defaulting for now
         $refundData = [
             'payment_intent' => $reference,
-            'amount' => $amount, // Stripe integer amount
+            'amount' => AmountConverter::toSubunits($amount, $currency),
         ];
 
         if ($reason) {

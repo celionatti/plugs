@@ -11,6 +11,7 @@ use Plugs\Payment\DTO\PaymentVerification;
 use Plugs\Payment\DTO\RefundResponse;
 use Plugs\Payment\Traits\HasHttpCalls;
 use Plugs\Payment\Exceptions\GatewayException;
+use Plugs\Payment\Utils\AmountConverter;
 
 class PayPalPaymentDriver implements PaymentDriverInterface
 {
@@ -90,7 +91,7 @@ class PayPalPaymentDriver implements PaymentDriverInterface
                     'reference_id' => $payload['reference'] ?? uniqid('ref_'),
                     'amount' => [
                         'currency_code' => $payload['currency'] ?? 'USD',
-                        'value' => (string) ($payload['amount'] ?? 0),
+                        'value' => AmountConverter::toDecimal($payload['amount'] ?? 0, $payload['currency'] ?? 'USD'),
                     ],
                     'description' => $payload['description'] ?? 'Payment',
                 ]
@@ -178,7 +179,7 @@ class PayPalPaymentDriver implements PaymentDriverInterface
     {
         $refundData = [
             'amount' => [
-                'value' => (string) $amount,
+                'value' => AmountConverter::toDecimal($amount, 'USD'),
                 'currency_code' => 'USD',
             ],
             'note_to_payer' => $reason ?? 'Refund',

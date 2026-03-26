@@ -11,6 +11,7 @@ use Plugs\Payment\DTO\PaymentVerification;
 use Plugs\Payment\DTO\RefundResponse;
 
 use Plugs\Payment\Traits\HasHttpCalls;
+use Plugs\Payment\Utils\AmountConverter;
 
 class PaystackPaymentDriver implements PaymentDriverInterface
 {
@@ -35,14 +36,18 @@ class PaystackPaymentDriver implements PaymentDriverInterface
      */
     public function initialize(array $payload): PaymentResponse
     {
+        $currency = $payload['currency'] ?? 'NGN';
+        $payload['amount'] = AmountConverter::toSubunits($payload['amount'] ?? 0, $currency);
+        $payload['currency'] = strtoupper($currency);
+
         $response = $this->makeRequest('/transaction/initialize', $payload);
 
         return new PaymentResponse(
             $response['reference'] ?? $payload['reference'] ?? '',
             $response['authorization_url'] ?? '',
             'pending', // Paystack initial state is usually pending
-            (float) ($payload['amount'] ?? 0),
-            $payload['currency'] ?? 'NGN',
+            (float) ($payload['amount']),
+            $payload['currency'],
             'Transaction initialized',
             $response
         );
@@ -81,9 +86,10 @@ class PaystackPaymentDriver implements PaymentDriverInterface
      */
     public function refund(string $reference, float $amount, ?string $reason = null): RefundResponse
     {
+        $currency = 'NGN'; // Defaulting for now
         $payload = [
             'transaction' => $reference,
-            'amount' => $amount,
+            'amount' => AmountConverter::toSubunits($amount, $currency),
         ];
 
         if ($reason) {

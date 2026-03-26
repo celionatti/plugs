@@ -11,6 +11,7 @@ use Plugs\Payment\DTO\PaymentVerification;
 use Plugs\Payment\DTO\RefundResponse;
 use Plugs\Payment\Traits\HasHttpCalls;
 use Plugs\Payment\Exceptions\GatewayException;
+use Plugs\Payment\Utils\AmountConverter;
 
 class PayoneerPaymentDriver implements PaymentDriverInterface
 {
@@ -77,7 +78,7 @@ class PayoneerPaymentDriver implements PaymentDriverInterface
     public function initialize(array $payload): PaymentResponse
     {
         $sessionData = [
-            'amount' => $payload['amount'] ?? 0,
+            'amount' => (float) AmountConverter::toDecimal($payload['amount'] ?? 0, $payload['currency'] ?? 'USD'),
             'currency' => strtoupper($payload['currency'] ?? 'USD'),
             'description' => $payload['description'] ?? 'Payment',
             'reference' => $payload['reference'] ?? uniqid('pay_'),

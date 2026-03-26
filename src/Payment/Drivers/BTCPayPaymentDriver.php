@@ -11,6 +11,7 @@ use Plugs\Payment\DTO\PaymentVerification;
 use Plugs\Payment\DTO\RefundResponse;
 
 use Plugs\Payment\Traits\HasHttpCalls;
+use Plugs\Payment\Utils\AmountConverter;
 
 class BTCPayPaymentDriver implements PaymentDriverInterface
 {
@@ -32,7 +33,7 @@ class BTCPayPaymentDriver implements PaymentDriverInterface
     public function initialize(array $payload): PaymentResponse
     {
         $invoiceData = [
-            'amount' => (string) ($payload['amount'] ?? 0),
+            'amount' => AmountConverter::toDecimal($payload['amount'] ?? 0, $payload['currency'] ?? 'USD'),
             'currency' => $payload['currency'] ?? 'USD',
             'metadata' => [
                 'buyerEmail' => $payload['email'] ?? '',
