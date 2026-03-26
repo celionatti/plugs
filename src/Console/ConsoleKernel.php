@@ -9,6 +9,7 @@ use Plugs\Console\Commands\DemoCommand;
 use Plugs\Console\Commands\HealthCommand;
 use Plugs\Console\Commands\HelpCommand;
 use Plugs\Console\Commands\AdminInstallCommand;
+use Plugs\Console\Commands\PaymentInstallCommand;
 use Plugs\Console\Commands\ExplainCommand;
 use Plugs\Console\Commands\InspireCommand;
 use Plugs\Console\Commands\MakeActionCommand;
@@ -204,6 +205,7 @@ class ConsoleKernel
         'view:clear' => ViewClearCommand::class,
         'identity:install' => IdentityInstallCommand::class,
         'admin:install' => AdminInstallCommand::class,
+        'payment:install' => PaymentInstallCommand::class,
     ];
 
 
@@ -288,7 +290,7 @@ class ConsoleKernel
             'theme:nebula',
         ],
         'Routes' => ['route:list', 'route:cache', 'route:clear', 'route:test'],
-        'Utility' => ['serve', 'tinker', 'env:sync', 'share', 'ai:scaffold', 'cache:clear', 'logs:clear', 'view:cache', 'view:clear', 'config:publish', 'config:cache', 'optimize', 'opcache:clear', 'opcache:status', 'queue:work', 'queue:failed', 'queue:retry', 'health', 'storage:link', 'type:gen', 'ai:chat', 'ai:fix', 'ai:audit', 'make:ai-test', 'ai:agent', 'ai:think', 'framework:scan-security', 'auth:install', 'identity:install'],
+        'Utility' => ['serve', 'tinker', 'env:sync', 'share', 'ai:scaffold', 'cache:clear', 'logs:clear', 'view:cache', 'view:clear', 'config:publish', 'config:cache', 'optimize', 'opcache:clear', 'opcache:status', 'queue:work', 'queue:failed', 'queue:retry', 'health', 'storage:link', 'type:gen', 'ai:chat', 'ai:fix', 'ai:audit', 'make:ai-test', 'ai:agent', 'ai:think', 'framework:scan-security', 'auth:install', 'identity:install', 'payment:install', 'admin:install'],
 
         'Scheduling' => ['schedule:run', 'schedule:list'],
         'Database' => ['migrate', 'migrate:rollback', 'migrate:status', 'migrate:fresh', 'migrate:validate', 'migrate:reset', 'make:migration', 'db:seed', 'db:analyze', 'db:backup', 'db:restore'],
