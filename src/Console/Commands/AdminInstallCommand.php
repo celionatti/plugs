@@ -38,15 +38,7 @@ class AdminInstallCommand extends Command
         }
 
         $this->task('Installing Admin module files', function () use ($stubPath, $destinationPath) {
-            // Copy everything except Migrations and Models folders (since we handle those separately)
-            $success = Filesystem::copyDirectory($stubPath, $destinationPath);
-            if (Filesystem::isDirectory($destinationPath . '/Migrations')) {
-                Filesystem::deleteDirectory($destinationPath . '/Migrations');
-            }
-            if (Filesystem::isDirectory($destinationPath . '/Models')) {
-                Filesystem::deleteDirectory($destinationPath . '/Models');
-            }
-            return $success;
+            return Filesystem::copyDirectory($stubPath, $destinationPath);
         });
 
         $this->task('Publishing database migrations', function () {
