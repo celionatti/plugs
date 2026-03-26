@@ -128,8 +128,8 @@
                         </div>
                         <i class="bi {{ $platform['icon'] }} text-xl text-slate-600 dark:text-slate-400"></i>
                         <span class="font-bold text-slate-800 dark:text-white flex-1">{{ $platform['name'] }}</span>
-                        <span class="text-xs px-2 py-1 rounded-lg {{ ($settings["payment_{$slug}_enabled"] ?? 'false') === 'true' ? 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400' : 'bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400' }} font-bold">
-                            {{ ($settings["payment_{$slug}_enabled"] ?? 'false') === 'true' ? 'Enabled' : 'Disabled' }}
+                        <span class="text-xs px-2 py-1 rounded-lg {{ ($settings['payment_' . $slug . '_enabled'] ?? 'false') === 'true' ? 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400' : 'bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400' }} font-bold">
+                            {{ ($settings['payment_' . $slug . '_enabled'] ?? 'false') === 'true' ? 'Enabled' : 'Disabled' }}
                         </span>
                         <button type="button" class="p-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300" onclick="moveUp(this)">
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7" /></svg>
@@ -168,7 +168,7 @@
                     <div class="flex items-center gap-4">
                         <!-- Enable/Disable Toggle -->
                         <label class="relative inline-flex items-center cursor-pointer">
-                            <input type="checkbox" name="payment_{{ $slug }}_enabled" value="true" {{ ($settings["payment_{$slug}_enabled"] ?? 'false') === 'true' ? 'checked' : '' }} class="sr-only peer" onchange="togglePlatformCard('{{ $slug }}', this.checked)">
+                            <input type="checkbox" name="payment_{{ $slug }}_enabled" value="true" {{ ($settings['payment_' . $slug . '_enabled'] ?? 'false') === 'true' ? 'checked' : '' }} class="sr-only peer" onchange="togglePlatformCard('{{ $slug }}', this.checked)">
                             <div class="w-12 h-6 bg-slate-200 dark:bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-500"></div>
                         </label>
                         <!-- Expand/Collapse -->
@@ -181,7 +181,7 @@
                 </div>
 
                 <!-- Credential Fields (Expandable) -->
-                <div id="fields-{{ $slug }}" class="border-t border-slate-100 dark:border-slate-800 p-8" style="{{ ($settings["payment_{$slug}_enabled"] ?? 'false') === 'true' ? '' : 'display:none;' }}">
+                <div id="fields-{{ $slug }}" class="border-t border-slate-100 dark:border-slate-800 p-8" style="{{ ($settings['payment_' . $slug . '_enabled'] ?? 'false') === 'true' ? '' : 'display:none;' }}">
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                         @foreach($platform['fields'] as $fieldKey => $fieldMeta)
                         <div class="space-y-2">
@@ -194,12 +194,12 @@
                             @if(($fieldMeta['type'] ?? 'text') === 'select')
                             <select name="payment_{{ $slug }}_{{ $fieldKey }}" class="w-full px-5 py-4 rounded-2xl bg-slate-50 dark:bg-slate-800 border border-slate-100 dark:border-slate-700 focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 transition-all font-medium text-slate-800 dark:text-slate-200">
                                 @foreach($fieldMeta['options'] as $optVal => $optLabel)
-                                <option value="{{ $optVal }}" {{ ($settings["payment_{$slug}_{$fieldKey}"] ?? '') === $optVal ? 'selected' : '' }}>{{ $optLabel }}</option>
+                                <option value="{{ $optVal }}" {{ ($settings['payment_' . $slug . '_' . $fieldKey] ?? '') === $optVal ? 'selected' : '' }}>{{ $optLabel }}</option>
                                 @endforeach
                             </select>
                             @else
                             <div class="relative">
-                                <input type="{{ $fieldMeta['type'] }}" name="payment_{{ $slug }}_{{ $fieldKey }}" value="{{ $settings["payment_{$slug}_{$fieldKey}"] ?? '' }}" placeholder="{{ $fieldMeta['placeholder'] ?? '' }}" class="w-full px-5 py-4 rounded-2xl bg-slate-50 dark:bg-slate-800 border border-slate-100 dark:border-slate-700 focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 transition-all font-medium text-slate-800 dark:text-slate-200 {{ $fieldMeta['type'] === 'password' ? 'pr-12' : '' }}" autocomplete="off">
+                                <input type="{{ $fieldMeta['type'] }}" name="payment_{{ $slug }}_{{ $fieldKey }}" value="{{ $settings['payment_' . $slug . '_' . $fieldKey] ?? '' }}" placeholder="{{ $fieldMeta['placeholder'] ?? '' }}" class="w-full px-5 py-4 rounded-2xl bg-slate-50 dark:bg-slate-800 border border-slate-100 dark:border-slate-700 focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 transition-all font-medium text-slate-800 dark:text-slate-200 {{ $fieldMeta['type'] === 'password' ? 'pr-12' : '' }}" autocomplete="off">
                                 @if($fieldMeta['type'] === 'password')
                                 <button type="button" onclick="togglePasswordVisibility(this)" class="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors">
                                     <svg class="w-5 h-5 eye-open" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>

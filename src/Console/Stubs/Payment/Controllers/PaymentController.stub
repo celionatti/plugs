@@ -108,6 +108,19 @@ class PaymentController extends Controller
                 return $this->redirect($response->authorization_url);
             }
 
+            // Stripe Elements Checkout: If the platform is stripe, render the dedicated stripe view
+            if ($selectedPlatform === 'stripe') {
+                return $this->view('payment.stripe', [
+                    'title' => 'Complete Payment',
+                    'amount' => $amount,
+                    'currency' => $currency,
+                    'email' => $email,
+                    'reference' => $reference,
+                    'publicKey' => $settings['payment_stripe_public_key'] ?? '',
+                    'clientSecret' => $response->authorization_url, // StripeDriver puts client_secret here
+                ]);
+            }
+
             // Otherwise display the result (e.g. Stripe client_secret)
             return $this->view('payment.result', [
                 'title' => 'Payment Result',

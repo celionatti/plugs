@@ -25,6 +25,7 @@ composer.lock
 /bootstrap/
 /database/*
 settings.json
+!src/**/settings.json
 /verify_form.php
 /verify_storage.php
 /verify_all.php
