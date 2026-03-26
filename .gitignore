@@ -42,5 +42,6 @@ PRODUCTION_NOTES.md
 /.env_backup
 /modules
 /tmp
+/example
 /guide
 *.pdf
