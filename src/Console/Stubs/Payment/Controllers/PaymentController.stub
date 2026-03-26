@@ -1,0 +1,157 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\Http\Controllers;
+
+use Plugs\Base\Controller\Controller;
+use Plugs\Payment\PaymentManager;
+use Modules\Payment\Services\PaymentSettingsService;
+use Psr\Http\Message\ResponseInterface;
+use Psr\Http\Message\ServerRequestInterface;
+
+/**
+ * PaymentController
+ *
+ * Handles public-facing payment checkout, processing and verification.
+ * Uses the Payment module's stored settings to initialize the PaymentManager.
+ */
+class PaymentController extends Controller
+{
+    /**
+     * Display the checkout page.
+     */
+    public function checkout(ServerRequestInterface $request): ResponseInterface
+    {
+        $service = new PaymentSettingsService();
+        $settings = $service->getPaymentSettings();
+        $platforms = $service->getAvailablePlatforms();
+        $activeConfig = $service->getActiveConfig();
+
+        // Build list of enabled platforms
+        $enabledPlatforms = [];
+        foreach ($platforms as $slug => $platform) {
+            if (($settings["payment_{$slug}_enabled"] ?? 'false') === 'true') {
+                $enabledPlatforms[$slug] = $platform;
+            }
+        }
+
+        return $this->view('payment.checkout', [
+            'title' => 'Checkout',
+            'settings' => $settings,
+            'platforms' => $platforms,
+            'enabledPlatforms' => $enabledPlatforms,
+            'activeConfig' => $activeConfig,
+            'paymentMode' => $settings['payment_mode'] ?? 'single',
+            'defaultPlatform' => $settings['payment_default_platform'] ?? 'stripe',
+            'defaultCurrency' => $settings['payment_default_currency'] ?? 'USD',
+        ]);
+    }
+
+    /**
+     * Process a payment.
+     */
+    public function process(ServerRequestInterface $request): ResponseInterface
+    {
+        $data = $request->getParsedBody();
+        $service = new PaymentSettingsService();
+        $activeConfig = $service->getActiveConfig();
+        $settings = $service->getPaymentSettings();
+        $paymentMode = $settings['payment_mode'] ?? 'single';
+
+        $manager = new PaymentManager($activeConfig);
+
+        $amount = (float) ($data['amount'] ?? 0);
+        $email = $data['email'] ?? '';
+        $description = $data['description'] ?? 'Payment';
+        $currency = $data['currency'] ?? ($activeConfig['currency'] ?? 'USD');
+        $selectedPlatform = $data['platform'] ?? ($activeConfig['default'] ?? 'stripe');
+
+        if (empty($amount) || $amount <= 0) {
+            return $this->redirect('/payment/checkout')->with('error', 'Please enter a valid amount.');
+        }
+
+        if (empty($email)) {
+            return $this->redirect('/payment/checkout')->with('error', 'Email address is required.');
+        }
+
+        try {
+            $reference = strtoupper('TXN_' . time() . '_' . uniqid());
+
+            $payload = [
+                'amount' => $amount,
+                'currency' => $currency,
+                'email' => $email,
+                'reference' => $reference,
+                'description' => $description,
+                'callback_url' => url('/payment/verify') . '?reference=' . $reference . '&platform=' . $selectedPlatform,
+                'metadata' => [
+                    'source' => 'checkout',
+                    'platform' => $selectedPlatform,
+                ],
+            ];
+
+            if ($paymentMode === 'multi') {
+                $multiPlatforms = $activeConfig['multi_platforms'] ?? [];
+                $enabledMulti = array_filter($multiPlatforms, function ($slug) use ($settings) {
+                    return ($settings["payment_{$slug}_enabled"] ?? 'false') === 'true';
+                });
+                $driver = $manager->driver(!empty($enabledMulti) ? array_values($enabledMulti) : $selectedPlatform);
+            } else {
+                $driver = $manager->driver($selectedPlatform);
+            }
+
+            $response = $driver->initialize($payload);
+
+            // If there's an authorization URL (Paystack, Flutterwave, PayPal), redirect
+            if (!empty($response->authorization_url) && filter_var($response->authorization_url, FILTER_VALIDATE_URL)) {
+                return $this->redirect($response->authorization_url);
+            }
+
+            // Otherwise display the result (e.g. Stripe client_secret)
+            return $this->view('payment.result', [
+                'title' => 'Payment Result',
+                'response' => $response,
+                'platform' => $selectedPlatform,
+                'paymentMode' => $paymentMode,
+            ]);
+        } catch (\Exception $e) {
+            return $this->redirect('/payment/checkout')->with('error', 'Payment failed: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Verify a payment after gateway callback.
+     */
+    public function verify(ServerRequestInterface $request): ResponseInterface
+    {
+        $params = $request->getQueryParams();
+        $reference = $params['reference'] ?? '';
+        $platform = $params['platform'] ?? null;
+
+        if (empty($reference)) {
+            return $this->redirect('/payment/checkout')->with('error', 'No payment reference provided.');
+        }
+
+        $service = new PaymentSettingsService();
+        $activeConfig = $service->getActiveConfig();
+        $settings = $service->getPaymentSettings();
+        $driverName = $platform ?: ($settings['payment_default_platform'] ?? 'stripe');
+
+        $manager = new PaymentManager($activeConfig);
+
+        try {
+            $driver = $manager->driver($driverName);
+            $verification = $driver->verify($reference);
+
+            return $this->view('payment.result', [
+                'title' => 'Payment Verification',
+                'verification' => $verification,
+                'platform' => $driverName,
+                'paymentMode' => $settings['payment_mode'] ?? 'single',
+            ]);
+        } catch (\Exception $e) {
+            return $this->redirect('/payment/checkout')->with('error', 'Verification failed: ' . $e->getMessage());
+        }
+    }
+}

@@ -190,7 +190,7 @@ class StripePaymentDriver implements PaymentDriverInterface
         if ($status === 'succeeded' || $status === 'paid') {
             return 'success';
         }
-        if (in_array($status, ['canceled', 'failed', 'requires_payment_method'])) {
+        if (in_array($status, ['canceled', 'failed'])) {
             return 'failed';
         }
         return 'pending';

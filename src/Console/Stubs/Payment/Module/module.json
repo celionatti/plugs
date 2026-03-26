@@ -1,0 +1,6 @@
+{
+    "name": "Payment",
+    "description": "Payment gateway configuration and management module. Supports single and multi-gateway modes with Stripe, Paystack, PayPal, Payoneer, Flutterwave, and BTCPay.",
+    "version": "1.0.0",
+    "author": "Plugs Team"
+}
