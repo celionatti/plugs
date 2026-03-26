@@ -49,6 +49,26 @@ class PaymentController extends Controller
     }
 
     /**
+     * Dedicated test page for multi-payment verification.
+     */
+    public function test(ServerRequestInterface $request): ResponseInterface
+    {
+        $service = new PaymentSettingsService();
+        $settings = $service->getPaymentSettings();
+        $platforms = $service->getAvailablePlatforms();
+        $activeConfig = $service->getActiveConfig();
+
+        return $this->view('payment.test', [
+            'title' => 'Payment Test Page',
+            'settings' => $settings,
+            'platforms' => $platforms,
+            'activeConfig' => $activeConfig,
+            'defaultPlatform' => $settings['payment_default_platform'] ?? 'stripe',
+            'defaultCurrency' => $settings['payment_default_currency'] ?? 'USD',
+        ]);
+    }
+
+    /**
      * Process a payment.
      */
     public function process(ServerRequestInterface $request): ResponseInterface

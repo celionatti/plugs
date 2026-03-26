@@ -67,12 +67,14 @@ class PaymentInstallCommand extends Command
             "Payment Module installed successfully!\n\n" .
             "1. Location: modules/Payment/\n" .
             "2. Admin Route: /admin/payment\n" .
-            "3. Frontend Checkout: /payment/checkout\n\n" .
+            "3. Frontend Checkout: /payment/checkout\n" .
+            "4. Multi-Platform Test: /payment/test\n\n" .
             "IMPORTANT: Please add the following to your routes/web.php:\n\n" .
             "use App\Http\Controllers\PaymentController;\n" .
             "Route::get('/payment/checkout', [PaymentController::class, 'checkout'])->name('payment.checkout');\n" .
             "Route::post('/payment/checkout', [PaymentController::class, 'process'])->name('payment.process');\n" .
-            "Route::get('/payment/verify', [PaymentController::class, 'verify'])->name('payment.verify');",
+            "Route::get('/payment/verify', [PaymentController::class, 'verify'])->name('payment.verify');\n" .
+            "Route::get('/payment/test', [PaymentController::class, 'test'])->name('payment.test');",
             "✅ Success",
             "success"
         );
