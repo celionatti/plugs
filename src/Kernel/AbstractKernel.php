@@ -129,11 +129,27 @@ abstract class AbstractKernel implements KernelInterface
      */
     protected function setupRequest(): void
     {
-        $request = \Plugs\Http\Message\ServerRequest::fromGlobals();
+        $request = \Plugs\Http\Request::fromGlobals();
 
+        // Bind under the PSR-7 interface
         $this->container->singleton(
             \Psr\Http\Message\ServerRequestInterface::class,
             fn() => $request
         );
+
+        // Bind under the concrete ServerRequest class (legacy usage)
+        $this->container->singleton(
+            \Plugs\Http\Message\ServerRequest::class,
+            fn() => $request
+        );
+
+        // Bind under the Request class (preferred usage)
+        $this->container->singleton(
+            \Plugs\Http\Request::class,
+            fn() => $request
+        );
+
+        // Simple string alias
+        $this->container->singleton('request', fn() => $request);
     }
 }
