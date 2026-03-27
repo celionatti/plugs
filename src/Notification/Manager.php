@@ -107,6 +107,8 @@ class Manager
         $frameworkChannels = [
             'mail' => \Plugs\Notification\Channels\MailChannel::class,
             'database' => \Plugs\Notification\Channels\DatabaseChannel::class,
+            'sms' => \Plugs\Notification\Channels\SmsChannel::class,
+            'slack' => \Plugs\Notification\Channels\SlackChannel::class,
         ];
 
         if (isset($frameworkChannels[$channel])) {

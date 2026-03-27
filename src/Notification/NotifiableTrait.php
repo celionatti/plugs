@@ -29,4 +29,27 @@ trait NotifiableTrait
     {
         return $this->email ?? null;
     }
+
+    /**
+     * Get the phone number for SMS notifications.
+     *
+     * @return string|null
+     */
+    public function routeNotificationForSms(): ?string
+    {
+        return $this->phone ?? $this->phone_number ?? null;
+    }
+
+    /**
+     * Get the Slack webhook URL for the notifiable.
+     *
+     * Override this method to return a Slack incoming webhook URL
+     * for the notifiable entity.
+     *
+     * @return string|null
+     */
+    public function routeNotificationForSlack(): ?string
+    {
+        return null;
+    }
 }
