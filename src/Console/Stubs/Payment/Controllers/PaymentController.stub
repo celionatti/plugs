@@ -112,14 +112,14 @@ class PaymentController extends Controller
             ];
 
             if ($paymentMode === 'multi') {
-                $multiPlatforms = $activeConfig['multi_platforms'] ?? [];
-                $enabledMulti = array_filter($multiPlatforms, function ($slug) use ($settings) {
-                    return ($settings["payment_{$slug}_enabled"] ?? 'false') === 'true';
-                });
-                $driver = $manager->driver(!empty($enabledMulti) ? array_values($enabledMulti) : $selectedPlatform);
-            } else {
-                $driver = $manager->driver($selectedPlatform);
+                // Validate the user's selected platform is enabled
+                $isEnabled = ($settings["payment_{$selectedPlatform}_enabled"] ?? 'false') === 'true';
+                if (!$isEnabled) {
+                    return $this->redirect('/payment/checkout')->with('error', 'The selected payment platform is not enabled.');
+                }
             }
+
+            $driver = $manager->driver($selectedPlatform);
 
             $response = $driver->initialize($payload);
 
@@ -175,7 +175,14 @@ class PaymentController extends Controller
 
         try {
             $driver = $manager->driver($driverName);
-            $verification = $driver->verify($reference);
+
+            // For Stripe, use the payment_intent ID that Stripe appends to the return URL
+            $verifyReference = $reference;
+            if ($driverName === 'stripe' && !empty($params['payment_intent'])) {
+                $verifyReference = $params['payment_intent'];
+            }
+
+            $verification = $driver->verify($verifyReference);
 
             return $this->view('payment.result', [
                 'title' => 'Payment Verification',
