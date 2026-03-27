@@ -17,7 +17,7 @@
     </div>
 </div>
 
-<div class="max-w-3xl">
+<div class="w-full">
     <div class="bg-white rounded-3xl shadow-sm border border-slate-100 overflow-hidden">
         <div class="p-8 border-b border-slate-50 bg-slate-50/30 flex items-center gap-6">
             <div class="w-20 h-20 rounded-3xl bg-black flex items-center justify-center text-white text-2xl font-bold shadow-xl shadow-black/10">
