@@ -704,6 +704,7 @@ class ViewCompiler
         $content = $this->compileMarkdown($content);
 
         // Phase 7: Assets, Security & Formatting
+        $content = $this->compilePlugCss($content);
         $content = $this->compileAssets($content);
         $content = $this->compileNonce($content);
         $content = $this->compileCsp($content);

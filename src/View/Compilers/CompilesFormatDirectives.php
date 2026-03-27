@@ -819,4 +819,19 @@ trait CompilesFormatDirectives
             $content
         );
     }
+
+    /**
+     * Compile the @plugcss directive.
+     *
+     * Outputs a <link> tag pointing to the compiled Plugs CSS utility stylesheet.
+     * Usage in templates: @plugcss
+     */
+    protected function compilePlugCss(string $content): string
+    {
+        return preg_replace(
+            '/@plugcss\b/',
+            '<?php echo \Plugs\Css\CssCompiler::linkTag(); ?>',
+            $content
+        );
+    }
 }
