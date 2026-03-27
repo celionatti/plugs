@@ -634,6 +634,40 @@ class PlugsSPA {
         });
       });
 
+      // p-stream (Server-Sent Events)
+      filterToBound("[p-stream]").forEach((actionEl) => {
+        if (actionEl._plugBoundStream) return;
+        actionEl._plugBoundStream = true;
+        
+        const streamAttr = actionEl.getAttribute("p-stream");
+        const match = streamAttr.match(/(.*?)\s+as\s+(.*)/);
+        if(!match) return;
+        
+        const url = match[1].trim();
+        const stateVar = match[2].trim();
+        
+        const source = new EventSource(url);
+        source.onmessage = (event) => {
+          try {
+            const data = JSON.parse(event.data);
+            if (el._pState) {
+              el._pState[stateVar] = data;
+              if (actionEl.hasAttribute("p-updated")) {
+                this.runAction(actionEl.getAttribute("p-updated"), {
+                  $el: actionEl,
+                  ...(el._pState || {})
+                });
+              }
+            }
+          } catch(e) {
+            console.warn("Plugs SPA p-stream error:", e);
+          }
+        };
+        
+        // Save reference for cleanup later if component unmounts
+        actionEl._plugEventSource = source;
+      });
+
       // p-on:* (Advanced Events)
       const isPlugComp = el.hasAttribute("data-plug-component");
       const eventEls = [el, ...Array.from(el.querySelectorAll("*"))].filter(
