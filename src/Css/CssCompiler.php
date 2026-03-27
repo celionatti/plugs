@@ -112,6 +112,8 @@ class CssCompiler
         $darkRules = [];
         $groupRules = [];
 
+        $autoDarkMode = in_array('auto-dark', $classes);
+
         foreach ($classes as $rawClass) {
             $variant = null;
             $responsive = null;
@@ -158,6 +160,14 @@ class CssCompiler
                 $this->stats['state_variants'][$variant] = ($this->stats['state_variants'][$variant] ?? 0) + 1;
             } else {
                 $baseRules[] = ".{$escapedSelector} { {$css} }";
+
+                // Auto Dark Mode Logic: Generate inversion rule if auto-dark is present
+                if ($autoDarkMode && $rawClass !== 'auto-dark') {
+                    $darkCss = $generator->getAutoDarkCounterpart($rawClass);
+                    if ($darkCss) {
+                        $darkRules[] = ".{$escapedSelector}.auto-dark { {$darkCss} }";
+                    }
+                }
             }
         }
 

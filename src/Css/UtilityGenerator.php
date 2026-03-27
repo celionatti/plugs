@@ -607,4 +607,64 @@ class UtilityGenerator
         }
         return $results;
     }
+
+    /**
+     * Generate the dark mode counterpart for a color utility.
+     */
+    public function getAutoDarkCounterpart(string $c): ?string
+    {
+        $prefixes = [
+            'text' => 'color', 'bg' => 'background-color',
+            'border' => 'border-color', 'ring' => '--tw-ring-color',
+            'outline' => 'outline-color', 'accent' => 'accent-color',
+            'decoration' => 'text-decoration-color', 'divide' => 'border-color',
+            'placeholder' => 'color',
+        ];
+
+        foreach ($prefixes as $prefix => $prop) {
+            if (!str_starts_with($c, "$prefix-")) continue;
+            $rest = substr($c, strlen($prefix) + 1);
+
+            // Handle keywords: white <-> black
+            if ($rest === 'white') {
+                $black = ColorPalette::resolve('black');
+                return "$prop: $black;";
+            }
+            if ($rest === 'black') {
+                $white = ColorPalette::resolve('white');
+                return "$prop: $white;";
+            }
+
+            // Handle shades: invert 100 <-> 900, etc.
+            if (preg_match('/^([a-z]+)-(\d+)$/', $rest, $m)) {
+                $name = $m[1];
+                $shade = (int) $m[2];
+                $invertedShade = $this->invertShade($shade);
+
+                $color = ColorPalette::resolve($name, $invertedShade);
+                if ($color !== null) {
+                    $hex = $this->oklchToHexFallback($name, $invertedShade);
+                    if ($hex) {
+                        return "$prop: $hex; $prop: $color;";
+                    }
+                    return "$prop: $color;";
+                }
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Invert a color shade for dark mode.
+     */
+    private function invertShade(int $shade): int
+    {
+        $map = [
+            50 => 950, 100 => 900, 200 => 800, 300 => 700, 400 => 600,
+            500 => 500,
+            600 => 400, 700 => 300, 800 => 200, 900 => 100, 950 => 50
+        ];
+        return $map[$shade] ?? $shade;
+    }
 }

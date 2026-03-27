@@ -138,6 +138,50 @@ Two strategies are supported:
 
 ---
 
+## Auto Dark Mode Engine
+
+Plugs includes an **Auto Dark Mode** system that eliminates the need for manual `dark:` variant prefixes on every element. By adding the `auto-dark` class, the framework automatically handles theme detection and color inversion.
+
+### Usage
+
+Instead of writing manual dark variants for every color:
+
+```html
+<!-- Manual Way -->
+<div class="bg-white text-slate-900 dark:bg-black dark:text-white">
+    <p>Manual theme management.</p>
+</div>
+
+<!-- Auto Dark Mode -->
+<div class="bg-white text-slate-900 auto-dark">
+    <p>Zero-effort theme management.</p>
+</div>
+```
+
+### How it Works
+
+The engine detects the presence of the `auto-dark` utility and automatically generates high-contrast dark mode rules for any color identities on the same element. It uses a **perceptually uniform inversion map**:
+
+| Light Shade | Dark Alternative |
+|---|---|
+| `50` (Lightest) | `950` (Darkest) |
+| `100` | `900` |
+| `200` | `800` |
+| `300` | `700` |
+| `400` | `600` |
+| `500` | `500` (Balanced) |
+| `white` | `black` |
+| `black` | `white` |
+
+### Specificity & Overrides
+
+Auto Dark Mode rules use composite selectors (e.g., `.bg-white.auto-dark`), ensuring they have higher specificity than base utilities but can still be manually overridden by the `dark:` prefix if you need a specific custom color for dark mode.
+
+> [!TIP]
+> Use `auto-dark` for standard layouts and components to save time, then use `dark:` variants only when you need artistic control over a specific element's appearance in dark mode.
+
+---
+
 ## CLI Commands
 
 ### `css:build`

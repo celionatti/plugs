@@ -28,6 +28,9 @@ Most common settings are mapped directly to environment variables:
 | **CSS Output** | `CSS_OUTPUT` | `public/build/plugs.css` |
 | **CSS Scan Paths** | `CSS_SCAN_PATHS` | `resources/views,modules,app/Components` |
 
+> [!TIP]
+> **Auto Dark Mode**: Plugs includes a "Smart Theme" engine. By adding the `auto-dark` class to an element, the framework automatically generates dark mode variants for you. [Learn more](../views/css-engine.md#auto-dark-mode-engine).
+
 ---
 
 ## 2. Using the `config()` Helper
