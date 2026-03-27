@@ -61,10 +61,6 @@ The engine follows a three-phase pipeline:
 
 ---
 
-## Configuration
-
-All settings live in `config/css.php`:
-
 ```php
 return [
     'enabled'          => true,
@@ -87,6 +83,23 @@ return [
     'colors'           => [],             // Custom colors (see below)
 ];
 ```
+
+### Framework Defaults & Environment Variables
+
+If the `config/css.php` file is missing, the framework falls back to the values defined in `Plugs\Config\DefaultConfig`. You can override many of these settings directly via your `.env` file without modifying the PHP configuration:
+
+| Setting | Environment Variable | Default Value |
+|---|---|---|
+| **Engine Enabled** | `CSS_ENABLED` | `true` |
+| **Output Path** | `CSS_OUTPUT` | `public/build/plugs.css` |
+| **Minification** | `CSS_MINIFY` | `true` (in production) |
+| **CSS Reset** | `CSS_PREFLIGHT` | `true` |
+| **Dark Mode** | `CSS_DARK_MODE` | `media` |
+| **Scan Paths** | `CSS_SCAN_PATHS` | `resources/views,modules,app/Components` |
+| **Scan Extensions** | `CSS_SCAN_EXTENSIONS` | `.plug.php,.php,.html` |
+
+> [!TIP]
+> Using environment variables is the recommended way to toggle the CSS engine on/off or change the output path across different environments (e.g., local vs. CI).
 
 ### Custom Colors
 

@@ -43,7 +43,7 @@ class IdentityManager
         $this->keyService = $keyService;
         $this->nonceService = $nonceService;
         $this->events = $events;
-        $this->userModel = $userModel ?? config('auth.identity.model', 'App\\Models\\User');
+        $this->userModel = $userModel ?? config('identity.model', 'App\\Models\\User');
     }
 
     /**
