@@ -96,6 +96,7 @@ use Plugs\Console\Commands\ShareCommand;
 use Plugs\Console\Commands\AiScaffoldCommand;
 use Plugs\Console\Commands\CssBuildCommand;
 use Plugs\Console\Commands\CssClearCommand;
+use Plugs\Console\Commands\SSEStartCommand;
 use Plugs\Exceptions\ConsoleException;
 
 /*
@@ -210,6 +211,7 @@ class ConsoleKernel
         'payment:install' => PaymentInstallCommand::class,
         'css:build' => CssBuildCommand::class,
         'css:clear' => CssClearCommand::class,
+        'sse:start' => SSEStartCommand::class,
     ];
 
 
@@ -258,6 +260,7 @@ class ConsoleKernel
         'share' => 'share',
         'ais' => 'ai:scaffold',
         'css' => 'css:build',
+        'sse' => 'sse:start',
     ];
 
     protected array $commandGroups = [
@@ -295,7 +298,7 @@ class ConsoleKernel
             'theme:nebula',
         ],
         'Routes' => ['route:list', 'route:cache', 'route:clear', 'route:test'],
-        'Utility' => ['serve', 'tinker', 'env:sync', 'share', 'ai:scaffold', 'cache:clear', 'logs:clear', 'view:cache', 'view:clear', 'config:publish', 'config:cache', 'optimize', 'opcache:clear', 'opcache:status', 'queue:work', 'queue:failed', 'queue:retry', 'health', 'storage:link', 'type:gen', 'ai:chat', 'ai:fix', 'ai:audit', 'make:ai-test', 'ai:agent', 'ai:think', 'framework:scan-security', 'auth:install', 'identity:install', 'payment:install', 'admin:install', 'css:build', 'css:clear'],
+        'Utility' => ['serve', 'tinker', 'env:sync', 'share', 'ai:scaffold', 'cache:clear', 'logs:clear', 'view:cache', 'view:clear', 'config:publish', 'config:cache', 'optimize', 'opcache:clear', 'opcache:status', 'queue:work', 'queue:failed', 'queue:retry', 'health', 'storage:link', 'type:gen', 'ai:chat', 'ai:fix', 'ai:audit', 'make:ai-test', 'ai:agent', 'ai:think', 'framework:scan-security', 'auth:install', 'identity:install', 'payment:install', 'admin:install', 'css:build', 'css:clear', 'sse:start'],
 
         'Scheduling' => ['schedule:run', 'schedule:list'],
         'Database' => ['migrate', 'migrate:rollback', 'migrate:status', 'migrate:fresh', 'migrate:validate', 'migrate:reset', 'make:migration', 'db:seed', 'db:analyze', 'db:backup', 'db:restore'],

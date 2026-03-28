@@ -67,6 +67,6 @@ Take your application to the next level.
 - **[AI & Agents](./advanced/ai.md)**: Natural language querying and agents.
 - **[Performance](./advanced/performance.md)**: Concurrency with Fibers and Caching.
 - **[Payments](./advanced/payments.md)**: Subscriptions and Payouts.
-- **[Events](./advanced/events-notifications.md)**: Decoupled logic and alerts.
+- **[Real-time Events (SSE)](./real-time-sse.md)**: High-performance async streams.
 - **[Observability](./advanced/observability.md)**: Health checks and diagnostics.
 - **[SEO](./advanced/seo.md)**: Automated sitemaps and metadata.

@@ -78,7 +78,7 @@ $router->post('/plugs/media/upload', [\Plugs\Http\Controllers\MediaController::c
 // Asset Routes
 $router->get('/plugs/{file}.js', function($file) use ($router) {
     return (new \Plugs\Http\Controllers\AssetController())->serve('js', $file . '.js');
-})->where('file', 'plugs-(spa|lazy|editor|framework\.min|editor\.min)');
+})->where('file', 'plugs-(spa|lazy|editor|sse|framework\.min|editor\.min)');
 
 $router->get('/plugs/{file}.css', function($file) use ($router) {
     return (new \Plugs\Http\Controllers\AssetController())->serve('css', $file . '.css');
