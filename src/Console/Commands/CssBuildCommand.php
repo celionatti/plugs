@@ -48,7 +48,7 @@ class CssBuildCommand extends Command
             ColorPalette::registerCustomColors($config['colors']);
         }
 
-        if ($this->hasOption('watch')) {
+        if ($this->option('watch')) {
             return $this->watchMode($config);
         }
 
@@ -104,7 +104,8 @@ class CssBuildCommand extends Command
             $minify,
             $config['preflight'],
             $config['dark_mode'],
-            $config['breakpoints']
+            $config['breakpoints'],
+            $config['fluid_typography']
         );
 
         $css = $compiler->compileAndWrite($classes);
@@ -197,7 +198,8 @@ class CssBuildCommand extends Command
                 }
 
                 $this->build($config);
-                $lastHashes = $currentHashes;
+                // Refresh hashes after build to account for any changes
+                $lastHashes = $this->getFileHashes($scanPaths, $config['scan_extensions']);
                 $this->line();
                 $this->info('👀 Watching for changes...');
             }
@@ -236,6 +238,8 @@ class CssBuildCommand extends Command
             }
         }
 
+        ksort($hashes);
+
         return $hashes;
     }
 
@@ -253,6 +257,7 @@ class CssBuildCommand extends Command
             'blocklist' => [],
             'breakpoints' => ['sm'=>'640px','md'=>'768px','lg'=>'1024px','xl'=>'1280px','2xl'=>'1536px'],
             'colors' => [],
+            'fluid_typography' => true,
         ];
 
         if (function_exists('config')) {

@@ -18,6 +18,7 @@ class CssCompiler
     private bool $preflight;
     private string $darkMode;
     private array $breakpoints;
+    private bool $fluidTypography;
 
     /**
      * Variant pseudo-selector mappings.
@@ -73,12 +74,14 @@ class CssCompiler
         bool $minify = true,
         bool $preflight = true,
         string $darkMode = 'media',
-        array $breakpoints = []
+        array $breakpoints = [],
+        bool $fluidTypography = true
     ) {
         $this->outputPath = $outputPath;
         $this->minify = $minify;
         $this->preflight = $preflight;
         $this->darkMode = $darkMode;
+        $this->fluidTypography = $fluidTypography;
         $this->breakpoints = $breakpoints ?: [
             'sm'  => '640px',
             'md'  => '768px',
@@ -121,14 +124,19 @@ class CssCompiler
             $groupVariant = null;
             $class = $rawClass;
 
-            // Parse variant prefixes: sm:hover:bg-red-500
-            while ($this->hasVariantPrefix($class)) {
+            $isFluid = false;
+
+            // Parse variant prefixes: sm:hover:bg-red-500, fluid:text-xl
+            $safety = 0;
+            while ($this->hasVariantPrefix($class) && $safety++ < 10) {
                 [$prefix, $rest] = $this->splitFirstVariant($class);
 
                 if (isset($this->breakpoints[$prefix])) {
                     $responsive = $prefix;
                 } elseif ($prefix === 'dark') {
                     $isDark = true;
+                } elseif ($prefix === 'fluid') {
+                    $isFluid = true;
                 } elseif (isset(self::$stateVariants[$prefix])) {
                     $variant = $prefix;
                 } elseif (isset(self::$groupVariants[$prefix])) {
@@ -139,7 +147,11 @@ class CssCompiler
             }
 
             // Generate the CSS for the base class
-            $css = $generator->generate($class);
+            if ($isFluid) {
+                $css = $generator->generateFluid($class);
+            } else {
+                $css = $generator->generate($class);
+            }
             if ($css === null) {
                 $this->stats['skipped']++;
                 continue;
@@ -245,7 +257,8 @@ class CssCompiler
         return isset($this->breakpoints[$prefix])
             || isset(self::$stateVariants[$prefix])
             || isset(self::$groupVariants[$prefix])
-            || $prefix === 'dark';
+            || $prefix === 'dark'
+            || $prefix === 'fluid';
     }
 
     private function splitFirstVariant(string $class): array
@@ -290,7 +303,7 @@ class CssCompiler
 
         // Preflight
         if ($this->preflight) {
-            $sections[] = Preflight::css();
+            $sections[] = Preflight::css(['fluid_typography' => $this->fluidTypography]);
         }
 
         // Base utilities

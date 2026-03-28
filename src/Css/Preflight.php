@@ -13,9 +13,24 @@ namespace Plugs\Css;
  */
 class Preflight
 {
-    public static function css(): string
+    public static function css(array $options = []): string
     {
-        return <<<'CSS'
+        $fluid = $options['fluid_typography'] ?? true;
+        $fluidStyles = '';
+
+        if ($fluid) {
+            $fluidStyles = <<<CSS
+h1 { font-size: clamp(2.25rem, 1.8rem + 4vw, 3.75rem); line-height: 1.2; margin-bottom: 1.5rem; }
+h2 { font-size: clamp(1.875rem, 1.5rem + 3vw, 3rem); line-height: 1.25; margin-bottom: 1.25rem; }
+h3 { font-size: clamp(1.5rem, 1.2rem + 2vw, 2.25rem); line-height: 1.3; margin-bottom: 1rem; }
+h4 { font-size: clamp(1.25rem, 1.1rem + 1vw, 1.875rem); line-height: 1.4; margin-bottom: 0.75rem; }
+h5 { font-size: clamp(1.125rem, 1rem + 0.5vw, 1.5rem); line-height: 1.5; margin-bottom: 0.5rem; }
+h6 { font-size: clamp(1rem, 0.9rem + 0.25vw, 1.25rem); line-height: 1.6; margin-bottom: 0.25rem; }
+p { margin-bottom: 1rem; }
+CSS;
+        }
+
+        return <<<CSS
 /*! Plugs CSS Preflight v1.0 | Modern CSS Reset */
 
 *, ::before, ::after {
@@ -56,9 +71,11 @@ abbr:where([title]) {
 }
 
 h1, h2, h3, h4, h5, h6 {
-  font-size: inherit;
-  font-weight: inherit;
+  font-weight: 700;
+  color: inherit;
 }
+
+{$fluidStyles}
 
 a {
   color: inherit;

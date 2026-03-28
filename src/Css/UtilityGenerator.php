@@ -667,4 +667,51 @@ class UtilityGenerator
         ];
         return $map[$shade] ?? $shade;
     }
+
+    /**
+     * Generate a fluid scaling variant using clamp().
+     */
+    public function generateFluid(string $c): ?string
+    {
+        // 1. Text Sizing
+        if (str_starts_with($c, 'text-')) {
+            $value = substr($c, 5);
+            $sizes = [
+                'xs' => [0.75, 0.875], 'sm' => [0.875, 1], 'base' => [1, 1.125],
+                'lg' => [1.125, 1.25], 'xl' => [1.25, 1.5], '2xl' => [1.5, 2],
+                '3xl' => [1.875, 2.75], '4xl' => [2.25, 3.5], '5xl' => [3, 4.5],
+                '6xl' => [3.75, 6], '7xl' => [4.5, 7.5], '8xl' => [6, 10], '9xl' => [8, 13],
+            ];
+            if (isset($sizes[$value])) {
+                $fluid = $this->calculateClamp($sizes[$value][0], $sizes[$value][1]);
+                return "font-size: {$fluid};";
+            }
+        }
+
+        // 2. Spacing utilities (p-, m-, gap-)
+        $prefixes = ['p' => 'padding', 'm' => 'margin', 'gap' => 'gap'];
+        foreach ($prefixes as $prefix => $prop) {
+            if (preg_match("/^{$prefix}-([\d.]+)$/", $c, $m)) {
+                $val = (float) $m[1];
+                $min = $val * 0.25;
+                $max = $min * 1.5; // Scale spacing by 50%
+                $fluid = $this->calculateClamp($min, $max);
+                return "{$prop}: {$fluid};";
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Calculate a clamp() value between two rem sizes.
+     * Scale range: 320px (20rem) to 1200px (75rem)
+     */
+    private function calculateClamp(float $min, float $max): string
+    {
+        $slope = ($max - $min) / (75 - 20);
+        $base = $min - ($slope * 20);
+        $preferred = sprintf("%.3frem + %.2fvw", $base, $slope * 100);
+        return "clamp({$min}rem, {$preferred}, {$max}rem)";
+    }
 }

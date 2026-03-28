@@ -182,6 +182,42 @@ Auto Dark Mode rules use composite selectors (e.g., `.bg-white.auto-dark`), ensu
 
 ---
 
+## Fluid Typography Engine
+
+Plugs includes a built-in **Fluid Typography** engine that allows text and spacing to scale smoothly based on the viewport width using the CSS `clamp()` function. This creates "Infinite Responsiveness" without the need for multiple breakpoints.
+
+### 1. Fluid Base Typography
+
+By default, the framework applies moderate fluid scaling to standard HTML tags. This means your headings will be perfectly sized on both mobile and desktop without any manual utility classes:
+
+- **H1 - H6**: Automatically scale between a minimum (mobile) and maximum (desktop) size.
+- **P**: Includes responsive bottom margins for consistent vertical rhythm.
+
+To disable this global scaling, set `'fluid_typography' => false` in your `config/css.php`.
+
+### 2. The `fluid:` Variant
+
+You can apply fluid scaling to any sizing utility using the `fluid:` prefix. This is supported for `text-`, `p-`, `m-`, and `gap-` classes.
+
+```html
+<!-- Scales font smoothly from 2.25rem to 3rem -->
+<h1 class="fluid:text-4xl">Fluid Header</h1>
+
+<!-- Padding and gaps that grow with the screen -->
+<div class="fluid:p-10 fluid:gap-8 flex">
+    <div>Item 1</div>
+    <div>Item 2</div>
+</div>
+```
+
+| Class | Mobile (320px) | Desktop (1200px) |
+|---|---|---|
+| `fluid:text-xl` | 20px | 28px |
+| `fluid:p-4` | 16px | 24px |
+| `fluid:gap-10` | 40px | 60px |
+
+---
+
 ## CLI Commands
 
 ### `css:build`

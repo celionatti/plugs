@@ -669,6 +669,9 @@ class DefaultConfig
             // Dark mode strategy: 'media' (prefers-color-scheme) or 'class' (.dark)
             'dark_mode' => env('CSS_DARK_MODE', 'media'),
 
+            // Enable Fluid Typography (clamp-based scaling for text and spacing)
+            'fluid_typography' => filter_var(env('CSS_FLUID_TYPOGRAPHY', true), FILTER_VALIDATE_BOOLEAN),
+
             // Directories to scan for utility classes (relative to project root)
             'scan_paths' => array_filter(array_map('trim', explode(',', env('CSS_SCAN_PATHS', 'resources/views,modules,app/Components')))),
 
