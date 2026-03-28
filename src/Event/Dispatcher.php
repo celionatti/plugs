@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Plugs\Event;
 
+use Plugs\Broadcasting\BroadcastManager;
+use Plugs\Broadcasting\ShouldBroadcast;
 use Plugs\Concurrency\Async;
 use Plugs\Container\Container;
 use Plugs\Debug\Profiler;
@@ -133,6 +135,16 @@ class Dispatcher implements DispatcherInterface
         }
 
         $this->recordEvent($eventName, microtime(true) - $start);
+
+        // ── Auto-Broadcasting ──
+        // If the event implements ShouldBroadcast, push it to the SSE stream
+        if (is_object($event) && $event instanceof ShouldBroadcast) {
+            try {
+                BroadcastManager::getInstance()->broadcast($event);
+            } catch (\Throwable $e) {
+                error_log("[Dispatcher] Broadcasting failed for {$eventName}: " . $e->getMessage());
+            }
+        }
 
         return is_object($event) ? $event : $responses;
     }
