@@ -12,9 +12,9 @@ Include the compiled stylesheet in your layout using the `@plugcss` directive:
 
 ```html
 <head>
-    <meta charset="UTF-8">
-    <title>My App</title>
-    @plugcss
+  <meta charset="UTF-8" />
+  <title>My App</title>
+  @plugcss
 </head>
 ```
 
@@ -25,11 +25,15 @@ This outputs a cache-busted `<link>` tag pointing to `/build/plugs.css`.
 Use familiar utility classes in your templates:
 
 ```html
-<div class="flex items-center justify-between p-4 bg-blue-500 text-white rounded-lg shadow-md">
-    <h2 class="text-xl font-bold">Welcome</h2>
-    <button class="px-4 py-2 bg-white text-blue-500 rounded hover:bg-blue-50 transition">
-        Get Started
-    </button>
+<div
+  class="flex items-center justify-between p-4 bg-blue-500 text-white rounded-lg shadow-md"
+>
+  <h2 class="text-xl font-bold">Welcome</h2>
+  <button
+    class="px-4 py-2 bg-white text-blue-500 rounded hover:bg-blue-50 transition"
+  >
+    Get Started
+  </button>
 </div>
 ```
 
@@ -80,7 +84,26 @@ return [
         'sm' => '640px', 'md' => '768px', 'lg' => '1024px',
         'xl' => '1280px', '2xl' => '1536px',
     ],
-    'colors'           => [],             // Custom colors (see below)
+    //'colors'           => [],             // Custom colors (see below)
+    'colors' => [
+        'gold' => [
+            'light'   => '#E3C185',
+            'DEFAULT' => '#C5A059',
+            'dark'    => '#A37E3C',
+            '100'     => '#F5E6CC',
+        ],
+        'onyx' => [
+            'base'    => '#020408',
+            'surface' => '#0D1117',
+            'border'  => '#1E293B',
+            'light'   => '#2D3748',
+            '700'     => '#1A202C',
+        ],
+    ],
+    'fonts' => [
+        'heading' => "'Outfit', sans-serif",
+        'body' => "'Plus Jakarta Sans', sans-serif",
+    ],
 ];
 ```
 
@@ -88,15 +111,15 @@ return [
 
 If the `config/css.php` file is missing, the framework falls back to the values defined in `Plugs\Config\DefaultConfig`. You can override many of these settings directly via your `.env` file without modifying the PHP configuration:
 
-| Setting | Environment Variable | Default Value |
-|---|---|---|
-| **Engine Enabled** | `CSS_ENABLED` | `true` |
-| **Output Path** | `CSS_OUTPUT` | `public/build/plugs.css` |
-| **Minification** | `CSS_MINIFY` | `true` (in production) |
-| **CSS Reset** | `CSS_PREFLIGHT` | `true` |
-| **Dark Mode** | `CSS_DARK_MODE` | `media` |
-| **Scan Paths** | `CSS_SCAN_PATHS` | `resources/views,modules,app/Components` |
-| **Scan Extensions** | `CSS_SCAN_EXTENSIONS` | `.plug.php,.php,.html` |
+| Setting             | Environment Variable  | Default Value                            |
+| ------------------- | --------------------- | ---------------------------------------- |
+| **Engine Enabled**  | `CSS_ENABLED`         | `true`                                   |
+| **Output Path**     | `CSS_OUTPUT`          | `public/build/plugs.css`                 |
+| **Minification**    | `CSS_MINIFY`          | `true` (in production)                   |
+| **CSS Reset**       | `CSS_PREFLIGHT`       | `true`                                   |
+| **Dark Mode**       | `CSS_DARK_MODE`       | `media`                                  |
+| **Scan Paths**      | `CSS_SCAN_PATHS`      | `resources/views,modules,app/Components` |
+| **Scan Extensions** | `CSS_SCAN_EXTENSIONS` | `.plug.php,.php,.html`                   |
 
 > [!TIP]
 > Using environment variables is the recommended way to toggle the CSS engine on/off or change the output path across different environments (e.g., local vs. CI).
@@ -133,7 +156,8 @@ Two strategies are supported:
 ```html
 <!-- Toggle dark mode with JS -->
 <html class="dark">
-    <body class="bg-white dark:bg-gray-900 text-gray-900 dark:text-white">
+  <body class="bg-white dark:bg-gray-900 text-gray-900 dark:text-white"></body>
+</html>
 ```
 
 ---
@@ -149,12 +173,12 @@ Instead of writing manual dark variants for every color:
 ```html
 <!-- Manual Way -->
 <div class="bg-white text-slate-900 dark:bg-black dark:text-white">
-    <p>Manual theme management.</p>
+  <p>Manual theme management.</p>
 </div>
 
 <!-- Auto Dark Mode -->
 <div class="bg-white text-slate-900 auto-dark">
-    <p>Zero-effort theme management.</p>
+  <p>Zero-effort theme management.</p>
 </div>
 ```
 
@@ -162,16 +186,16 @@ Instead of writing manual dark variants for every color:
 
 The engine detects the presence of the `auto-dark` utility and automatically generates high-contrast dark mode rules for any color identities on the same element. It uses a **perceptually uniform inversion map**:
 
-| Light Shade | Dark Alternative |
-|---|---|
-| `50` (Lightest) | `950` (Darkest) |
-| `100` | `900` |
-| `200` | `800` |
-| `300` | `700` |
-| `400` | `600` |
-| `500` | `500` (Balanced) |
-| `white` | `black` |
-| `black` | `white` |
+| Light Shade     | Dark Alternative |
+| --------------- | ---------------- |
+| `50` (Lightest) | `950` (Darkest)  |
+| `100`           | `900`            |
+| `200`           | `800`            |
+| `300`           | `700`            |
+| `400`           | `600`            |
+| `500`           | `500` (Balanced) |
+| `white`         | `black`          |
+| `black`         | `white`          |
 
 ### Specificity & Overrides
 
@@ -205,16 +229,16 @@ You can apply fluid scaling to any sizing utility using the `fluid:` prefix. Thi
 
 <!-- Padding and gaps that grow with the screen -->
 <div class="fluid:p-10 fluid:gap-8 flex">
-    <div>Item 1</div>
-    <div>Item 2</div>
+  <div>Item 1</div>
+  <div>Item 2</div>
 </div>
 ```
 
-| Class | Mobile (320px) | Desktop (1200px) |
-|---|---|---|
-| `fluid:text-xl` | 20px | 28px |
-| `fluid:p-4` | 16px | 24px |
-| `fluid:gap-10` | 40px | 60px |
+| Class           | Mobile (320px) | Desktop (1200px) |
+| --------------- | -------------- | ---------------- |
+| `fluid:text-xl` | 20px           | 28px             |
+| `fluid:p-4`     | 16px           | 24px             |
+| `fluid:gap-10`  | 40px           | 60px             |
 
 ---
 
@@ -250,14 +274,14 @@ php theplugs css:clear
 
 Spacing uses a consistent scale where each unit = `0.25rem` (4px).
 
-| Class | CSS | Example |
-|---|---|---|
-| `p-{n}` | `padding: {n × 0.25}rem` | `p-4` → `padding: 1rem` |
-| `px-{n}`, `py-{n}` | Horizontal / Vertical padding | `px-6` → `padding-left: 1.5rem; padding-right: 1.5rem` |
-| `pt-{n}`, `pr-{n}`, `pb-{n}`, `pl-{n}` | Individual sides | `mt-8` → `margin-top: 2rem` |
-| `m-{n}`, `mx-{n}`, `my-{n}`, `mt-{n}` ... | Margin variants | `mx-auto` → `margin-left: auto; margin-right: auto` |
-| `gap-{n}` | Flex/Grid gap | `gap-4` → `gap: 1rem` |
-| `space-x-{n}`, `space-y-{n}` | Space between children | `space-y-2` |
+| Class                                     | CSS                           | Example                                                |
+| ----------------------------------------- | ----------------------------- | ------------------------------------------------------ |
+| `p-{n}`                                   | `padding: {n × 0.25}rem`      | `p-4` → `padding: 1rem`                                |
+| `px-{n}`, `py-{n}`                        | Horizontal / Vertical padding | `px-6` → `padding-left: 1.5rem; padding-right: 1.5rem` |
+| `pt-{n}`, `pr-{n}`, `pb-{n}`, `pl-{n}`    | Individual sides              | `mt-8` → `margin-top: 2rem`                            |
+| `m-{n}`, `mx-{n}`, `my-{n}`, `mt-{n}` ... | Margin variants               | `mx-auto` → `margin-left: auto; margin-right: auto`    |
+| `gap-{n}`                                 | Flex/Grid gap                 | `gap-4` → `gap: 1rem`                                  |
+| `space-x-{n}`, `space-y-{n}`              | Space between children        | `space-y-2`                                            |
 
 **Negative values:** Prefix with `-` for negative spacing: `-mt-4`, `-ml-2`, `-translate-x-4`.
 
@@ -316,7 +340,7 @@ The engine ships with **22 named colors × 11 shades** (50–950), using the mod
 <div class="bg-gray-900">Dark background</div>
 
 <!-- Border colors -->
-<input class="border border-gray-300 focus:border-blue-500">
+<input class="border border-gray-300 focus:border-blue-500" />
 
 <!-- With opacity -->
 <div class="bg-red-500/80">80% opaque red</div>
@@ -331,11 +355,12 @@ The engine ships with **22 named colors × 11 shades** (50–950), using the mod
 **Shades:** `50, 100, 200, 300, 400, 500, 600, 700, 800, 900, 950`
 
 **Color fallback strategy:**
+
 ```css
 /* Generated output for bg-red-500 */
 .bg-red-500 {
-    background-color: #ef4444;              /* Hex fallback */
-    background-color: oklch(0.637 0.237 25.331); /* Modern OKLCH */
+  background-color: #ef4444; /* Hex fallback */
+  background-color: oklch(0.637 0.237 25.331); /* Modern OKLCH */
 }
 ```
 
@@ -346,14 +371,14 @@ The engine ships with **22 named colors × 11 shades** (50–950), using the mod
 ```html
 <!-- Flexbox -->
 <div class="flex items-center justify-between gap-4">
-    <div class="flex-1">Grows</div>
-    <div class="flex-none">Fixed</div>
+  <div class="flex-1">Grows</div>
+  <div class="flex-none">Fixed</div>
 </div>
 
 <!-- Grid -->
 <div class="grid grid-cols-3 gap-6">
-    <div class="col-span-2">Wide</div>
-    <div>Normal</div>
+  <div class="col-span-2">Wide</div>
+  <div>Normal</div>
 </div>
 
 <!-- Display -->
@@ -372,7 +397,8 @@ The engine ships with **22 named colors × 11 shades** (50–950), using the mod
 <div class="h-screen">Full viewport height</div>
 <div class="max-w-lg mx-auto">Centered container</div>
 <div class="size-12">12×12 square (width + height)</div>
-<img class="w-[200px] h-[150px]" />  <!-- Arbitrary values -->
+<img class="w-[200px] h-[150px]" />
+<!-- Arbitrary values -->
 ```
 
 ---
@@ -382,10 +408,12 @@ The engine ships with **22 named colors × 11 shades** (50–950), using the mod
 ```html
 <div class="border border-gray-300 rounded-lg">Rounded card</div>
 <div class="border-2 border-dashed border-blue-500">Dashed border</div>
-<img class="rounded-full" />  <!-- Circle -->
-<div class="divide-y divide-gray-200">  <!-- Dividers between children -->
-    <div>Item 1</div>
-    <div>Item 2</div>
+<img class="rounded-full" />
+<!-- Circle -->
+<div class="divide-y divide-gray-200">
+  <!-- Dividers between children -->
+  <div>Item 1</div>
+  <div>Item 2</div>
 </div>
 ```
 
@@ -406,12 +434,14 @@ The engine ships with **22 named colors × 11 shades** (50–950), using the mod
 ### Transitions & Animations
 
 ```html
-<button class="transition duration-300 ease-in-out hover:scale-105 hover:shadow-lg">
-    Animated Button
+<button
+  class="transition duration-300 ease-in-out hover:scale-105 hover:shadow-lg"
+>
+  Animated Button
 </button>
 
 <div class="transition-colors duration-200 hover:bg-blue-600">
-    Color transition
+  Color transition
 </div>
 ```
 
@@ -433,7 +463,7 @@ The engine ships with **22 named colors × 11 shades** (50–950), using the mod
 
 ```html
 <div class="relative">
-    <div class="absolute top-0 right-0 z-10">Badge</div>
+  <div class="absolute top-0 right-0 z-10">Badge</div>
 </div>
 
 <nav class="sticky top-0 z-50">Sticky navbar</nav>
@@ -446,25 +476,25 @@ The engine ships with **22 named colors × 11 shades** (50–950), using the mod
 
 Use breakpoint prefixes to apply styles at specific screen widths (mobile-first):
 
-| Prefix | Min Width | Equivalent |
-|---|---|---|
-| `sm:` | 640px | `@media (min-width: 640px)` |
-| `md:` | 768px | `@media (min-width: 768px)` |
-| `lg:` | 1024px | `@media (min-width: 1024px)` |
-| `xl:` | 1280px | `@media (min-width: 1280px)` |
-| `2xl:` | 1536px | `@media (min-width: 1536px)` |
+| Prefix | Min Width | Equivalent                   |
+| ------ | --------- | ---------------------------- |
+| `sm:`  | 640px     | `@media (min-width: 640px)`  |
+| `md:`  | 768px     | `@media (min-width: 768px)`  |
+| `lg:`  | 1024px    | `@media (min-width: 1024px)` |
+| `xl:`  | 1280px    | `@media (min-width: 1280px)` |
+| `2xl:` | 1536px    | `@media (min-width: 1536px)` |
 
 ```html
 <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-    <!-- 1 column on mobile, 2 on tablet, 3 on desktop -->
+  <!-- 1 column on mobile, 2 on tablet, 3 on desktop -->
 </div>
 
 <div class="p-4 md:p-8 lg:p-12">
-    <!-- Responsive padding -->
+  <!-- Responsive padding -->
 </div>
 
 <div class="text-sm md:text-base lg:text-lg">
-    <!-- Responsive font size -->
+  <!-- Responsive font size -->
 </div>
 ```
 
@@ -474,20 +504,20 @@ Use breakpoint prefixes to apply styles at specific screen widths (mobile-first)
 
 Apply styles conditionally based on element state:
 
-| Variant | Selector | Usage |
-|---|---|---|
-| `hover:` | `:hover` | `hover:bg-blue-600` |
-| `focus:` | `:focus` | `focus:ring-2` |
-| `active:` | `:active` | `active:scale-95` |
-| `disabled:` | `:disabled` | `disabled:opacity-50` |
-| `first:` | `:first-child` | `first:mt-0` |
-| `last:` | `:last-child` | `last:mb-0` |
-| `odd:` | `:nth-child(odd)` | `odd:bg-gray-50` |
-| `even:` | `:nth-child(even)` | `even:bg-gray-100` |
-| `focus-within:` | `:focus-within` | `focus-within:ring-2` |
-| `placeholder:` | `::placeholder` | `placeholder:text-gray-400` |
-| `dark:` | Dark mode | `dark:bg-gray-900` |
-| `group-hover:` | `.group:hover` | See below |
+| Variant         | Selector           | Usage                       |
+| --------------- | ------------------ | --------------------------- |
+| `hover:`        | `:hover`           | `hover:bg-blue-600`         |
+| `focus:`        | `:focus`           | `focus:ring-2`              |
+| `active:`       | `:active`          | `active:scale-95`           |
+| `disabled:`     | `:disabled`        | `disabled:opacity-50`       |
+| `first:`        | `:first-child`     | `first:mt-0`                |
+| `last:`         | `:last-child`      | `last:mb-0`                 |
+| `odd:`          | `:nth-child(odd)`  | `odd:bg-gray-50`            |
+| `even:`         | `:nth-child(even)` | `even:bg-gray-100`          |
+| `focus-within:` | `:focus-within`    | `focus-within:ring-2`       |
+| `placeholder:`  | `::placeholder`    | `placeholder:text-gray-400` |
+| `dark:`         | Dark mode          | `dark:bg-gray-900`          |
+| `group-hover:`  | `.group:hover`     | See below                   |
 
 ### Group Hover
 
@@ -495,8 +525,10 @@ Style a child when a parent is hovered:
 
 ```html
 <div class="group cursor-pointer">
-    <h3 class="group-hover:text-blue-500 transition-colors">Title</h3>
-    <p class="group-hover:opacity-100 opacity-70 transition-opacity">Description</p>
+  <h3 class="group-hover:text-blue-500 transition-colors">Title</h3>
+  <p class="group-hover:opacity-100 opacity-70 transition-opacity">
+    Description
+  </p>
 </div>
 ```
 
@@ -541,6 +573,7 @@ To disable it:
 ## Safelist & Blocklist
 
 ### Safelist
+
 Force-include classes that aren't in your templates (e.g., dynamically generated classes):
 
 ```php
@@ -553,6 +586,7 @@ Force-include classes that aren't in your templates (e.g., dynamically generated
 ```
 
 ### Blocklist
+
 Prevent specific classes from being generated:
 
 ```php
