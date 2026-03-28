@@ -20,6 +20,16 @@ Most common settings are mapped directly to environment variables:
 | **Cache Driver** | `CACHE_DRIVER` | `file` |
 | **Session Driver** | `SESSION_DRIVER` | `file` |
 | **Database** | `DB_CONNECTION` | `mysql` |
+| **Payments** | `DEFAULT_PAYMENT_PLATFORM` | `paystack` |
+| **Payouts** | `DEFAULT_PAYOUT_PLATFORM` | `paystack` |
+| **Notifications** | `SMS_SID`, `SMS_TOKEN` | `(empty)` |
+| **Uploader** | `UPLOADER_MAX_SIZE` | `10485760` (10MB) |
+| **CSS Engine** | `CSS_ENABLED` | `true` |
+| **CSS Output** | `CSS_OUTPUT` | `public/build/plugs.css` |
+| **CSS Scan Paths** | `CSS_SCAN_PATHS` | `resources/views,modules,app/Components` |
+
+> [!TIP]
+> **Auto Dark Mode**: Plugs includes a "Smart Theme" engine. By adding the `auto-dark` class to an element, the framework automatically generates dark mode variants for you. [Learn more](../views/css-engine.md#auto-dark-mode-engine).
 
 ---
 

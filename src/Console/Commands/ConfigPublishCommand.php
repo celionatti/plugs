@@ -52,7 +52,14 @@ class ConfigPublishCommand extends Command
             'seo',
             'opcache',
             'view',
-            'billing'
+            'billing',
+            'modules',
+            'css',
+            'notifications',
+            'payments',
+            'payouts',
+            'uploader',
+            'identity'
         ];
 
         if (!$file && !$publishAll) {

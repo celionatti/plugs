@@ -37,7 +37,7 @@ class IdentityModule implements ModuleInterface
     public function shouldBoot(ContextType $context): bool
     {
         // Only boot if identity is enabled in config
-        return (bool) config('auth.identity.enabled', true);
+        return (bool) config('identity.enabled', true);
     }
 
     /**
@@ -48,8 +48,8 @@ class IdentityModule implements ModuleInterface
         // Bind KeyDerivationService as singleton
         $container->singleton(KeyDerivationService::class, function () {
             return new KeyDerivationService(
-                config('auth.identity.kdf.memory', null),
-                config('auth.identity.kdf.time', null),
+                config('identity.kdf.memory', null),
+                config('identity.kdf.time', null),
             );
         });
 
@@ -57,7 +57,7 @@ class IdentityModule implements ModuleInterface
         $container->singleton(NonceService::class, function () {
             return new NonceService(
                 config('app.key', null),
-                (int) config('auth.identity.nonce_ttl', 300),
+                (int) config('identity.nonce_ttl', 300),
             );
         });
 
@@ -71,7 +71,7 @@ class IdentityModule implements ModuleInterface
                 $container->make(KeyDerivationService::class),
                 $container->make(NonceService::class),
                 $events,
-                config('auth.identity.model', 'App\\Models\\User'),
+                config('identity.model', 'App\\Models\\User'),
             );
         });
 

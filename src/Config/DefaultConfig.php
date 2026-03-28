@@ -29,6 +29,12 @@ class DefaultConfig
                 'view' => self::view(),
                 'billing' => self::billing(),
                 'modules' => self::modules(),
+                'css' => self::css(),
+                'notifications' => self::notifications(),
+                'payments' => self::payments(),
+                'payouts' => self::payouts(),
+                'uploader' => self::uploader(),
+                'identity' => self::identity(),
                 default => [],
             };
     }
@@ -132,6 +138,25 @@ class DefaultConfig
                 'token_length' => 6,
                 'expiry_hours' => 24,
                 'send_welcome_email' => true,
+            ],
+        ];
+    }
+
+    private static function identity(): array
+    {
+        return [
+            /*
+            |--------------------------------------------------------------------------
+            | Identity Configuration
+            |--------------------------------------------------------------------------
+            */
+
+            'enabled' => env('AUTH_IDENTITY_ENABLED', true),
+            'model' => env('AUTH_IDENTITY_MODEL', 'App\\Models\\User'),
+            'nonce_ttl' => (int) env('AUTH_IDENTITY_NONCE_TTL', 300),
+            'kdf' => [
+                'memory' => (int) env('AUTH_IDENTITY_KDF_MEMORY', 65536),
+                'time' => (int) env('AUTH_IDENTITY_KDF_TIME', 4),
             ],
         ];
     }
@@ -567,7 +592,7 @@ class DefaultConfig
      | This value is used when no specific tax rate is provided.
      |
      */
-            'tax_rate' => 0,
+            'tax_rate' => (float) env('BILLING_TAX_RATE', 0),
 
             /*
      |--------------------------------------------------------------------------
@@ -578,9 +603,9 @@ class DefaultConfig
      |
      */
             'regional_tax_rates' => [
-                'NG' => 7.5, // Nigeria VAT
-                'US-NY' => 8.875, // New York
-                'default' => 0,
+                'NG' => (float) env('BILLING_TAX_NG', 7.5), // Nigeria VAT
+                'US-NY' => (float) env('BILLING_TAX_US_NY', 8.875), // New York
+                'default' => (float) env('BILLING_TAX_DEFAULT', 0),
             ],
 
             /*
@@ -593,10 +618,10 @@ class DefaultConfig
      */
             'fees' => [
                 'paystack' => [
-                    'waive_fixed_under' => 2500,
-                    'fixed_fee' => 100,
-                    'percentage_fee' => 0.015,
-                    'cap' => 2000,
+                    'waive_fixed_under' => (int) env('BILLING_FEE_PAYSTACK_WAIVE', 2500),
+                    'fixed_fee' => (int) env('BILLING_FEE_PAYSTACK_FIXED', 100),
+                    'percentage_fee' => (float) env('BILLING_FEE_PAYSTACK_PERCENT', 0.015),
+                    'cap' => (int) env('BILLING_FEE_PAYSTACK_CAP', 2000),
                 ],
             ],
         ];
@@ -616,6 +641,181 @@ class DefaultConfig
 
             // Module-specific settings accessible via config('modules.settings.ModuleName')
             'settings' => [],
+        ];
+    }
+
+    private static function css(): array
+    {
+        return [
+            /*
+            |--------------------------------------------------------------------------
+            | Plugs CSS Engine
+            |--------------------------------------------------------------------------
+            |
+            | Configuration for the built-in utility CSS engine.
+            */
+
+            'enabled' => filter_var(env('CSS_ENABLED', true), FILTER_VALIDATE_BOOLEAN),
+
+            // Output path (relative to project root)
+            'output' => env('CSS_OUTPUT', 'public/build/plugs.css'),
+
+            // Minify the output CSS
+            'minify' => filter_var(env('CSS_MINIFY', env('APP_ENV') === 'production'), FILTER_VALIDATE_BOOLEAN),
+
+            // Include CSS reset (Preflight)
+            'preflight' => filter_var(env('CSS_PREFLIGHT', true), FILTER_VALIDATE_BOOLEAN),
+
+            // Dark mode strategy: 'media' (prefers-color-scheme) or 'class' (.dark)
+            'dark_mode' => env('CSS_DARK_MODE', 'media'),
+
+            // Enable Fluid Typography (clamp-based scaling for text and spacing)
+            'fluid_typography' => filter_var(env('CSS_FLUID_TYPOGRAPHY', true), FILTER_VALIDATE_BOOLEAN),
+
+            // Directories to scan for utility classes (relative to project root)
+            'scan_paths' => array_filter(array_map('trim', explode(',', env('CSS_SCAN_PATHS', 'resources/views,modules,app/Components')))),
+
+            // File extensions to scan
+            'scan_extensions' => array_filter(array_map('trim', explode(',', env('CSS_SCAN_EXTENSIONS', '.plug.php,.php,.html')))),
+
+            // Classes always included regardless of template scanning
+            'safelist' => [],
+
+            // Classes never included
+            'blocklist' => [],
+
+            // Responsive breakpoints (mobile-first, min-width)
+            'breakpoints' => [
+                'sm'  => '640px',
+                'md'  => '768px',
+                'lg'  => '1024px',
+                'xl'  => '1280px',
+                '2xl' => '1536px',
+            ],
+
+            // Custom colors to merge with the default palette
+            'colors' => [],
+        ];
+    }
+
+    private static function notifications(): array
+    {
+        return [
+            /*
+            |--------------------------------------------------------------------------
+            | Notifications Configuration
+            |--------------------------------------------------------------------------
+            */
+
+            'sms' => [
+                'sid' => env('SMS_SID', ''),
+                'token' => env('SMS_TOKEN', ''),
+                'from' => env('SMS_FROM', ''),
+                'url' => env('SMS_URL', null),
+            ],
+
+            'slack' => [
+                'webhook_url' => env('SLACK_WEBHOOK_URL', ''),
+            ],
+
+            'database' => [
+                'table' => env('NOTIFICATIONS_TABLE', 'notifications'),
+            ],
+        ];
+    }
+
+    private static function payments(): array
+    {
+        return [
+            /*
+            |--------------------------------------------------------------------------
+            | Payments Configuration
+            |--------------------------------------------------------------------------
+            */
+
+            'default' => env('DEFAULT_PAYMENT_PLATFORM', 'paystack'),
+            'environment' => env('PAYMENT_ENVIRONMENT', 'test'),
+            'currency' => env('PAYMENT_CURRENCY', 'NGN'),
+
+            'drivers' => [
+                'paystack' => [
+                    'public_key' => env('PAYSTACK_PUBLIC_KEY', ''),
+                    'secret_key' => env('PAYSTACK_SECRET_KEY', ''),
+                    'webhook_secret' => env('PAYSTACK_WEBHOOK_SECRET', ''),
+                ],
+                'stripe' => [
+                    'public_key' => env('STRIPE_PUBLIC_KEY', ''),
+                    'secret_key' => env('STRIPE_SECRET_KEY', ''),
+                    'webhook_secret' => env('STRIPE_WEBHOOK_SECRET', ''),
+                ],
+                'flutterwave' => [
+                    'public_key' => env('FLUTTERWAVE_PUBLIC_KEY', ''),
+                    'secret_key' => env('FLUTTERWAVE_SECRET_KEY', ''),
+                    'encryption_key' => env('FLUTTERWAVE_ENCRYPTION_KEY', ''),
+                ],
+                'paypal' => [
+                    'mode' => env('PAYPAL_MODE', 'sandbox'),
+                    'client_id' => env('PAYPAL_CLIENT_ID', ''),
+                    'client_secret' => env('PAYPAL_CLIENT_SECRET', ''),
+                ],
+                'payoneer' => [
+                    'mode' => env('PAYONEER_MODE', 'sandbox'),
+                    'client_id' => env('PAYONEER_CLIENT_ID', ''),
+                    'client_secret' => env('PAYONEER_CLIENT_SECRET', ''),
+                    'program_id' => env('PAYONEER_PROGRAM_ID', ''),
+                ],
+                'btcpay' => [
+                    'url' => env('BTCPAY_URL', ''),
+                    'api_key' => env('BTCPAY_API_KEY', ''),
+                    'store_id' => env('BTCPAY_STORE_ID', ''),
+                    'webhook_secret' => env('BTCPAY_WEBHOOK_SECRET', ''),
+                ],
+            ],
+        ];
+    }
+
+    private static function payouts(): array
+    {
+        return [
+            /*
+            |--------------------------------------------------------------------------
+            | Payouts Configuration
+            |--------------------------------------------------------------------------
+            */
+
+            'default' => env('DEFAULT_PAYOUT_PLATFORM', 'paystack'),
+
+            'drivers' => [
+                'paystack' => [
+                    'secret_key' => env('PAYSTACK_SECRET_KEY', ''),
+                ],
+                'stripe' => [
+                    'secret_key' => env('STRIPE_SECRET_KEY', ''),
+                ],
+            ],
+        ];
+    }
+
+    private static function uploader(): array
+    {
+        return [
+            /*
+            |--------------------------------------------------------------------------
+            | File Uploader Configuration
+            |--------------------------------------------------------------------------
+            */
+
+            'default_disk' => env('FILESYSTEM_DISK', 'public'),
+            'base_path' => env('UPLOADER_BASE_PATH', 'uploads'),
+            'max_size' => (int) env('UPLOADER_MAX_SIZE', 10485760), // 10MB
+            'organize_by_date' => filter_var(env('UPLOADER_ORGANIZE_BY_DATE', true), FILTER_VALIDATE_BOOLEAN),
+            'allowed_extensions' => array_filter(array_map('trim', explode(',', env('UPLOADER_ALLOWED_EXTENSIONS', 'jpg,jpeg,png,gif,webp,pdf,doc,docx,xls,xlsx,txt,csv')))),
+            
+            'image_compression' => [
+                'jpeg_quality' => (int) env('UPLOADER_JPEG_QUALITY', 85),
+                'png_compression' => (int) env('UPLOADER_PNG_COMPRESSION', 8),
+                'webp_quality' => (int) env('UPLOADER_WEBP_QUALITY', 85),
+            ],
         ];
     }
 }

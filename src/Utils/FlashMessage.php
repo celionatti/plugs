@@ -38,22 +38,18 @@ class FlashMessage
     protected static array $types = [
         'success' => [
             'class' => 'plugs-alert plugs-alert-success',
-            'icon' => 'bi-check2-circle',
             'title' => 'Success',
         ],
         'error' => [
             'class' => 'plugs-alert plugs-alert-error',
-            'icon' => 'bi-exclamation-octagon-fill',
             'title' => 'Error',
         ],
         'warning' => [
             'class' => 'plugs-alert plugs-alert-warning',
-            'icon' => 'bi-exclamation-triangle-fill',
             'title' => 'Warning',
         ],
         'info' => [
             'class' => 'plugs-alert plugs-alert-info',
-            'icon' => 'bi-info-circle-fill',
             'title' => 'Info',
         ],
     ];
@@ -76,33 +72,28 @@ class FlashMessage
 <style>
 /* ========== PLUGS FLASH MESSAGES ========== */
 :root {
-    /* OKLCH Colors - Modern, perceptually uniform */
-    --plugs-success-l: 65%;
-    --plugs-error-l: 55%;
-    --plugs-warning-l: 75%;
-    --plugs-info-l: 65%;
+    /* OKLCH Colors - Framework Integrated */
+    --plugs-success: oklch(0.723 0.219 149.579);
+    --plugs-error: oklch(0.637 0.237 25.331);
+    --plugs-warning: oklch(0.705 0.213 47.604);
+    --plugs-info: oklch(0.623 0.214 259.815);
 
-    --plugs-success: oklch(var(--plugs-success-l) 0.18 145);
-    --plugs-error: oklch(var(--plugs-error-l) 0.22 25);
-    --plugs-warning: oklch(var(--plugs-warning-l) 0.15 85);
-    --plugs-info: oklch(var(--plugs-info-l) 0.15 245);
-
-    --flash-bg-opacity: 0.1;
-    --flash-blur: 15px;
-    --flash-radius: 16px;
-    --flash-padding: clamp(0.75rem, 2vw, 1.25rem);
-    --flash-width: min(calc(100% - 2rem), 420px);
-    --flash-top: clamp(1rem, 5vh, 5rem);
-    --flash-right: clamp(1rem, 5vw, 2rem);
+    --flash-bg-opacity: 0.08;
+    --flash-border-opacity: 0.15;
+    --flash-blur: 16px;
+    --flash-radius: 20px;
+    --flash-padding: 1.15rem;
+    --flash-width: min(calc(100% - 2rem), 440px);
+    --flash-top: 2rem;
+    --flash-right: 2rem;
+    --flash-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.07), 0 4px 6px -4px rgb(0 0 0 / 0.1);
 }
 
 @media (prefers-color-scheme: dark) {
     :root {
-        --plugs-success-l: 75%;
-        --plugs-error-l: 65%;
-        --plugs-warning-l: 85%;
-        --plugs-info-l: 75%;
-        --flash-bg-opacity: 0.2;
+        --flash-bg-opacity: 0.15;
+        --flash-border-opacity: 0.25;
+        --flash-shadow: 0 20px 25px -5px rgb(0 0 0 / 0.3), 0 8px 10px -6px rgb(0 0 0 / 0.4);
     }
 }
 
@@ -110,11 +101,11 @@ class FlashMessage
     position: fixed;
     top: var(--flash-top);
     right: var(--flash-right);
-    z-index: 9999;
+    z-index: 99999;
     width: var(--flash-width);
     display: flex;
     flex-direction: column;
-    gap: 0.85rem;
+    gap: 1rem;
     pointer-events: none;
 }
 
@@ -131,74 +122,88 @@ class FlashMessage
     padding: var(--flash-padding);
     border-radius: var(--flash-radius);
     display: flex;
-    align-items: flex-start;
-    gap: 1.15rem;
+    align-items: center;
+    gap: 1rem;
     position: relative;
     backdrop-filter: blur(var(--flash-blur));
     -webkit-backdrop-filter: blur(var(--flash-blur));
-    box-shadow: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
+    box-shadow: var(--flash-shadow);
     border: 1px solid transparent;
     overflow: hidden;
-    animation: plugs-bounce-in 0.7s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+    animation: plugs-premium-in 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    font-family: 'Outfit', 'Inter', sans-serif;
 }
 
-.plugs-alert::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 6px;
-    height: 100%;
-    transition: width 0.3s ease;
+.plugs-alert-success { 
+    background: oklch(from var(--plugs-success) l c h / var(--flash-bg-opacity)); 
+    border-color: oklch(from var(--plugs-success) l c h / var(--flash-border-opacity)); 
+    color: var(--plugs-success); 
 }
 
-.plugs-alert:hover::before {
-    width: 10px;
+.plugs-alert-error { 
+    background: oklch(from var(--plugs-error) l c h / var(--flash-bg-opacity)); 
+    border-color: oklch(from var(--plugs-error) l c h / var(--flash-border-opacity)); 
+    color: var(--plugs-error); 
 }
 
-.plugs-alert-success { background: oklch(from var(--plugs-success) l c h / var(--flash-bg-opacity)); border-color: oklch(from var(--plugs-success) l c h / 0.2); color: var(--plugs-success); }
-.plugs-alert-success::before { background: var(--plugs-success); }
+.plugs-alert-warning { 
+    background: oklch(from var(--plugs-warning) l c h / var(--flash-bg-opacity)); 
+    border-color: oklch(from var(--plugs-warning) l c h / var(--flash-border-opacity)); 
+    color: var(--plugs-warning); 
+}
 
-.plugs-alert-error { background: oklch(from var(--plugs-error) l c h / var(--flash-bg-opacity)); border-color: oklch(from var(--plugs-error) l c h / 0.2); color: var(--plugs-error); }
-.plugs-alert-error::before { background: var(--plugs-error); }
+.plugs-alert-info { 
+    background: oklch(from var(--plugs-info) l c h / var(--flash-bg-opacity)); 
+    border-color: oklch(from var(--plugs-info) l c h / var(--flash-border-opacity)); 
+    color: var(--plugs-info); 
+}
 
-.plugs-alert-warning { background: oklch(from var(--plugs-warning) l c h / var(--flash-bg-opacity)); border-color: oklch(from var(--plugs-warning) l c h / 0.2); color: var(--plugs-warning); }
-.plugs-alert-warning::before { background: var(--plugs-warning); }
-
-.plugs-alert-info { background: oklch(from var(--plugs-info) l c h / var(--flash-bg-opacity)); border-color: oklch(from var(--plugs-info) l c h / 0.2); color: var(--plugs-info); }
-.plugs-alert-info::before { background: var(--plugs-info); }
+.plugs-alert-content {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+}
 
 .plugs-alert-header {
     display: flex;
     align-items: center;
-    gap: 0.6rem;
-    font-weight: 800;
-    margin-bottom: 0.35rem;
-    font-size: 1rem;
-    letter-spacing: -0.02em;
+    font-weight: 700;
+    font-size: 0.95rem;
+    letter-spacing: -0.01em;
 }
 
-.plugs-alert-header i {
-    font-size: 1.35rem;
+.plugs-alert-icon {
+    flex-shrink: 0;
+    width: 1.5rem;
+    height: 1.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.plugs-alert-icon svg {
+    width: 100%;
+    height: 100%;
 }
 
 .plugs-alert-message {
-    flex: 1;
-    line-height: 1.6;
-    font-size: 0.925rem;
+    font-size: 0.875rem;
     font-weight: 500;
+    opacity: 0.9;
+    line-height: 1.5;
 }
 
 .plugs-alert-close {
+    flex-shrink: 0;
     background: none;
     border: none;
-    color: inherit;
+    color: currentColor;
     cursor: pointer;
-    padding: 0.5rem;
-    border-radius: 10px;
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    opacity: 0.55;
-    margin-left: auto;
+    padding: 0.4rem;
+    border-radius: 12px;
+    transition: all 0.2s ease;
+    opacity: 0.4;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -206,31 +211,33 @@ class FlashMessage
 
 .plugs-alert-close:hover {
     opacity: 1;
-    background-color: oklch(from currentColor l c h / 0.12);
-    transform: rotate(90deg) scale(1.1);
+    background-color: oklch(from currentColor l c h / 0.1);
+    transform: scale(1.1);
 }
 
-@keyframes plugs-bounce-in {
+.plugs-alert-close svg {
+    width: 1.2rem;
+    height: 1.2rem;
+}
+
+@keyframes plugs-premium-in {
     0% {
-        transform: translateX(110%) scale(0.9);
+        transform: translateY(20px) scale(0.95);
         opacity: 0;
     }
-    60% {
-        transform: translateX(-15px) scale(1.02);
-    }
     100% {
-        transform: translateX(0) scale(1);
+        transform: translateY(0) scale(1);
         opacity: 1;
     }
 }
 
-@keyframes plugs-bounce-out {
+@keyframes plugs-premium-out {
     0% {
-        transform: translateX(0) scale(1);
+        transform: translateY(0) scale(1);
         opacity: 1;
     }
     100% {
-        transform: translateX(110%) scale(0.9);
+        transform: translateY(-20px) scale(0.95);
         opacity: 0;
     }
 }
@@ -565,28 +572,25 @@ CSS;
 
         $html = '<div class="' . $typeConfig['class'] . ' ' . $options['animation'] . '" role="alert">';
 
-        // Icon and title
-        if ($options['show_icon'] || $options['show_title']) {
-            $html .= '<div class="plugs-alert-header">';
-
-            if ($options['show_icon']) {
-                $html .= '<i class="bi ' . $typeConfig['icon'] . '"></i>';
-            }
-
-            if ($options['show_title'] && $title) {
-                $html .= '<span>' . htmlspecialchars($title, ENT_QUOTES, 'UTF-8') . '</span>';
-            }
-
-            $html .= '</div>';
+        // Icon
+        if ($options['show_icon']) {
+            $html .= '<div class="plugs-alert-icon">' . self::getIconSvg($type) . '</div>';
         }
 
-        // Message
+        // Content (Header + Message)
+        $html .= '<div class="plugs-alert-content">';
+
+        if ($options['show_title'] && $title) {
+            $html .= '<div class="plugs-alert-header"><span>' . htmlspecialchars($title, ENT_QUOTES, 'UTF-8') . '</span></div>';
+        }
+
         $html .= '<div class="plugs-alert-message">' . $message . '</div>';
+        $html .= '</div>';
 
         // Close button
         if ($options['show_close']) {
             $html .= '<button type="button" class="plugs-alert-close" aria-label="Close">';
-            $html .= '<i class="bi bi-x-lg"></i>';
+            $html .= self::getIconSvg('close');
             $html .= '</button>';
         }
 
@@ -612,7 +616,7 @@ CSS;
                 if (btn) {
                     const alert = btn.closest('.plugs-alert');
                     if (alert) {
-                        alert.style.animation = 'plugs-bounce-out 0.5s cubic-bezier(0.4, 0, 0.2, 1) forwards';
+                        alert.style.animation = 'plugs-premium-out 0.5s cubic-bezier(0.4, 0, 0.2, 1) forwards';
                         setTimeout(() => alert.remove(), 500);
                     }
                 }
@@ -626,7 +630,7 @@ CSS;
                     const dismissTime = {$delay} + (index * 600);
                     setTimeout(() => {
                         if (document.body.contains(alert)) {
-                            alert.style.animation = 'plugs-bounce-out 0.6s cubic-bezier(0.4, 0, 0.2, 1) forwards';
+                            alert.style.animation = 'plugs-premium-out 0.6s cubic-bezier(0.4, 0, 0.2, 1) forwards';
                             setTimeout(() => {
                                 if (document.body.contains(alert)) alert.remove();
                             }, 600);
@@ -788,6 +792,27 @@ CSS;
             $_SESSION[self::SESSION_KEY],
             fn ($flash) => $flash['type'] === $type
         ));
+    }
+
+    /**
+     * Get SVG icon markup for a message type
+     */
+    protected static function getIconSvg(string $type): string
+    {
+        switch ($type) {
+            case 'success':
+                return '<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" /></svg>';
+            case 'error':
+                return '<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="m9.75 9.75 4.5 4.5m0-4.5-4.5 4.5M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" /></svg>';
+            case 'warning':
+                return '<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126ZM12 15.75h.007v.008H12v-.008Z" /></svg>';
+            case 'info':
+                return '<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="m11.25 11.25.041-.02a.75.75 0 0 1 1.063.852l-.708 2.836a.75.75 0 0 0 1.063.853l.041-.021M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9-3.75h.008v.008H12V8.25Z" /></svg>';
+            case 'close':
+                return '<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12" /></svg>';
+            default:
+                return '';
+        }
     }
 
     /**
