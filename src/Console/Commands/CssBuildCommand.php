@@ -7,6 +7,7 @@ namespace Plugs\Console\Commands;
 use Plugs\Console\Command;
 use Plugs\Css\ClassExtractor;
 use Plugs\Css\ColorPalette;
+use Plugs\Css\UtilityGenerator;
 use Plugs\Css\CssCompiler;
 
 class CssBuildCommand extends Command
@@ -46,6 +47,11 @@ class CssBuildCommand extends Command
         // Register custom colors
         if (!empty($config['colors'])) {
             ColorPalette::registerCustomColors($config['colors']);
+        }
+
+        // Register custom fonts
+        if (!empty($config['fonts'])) {
+            UtilityGenerator::registerCustomFonts($config['fonts']);
         }
 
         if ($this->option('watch')) {
@@ -257,6 +263,7 @@ class CssBuildCommand extends Command
             'blocklist' => [],
             'breakpoints' => ['sm'=>'640px','md'=>'768px','lg'=>'1024px','xl'=>'1280px','2xl'=>'1536px'],
             'colors' => [],
+            'fonts' => [],
             'fluid_typography' => true,
         ];
 

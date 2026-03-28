@@ -695,6 +695,9 @@ class DefaultConfig
 
             // Custom colors to merge with the default palette
             'colors' => [],
+
+            // Custom font families
+            'fonts' => [],
         ];
     }
 

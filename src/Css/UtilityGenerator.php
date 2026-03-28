@@ -19,7 +19,14 @@ class UtilityGenerator
         'auto' => 'auto', 'full' => '100%', 'screen' => '100vw',
     ];
 
+    private static array $customFonts = [];
+
     private array $cache = [];
+
+    public static function registerCustomFonts(array $fonts): void
+    {
+        self::$customFonts = $fonts;
+    }
 
     public function generate(string $className): ?string
     {
@@ -153,6 +160,15 @@ class UtilityGenerator
             'font-serif' => "font-family: ui-serif, Georgia, Cambria, 'Times New Roman', Times, serif;",
             'font-mono' => "font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', monospace;",
         ];
+
+        // Check custom fonts first
+        if (str_starts_with($c, 'font-')) {
+            $fontName = substr($c, 5);
+            if (isset(self::$customFonts[$fontName])) {
+                return "font-family: " . self::$customFonts[$fontName] . ";";
+            }
+        }
+
         if (isset($textUtils[$c])) return $textUtils[$c];
 
         $tracking = [
@@ -190,30 +206,50 @@ class UtilityGenerator
             if (!str_starts_with($c, "$prefix-")) continue;
             $rest = substr($c, strlen($prefix) + 1);
 
-            // text-white, bg-black, bg-transparent, etc.
+            // 1. Try resolving as a base color (e.g., text-white, bg-gold)
             $kw = ColorPalette::resolve($rest);
             if ($kw !== null) {
                 return "$prop: $kw;";
             }
 
-            // text-red-500, bg-blue-200, etc.
-            if (preg_match('/^([a-z]+)-(\d+)$/', $rest, $m)) {
-                $color = ColorPalette::resolve($m[1], (int) $m[2]);
+            // 2. Try resolving with a shade (e.g., text-red-500, bg-gold-light)
+            if (str_contains($rest, '-')) {
+                $pos = strrpos($rest, '-');
+                $name = substr($rest, 0, $pos);
+                $shade = substr($rest, $pos + 1);
+
+                $color = ColorPalette::resolve($name, $shade);
                 if ($color !== null) {
-                    $hex = $this->oklchToHexFallback($m[1], (int) $m[2]);
-                    if ($hex) {
-                        return "$prop: $hex; $prop: $color;";
+                    // Force numeric check if it's a number for hex fallback
+                    $numericShade = is_numeric($shade) ? (int)$shade : null;
+                    if ($numericShade !== null) {
+                        $hex = $this->oklchToHexFallback($name, $numericShade);
+                        if ($hex) {
+                            return "$prop: $hex; $prop: $color;";
+                        }
                     }
                     return "$prop: $color;";
                 }
             }
 
-            // Opacity modifier: text-red-500/50
-            if (preg_match('/^([a-z]+)-(\d+)\/(\d+)$/', $rest, $m)) {
-                $color = ColorPalette::resolve($m[1], (int) $m[2]);
-                if ($color !== null) {
-                    $opacity = (int) $m[3] / 100;
-                    $colorWithAlpha = str_replace(')', " / $opacity)", $color);
+            // 3. Opacity modifier: text-red-500/50, bg-gold/50
+            if (str_contains($rest, '/')) {
+                [$colorPart, $opacityPart] = explode('/', $rest, 2);
+                $opacity = (int) $opacityPart / 100;
+
+                // Try colorPart as base or with shade
+                $colorValue = null;
+                if (str_contains($colorPart, '-')) {
+                    $pos = strrpos($colorPart, '-');
+                    $name = substr($colorPart, 0, $pos);
+                    $shade = substr($colorPart, $pos + 1);
+                    $colorValue = ColorPalette::resolve($name, $shade);
+                } else {
+                    $colorValue = ColorPalette::resolve($colorPart);
+                }
+
+                if ($colorValue !== null) {
+                    $colorWithAlpha = str_replace(')', " / $opacity)", $colorValue);
                     return "$prop: $colorWithAlpha;";
                 }
             }

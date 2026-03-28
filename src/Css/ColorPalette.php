@@ -327,22 +327,40 @@ class ColorPalette
     /**
      * Resolve a color name + shade to its CSS value.
      *
+     * @param string $name Color name (e.g., 'red', 'gold')
+     * @param string|int|null $shade Shade (e.g., 500, 'light', or null for base/DEFAULT)
      * @return string|null CSS color value, or null if not found
      */
-    public static function resolve(string $name, ?int $shade = null): ?string
+    public static function resolve(string $name, $shade = null): ?string
     {
-        // Check keywords first
+        // Check keywords first (e.g., 'white', 'black', 'transparent')
         if ($shade === null && isset(self::$keywords[$name])) {
             return self::$keywords[$name];
         }
 
         // Check custom colors
-        if (isset(self::$customColors[$name][$shade])) {
-            return self::$customColors[$name][$shade];
+        if (isset(self::$customColors[$name])) {
+            $custom = self::$customColors[$name];
+
+            // If it's a direct string, return it if no shade
+            if (is_string($custom)) {
+                return ($shade === null) ? $custom : null;
+            }
+
+            // If it's an array (shades)
+            if (is_array($custom)) {
+                if ($shade !== null && isset($custom[$shade])) {
+                    return $custom[$shade];
+                }
+                // Fallback to DEFAULT if no shade provided
+                if ($shade === null && isset($custom['DEFAULT'])) {
+                    return $custom['DEFAULT'];
+                }
+            }
         }
 
-        // Check built-in palette
-        if (isset(self::$palette[$name][$shade])) {
+        // Check built-in palette (always array of shades)
+        if (isset(self::$palette[$name]) && $shade !== null && isset(self::$palette[$name][$shade])) {
             return self::$palette[$name][$shade];
         }
 
@@ -376,11 +394,15 @@ class ColorPalette
     /**
      * Get all available shades for a color.
      *
-     * @return int[]
+     * @return array<string|int>
      */
     public static function shades(string $name): array
     {
-        $custom = isset(self::$customColors[$name]) ? array_keys(self::$customColors[$name]) : [];
+        $custom = [];
+        if (isset(self::$customColors[$name])) {
+            $custom = is_array(self::$customColors[$name]) ? array_keys(self::$customColors[$name]) : [];
+        }
+
         $builtin = isset(self::$palette[$name]) ? array_keys(self::$palette[$name]) : [];
 
         return array_unique(array_merge($builtin, $custom));
@@ -389,7 +411,7 @@ class ColorPalette
     /**
      * Register custom colors (from config).
      *
-     * @param array<string, array<int, string>> $colors
+     * @param array<string, string|array<string|int, string>> $colors
      */
     public static function registerCustomColors(array $colors): void
     {
