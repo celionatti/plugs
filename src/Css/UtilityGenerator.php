@@ -148,7 +148,8 @@ class UtilityGenerator
             'break-normal' => 'overflow-wrap: normal; word-break: normal;',
             'antialiased' => '-webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale;',
             'subpixel-antialiased' => '-webkit-font-smoothing: auto; -moz-osx-font-smoothing: auto;',
-            'font-sans' => "font-family: ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji';",
+            'font-sans' => "font-family: 'Plus Jakarta Sans', ui-sans-serif, system-ui, sans-serif;",
+            'font-outfit' => "font-family: 'Outfit', sans-serif;",
             'font-serif' => "font-family: ui-serif, Georgia, Cambria, 'Times New Roman', Times, serif;",
             'font-mono' => "font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', monospace;",
         ];
