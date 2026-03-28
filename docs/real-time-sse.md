@@ -62,15 +62,17 @@ public function resolveBet($betId) {
 
 ## 4. Running the Daemon
 
-The SSE server must run as a background process. In production, use a process manager like **Supervisor**.
-
+### Development
+In development, you can run the daemon manually:
 ```bash
-# Start the daemon
 php theplugs sse:start
-
-# Or using the alias
-php theplugs sse
 ```
+
+### Production
+> [!IMPORTANT]
+> The SSE server MUST run as a persistent background process in production. Do NOT run it using `&` or as a simple command. 
+> 
+> Use a process manager like **Supervisor** or **Systemd**. See [SSE Server Config](sse_server_config.md) for ready-to-use configuration files.
 
 ---
 
