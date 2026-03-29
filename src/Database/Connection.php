@@ -661,6 +661,22 @@ class Connection
         $this->readPdo = null;
         $this->isHealthy = false;
         $this->isConnecting = false;
+
+        // Clear statement cache for this specific connection
+        unset(self::$statementPool[$this->connectionName]);
+    }
+
+    /**
+     * Terminate the connection, releasing all resources.
+     */
+    public function terminate(): void
+    {
+        $this->disconnect();
+
+        // Clear schema cache for this connection's tables if needed
+        if (isset(self::$schemaCache[$this->connectionName])) {
+            unset(self::$schemaCache[$this->connectionName]);
+        }
     }
 
     /** @phpstan-ignore method.unused */

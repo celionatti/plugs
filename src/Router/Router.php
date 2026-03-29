@@ -1014,7 +1014,7 @@ class Router
                     'name' => $parameter->getName(),
                     'type' => $parameter->getType(),
                     'variadic' => $parameter->isVariadic(),
-                    'default' => $parameter->isDefaultValueAvailable() ? $parameter->getDefaultValue() : $sentinel,
+                    'default' => $parameter->isDefaultValueAvailable() ? $parameter->getDefaultValue() : '__no_default__',
                     'nullable' => $parameter->getType() ? $parameter->getType()->allowsNull() : true,
                 ];
 
@@ -1061,23 +1061,131 @@ class Router
         $routeParams = $this->extractRouteParameters($request);
 
         foreach ($metadata as $paramMeta) {
-            $sentinel = new \stdClass();
+            $name = $paramMeta['name'];
+            $typeName = ($paramMeta['type'] instanceof \ReflectionNamedType) ? $paramMeta['type']->getName() : null;
+            $isBuiltin = $paramMeta['type'] ? $paramMeta['type']->isBuiltin() : true;
+            $nullable = $paramMeta['nullable'];
+            $default = $paramMeta['default'];
+            $isVariadic = $paramMeta['variadic'];
 
+            // 1. Handle variadic
+            if ($isVariadic) {
+                // For simplicity in the cached version, we collect all remaining route params
+                // This logic mirrors resolveParameter's variadic handling
+                $variadicValues = [];
+                // We need to know which params were consumed. 
+                // In cached mode, we assume all named route params that MATCH previous meta were consumed.
+                // This is a bit simplified but usually correct for typical router usage.
+                $parameters[] = $this->collectVariadicValues($routeParams, $metadata, $name);
+                continue;
+            }
 
-            // Simplified resolveParameter-like logic for cached meta
-            // We still need to call resolveParameter essentially because it handles dynamic request data
-            // But we might avoid some reflection calls later if we optimize resolveParameter itself.
-            // For now, let's keep it simple and just cache the reflection part of the lookup.
-            // The real bottleneck in reflection is often getParameters() and getType() calls on every request.
+            // 2. Handle Typed Parameters (Non-builtin)
+            if ($typeName && !$isBuiltin) {
+                $resolved = $this->resolveTypedParameter($typeName, $name, $request, $routeParams, $container);
+                if ($resolved !== null || $nullable) {
+                    $parameters[] = $resolved;
+                    continue;
+                }
+            }
 
-            // Re-using resolveParameter for now but passing the ReflectionParameter would be better.
-            // This suggests we should refactor resolveParameter to take metadata or ReflectionParameter.
+            // 3. Handle Route/Request Parameters
+            if (array_key_exists($name, $routeParams)) {
+                $parameters[] = $this->castValue($routeParams[$name], $paramMeta['type']);
+                continue;
+            }
+
+            $attrValue = $request->getAttribute($name, '__not_set__');
+            if ($attrValue !== '__not_set__') {
+                $parameters[] = $this->castValue($attrValue, $paramMeta['type']);
+                continue;
+            }
+
+            // 4. Handle body/query params
+            $parsedBody = $request->getParsedBody();
+            if (is_array($parsedBody) && array_key_exists($name, $parsedBody)) {
+                $parameters[] = $this->castValue($parsedBody[$name], $paramMeta['type']);
+                continue;
+            }
+
+            $queryParams = $request->getQueryParams();
+            if (array_key_exists($name, $queryParams)) {
+                $parameters[] = $this->castValue($queryParams[$name], $paramMeta['type']);
+                continue;
+            }
+
+            // 5. Default value
+            if ($default !== '__no_default__') {
+                $parameters[] = $default;
+                continue;
+            }
+
+            // 6. Nullable
+            if ($nullable) {
+                $parameters[] = null;
+                continue;
+            }
+
+            throw new RuntimeException("Cannot resolve parameter [{$name}] from cache.");
         }
 
-        // Actually, without the ReflectionParameter object, resolveParameter won't work easily.
-        // Let's postpone full reflection caching until I can refactor resolveParameter.
-        // For now, I'll focus on the View Engine optimization which is more impactful.
-        return [];
+        return $parameters;
+    }
+
+    private function resolveTypedParameter(string $typeName, string $name, $request, array $routeParams, $container)
+    {
+        if ($typeName === ServerRequestInterface::class || $typeName === \Plugs\Http\Request::class || is_subclass_of($typeName, ServerRequestInterface::class)) {
+            return $request;
+        }
+
+        if ($typeName === ResponseInterface::class || is_subclass_of($typeName, ResponseInterface::class)) {
+            return ResponseFactory::createResponse();
+        }
+
+        if (is_subclass_of($typeName, \Plugs\Support\ValueObject::class)) {
+            $value = $routeParams[$name] ?? $request->getAttribute($name);
+            if ($value !== null && (is_string($value) || is_numeric($value))) {
+                return $typeName::from((string) $value);
+            }
+        }
+
+        if (is_subclass_of($typeName, \Plugs\Http\Requests\FormRequest::class)) {
+            $formRequest = new $typeName();
+            $formRequest->setRequest($request);
+            $formRequest->validateInternal();
+            return $formRequest;
+        }
+
+        if (is_subclass_of($typeName, \Plugs\Base\Model\PlugModel::class)) {
+            $sentinel = new \stdClass();
+            $model = $this->resolveModelParameter($typeName, $name, $routeParams, $request, $sentinel);
+            return ($model === $sentinel) ? null : $model;
+        }
+
+        return $container->bound($typeName) ? $container->make($typeName) : null;
+    }
+
+    private function collectVariadicValues(array $routeParams, array $allMetadata, string $variadicName): array
+    {
+        $consumed = [];
+        foreach ($allMetadata as $meta) {
+            if ($meta['name'] !== $variadicName) {
+                $consumed[] = $meta['name'];
+            }
+        }
+
+        $values = [];
+        foreach ($routeParams as $key => $value) {
+            if (!in_array($key, $consumed, true)) {
+                $values[] = $value;
+            }
+        }
+        return $values;
+    }
+
+    private function castValue($value, $type)
+    {
+        return $this->castParameterValue($value, $type);
     }
 
     /**

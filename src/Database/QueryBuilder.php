@@ -188,19 +188,7 @@ class QueryBuilder
                 $subQuery = $value;
             }
 
-            $sql = $subQuery->buildSelectSql();
-
-            // But we need to avoid collisions.
-            foreach ($subQuery->getParams() as $key => $val) {
-                if (!is_string($key))
-                    continue;
-                $cleanKey = ltrim($key, ':');
-                $newKey = ':' . $cleanKey . '_sub';
-                $this->params[$newKey] = $val;
-
-                // We must search and replace in the SQL string
-                $sql = str_replace($key, $newKey, $sql);
-            }
+            $sql = $this->mergeSubQuery($subQuery);
 
             $wrappedColumn = $this->grammar->wrapIdentifier((string) $column);
             $this->where[] = [
@@ -355,17 +343,14 @@ class QueryBuilder
             $callback($subQuery);
         }
 
-        $sql = $subQuery->buildSelectSql();
-        // Remove "SELECT 1 FROM table" and keep the rest? No, actually we can just use the whole query.
+        $sql = $this->mergeSubQuery($subQuery);
 
         $this->where[] = [
             'type' => 'Raw',
             'sql' => "EXISTS ({$sql})",
             'boolean' => $boolean,
-            'params' => $subQuery->getParams(),
+            'params' => [], // Params already merged in mergeSubQuery
         ];
-
-        $this->params = array_merge($this->params, $subQuery->getParams());
 
         return $this;
     }
@@ -458,16 +443,14 @@ class QueryBuilder
             $callback($subQuery);
         }
 
-        $sql = $subQuery->buildSelectSql();
+        $sql = $this->mergeSubQuery($subQuery);
 
         $this->where[] = [
             'type' => 'Raw',
             'sql' => "NOT EXISTS ({$sql})",
             'boolean' => $boolean,
-            'params' => $subQuery->getParams(),
+            'params' => [], // Params already merged in mergeSubQuery
         ];
-
-        $this->params = array_merge($this->params, $subQuery->getParams());
 
         return $this;
     }
@@ -490,19 +473,8 @@ class QueryBuilder
                 $subQuery = $table;
             }
 
-            $sql = $subQuery->buildSelectSql();
+            $sql = $this->mergeSubQuery($subQuery);
             $alias = $first;
-
-            // Subquery params
-            foreach ($subQuery->getParams() as $key => $val) {
-                if (!is_string($key))
-                    continue;
-                $cleanKey = ltrim($key, ':');
-                $newKey = ':' . $cleanKey . '_sub';
-                $this->params[$newKey] = $val;
-
-                $sql = str_replace($key, $newKey, $sql);
-            }
 
             $tableSql = "({$sql}) AS " . $this->grammar->wrapIdentifier($alias);
 
@@ -1945,5 +1917,40 @@ class QueryBuilder
         }
 
         throw new BadMethodCallException("Method [{$method}] does not exist on the query builder.");
+    }
+
+    /**
+     * Merge a subquery into the current query builder, renaming parameters to avoid collisions.
+     * 
+     * @param self $subQuery
+     * @return string The SQL for the subquery with renamed parameters
+     */
+    protected function mergeSubQuery(self $subQuery): string
+    {
+        $sql = $subQuery->buildSelectSql();
+        $params = $subQuery->getParams();
+        
+        if (empty($params)) {
+            return $sql;
+        }
+
+        // Use a unique suffix for this specific subquery instance
+        $suffix = '_sub_' . substr(md5(spl_object_hash($subQuery)), 0, 6);
+        
+        foreach ($params as $key => $val) {
+            if (!is_string($key)) {
+                $this->params[] = $val;
+                continue;
+            }
+            
+            $cleanKey = ltrim($key, ':');
+            $newKey = ':' . $cleanKey . $suffix;
+            $this->params[$newKey] = $val;
+
+            // Use regex to replace the parameter in the SQL, ensuring we only match whole tokens
+            $sql = preg_replace('/' . preg_quote($key, '/') . '\b/', $newKey, $sql);
+        }
+
+        return $sql;
     }
 }

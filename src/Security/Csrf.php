@@ -650,8 +650,14 @@ class Csrf
             $token === null &&
             stripos($request->getHeaderLine('Content-Type'), 'application/json') !== false
         ) {
-            $body = (string) $request->getBody();
-            $request->getBody()->rewind(); // Reset stream for next middleware
+            $bodyStream = $request->getBody();
+            $body = (string) $bodyStream;
+            
+            // Only rewind if the stream is seekable.
+            // If it's not seekable, the caller will have to handle the empty body or we should have cloned the request.
+            if ($bodyStream->isSeekable()) {
+                $bodyStream->rewind(); 
+            }
 
             if (!empty($body)) {
                 $data = json_decode($body, true);
