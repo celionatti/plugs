@@ -224,6 +224,29 @@ final class ComponentAttributes implements ArrayAccess, IteratorAggregate, Count
         return Escaper::css($style);
     }
 
+    /**
+     * Resolve a CSS container property string.
+     *
+     * @param string|array $container
+     * @return string
+     */
+    public static function resolveContainer(string|array $container): string
+    {
+        if (is_string($container)) {
+            return Escaper::css("container: {$container};");
+        }
+
+        $type = $container['type'] ?? $container[0] ?? 'inline-size';
+        $name = $container['name'] ?? $container[1] ?? null;
+
+        $style = "container-type: {$type};";
+        if ($name) {
+            $style .= " container-name: {$name};";
+        }
+
+        return Escaper::css($style);
+    }
+
     // IteratorAggregate Implementation
     public function getIterator(): \Traversable
     {

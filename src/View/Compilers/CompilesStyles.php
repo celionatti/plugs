@@ -71,6 +71,19 @@ trait CompilesStyles
     }
 
     /**
+     * Compile the @container directive.
+     * 
+     * @param string $content
+     * @return string
+     */
+    protected function compileContainer(string $content): string
+    {
+        return preg_replace_callback('/@container\s*\((.+?)\)/s', function ($matches) {
+            return "style=\"<?php echo \Plugs\View\ComponentAttributes::resolveContainer({$matches[1]}); ?>\"";
+        }, $content) ?? $content;
+    }
+
+    /**
      * Compile the @plugcss directive.
      * 
      * @param string $content

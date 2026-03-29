@@ -196,8 +196,8 @@ class ClassExtractor
                 continue;
             }
 
-            // Must look like a utility class: letters, numbers, hyphens, colons, slashes, dots, brackets
-            if (!preg_match('/^[a-zA-Z\-!][a-zA-Z0-9\-:\/\[\]\._%#,()]*$/', $class)) {
+            // Must look like a utility class: letters, numbers, hyphens, colons, slashes, dots, brackets, and @ for containers
+            if (!preg_match('/^[a-zA-Z\-!@][a-zA-Z0-9\-:\/\[\]\._%#,()@]*$/', $class)) {
                 continue;
             }
 

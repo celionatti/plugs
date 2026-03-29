@@ -81,8 +81,12 @@ The `SecurityHeadersMiddleware` automatically injects industry-standard headers 
 - **X-XSS-Protection**: `1; mode=block` (Legacy XSS protection)
 - **Content-Security-Policy**: Customizable CSP to prevent XSS and data injection.
 
-### CSS Security (Inline Styles)
-Inline styles bound via `:style="..."` are automatically sanitized using `Plugs\View\Escaper::css()`. This blocks dangerous properties like `expression()`, `behavior`, and unsafe `url()` protocols that could lead to CSS-based XSS.
+### CSS Security (Hex-Escaping)
+Inline styles bound via `:style="..."` and `@style(...)` are automatically sanitized using `Plugs\View\Escaper::css()`. 
+
+- **Hex-Escaping**: High-risk characters (`< > " ' & \`) are converted to their CSS hexadecimal equivalents (e.g., `<` becomes `\3c`) to prevent context breakout.
+- **Keyword Blocking**: Dangerous properties like `expression()`, `behavior`, and `position: fixed` are blocked using a space-insensitive matching engine.
+- **Protocol Filtering**: The `url()` function is restricted to safe protocols (`http:`, `https:`, `data:image/`), neutralizing `javascript:` and `vbscript:` injections.
 
 ---
 

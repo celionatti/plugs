@@ -170,6 +170,7 @@ class Escaper
     /**
      * Escape for CSS context (style attributes).
      * Blocks dangerous CSS values that could enable CSS injection.
+     * Uses hex-escaping for non-alphanumeric characters not used in safe CSS syntax.
      * 
      * @param mixed $value
      * @return string
@@ -188,27 +189,31 @@ class Escaper
         $dangerous = [
             'expression', 'javascript', 'vbscript', 'behavior', 
             'binding', '-moz-binding', '@import', 'import',
-            'content:', 'position:fixed', 'position:absolute',
+            'position:fixed', 'position:absolute',
         ];
 
         foreach ($dangerous as $keyword) {
-            if (str_contains($clean, $keyword)) {
+            // Remove spaces for keyword check to catch "position: fixed"
+            if (str_contains(str_replace(' ', '', $clean), str_replace(' ', '', $keyword))) {
                 return ''; // Neutralize dangerous CSS
             }
         }
 
-        // 2. Handle url() specifically to allow safe protocols
+        // 2. Handle url() specifically to allow only safe protocols
         if (str_contains($clean, 'url(')) {
-            // Check for unsafe protocols in url(...)
             if (preg_match('/url\s*\(\s*([\'"]?)\s*(javascript:|data:(?!image\/)|vbscript:|file:|about:|chrome:)/i', $clean)) {
                 return '';
             }
         }
 
-        // 3. Strip characters that could break out of CSS context: \ < > " ' &
-        // These are particularly dangerous because they can be used to break into HTML or JS contexts.
-        return preg_replace('/[\\\\<>\"\'&]/', '', $value);
+        // 3. Use hex-escaping for characters that could break context: < > " ' & \
+        // We allow common CSS characters like : ; # % ( ) - _ / .
+        return preg_replace_callback('/[\\\\<>\"\'&]/', function ($matches) {
+            $hex = dechex(ord($matches[0]));
+            return '\\' . str_pad($hex, 2, '0', STR_PAD_LEFT);
+        }, $value);
     }
+
 
     /**
      * Escape a value for use as an HTML element ID.

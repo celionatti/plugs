@@ -58,6 +58,8 @@ class UtilityGenerator
             ?? $this->tryTransition($baseClass)
             ?? $this->tryTransform($baseClass, $isNegative)
             ?? $this->tryPosition($baseClass, $isNegative)
+            ?? $this->tryGradient($baseClass)
+            ?? $this->tryContainer($baseClass)
             ?? $this->tryMisc($baseClass)
             ?? $this->tryArbitrary($baseClass);
     }
@@ -191,7 +193,6 @@ class UtilityGenerator
         return null;
     }
 
-    // ─── Colors ───────────────────────────────────────────
     private function tryColor(string $c): ?string
     {
         $prefixes = [
@@ -206,52 +207,16 @@ class UtilityGenerator
             if (!str_starts_with($c, "$prefix-")) continue;
             $rest = substr($c, strlen($prefix) + 1);
 
-            // 1. Try resolving as a base color (e.g., text-white, bg-gold)
-            $kw = ColorPalette::resolve($rest);
-            if ($kw !== null) {
-                return "$prop: $kw;";
-            }
-
-            // 2. Try resolving with a shade (e.g., text-red-500, bg-gold-light)
-            if (str_contains($rest, '-')) {
-                $pos = strrpos($rest, '-');
-                $name = substr($rest, 0, $pos);
-                $shade = substr($rest, $pos + 1);
-
-                $color = ColorPalette::resolve($name, $shade);
-                if ($color !== null) {
-                    // Force numeric check if it's a number for hex fallback
-                    $numericShade = is_numeric($shade) ? (int)$shade : null;
-                    if ($numericShade !== null) {
-                        $hex = $this->oklchToHexFallback($name, $numericShade);
-                        if ($hex) {
-                            return "$prop: $hex; $prop: $color;";
-                        }
+            $colorValue = $this->resolveColorValue($rest);
+            if ($colorValue !== null) {
+                // Check if we need hex fallback (for oklch colors)
+                if (preg_match('/^([a-z]+)-(\d+)$/', $rest, $m)) {
+                    $hex = $this->oklchToHexFallback($m[1], (int)$m[2]);
+                    if ($hex) {
+                        return "$prop: $hex; $prop: $colorValue;";
                     }
-                    return "$prop: $color;";
                 }
-            }
-
-            // 3. Opacity modifier: text-red-500/50, bg-gold/50
-            if (str_contains($rest, '/')) {
-                [$colorPart, $opacityPart] = explode('/', $rest, 2);
-                $opacity = (int) $opacityPart / 100;
-
-                // Try colorPart as base or with shade
-                $colorValue = null;
-                if (str_contains($colorPart, '-')) {
-                    $pos = strrpos($colorPart, '-');
-                    $name = substr($colorPart, 0, $pos);
-                    $shade = substr($colorPart, $pos + 1);
-                    $colorValue = ColorPalette::resolve($name, $shade);
-                } else {
-                    $colorValue = ColorPalette::resolve($colorPart);
-                }
-
-                if ($colorValue !== null) {
-                    $colorWithAlpha = str_replace(')', " / $opacity)", $colorValue);
-                    return "$prop: $colorWithAlpha;";
-                }
+                return "$prop: $colorValue;";
             }
         }
 
@@ -259,6 +224,37 @@ class UtilityGenerator
         if (preg_match('/^(bg|text)-opacity-(\d+)$/', $c, $m)) {
             $opacity = (int) $m[2] / 100;
             return "opacity: $opacity;";
+        }
+
+        return null;
+    }
+
+    /**
+     * Internal helper to resolve a color string to its CSS value.
+     */
+    private function resolveColorValue(string $rest): ?string
+    {
+        // 1. Try resolving as a base color (e.g., white, black)
+        $kw = ColorPalette::resolve($rest);
+        if ($kw !== null) return $kw;
+
+        // 2. Try resolving with a shade (e.g., red-500)
+        if (str_contains($rest, '-')) {
+            $pos = strrpos($rest, '-');
+            $name = substr($rest, 0, $pos);
+            $shade = substr($rest, $pos + 1);
+            $color = ColorPalette::resolve($name, $shade);
+            if ($color !== null) return $color;
+        }
+
+        // 3. Opacity modifier: red-500/50
+        if (str_contains($rest, '/')) {
+            [$colorPart, $opacityPart] = explode('/', $rest, 2);
+            $opacity = (int) $opacityPart / 100;
+            $colorValue = $this->resolveColorValue($colorPart);
+            if ($colorValue !== null) {
+                return str_replace(')', " / $opacity)", $colorValue);
+            }
         }
 
         return null;
@@ -458,6 +454,50 @@ class UtilityGenerator
             if (isset($blurs[$k])) return "filter: blur({$blurs[$k]});";
         }
 
+        return null;
+    }
+
+    // ─── Gradients ────────────────────────────────────────
+    private function tryGradient(string $c): ?string
+    {
+        if (preg_match('/^bg-gradient-to-(t|tr|r|br|b|bl|l|tl)$/', $c, $m)) {
+            $dirs = [
+                't'=>'to top','tr'=>'to top right','r'=>'to right','br'=>'to bottom right',
+                'b'=>'to bottom','bl'=>'to bottom left','l'=>'to left','tl'=>'to top left'
+            ];
+            $dir = $dirs[$m[1]];
+            return "background-image: linear-gradient($dir, var(--tw-gradient-stops));";
+        }
+
+        if (preg_match('/^from-(.+)$/', $c, $m)) {
+            $color = $this->resolveColorValue($m[1]);
+            if ($color) return "--tw-gradient-from: $color; --tw-gradient-to: rgba(255, 255, 255, 0); --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-to);";
+        }
+
+        if (preg_match('/^via-(.+)$/', $c, $m)) {
+            $color = $this->resolveColorValue($m[1]);
+            if ($color) return "--tw-gradient-to: rgba(255, 255, 255, 0); --tw-gradient-stops: var(--tw-gradient-from), $color, var(--tw-gradient-to);";
+        }
+
+        if (preg_match('/^to-(.+)$/', $c, $m)) {
+            $color = $this->resolveColorValue($m[1]);
+            if ($color) return "--tw-gradient-to: $color;";
+        }
+
+        return null;
+    }
+
+    // ─── Containers ───────────────────────────────────────
+    private function tryContainer(string $c): ?string
+    {
+        if ($c === 'container-type-size') return 'container-type: size;';
+        if ($c === 'container-type-inline-size') return 'container-type: inline-size;';
+        if ($c === 'container-type-normal') return 'container-type: normal;';
+        
+        if (preg_match('/^container-name-(.+)$/', $c, $m)) {
+            return "container-name: {$m[1]};";
+        }
+        
         return null;
     }
 
@@ -725,13 +765,17 @@ class UtilityGenerator
             }
         }
 
-        // 2. Spacing utilities (p-, m-, gap-)
-        $prefixes = ['p' => 'padding', 'm' => 'margin', 'gap' => 'gap'];
+        // 2. Sizing and Positioning scaling
+        $prefixes = [
+            'p' => 'padding', 'm' => 'margin', 'gap' => 'gap',
+            'w' => 'width', 'h' => 'height',
+            'top' => 'top', 'right' => 'right', 'bottom' => 'bottom', 'left' => 'left'
+        ];
         foreach ($prefixes as $prefix => $prop) {
             if (preg_match("/^{$prefix}-([\d.]+)$/", $c, $m)) {
                 $val = (float) $m[1];
                 $min = $val * 0.25;
-                $max = $min * 1.5; // Scale spacing by 50%
+                $max = $min * 1.5; 
                 $fluid = $this->calculateClamp($min, $max);
                 return "{$prop}: {$fluid};";
             }

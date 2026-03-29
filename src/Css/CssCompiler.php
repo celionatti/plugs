@@ -114,6 +114,7 @@ class CssCompiler
         $stateRules = [];
         $darkRules = [];
         $groupRules = [];
+        $containerRules = [];
 
         $autoDarkMode = in_array('auto-dark', $classes);
 
@@ -122,6 +123,7 @@ class CssCompiler
             $responsive = null;
             $isDark = false;
             $groupVariant = null;
+            $containerQuery = null;
             $class = $rawClass;
 
             $isFluid = false;
@@ -141,6 +143,8 @@ class CssCompiler
                     $variant = $prefix;
                 } elseif (isset(self::$groupVariants[$prefix])) {
                     $groupVariant = $prefix;
+                } elseif (str_starts_with($prefix, '@container-')) {
+                    $containerQuery = substr($prefix, 11);
                 }
 
                 $class = $rest;
@@ -170,6 +174,8 @@ class CssCompiler
             } elseif ($variant) {
                 $stateRules[] = $this->buildRule($escapedSelector, $css, $variant);
                 $this->stats['state_variants'][$variant] = ($this->stats['state_variants'][$variant] ?? 0) + 1;
+            } elseif ($containerQuery) {
+                $containerRules[$containerQuery][] = $this->buildRule($escapedSelector, $css, $variant, $groupVariant);
             } else {
                 $baseRules[] = ".{$escapedSelector} { {$css} }";
 
@@ -184,7 +190,7 @@ class CssCompiler
         }
 
         // Assemble final CSS
-        $output = $this->assembleOutput($baseRules, $responsiveRules, $stateRules, $darkRules, $groupRules);
+        $output = $this->assembleOutput($baseRules, $responsiveRules, $stateRules, $darkRules, $groupRules, $containerRules);
 
         $this->stats['original_size'] = strlen($output);
 
@@ -258,7 +264,8 @@ class CssCompiler
             || isset(self::$stateVariants[$prefix])
             || isset(self::$groupVariants[$prefix])
             || $prefix === 'dark'
-            || $prefix === 'fluid';
+            || $prefix === 'fluid'
+            || str_starts_with($prefix, '@container-');
     }
 
     private function splitFirstVariant(string $class): array
@@ -294,7 +301,7 @@ class CssCompiler
         return "{$parentSelector} .{$selector} { {$css} }";
     }
 
-    private function assembleOutput(array $base, array $responsive, array $state, array $dark, array $group): string
+    private function assembleOutput(array $base, array $responsive, array $state, array $dark, array $group, array $container): string
     {
         $sections = [];
 
@@ -339,6 +346,14 @@ class CssCompiler
             if (!isset($responsive[$bp]) || empty($responsive[$bp])) continue;
             $sections[] = "\n/* === Responsive: {$bp} ({$minWidth}) === */";
             $sections[] = "@media (min-width: {$minWidth}) {\n  " . implode("\n  ", $responsive[$bp]) . "\n}";
+        }
+
+        // Container queries
+        foreach ($container as $cq => $rules) {
+            if (empty($rules)) continue;
+            $width = $this->breakpoints[$cq] ?? $cq;
+            $sections[] = "\n/* === Container Query: {$cq} ({$width}) === */";
+            $sections[] = "@container (min-width: {$width}) {\n  " . implode("\n  ", $rules) . "\n}";
         }
 
         return implode("\n", $sections) . "\n";

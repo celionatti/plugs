@@ -212,6 +212,31 @@ Available for `text-`, `bg-`, `border-`, `ring-`, `outline-`, `accent-`, `decora
 | **Fuchsia** | `fuchsia-50` through `fuchsia-950` |
 | **Pink** | `pink-50` through `pink-950` |
 | **Rose** | `rose-50` through `rose-950` |
+| **Emerald** | `emerald-50` through `emerald-950` |
+| **Teal** | `teal-50` through `teal-950` |
+| **Cyan** | `cyan-50` through `cyan-950` |
+| **Sky** | `sky-50` through `sky-950` |
+| **Lime** | `lime-50` through `lime-950` |
+| **Fuchsia**| `fuchsia-50` through fuchsia-950 |
+
+### Gradients
+Gradients use the `var(--tw-gradient-stops)` system.
+
+| Class | CSS |
+|---|---|
+| `bg-gradient-to-{dir}` | `t`, `tr`, `r`, `br`, `b`, `bl`, `l`, `tl` |
+| `from-{color}` | Sets starting color and resets stops |
+| `via-{color}` | Sets middle color stop |
+| `to-{color}` | Sets ending color stop |
+
+Example: `bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500`
+
+#### Example Usage
+```html
+<div class="h-32 w-full bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 rounded-xl">
+    <!-- Gradient Background -->
+</div>
+```
 
 ### Special Keywords
 | Class | Value |
@@ -297,6 +322,32 @@ Uses the [Spacing Scale](#spacing-scale) unless otherwise specified.
 | `justify-self-end`| `justify-self: end;` (auto, start, center, stretch) |
 | `aspect-video` | `aspect-ratio: 16 / 9;` (auto, square) |
 | `columns-{n}` | `columns: {n};` |
+
+---
+
+## Container Queries
+
+Container queries allow you to style elements based on the size of a parent container rather than the viewport.
+
+### Defining a Container
+Use the `@container` directive or utility classes:
+
+| Class | CSS |
+|---|---|
+| `container-type-size` | `container-type: size;` |
+| `container-type-inline-size` | `container-type: inline-size;` |
+| `container-type-normal` | `container-type: normal;` |
+| `container-name-{name}` | `container-name: {name};` |
+
+### Container Variants
+Prefix utilities with `@container-[breakpoint]:` to apply styles based on the container size.
+
+- `@container-sm:p-4`
+- `@container-md:grid-cols-2`
+- `@container-lg:flex-row`
+
+> [!NOTE]
+> Container variants use the same breakpoints as responsive utilities (640px, 768px, etc.) but relative to the container.
 
 ---
 
@@ -470,6 +521,11 @@ Prefix any utility with a breakpoint: `md:w-1/2`, `lg:p-10`.
 
 ### Special Features
 - **`auto-dark`**: Automatically invert colors for dark mode without manual prefixing.
-- **`fluid:`**: Prefix to scale sizes smoothly based on viewport (e.g., `fluid:text-4xl`).
+- **`fluid:`**: Prefix to scale sizes smoothly based on viewport.
+    - **Typography**: `fluid:text-4xl`
+    - **Sizing**: `fluid:w-full`, `fluid:h-64`
+    - **Spacing**: `fluid:p-10`, `fluid:m-5`, `fluid:gap-4`
+    - **Positioning**: `fluid:top-20`, `fluid:left-10`
+- **`@container-[bp]:`**: Container query variant (e.g., `@container-md:w-full`).
 - **`Arbitrary Values`**: Use bracket syntax for custom values: `w-[200px]`, `bg-[#ff0000]`.
 - **`GPU Acceleration`**: Use `transform-gpu` to force hardware acceleration for transforms.
