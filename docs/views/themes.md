@@ -122,3 +122,48 @@ APP_THEME=carbon
 ```
 
 (Ensure your `config/view.php` uses `env('APP_THEME', 'default')`)
+
+---
+
+## 🎨 Theme Tokens & CSS Variables
+
+For dynamic theme switching and visual identity management, Plugs provides the `@theme` directive. This allows you to inject design tokens (CSS variables) directly into your layouts from PHP associative arrays.
+
+### The `@theme` Directive
+
+Usage: `@theme($array)`
+
+```blade
+@theme([
+    'primary'   => '#3490dc',
+    'secondary' => '#ffed4a',
+    'radius'    => '8px',
+    'font-main' => "'Inter', sans-serif"
+])
+```
+
+**Output**:
+```html
+<style>
+:root {
+    --primary: #3490dc;
+    --secondary: #ffed4a;
+    --radius: 8px;
+    --font-main: 'Inter', sans-serif;
+}
+</style>
+```
+
+### Strategic Use
+The best way to use `@theme` is to pull values from a configuration file:
+
+```blade
+@theme(config('themes.nebula.tokens'))
+```
+
+This ensures that your visual identity is decoupled from your HTML structure and can be swapped by simply changing the active theme or configuration values.
+
+---
+
+## Next Steps
+Optimize your styles for production using the [CSS Engine](./css-engine.md).

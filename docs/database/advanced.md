@@ -93,5 +93,21 @@ When caching is enabled, Plugs generates a unique cache key based on the SQL and
 
 ---
 
+## 6. Resource Management
+
+Efficiently manage database connections and memory, especially in long-running processes or high-concurrency environments.
+
+### Connection Termination
+Use the `terminate()` method on any database connection instance to explicitly release PDO instances, clear internal statement pools, and nullify schema caches. This is crucial for preventing memory leaks in worker processes or when handling large numbers of dynamic connections.
+
+```php
+use Plugs\Facades\DB;
+
+// After processing a large batch or before worker sleep
+DB::connection()->terminate();
+```
+
+---
+
 ## Next Steps
 Secure your application with [Security Best Practices](../security/overview.md).

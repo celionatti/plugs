@@ -675,53 +675,7 @@ trait CompilesFormatDirectives
         );
     }
 
-    /**
-     * Compile the class statements in the given string.
-     * Support for dynamic class merging like: @class(['p-4', 'font-bold' => $isBold])
-     *
-     * @param  string  $content
-     * @return string
-     */
-    protected function compileClass(string $content): string
-    {
-        $balanced = '([^()]*+(?:\((?1)\)[^()]*+)*+)';
 
-        return preg_replace_callback(
-            '/@class\s*\(' . $balanced . '\)/s',
-            function ($matches) {
-                $expression = $matches[1];
-
-                return "class=\"<?php echo \Plugs\View\ComponentAttributes::escapeClass(
-                    \Plugs\View\ComponentAttributes::resolveClass($expression)
-                ); ?>\"";
-            },
-            $content
-        );
-    }
-
-    /**
-     * Compile the style statements in the given string.
-     * Support for dynamic style merging like: @style(['background: red', 'font-weight: bold' => $isActive])
-     *
-     * @param  string  $content
-     * @return string
-     */
-    protected function compileStyle(string $content): string
-    {
-        $balanced = '([^()]*+(?:\((?1)\)[^()]*+)*+)';
-
-        return preg_replace_callback(
-            '/@style\s*\(' . $balanced . '\)/s',
-            function ($matches) {
-                $expression = $matches[1];
-
-                return "style=\"<?php echo \Plugs\View\ComponentAttributes::escapeStyle(
-                    \Plugs\View\ComponentAttributes::resolveStyle($expression)
-                ); ?>\"";
-            },
-            $content
-        );
-    }
 
     /**
      * Compile the use statements in the given string.
@@ -820,18 +774,4 @@ trait CompilesFormatDirectives
         );
     }
 
-    /**
-     * Compile the @plugcss directive.
-     *
-     * Outputs a <link> tag pointing to the compiled Plugs CSS utility stylesheet.
-     * Usage in templates: @plugcss
-     */
-    protected function compilePlugCss(string $content): string
-    {
-        return preg_replace(
-            '/@plugcss\b/',
-            '<?php echo \Plugs\Css\CssCompiler::linkTag(); ?>',
-            $content
-        );
-    }
 }

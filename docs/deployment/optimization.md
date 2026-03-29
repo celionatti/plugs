@@ -32,6 +32,9 @@ php theplugs route:cache
 *   **Note:** For applications with hundreds of routes, this can save up to 10-20ms per request.
 *   **Clear:** `php theplugs route:clear`
 
+### Router Reflection Caching
+The router utilizes an internal reflection cache to store metadata about controller methods. This significantly reduces the overhead of dependency injection by avoiding expensive PHP Reflection calls on every request. This optimization is automatic and works in conjunction with the route cache to ensure high-velocity request handling.
+
 ### View Caching
 Compiles all your PlugView templates into optimized PHP code.
 ```bash

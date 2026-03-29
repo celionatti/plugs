@@ -32,6 +32,26 @@ ThreatDetector::logSuspiciousActivity($ip, score: 20);
 
 ---
 
+## 2. XSS Protection (Cross-Site Scripting)
+
+Plugs provides automatic protection against XSS through its context-aware view engine and a robust HTML sanitizer.
+
+### Auto-Escaping
+All data echoed in templates using `{{ $var }}` is automatically escaped for the HTML context using `Plugs\View\Escaper`.
+
+### HTML Sanitization
+For cases where you need to allow some HTML, use the `@sanitize` directive or `Plugs\Security\Sanitizer`.
+
+- **Attribute Scrubbing**: Automatically strips dangerous attributes like `onclick`, `onmouseover`, etc.
+- **Protocol Filtering**: Rejects dangerous URI schemes like `javascript:`, `vbscript:`, and `data:` (except for safe image types).
+- **Tag Blacklisting**: Neutralizes high-risk tags such as `<script>`, `<iframe>`, and `<object>`.
+
+```blade
+@sanitize($userBio)
+```
+
+---
+
 ## 2. CSRF Protection
 
 Cross-Site Request Forgery protection is enabled by default for all `POST`, `PUT`, `PATCH`, and `DELETE` requests.
@@ -47,6 +67,9 @@ Cross-Site Request Forgery protection is enabled by default for all `POST`, `PUT
 ### AJAX & SPAs
 Plugs uses the "Cookie-to-Header" pattern. It sets an `XSRF-TOKEN` cookie that your JavaScript should send back in the `X-XSRF-TOKEN` header.
 
+### High-Performance PSR-7 Integration
+The CSRF protection layer is optimized for PSR-7 compatibility, including robust handling of large request body streams without memory overhead or runtime exceptions on non-seekable streams.
+
 ---
 
 ## 3. Security Headers
@@ -57,6 +80,9 @@ The `SecurityHeadersMiddleware` automatically injects industry-standard headers 
 - **X-Content-Type-Options**: `nosniff` (Prevents MIME sniffing)
 - **X-XSS-Protection**: `1; mode=block` (Legacy XSS protection)
 - **Content-Security-Policy**: Customizable CSP to prevent XSS and data injection.
+
+### CSS Security (Inline Styles)
+Inline styles bound via `:style="..."` are automatically sanitized using `Plugs\View\Escaper::css()`. This blocks dangerous properties like `expression()`, `behavior`, and unsafe `url()` protocols that could lead to CSS-based XSS.
 
 ---
 

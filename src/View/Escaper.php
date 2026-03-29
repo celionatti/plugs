@@ -182,13 +182,14 @@ class Escaper
             return '';
         }
 
-        // Check for dangerous CSS keywords and patterns (case-insensitive)
-        $dangerous = [
-            'expression', 'javascript', 'vbscript', 'url(', 'import', 
-            'behavior', 'binding', '-moz-binding', '@import', 
-            'content:', 'position:fixed', 'position:absolute'
-        ];
         $clean = strtolower(trim($value));
+
+        // 1. Check for dangerous CSS patterns (case-insensitive)
+        $dangerous = [
+            'expression', 'javascript', 'vbscript', 'behavior', 
+            'binding', '-moz-binding', '@import', 'import',
+            'content:', 'position:fixed', 'position:absolute',
+        ];
 
         foreach ($dangerous as $keyword) {
             if (str_contains($clean, $keyword)) {
@@ -196,8 +197,16 @@ class Escaper
             }
         }
 
-        // Strip characters that could break out of CSS context: \ ( ) [ ] { } ; :
-        // We allow some if they are common in safe CSS but block the dangerous ones.
+        // 2. Handle url() specifically to allow safe protocols
+        if (str_contains($clean, 'url(')) {
+            // Check for unsafe protocols in url(...)
+            if (preg_match('/url\s*\(\s*([\'"]?)\s*(javascript:|data:(?!image\/)|vbscript:|file:|about:|chrome:)/i', $clean)) {
+                return '';
+            }
+        }
+
+        // 3. Strip characters that could break out of CSS context: \ < > " ' &
+        // These are particularly dangerous because they can be used to break into HTML or JS contexts.
         return preg_replace('/[\\\\<>\"\'&]/', '', $value);
     }
 

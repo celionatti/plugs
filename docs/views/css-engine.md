@@ -57,7 +57,7 @@ php theplugs css:build --watch
 
 The engine follows a three-phase pipeline:
 
-1. **Scan** — The `ClassExtractor` reads all `.plug.php`, `.php`, and `.html` templates and extracts class names from `class="..."` attributes, `@class(...)` directives, and `:class="..."` bindings.
+1. **Scan** — The `ClassExtractor` reads all `.plug.php`, `.php`, and `.html` templates and extracts class names from `class="..."` attributes, `@class(...)` directives, `@tw(...)` shorthands, and `:class="..."` bindings.
 
 2. **Generate** — The `UtilityGenerator` maps each class name (e.g., `bg-red-500`, `p-4`, `text-lg`) to its corresponding CSS rules.
 
@@ -239,6 +239,45 @@ You can apply fluid scaling to any sizing utility using the `fluid:` prefix. Thi
 | `fluid:text-xl` | 20px           | 28px             |
 | `fluid:p-4`     | 16px           | 24px             |
 | `fluid:gap-10`  | 40px           | 60px             |
+
+---
+
+## Advanced Scoped Styles
+
+Plugs supports scoped styling via `<style scoped>`, providing component-level encapsulation similar to Vue single-file components.
+
+### 1. Robust Scoping Engine
+The framework automatically injects unique `data-v-` attributes into your HTML and rewrites your CSS to target those attributes.
+
+- **Nested Blocks**: Fully supports `@media`, `@supports`, and other nested CSS blocks.
+- **Pseudo-selectors**: Correctly scopes pseudo-classes (`:hover`, `:active`) and pseudo-elements (`::before`, `::after`).
+
+### 2. Global Escape Hatch
+If you need to target a global class from within a scoped style block, use the `:global()` pseudo-class:
+
+```html
+<style scoped>
+  .card { padding: 1rem; }
+  
+  /* Targets .body globally without scoping */
+  :global(.body) { background: #000; }
+</style>
+```
+
+---
+
+## Blade Directives for Styles
+
+### The `@tw` Directive
+A concise shorthand for applying multiple utility classes with conditional logic, similar to `@class` but specifically tailored for a utility-first workflow.
+
+```html
+<div @tw(['font-bold', 'text-red-500' => $isUrgent, 'opacity-50' => $isDisabled])>
+  Alert Content
+</div>
+```
+
+**Output**: `class="font-bold text-red-500"` (assuming `$isUrgent` is true).
 
 ---
 

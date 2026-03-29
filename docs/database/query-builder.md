@@ -87,6 +87,9 @@ $users = DB::table('users')
 
 Supports `leftJoin`, `rightJoin`, and joining to subqueries via closures.
 
+### Subquery Parameter Safety
+When using nested subqueries, Plugs automatically detects and renames conflicting parameters using a unique hashing strategy. This ensures that parent and child queries never accidentally overwrite each other's bound values, allowing for arbitrary depth in your query logic.
+
 ---
 
 ## 4. Ordering, Limit & Pagination

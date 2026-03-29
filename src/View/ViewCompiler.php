@@ -28,7 +28,8 @@ class ViewCompiler
         \Plugs\View\Compilers\CompilesEchos,
         \Plugs\View\Compilers\CompilesFormDirectives,
         \Plugs\View\Compilers\CompilesFormatDirectives,
-        \Plugs\View\Compilers\CompilesLayouts;
+        \Plugs\View\Compilers\CompilesLayouts,
+        \Plugs\View\Compilers\CompilesStyles;
 
     private array $componentData = [];
     private array $compilationCache = [];
@@ -187,6 +188,8 @@ class ViewCompiler
             'raw' => '/@raw\s*\((.+?)\)/s',
             'class' => '/@class\s*\((.+?)\)/s',
             'style' => '/@style\s*\((.+?)\)/s',
+            'theme' => '/@theme\s*\((.+?)\)/s',
+            'tw' => '/@tw\s*\((.+?)\)/s',
             'use' => '/@use\s*\((.+?)\)/s',
 
             // RBAC patterns
@@ -394,59 +397,36 @@ class ViewCompiler
             return $content; // No scoped styles found
         }
 
-        // Generate a unique scope ID for this view based on its starting content
+        // Generate a unique scope ID for this view based on its content fingerprint
         $scopeId = 'data-v-' . substr(self::fastHash($content), 0, 8);
 
         // 1. Rewrite the CSS block
         $content = preg_replace_callback('/<style\s+scoped[^>]*>(.*?)<\/style>/is', function ($styleMatches) use ($scopeId) {
             $css = $styleMatches[1];
 
-            // A regex to locate CSS blocks: 'selector { rules }'
-            // Captures the selector string in group 1, and the rules in group 2
-            $css = preg_replace_callback('/([^{]+)\{([^}]*)\}/s', function ($ruleMatches) use ($scopeId) {
+            // A more robust regex to locate CSS blocks: 'selector { rules }'
+            // This handles nested blocks one level deep (standard for @media)
+            $css = preg_replace_callback('/([^{}]+)\{([^{}]*(?:\{[^{}]*\}[^{}]*)*)\}/s', function ($ruleMatches) use ($scopeId) {
                 $selectorsRaw = trim($ruleMatches[1]);
                 $rules = $ruleMatches[2];
 
-                // Ignore media queries and keyframes (we don't scope the @media rule itself)
+                // Ignore media queries and keyframes (we'll scope their children if recursively called, 
+                // but here we just handle the top-level block if it's a standard rule)
                 if (str_starts_with($selectorsRaw, '@')) {
                     if (str_starts_with($selectorsRaw, '@font-face') || str_starts_with($selectorsRaw, '@keyframes')) {
                         return $ruleMatches[0];
                     }
-                    // For @media, we'd ideally parse interior rules, but a simple regex might break.
-                    // For a robust implementation we'll assume basic @media nesting isn't fully scoped via simple regex,
-                    // or we skip scoping on standard @media wrappers for now, but usually in standard Vue, media queries wrap scoped css.
-                    // To be safe, if a developer writes @media, we just leave the @media line alone,
-                    // but since a regex `([^{]+)\{` matches the `@media (...) {`, the inside rules are treated as the 'rules' block.
-                    // Wait, basic regex cannot parse nested braces { { } }. 
-                    // Let's implement a safe standard scoped selector approach that works for typical classes.
-                }
-
-                // Split selectors by comma: .card, a:hover
-                $selectors = explode(',', $selectorsRaw);
-                $scopedSelectors = [];
-
-                foreach ($selectors as $selector) {
-                    $selector = trim($selector);
-                    if (empty($selector)) continue;
-
-                    // Don't scope root or keyframe steps
-                    if (in_array($selector, [':root', 'from', 'to']) || preg_match('/^[0-9]+%$/', $selector)) {
-                        $scopedSelectors[] = $selector;
-                        continue;
+                    
+                    // If it's @media or @supports, we need to recursively scope the content inside
+                    if (str_starts_with($selectorsRaw, '@media') || str_starts_with($selectorsRaw, '@supports')) {
+                        $nestedCss = $this->scopeCssSelectors($rules, $scopeId);
+                        return $selectorsRaw . " {\n" . $nestedCss . "\n}";
                     }
 
-                    // Append the scope ID before any pseudo-classes (e.g., .card:hover -> .card[data-v-123]:hover)
-                    if (strpos($selector, ':') !== false) {
-                        $parts = explode(':', $selector, 2);
-                        $scopedSelectors[] = $parts[0] . '[' . $scopeId . ']:' . $parts[1];
-                    } else {
-                        // Just append
-                        $scopedSelectors[] = $selector . '[' . $scopeId . ']';
-                    }
+                    return $ruleMatches[0];
                 }
 
-                // Reconstruct rule
-                return implode(', ', $scopedSelectors) . " {\n" . $rules . "\n}";
+                return $this->scopeSelectorLine($selectorsRaw, $scopeId) . " {\n" . $rules . "\n}";
             }, $css);
 
             return "<style>\n" . $css . "\n</style>";
@@ -454,13 +434,12 @@ class ViewCompiler
 
         // 2. Inject $scopeId into all opening HTML tags
         // E.g., <div class="card"> -> <div class="card" data-v-xxx>
-        // We match <tagName attributes> but ignore PHP tags and self-closing component tags (<x- )
-        $content = preg_replace_callback('/<([a-zA-Z0-9\-]+)([^>]*?)\s*\/?>/s', function ($tagMatches) use ($scopeId) {
+        $content = preg_replace_callback('/<([a-zA-Z0-9\-]+)((?:[^>"\']|"[^"]*"|\'[^\']*\')*?)\s*\/?>/s', function ($tagMatches) use ($scopeId) {
             $tagName = $tagMatches[1];
             $attributes = $tagMatches[2];
             $fullTag = $tagMatches[0];
 
-            // Ignore PHP tags, components (<x-), slots, and other special framework tags
+            // Ignore PHP tags, components (<x-), and special framework tags
             if (
                 in_array(strtolower($tagName), ['php', 'slot', 'auth', 'guest', 'fragment', 'teleport', 'style', 'script']) ||
                 str_starts_with(strtolower($tagName), 'x-') ||
@@ -470,7 +449,12 @@ class ViewCompiler
                 return $fullTag;
             }
 
-            // Append scope ID. Check if self closing '/>' or '>'
+            // Avoid double injection
+            if (str_contains($attributes, $scopeId)) {
+                return $fullTag;
+            }
+
+            // Append scope ID.
             if (str_ends_with($fullTag, '/>')) {
                 return '<' . $tagName . $attributes . ' ' . $scopeId . ' />';
             }
@@ -479,6 +463,57 @@ class ViewCompiler
         }, $content);
 
         return $content;
+    }
+
+    /**
+     * Scope selectors in a CSS string recursively.
+     */
+    private function scopeCssSelectors(string $css, string $scopeId): string
+    {
+        return preg_replace_callback('/([^{}]+)\{([^}]*)\}/s', function ($matches) use ($scopeId) {
+            $selector = trim($matches[1]);
+            if (str_starts_with($selector, '@')) {
+                return $matches[0];
+            }
+            return $this->scopeSelectorLine($selector, $scopeId) . " {" . $matches[2] . "}";
+        }, $css);
+    }
+
+    /**
+     * Scope a single selector line (potentially comma-separated).
+     */
+    private function scopeSelectorLine(string $selectorsRaw, string $scopeId): string
+    {
+        $selectors = explode(',', $selectorsRaw);
+        $scopedSelectors = [];
+
+        foreach ($selectors as $selector) {
+            $selector = trim($selector);
+            if (empty($selector)) continue;
+
+            // Handle :global() escape hatch
+            if (preg_match('/:global\((.*?)\)/', $selector, $globalMatches)) {
+                $scopedSelectors[] = $globalMatches[1];
+                continue;
+            }
+
+            // Don't scope root or keyframe steps
+            if (in_array($selector, [':root', 'from', 'to']) || preg_match('/^[0-9]+%$/', $selector)) {
+                $scopedSelectors[] = $selector;
+                continue;
+            }
+
+            // Append the scope ID before any pseudo-classes/pseudo-elements
+            // selector:hover -> selector[data-v-xxx]:hover
+            // selector::before -> selector[data-v-xxx]::before
+            if (preg_match('/^([^:]+)(::?.*)$/', $selector, $parts)) {
+                $scopedSelectors[] = trim($parts[1]) . '[' . $scopeId . ']' . $parts[2];
+            } else {
+                $scopedSelectors[] = $selector . '[' . $scopeId . ']';
+            }
+        }
+
+        return implode(', ', $scopedSelectors);
     }
 
     private function extractComponentsWithSlots(string $content): string
@@ -715,6 +750,8 @@ class ViewCompiler
         $content = $this->compileShortAttributes($content);
         $content = $this->compileClass($content);
         $content = $this->compileStyle($content);
+        $content = $this->compileTheme($content);
+        $content = $this->compileTw($content);
         $content = $this->compileUse($content);
         $content = $this->compileRawEchos($content);
         $content = $this->compileEscapedEchos($content);

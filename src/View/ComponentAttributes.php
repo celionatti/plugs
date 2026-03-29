@@ -221,7 +221,7 @@ final class ComponentAttributes implements ArrayAccess, IteratorAggregate, Count
      */
     public static function escapeStyle(string $style): string
     {
-        return htmlspecialchars($style, ENT_QUOTES, 'UTF-8');
+        return Escaper::css($style);
     }
 
     // IteratorAggregate Implementation
