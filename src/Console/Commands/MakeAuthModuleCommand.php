@@ -47,7 +47,6 @@ class MakeAuthModuleCommand extends Command
                 $basePath . '/Requests',
                 $basePath . '/Routes',
                 $basePath . '/Services',
-                $basePath . '/Middleware',
                 $basePath . '/Views/layouts',
                 $basePath . '/Views/components',
             ];
@@ -73,7 +72,6 @@ class MakeAuthModuleCommand extends Command
             'Requests/ResetPasswordRequest.php.stub' => 'Requests/ResetPasswordRequest.php',
             'Routes/web.php.stub' => 'Routes/web.php',
             'Services/AuthService.php.stub' => 'Services/AuthService.php',
-            'Middleware/ModuleGuestMiddleware.stub' => 'Middleware/GuestMiddleware.php',
             'Views/login.plug.php.stub' => 'Views/login.plug.php',
             'Views/register.plug.php.stub' => 'Views/register.plug.php',
             'Views/forgot-password.plug.php.stub' => 'Views/forgot-password.plug.php',
