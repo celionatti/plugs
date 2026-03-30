@@ -90,7 +90,10 @@ class VerifyEmailController extends Controller
 
         $user = (new \Modules\{{name}}\Repositories\UserRepository())->findByEmail($email);
         if ($user) {
-            $this->authService->sendEmailVerificationNotification($user);
+            $sent = $this->authService->sendEmailVerificationNotification($user);
+            if (!$sent) {
+                return $this->back()->withError('System could not send verification email. Please contact support.');
+            }
         }
 
         return $this->back()->withSuccess('A new verification code has been sent to your email!');

@@ -42,7 +42,16 @@ class AuthController extends Controller
 
             // Check if email is verified
             if ($user && method_exists($user, 'hasVerifiedEmail') && !$user->hasVerifiedEmail()) {
+                // Attempt to send verification email
+                $sent = $this->authService->sendEmailVerificationNotification($user);
+                
                 $email = $user->email;
+                
+                if (!$sent) {
+                    $this->authService->logout();
+                    return $this->redirect('/login')->withError('System was unable to send a verification email. Please contact support.');
+                }
+                
                 // Store email in session to show on notice page
                 if (session_status() === PHP_SESSION_NONE) {
                     session_start();
@@ -57,7 +66,7 @@ class AuthController extends Controller
                 
                 $_SESSION['auth.verify_email'] = $email;
                 
-                return $this->redirect('/verify-email')->withError('Please verify your email address before logging in.');
+                return $this->redirect('/verify-email')->withError('Please verify your email address before logging in. A new code has been sent.');
             }
 
             $redirectPath = ($user && method_exists($user, 'isAdmin') && $user->isAdmin()) ? '/admin' : '/';
@@ -92,7 +101,11 @@ class AuthController extends Controller
             $user = $this->authService->registerUser($registerRequest);
             
             // Send email verification
-            $this->authService->sendEmailVerificationNotification($user);
+            $sent = $this->authService->sendEmailVerificationNotification($user);
+            
+            if (!$sent) {
+                return $this->redirect('/login')->withError('Account created, but system could not send verification email. Please contact support.');
+            }
             
             // Don't login the user after registration if we want them to verify first
             // But we store their email in session so the verify page knows who they are

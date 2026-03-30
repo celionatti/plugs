@@ -123,10 +123,10 @@ class AuthService
     /**
      * Send email verification code.
      */
-    public function sendEmailVerificationNotification(object $user): void
+    public function sendEmailVerificationNotification(object $user): bool
     {
         if (method_exists($user, 'hasVerifiedEmail') && $user->hasVerifiedEmail()) {
-            return;
+            return true;
         }
 
         $tokenLength = (int) config('auth.email_verification.token_length', 6);
@@ -159,7 +159,12 @@ class AuthService
                   <p style=\"color: #94a3b8; font-size: 13px; line-height: 1.6; margin-top: 24px;\">If you did not create an account, no further action is required.</p>
                  </div>";
 
-        \Plugs\Facades\Mail::send($user->email, 'Your Verification Code', $body, true);
+        try {
+            return \Plugs\Facades\Mail::send($user->email, 'Your Verification Code', $body, true);
+        } catch (\Throwable $e) {
+            error_log('Mail sending error: ' . $e->getMessage());
+            return false;
+        }
     }
 
     /**
