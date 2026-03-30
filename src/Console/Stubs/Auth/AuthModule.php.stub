@@ -37,6 +37,8 @@ class {{name}}Module extends AbstractFeatureModule
 
     public function boot(Plugs $app): void
     {
-        //
+        // Register the module's guest middleware
+        $app->make(\Plugs\Http\Middleware\MiddlewareRegistry::class)
+            ->addAlias('guest', \Modules\{{name}}\Middleware\GuestMiddleware::class);
     }
 }

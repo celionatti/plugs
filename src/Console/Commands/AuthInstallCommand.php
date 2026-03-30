@@ -47,6 +47,10 @@ class AuthInstallCommand extends Command
             $this->publishUserModel();
         });
 
+        $this->task('Publishing GuestMiddleware', function () {
+            $this->publishGuestMiddleware();
+        });
+
         if (!$this->hasOption('no-migrate')) {
             $this->task('Running database migrations', function () {
                 $this->call('migrate');
@@ -82,6 +86,26 @@ class AuthInstallCommand extends Command
             $content = Filesystem::get($stubFile);
             Filesystem::put($destination, $content);
             $this->info(" Created model: User.php");
+        }
+    }
+
+    private function publishGuestMiddleware(): void
+    {
+        $stubFile = __DIR__ . '/../Stubs/Auth/Middleware/GuestMiddleware.stub';
+        $targetDir = getcwd() . '/app/Http/Middleware';
+        $destination = $targetDir . '/GuestMiddleware.php';
+
+        Filesystem::ensureDir($targetDir);
+
+        if (Filesystem::exists($destination) && !$this->hasOption('force')) {
+            $this->warning(" Middleware [GuestMiddleware.php] already exists.");
+            return;
+        }
+
+        if (Filesystem::exists($stubFile)) {
+            $content = Filesystem::get($stubFile);
+            Filesystem::put($destination, $content);
+            $this->info(" Created middleware: GuestMiddleware.php");
         }
     }
 
