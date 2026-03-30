@@ -48,7 +48,17 @@ class AuthController extends Controller
                 $email = $user->email;
                 
                 if (!$sent) {
-                    $this->authService->logout();
+                    if (session_status() === PHP_SESSION_NONE) {
+                        session_start();
+                    }
+                    
+                    // Soft logout to preserve session (Auth::logout() destroys flashes)
+                    foreach ($_SESSION as $key => $value) {
+                        if (is_string($key) && str_starts_with($key, 'login_')) {
+                            unset($_SESSION[$key]);
+                        }
+                    }
+                    
                     return $this->redirect('/login')->withError('System was unable to send a verification email. Please contact support.');
                 }
                 
