@@ -2120,14 +2120,16 @@ class Router
         $value = $routeParams[$paramName];
 
         // 2. Determine the key to use for resolution
-        $key = 'id';
         $route = $request->getAttribute('_route');
-        if ($route instanceof Route) {
-            $key = $route->getParameterKey($paramName) ?: 'id';
+        $modelKeyName = (new $modelClass)->getKeyName();
+        $key = $modelKeyName;
+
+        if ($route instanceof Route && $paramKey = $route->getParameterKey($paramName)) {
+            $key = $paramKey;
         }
 
         // 3. Resolve the model
-        if ($key === 'id') {
+        if ($key === $modelKeyName) {
             return $modelClass::findOrFail($value);
         }
 

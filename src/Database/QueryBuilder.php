@@ -995,7 +995,9 @@ class QueryBuilder
 
     public function find($id, array $columns = ['*']): mixed
     {
-        return $this->where('id', '=', $id)->first($columns);
+        $keyName = $this->model ? (new $this->model)->getKeyName() : 'id';
+
+        return $this->where($keyName, '=', $id)->first($columns);
     }
 
     public function firstWhere(string $column, $operator = null, $value = null): mixed
@@ -1018,7 +1020,9 @@ class QueryBuilder
 
     public function findMany(array $ids, array $columns = ['*']): array|Collection
     {
-        return $this->whereIn('id', $ids)->get($columns);
+        $keyName = $this->model ? (new $this->model)->getKeyName() : 'id';
+
+        return $this->whereIn($keyName, $ids)->get($columns);
     }
 
     public function firstOrFail(array $columns = ['*'])

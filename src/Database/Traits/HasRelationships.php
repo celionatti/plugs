@@ -347,7 +347,7 @@ trait HasRelationships
                 break;
             case 'belongsTo':
                 $config['foreignKey'] = $config['foreignKey'] ?? strtolower($relation) . '_id';
-                $config['ownerKey'] = $config['ownerKey'] ?? 'id';
+                $config['ownerKey'] = $config['ownerKey'] ?? (new $config['related'])->getKeyName();
                 break;
         }
 
@@ -515,7 +515,7 @@ trait HasRelationships
                 break;
             case 'belongsTo':
                 $config['foreignKey'] = $config['foreignKey'] ?? strtolower($relation) . '_id';
-                $config['ownerKey'] = $config['ownerKey'] ?? 'id';
+                $config['ownerKey'] = $config['ownerKey'] ?? (new $config['related'])->getKeyName();
                 break;
         }
 
@@ -605,9 +605,10 @@ trait HasRelationships
         $ids = $models->pluck($parentKey)->unique()->all();
 
         // This is complex. We need to join with the pivot table to get parent context
+        $relatedKey = (new $related)->getKeyName();
         $query = $related::query()
             ->select(["{$related::getTableName()}.*", "{$pivotTable}.{$foreignPivotKey} as pivot_{$foreignPivotKey}"])
-            ->join($pivotTable, "{$pivotTable}.{$relatedPivotKey}", '=', "{$related::getTableName()}.id")
+            ->join($pivotTable, "{$pivotTable}.{$relatedPivotKey}", '=', "{$related::getTableName()}.{$relatedKey}")
             ->whereIn("{$pivotTable}.{$foreignPivotKey}", $ids);
 
         if (isset($config['isMorph']) && $config['isMorph']) {
@@ -637,8 +638,9 @@ trait HasRelationships
                 continue;
             }
 
+            $keyName = (new $class)->getKeyName();
             $ids = $groupModels->pluck($relation . '_id')->unique()->all();
-            $results = $class::query()->whereIn('id', $ids)->get()->keyBy('id');
+            $results = $class::query()->whereIn($keyName, $ids)->get()->keyBy($keyName);
 
             foreach ($groupModels as $model) {
                 $id = $model->getAttribute($relation . '_id');
