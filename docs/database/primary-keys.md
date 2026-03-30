@@ -91,9 +91,50 @@ class User extends PlugModel
 
 ---
 
-## 3. Relationships & Model Binding
+## 3. Advanced Configurations
 
-Because the framework dynamically checks the model's `$primaryKey` setting, your UUIDs and ULIDs will completely work out of the box anywhere in the framework.
+### Changing the Primary Key Name
+If your primary key column is named `uuid` or `ulid` instead of `id`, you simply need to tell the model by defining the `$primaryKey` property:
+
+```php
+class User extends PlugModel
+{
+    use HasUuids;
+
+    protected $primaryKey = 'uuid'; 
+}
+```
+
+### Using Auto-Incrementing `id` alongside a `uuid` Column
+It is completely fine to keep a traditional integer auto-incrementing `id` as your primary key, while still letting the framework automatically generate a `uuid` column for you.
+
+To do this, you just need to override the `uniqueIds()` method provided by the trait, so it generates the UUID on your custom column instead of substituting the primary key:
+
+```php
+class User extends PlugModel
+{
+    use HasUuids;
+
+    // The primary key remains 'id' by default (auto-incrementing)
+
+    /**
+     * Get the columns that should receive a unique identifier.
+     */
+    public function uniqueIds(): array
+    {
+        return ['uuid']; // Tell the trait to populate this column instead
+    }
+}
+```
+With this setup:
+1. The framework still uses `id` for relationships and Route Model binding unless you override them.
+2. The `uuid` column will automatically be populated when you create a new user.
+
+---
+
+## 4. Relationships & Model Binding
+
+Because the framework dynamically checks the model's `$primaryKey` setting, your custom primary keys will completely work out of the box anywhere in the framework.
 
 ### Relationships
 If you have a `Post` model that belongs to a UUID `User`, your migration for the `posts` table just needs to use the same data type for the foreign key:
