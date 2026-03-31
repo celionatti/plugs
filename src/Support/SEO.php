@@ -21,6 +21,10 @@ class SEO
         $this->title = $config['default_title'] ?? null;
         $this->description = $config['default_description'] ?? null;
         $this->image = $config['default_image'] ?? null;
+
+        if ($config['auto_canonical'] ?? false) {
+            $this->autoCanonical();
+        }
     }
 
     public function setTitle(string $title, bool $withAppend = true): self
@@ -57,6 +61,17 @@ class SEO
     public function addJsonLd(array $data): self
     {
         $this->jsonLd[] = $data;
+        return $this;
+    }
+
+    /**
+     * Automatically set the canonical URL from the current request.
+     */
+    public function autoCanonical(): self
+    {
+        if (function_exists('request')) {
+            $this->url = request()->fullUrl();
+        }
         return $this;
     }
 

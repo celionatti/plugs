@@ -550,6 +550,15 @@ class DefaultConfig
             'default_description' => 'A high-performance, modular PHP framework for modern web applications.',
             'default_image' => asset('assets/img/og-image.png'),
             'keywords' => 'php, framework, plugs, fast, modular, web development',
+            'auto_canonical' => true,
+            'sitemap' => [
+                'enabled' => true,
+                'path' => '/sitemap.xml',
+            ],
+            'robots_txt' => [
+                'enabled' => true,
+                'path' => '/robots.txt',
+            ],
             'robots' => 'index, follow',
         ];
     }

@@ -30,5 +30,35 @@ class SeoModule implements ModuleInterface
 
     public function boot(Plugs $app): void
     {
+        $config = config('seo', []);
+
+        // 1. Dynamic Sitemap
+        if ($config['sitemap']['enabled'] ?? false) {
+            $path = $config['sitemap']['path'] ?? '/sitemap.xml';
+            \Plugs\Facades\Route::get($path, function () {
+                $sitemap = \Plugs\Support\Sitemap::create();
+                
+                // Allow models to hook into this via events or hooks in the future
+                // For now, it's a foundation that can be extended
+                
+                return response($sitemap->render())->withHeader('Content-Type', 'application/xml');
+            });
+        }
+
+        // 2. Dynamic Robots.txt
+        if ($config['robots_txt']['enabled'] ?? false) {
+            $path = $config['robots_txt']['path'] ?? '/robots.txt';
+            \Plugs\Facades\Route::get($path, function () {
+                $robots = \Plugs\Support\Robots::create()
+                    ->userAgent('*')
+                    ->allow('/');
+                
+                if (config('seo.sitemap.enabled')) {
+                    $robots->sitemap(url(config('seo.sitemap.path', '/sitemap.xml')));
+                }
+
+                return response($robots->render())->withHeader('Content-Type', 'text/plain');
+            });
+        }
     }
 }

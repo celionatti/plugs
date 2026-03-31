@@ -563,6 +563,13 @@ class PlugViewEngine implements ViewEngineInterface
         $this->directive('active', function ($expression) {
             return "<?php echo (isset(\$currentRoute) && \$currentRoute === trim($expression, '\"\' ')) ? 'active' : ''; ?>";
         });
+
+        $this->directive('seo', function ($expression) {
+            if ($expression) {
+                return "<?php echo \\Plugs\\Facades\\SEO::getFacadeRoot() ? \\Plugs\\Facades\\SEO::toSeo($expression)->render() : ''; ?>";
+            }
+            return "<?php echo \\Plugs\\Facades\\SEO::getFacadeRoot() ? \\Plugs\\Facades\\SEO::render() : ''; ?>";
+        });
     }
 
     public function render(string $view, array $data = [], bool $isComponent = false): string

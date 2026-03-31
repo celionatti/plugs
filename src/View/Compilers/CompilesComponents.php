@@ -1038,6 +1038,30 @@ trait CompilesComponents
                    "</div>";
         }, $content) ?? $content;
 
+        // 18. <seo title="..." description="..." image="..." canonical="..." />
+        $content = preg_replace_callback('/<seo' . $attrRegex . '\/?>/is', function ($m) {
+            $attrs = $this->parseAttributes($m[1]);
+            
+            if (empty($attrs)) {
+                return "@seo";
+            }
+            
+            $overrides = [];
+            foreach ($attrs as $key => $info) {
+                $val = $info['value'];
+                $isVar = $info['is_variable'];
+                
+                if ($isVar) {
+                    $overrides[] = "'{$key}' => {$val}";
+                } else {
+                    $cleanVal = ($val === 'true' || $val === 'false') ? $val : "'" . addslashes((string) $val) . "'";
+                    $overrides[] = "'{$key}' => {$cleanVal}";
+                }
+            }
+            
+            return "@seo([" . implode(', ', $overrides) . "])";
+        }, $content) ?? $content;
+
         return $content;
     }
 }
