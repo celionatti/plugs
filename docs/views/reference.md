@@ -121,11 +121,19 @@ For SPA layouts using `plugs-spa.js`, you can use shorthands for the main swappa
     @yield('content')
 </>
 
-{{-- Option 2: Main Content Tag --}}
-<main-content />
+{{-- Option 2: Main Content Tag with Premium Flash (Default) --}}
+<main-content :flash="true" />
+{{-- OR --}}
+<main-content flash />
+
+{{-- Option 3: Main Content Tag with Basic Flash --}}
+<main-content :flash="basic" />
 ```
 
-Both of the above compile to `<div id="app-content"> @yield('content') </div>` by default.
+Both of the above compile to a container with the configured SPA ID. The `:flash` attribute determines which notification directive to inject:
+- `premium` (or `true` or empty): Injects `@flashPremium`.
+- `basic`: Injects `@flash`.
+- Omitted: No flash directive is injected.
 
 ### UI Helpers
 - **Purpose:** Reduces boilerplate compared to `@extends` and `@section('content')`.

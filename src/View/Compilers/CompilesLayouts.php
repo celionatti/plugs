@@ -414,12 +414,28 @@ trait CompilesLayouts
     protected function compileFragments(string $content): string
     {
         $id = $this->appContentId ?? 'app-content';
+        $attrRegex = '((?:[^>"\']|"[^"]*"|\'[^\']*\')*)';
 
         // 1. Convert <> ... </> to <div id="..."> ... </div>
         $content = preg_replace('/<>\s*(.*?)\s*<\/>/is', '<div id="' . $id . '">$1</div>', $content);
 
-        // 2. Convert <main-content /> to <div id="...">@yield(\'content\')</div>
-        $content = preg_replace('/<main-content\s*\/?>/i', '<div id="' . $id . '">@yield(\'content\')</div>', $content);
+        // 2. Convert <main-content :flash="premium" /> to <div id="...">@flashPremium @yield('content')</div>
+        $content = preg_replace_callback('/<main-content' . $attrRegex . '\s*\/?>/i', function ($m) use ($id) {
+            $attrs = $this->parseAttributes($m[1]);
+            $flashValue = $attrs['flash']['value'] ?? null;
+            
+            $flashDirective = '';
+            if (isset($attrs['flash'])) {
+                if ($flashValue === 'true' || $flashValue === '' || $flashValue === 'premium' || $flashValue === 'flash' || $flashValue === null) {
+                    $flashDirective = "@flashPremium\n";
+                } elseif ($flashValue === 'basic') {
+                    $flashDirective = "@flash\n";
+                }
+            }
+            
+            $content = $flashDirective . "@yield('content')";
+            return '<div id="' . $id . '">' . $content . '</div>';
+        }, $content);
 
         return $content;
     }
