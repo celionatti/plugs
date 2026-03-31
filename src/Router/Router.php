@@ -86,6 +86,7 @@ class Router
     private array $compiledRoutes = [];
     protected ?RouteUrlGenerator $urlGenerator = null;
     private bool $routesLoaded = false;
+    private array $bindings = [];
 
 
 
@@ -305,6 +306,17 @@ class Router
     public function middlewareGroup(string $name, array $middleware): void
     {
         $this->registry?->addGroup($name, $middleware);
+    }
+
+    /**
+     * Bind a parameter to a model with optional authorization.
+     */
+    public function bind(string $param, string $modelClass, ?Closure $callback = null): void
+    {
+        $this->bindings[$param] = [
+            'model' => $modelClass,
+            'authorize' => $callback,
+        ];
     }
 
     /**
@@ -2144,7 +2156,13 @@ class Router
 
         $value = $routeParams[$paramName];
 
-        // 2. Determine the key to use for resolution
+        // 2. Check for explicit bindings first
+        $binding = $this->bindings[$paramName] ?? null;
+        if ($binding && $binding['model']) {
+            $modelClass = $binding['model'];
+        }
+
+        // 3. Determine the key to use for resolution
         $route = $request->getAttribute('_route');
         $modelKeyName = (new $modelClass)->getKeyName();
         $key = $modelKeyName;
@@ -2153,15 +2171,23 @@ class Router
             $key = $paramKey;
         }
 
-        // 3. Resolve the model
+        // 4. Resolve the model
+        $model = null;
         if ($key === $modelKeyName) {
-            return $modelClass::findOrFail($value);
+            $model = $modelClass::findOrFail($value);
+        } else {
+            $model = $modelClass::where($key, '=', $value)->first();
+            if (!$model) {
+                throw (new \Plugs\Exceptions\ModelNotFoundException())->setModel($modelClass, $value);
+            }
         }
 
-        // Custom key resolution
-        $model = $modelClass::where($key, '=', $value)->first();
-        if (!$model) {
-            throw (new \Plugs\Exceptions\ModelNotFoundException())->setModel($modelClass, $value);
+        // 5. Apply authorization hook if present
+        if ($model && $binding && $binding['authorize'] instanceof Closure) {
+            $authorized = $binding['authorize']($model, $request);
+            if ($authorized === false) {
+                throw new \Plugs\Exceptions\AuthorizationException("Unauthorized access to model [{$modelClass}] with ID [{$value}].");
+            }
         }
 
         return $model;

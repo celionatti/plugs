@@ -138,45 +138,49 @@ class Sanitizer
      */
     protected static function cleanAttributes(string $html): string
     {
+        // 0. Remove null bytes and control characters that can be used to hide protocols/attributes
+        $html = preg_replace('/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/', '', $html);
+
         // 1. Handle common bypasses for URI-based attributes (href, src, etc.)
-        $dangerousSchemes = ['javascript', 'data', 'vbscript', 'file'];
+        $dangerousSchemes = ['javascript', 'data', 'vbscript', 'file', 'about', 'chrome'];
         
         foreach ($dangerousSchemes as $scheme) {
-            // Regex explanation:
-            // Match the attribute name (href, etc.)
-            // Match = and optional quotes
-            // Match the scheme with optional whitespace/control characters/entities (&#x0A; etc.)
-            // This is complex, but we try to catch things like: j  a v&#x0A;ascript:
+            // Match the scheme with optional whitespace/control characters/entities
             $chars = str_split($scheme);
             $schemePattern = '';
             foreach ($chars as $char) {
                 $schemePattern .= preg_quote($char, '/') . '[\s\x00-\x1F\x7F]*';
             }
 
-            // Also match common hex/decimal entities for ':', '/', etc.
-            $pattern = '/(href|src|postaction|background|formaction|action)\s*=\s*["\']\s*(' . $schemePattern . '|&[#x][a-f0-9]+;[^"\']*):/i';
-            $html = preg_replace($pattern, '$1="#', $html);
+            // Also match common hex/decimal entities for characters and protocols
+            // We match a sequence of entities or literal characters that could form the scheme
+            // Example: &#106;&#97;v&#x61;script:
+            $entityPattern = '(?:&#[0-9]+;?|&#[xX][a-fA-F0-9]+;?|&[a-zA-Z0-9]+;?)';
+            $flexiblePattern = '(?:' . $schemePattern . '|' . $entityPattern . ')+';
+
+            $pattern = '/(href|src|postaction|background|formaction|action|lowsrc|dynsrc)\s*=\s*(["\']?)\s*' . $flexiblePattern . '[\s\x00-\x1F\x7F]*:/i';
+            $html = preg_replace($pattern, '$1=$2#', $html);
         }
 
         // 2. Remove ANY attribute starting with 'on' (event handlers)
-        // This is more aggressive and catches everything: onclick, onfocus, onmouseover...
-        // We match attributes like onmouseover="...", onfocus='...', or even onfocus=alert(1)
-        $html = preg_replace('/\s+on[a-z]+\s*=\s*(["\'])(?:(?!\1).)*\1/i', ' ', $html);
-        $html = preg_replace('/\s+on[a-z]+\s*=\s*[^\s>]+/i', ' ', $html);
+        // Aggressive: catches onclick, onfocus, onmouseover, but also on- (for custom elements if used incorrectly)
+        // Correctly handles single quotes, double quotes, and unquoted values
+        $html = preg_replace('/\s+on[a-z0-9-]+\s*=\s*(["\'])(?:(?!\1).)*\1/is', ' ', $html);
+        $html = preg_replace('/\s+on[a-z0-9-]+\s*=\s*[^\s>]+/is', ' ', $html);
 
         // 3. Remove dangerous attributes that don't start with 'on'
-        $dangerousAttrs = ['formaction', 'postaction', 'autofocus', 'loading'];
+        $dangerousAttrs = ['formaction', 'postaction', 'autofocus', 'loading', 'ping', 'srcset', 'contenteditable'];
         foreach ($dangerousAttrs as $attr) {
-            $html = preg_replace('/\s+' . $attr . '\s*=\s*(["\'])(?:(?!\1).)*\1/i', ' ', $html);
-            $html = preg_replace('/\s+' . $attr . '\s*=\s*[^\s>]+/i', ' ', $html);
+            $html = preg_replace('/\s+' . $attr . '\s*=\s*(["\'])(?:(?!\1).)*\1/is', ' ', $html);
+            $html = preg_replace('/\s+' . $attr . '\s*=\s*[^\s>]+/is', ' ', $html);
         }
 
         // 4. Remove style attributes that contain dangerous directives (expression, behavior, url, -moz-binding)
-        $html = preg_replace('/style\s*=\s*(["\'])(?:(?!\1).)*?(expression|behavior|url\s*\(|-moz-binding).*?\1/is', 'style="display:none"', $html);
+        // Also check for hidden "javascript:" inside style
+        $html = preg_replace('/style\s*=\s*(["\'])(?:(?!\1).)*?(expression|behavior|url\s*\(|-moz-binding|javascript\s*:).*?\1/is', 'style="display:none"', $html);
 
         // 5. Remove dangerous tags COMPLETELY including their content
-        // This is a fail-safe for when they are NOT in the whitelist but somehow passed through.
-        $dangerousTags = ['meta', 'link', 'style', 'script', 'embed', 'object', 'iframe', 'frame', 'frameset', 'applet', 'video', 'audio', 'canvas', 'svg', 'math'];
+        $dangerousTags = ['meta', 'link', 'style', 'script', 'embed', 'object', 'iframe', 'frame', 'frameset', 'applet', 'video', 'audio', 'canvas', 'svg', 'math', 'base'];
         $tagPattern = '/<(' . implode('|', $dangerousTags) . ')\b[^>]*>.*?<\/\1>/is';
         $html = preg_replace($tagPattern, '', $html);
         

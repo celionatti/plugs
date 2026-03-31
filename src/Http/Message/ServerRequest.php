@@ -471,6 +471,36 @@ class ServerRequest implements ServerRequestInterface
     }
 
     /**
+     * Get the validated data or a subset of it.
+     *
+     * @param array|null $keys
+     * @return array
+     */
+    public function safe(?array $keys = null): array
+    {
+        $validated = $this->attributes['_validated'] ?? [];
+
+        if (empty($validated)) {
+            // Fallback to only() if not validated yet, but semantically this 
+            // should be used after validation.
+            return $keys === null ? $this->all() : $this->only($keys);
+        }
+
+        if ($keys === null) {
+            return $validated;
+        }
+
+        $result = [];
+        foreach ($keys as $key) {
+            if (array_key_exists($key, $validated)) {
+                $result[$key] = $validated[$key];
+            }
+        }
+
+        return $result;
+    }
+
+    /**
      * Get all input except specified keys
      *
      * @param array $keys
@@ -956,30 +986,30 @@ class ServerRequest implements ServerRequestInterface
      * On failure for web requests: redirects back with errors and old input.
      * On failure for JSON requests: throws ValidationException (caught by Handler → 422 JSON).
      *
-     * @param array  $rules    Validation rules (e.g. ['email' => 'required|email'])
-     * @param array  $messages Custom error messages (optional)
+     * @param array  $rules      Validation rules (e.g. ['email' => 'required|email'])
+     * @param array  $messages   Custom error messages (optional)
+     * @param array  $attributes Custom attribute names (optional)
      * @return array Validated data
      * @throws \Plugs\Exceptions\ValidationException
      */
-    public function validate(array $rules, array $messages = []): array
+    public function validate(array $rules, array $messages = [], array $attributes = []): array
     {
         $data = $this->all();
-        $validator = new \Plugs\Security\Validator($data, $rules, $messages);
-        $passed = $validator->validate();
+        $validator = \Plugs\Security\Validator::make($data, $rules, $messages, $attributes);
+        
+        if ($validator->fails()) {
+            $errors = $validator->errors()->toArray();
 
-        if (!$passed) {
             // For JSON / AJAX requests, throw so the exception handler returns 422 JSON
             if ($this->expectsJson()) {
-                throw new \Plugs\Exceptions\ValidationException(
-                    $validator->errors()->toArray()
-                );
+                throw new \Plugs\Exceptions\ValidationException($errors);
             }
 
             // For web requests, flash errors and old input, then redirect back
             if (session_status() === PHP_SESSION_NONE) {
                 session_start();
             }
-            $_SESSION['_errors'] = $validator->errors()->toArray();
+            $_SESSION['_errors'] = $errors;
             $_SESSION['_old_input'] = $data;
 
             $backUrl = $this->getReferer() ?? '/';
@@ -988,7 +1018,10 @@ class ServerRequest implements ServerRequestInterface
             exit; // Halt execution after redirect
         }
 
-        return $validator->validated();
+        $validated = $validator->validated();
+        $this->attributes['_validated'] = $validated;
+
+        return $validated;
     }
 
     // ============================================
