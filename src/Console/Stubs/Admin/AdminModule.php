@@ -53,5 +53,8 @@ class AdminModule extends AbstractFeatureModule
     public function boot(Plugs $app): void
     {
         // Custom boot logic for Admin module
+        $app->getContainer()
+            ->make(\Plugs\Http\Middleware\MiddlewareRegistry::class)
+            ->addAlias('admin', \Modules\Admin\Middleware\AdminMiddleware::class);
     }
 }
