@@ -97,6 +97,7 @@ use Plugs\Console\Commands\ShareCommand;
 use Plugs\Console\Commands\AiScaffoldCommand;
 use Plugs\Console\Commands\CssBuildCommand;
 use Plugs\Console\Commands\CssClearCommand;
+use Plugs\Console\Commands\MakeIconCommand;
 use Plugs\Console\Commands\SSEStartCommand;
 use Plugs\Exceptions\ConsoleException;
 
@@ -145,6 +146,7 @@ class ConsoleKernel
         'make:theme' => MakeThemeCommand::class,
         'make:welcome' => MakeWelcomeCommand::class,
         'make:crud' => MakeCrudCommand::class,
+        'make:icon' => MakeIconCommand::class,
         'theme:nebula' => NebulaThemeCommand::class,
 
         'db:backup' => DatabaseBackupCommand::class,
@@ -230,6 +232,7 @@ class ConsoleKernel
         'g:dto' => 'make:dto',
         'g:res' => 'make:resource',
         'g:crud' => 'make:crud',
+        'g:icon' => 'make:icon',
         'g:repo' => 'make:repository',
         'g:con' => 'make:connector',
         'g:areq' => 'make:api-request',
@@ -297,6 +300,7 @@ class ConsoleKernel
             'make:lang',
             'make:theme',
             'make:crud',
+            'make:icon',
             'theme:nebula',
         ],
         'Routes' => ['route:list', 'route:cache', 'route:clear', 'route:test'],
