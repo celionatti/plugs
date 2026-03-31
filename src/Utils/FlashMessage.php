@@ -97,7 +97,8 @@ class FlashMessage
     }
 }
 
-.plugs-flash-container {
+.plugs-flash-container,
+.plugs-notification-stack {
     position: fixed;
     top: var(--flash-top);
     right: var(--flash-right);
@@ -610,6 +611,32 @@ CSS;
         return <<<HTML
         <script{$nonceAttr}>
         (function() {
+            // Function to ensure stack container exists
+            function ensureStack() {
+                let stack = document.querySelector('.plugs-notification-stack');
+                if (!stack) {
+                    stack = document.createElement('div');
+                    stack.className = 'plugs-notification-stack';
+                    document.body.appendChild(stack);
+                }
+                return stack;
+            }
+
+            // Move alert to stack (Teleport)
+            const alerts = document.querySelectorAll('.plugs-flash-container .plugs-alert');
+            const stack = ensureStack();
+            alerts.forEach(alert => {
+                if (alert.parentElement && !alert.parentElement.classList.contains('plugs-notification-stack')) {
+                    stack.appendChild(alert);
+                }
+            });
+
+            // Cleanup empty containers
+            const containers = document.querySelectorAll('.plugs-flash-container');
+            containers.forEach(c => {
+                if (c.children.length === 0) c.remove();
+            });
+
             // Event delegation for close buttons
             document.addEventListener('click', function(e) {
                 const btn = e.target.closest('.plugs-alert-close');
@@ -624,9 +651,8 @@ CSS;
 
             // Auto-dismiss functionality
             if ({$autoDismissStr}) {
-                const containerSelector = '.plugs-flash-container .plugs-alert';
-                const alerts = document.querySelectorAll(containerSelector);
-                alerts.forEach((alert, index) => {
+                const toastAlerts = document.querySelectorAll('.plugs-notification-stack .plugs-alert');
+                toastAlerts.forEach((alert, index) => {
                     const dismissTime = {$delay} + (index * 600);
                     setTimeout(() => {
                         if (document.body.contains(alert)) {

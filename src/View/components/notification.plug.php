@@ -39,14 +39,38 @@ $title = $title ?? ucfirst($type);
 </div>
 
 <style>
-    .plugs-premium-notification {
+    :root {
+        --flash-bg-opacity: 0.15;
+        --flash-border-opacity: 0.25;
+        --flash-blur: 16px;
+        --flash-radius: 20px;
+        --flash-padding: 1.15rem;
+        --flash-width: min(calc(100% - 2rem), 440px);
+        --flash-top: 2rem;
+        --flash-right: 2rem;
+        --flash-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.07), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+    }
+
+    .plugs-notification-stack {
         position: fixed;
-        top: 2rem;
-        right: 2rem;
+        top: var(--flash-top);
+        right: var(--flash-right);
+        z-index: 99999;
+        width: var(--flash-width);
+        display: flex;
+        flex-direction: column;
+        gap: 1rem;
+        pointer-events: none;
+    }
+
+    .plugs-premium-notification {
+        position: relative;
         z-index: 9999;
+        width: 100%;
         min-width: 320px;
         font-family: inherit;
         animation: notify-slide-in 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        pointer-events: auto;
     }
 
     .notify-glass {
@@ -125,6 +149,17 @@ $title = $title ?? ucfirst($type);
         const progressEl = document.getElementById(id + '_progress');
         const duration = {{ $duration }};
         
+        // Teleport to global stack if not already there
+        let stack = document.querySelector('.plugs-notification-stack');
+        if (!stack) {
+            stack = document.createElement('div');
+            stack.className = 'plugs-notification-stack';
+            document.body.appendChild(stack);
+        }
+        if (el.parentElement !== stack) {
+            stack.appendChild(el);
+        }
+
         // Show the notification with animation
         el.style.display = 'block';
 
