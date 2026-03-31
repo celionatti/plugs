@@ -17,7 +17,11 @@ resources/
 
 ### Rendering Views
 ```php
+// Standard rendering
 return view('welcome', ['name' => 'John']);
+
+// Explicitly setting a layout from the controller
+return view('profile')->layout('layouts.admin');
 ```
 
 ### Type Safety: `@needs`
@@ -88,21 +92,25 @@ The `$loop` variable is automatically available inside all loops.
 ## 4. Layouts and Inheritance
 
 ### The `<layout>` Tag (V5 Recommended)
-Anything outside a named slot is automatically injected into the default content area.
+Anything outside a named slot is automatically injected into the default content area. You can pass attributes directly to the layout as data.
 
 ```html
-<layout name="layouts.app">
+<layout name="layouts.app" title="My Profile" :user="user">
     <slot:title>My Profile</slot:title>
 
     <div class="profile-content">
-        <h1>Welcome back!</h1>
+        <h1>Welcome back, {{ user.name }}!</h1>
     </div>
 </layout>
 ```
 
+> [!TIP]
+> **Default Layout**: If a default layout is configured in the framework, you can omit the `name` attribute:
+> `<layout title="Dashboard"> ... </layout>`
+
 ### Classic Inheritance
 ```blade
-@extends('layouts.app')
+@extends('layouts.app', ['title' => 'My Profile'])
 
 @section('title', 'My Profile')
 
@@ -110,6 +118,20 @@ Anything outside a named slot is automatically injected into the default content
     <h1>Welcome back!</h1>
 @endsection
 ```
+
+### Simplified `@layout` Directive
+A concise shorthand for extending a layout and wrapping everything in the `content` section.
+
+```blade
+@layout('layouts.app', ['title' => 'Home'])
+    <p>Main page content here.</p>
+@endlayout
+```
+
+### UI Helpers
+- **`@title('Page Title')`**: Shorthand for `@section('title', 'Page Title')`.
+- **`@bodyClass('bg-gray-100')`**: Pushes classes to the `bodyClass` stack.
+- **`@active('route.name')`**: Returns `'active'` if the current route matches.
 
 ---
 

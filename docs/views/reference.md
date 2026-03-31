@@ -93,6 +93,53 @@ Translation shorthand.
 
 ---
 
+## 🏗️ Layout & UI Directives
+
+### `<layout>`
+
+Enhanced tag syntax for layout inheritance. Supports arbitrary attributes as data.
+
+- **Usage:** `<layout name="layouts.app" title="Dashboard"> ... </layout>`
+- **Default:** If `name` is omitted, uses the engine's default layout.
+- **Purpose:** Modern, clean way to extend layouts.
+
+### `@layout`
+
+Concise shorthand for extension and content wrapping.
+
+- **Usage:** `@layout('layouts.app', ['title' => 'Home']) ... @endlayout`
+- **Purpose:** Reduces boilerplate compared to `@extends` and `@section('content')`.
+
+### `@title`
+
+Sets the page title section.
+
+- **Usage:** `@title('Welcome Home')`
+- **Shorthand for:** `@section('title', 'Welcome Home')`
+
+### `@bodyClass`
+
+Pushes a CSS class to the `bodyClass` stack.
+
+- **Usage:** `@bodyClass('theme-dark')`
+- **Purpose:** Easily manage page-specific body classes from your views.
+
+### `@active`
+
+Checks if the current route matches and returns `'active'`.
+
+- **Usage:** `<li class="@active('user.profile')">`
+- **Purpose:** Simplifies navigation active states.
+
+### `->layout()`
+
+Sets the layout for a view fluently from the controller.
+
+- **Usage:** `return view('welcome')->layout('layouts.auth')`
+- **Purpose:** Move layout decisions to the controller when needed.
+
+---
+
 ## 🛠️ Debugging
 
 ### `@debug`

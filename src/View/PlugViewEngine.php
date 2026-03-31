@@ -26,6 +26,7 @@ class PlugViewEngine implements ViewEngineInterface
     private bool $fastCache = false;
     private ?string $theme = null;
     private array $namespaces = [];
+    private ?string $defaultLayout = null;
 
     private const VIEW_EXTENSIONS = ['.plug.php', '.php', '.html'];
     private const PRODUCTION_ERROR_LEVEL = E_ERROR | E_PARSE | E_CORE_ERROR | E_COMPILE_ERROR;
@@ -231,6 +232,23 @@ class PlugViewEngine implements ViewEngineInterface
     public function getTheme(): ?string
     {
         return $this->theme;
+    }
+
+    /**
+     * Set the default layout for views.
+     */
+    public function setDefaultLayout(?string $layout): self
+    {
+        $this->defaultLayout = $layout;
+        return $this;
+    }
+
+    /**
+     * Get the default layout.
+     */
+    public function getDefaultLayout(): ?string
+    {
+        return $this->defaultLayout;
     }
 
     public function setCspNonce(string $nonce): void
@@ -511,6 +529,18 @@ class PlugViewEngine implements ViewEngineInterface
 
         $this->directive('frameworkScripts', function () {
             return '<script src="/plugs/plugs-framework.min.js" defer></script>';
+        });
+
+        $this->directive('title', function ($expression) {
+            return "<?php \$__sections['title'] = $expression; ?>";
+        });
+
+        $this->directive('bodyClass', function ($expression) {
+            return "<?php \$__stacks['bodyClass'][] = $expression; ?>";
+        });
+
+        $this->directive('active', function ($expression) {
+            return "<?php echo (isset(\$currentRoute) && \$currentRoute === trim($expression, '\"\' ')) ? 'active' : ''; ?>";
         });
     }
 
@@ -907,9 +937,27 @@ class PlugViewEngine implements ViewEngineInterface
             $__stacks = get_defined_vars()['__stacks'] ?? $__stacks;
 
             if ($__extends && !$this->suppressLayout) {
-                // FIX: Pass stacks and childContent to parent layout
+                // Handle default layout placeholder
+                if ($__extends === '__default__') {
+                    $__extends = $this->defaultLayout;
+                }
+
+                if ($__extends) {
+                    // FIX: Pass both sections and stacks to parent layout 
+                    // This allows nested layouts to work correctly
+                    return (string)$this->renderParent(
+                        $__extends,
+                        array_merge($data, ['childContent' => $childContent]),
+                        $__sections,
+                        $__stacks
+                    );
+                }
+            }
+
+            // Fallback to global default layout if enabled and no layout was specified
+            if (!$__extends && $this->defaultLayout && !$this->suppressLayout && !$isComponent) {
                 return (string)$this->renderParent(
-                    $__extends,
+                    $this->defaultLayout,
                     array_merge($data, ['childContent' => $childContent]),
                     $__sections,
                     $__stacks

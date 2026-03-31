@@ -149,6 +149,18 @@ class View
     }
 
     /**
+     * Set the layout for this view.
+     *
+     * @param string $name
+     * @return self
+     */
+    public function layout(string $name): self
+    {
+        $this->data['__extends'] = $name;
+        return $this;
+    }
+
+    /**
      * Automatically collect all safe variables and pass them to the view.
      *
      * Two modes:

@@ -20,8 +20,17 @@ trait CompilesLayouts
             $attrs = $this->parseAttributes($matches[1]);
 
             $layoutName = $attrs['name']['value'] ?? '';
-            if (!$layoutName)
-                return $matches[0];
+            
+            // If name is missing, we use a special placeholder @default
+            // PlugViewEngine will handle this if a default layout is configured
+            if (!$layoutName) {
+                $layoutName = '__default__';
+            }
+
+            // Collect all other attributes as data for the layout
+            unset($attrs['name']);
+            $dataArray = $this->buildDataArray($attrs);
+            $dataString = $dataArray ? ", [{$dataArray}]" : "";
 
             $body = $matches[2];
 
@@ -45,7 +54,7 @@ trait CompilesLayouts
             // 3. Anything left goes to @section('content')
             $defaultContent = trim($body);
 
-            $result = "@extends('{$layoutName}')\n\n";
+            $result = "@extends('{$layoutName}'{$dataString})\n\n";
 
             foreach ($sections as $name => $content) {
                 $result .= "@section('{$name}')\n{$content}\n@endsection\n\n";
@@ -383,5 +392,18 @@ trait CompilesLayouts
             },
             $content
         ) ?? $content;
+    }
+
+    /**
+     * Compile the @layout directive.
+     */
+    protected function compileLayoutDirective(string $content): string
+    {
+        return preg_replace_callback('/@layout\s*\((.+?)\)(.*?)@endlayout/is', function ($matches) {
+            $head = $matches[1];
+            $body = $matches[2];
+            
+            return "@extends({$head})\n@section('content')\n{$body}\n@endsection";
+        }, $content);
     }
 }

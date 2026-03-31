@@ -171,6 +171,8 @@ class ViewCompiler
             'section_inline' => '/@section\s*\([\'"](.+?)[\'"]\s*,\s*[\'"](.+?)[\'"]\)/',
             'section_block' => '/@section\s*\([\'"](.+?)[\'"]\)/',
             'yield' => '/@yield\s*\([\'"](.+?)[\'"]\s*(?:,\s*[\'"]?(.*?)[\'"]?)?\)/',
+            'layout' => '/@layout\s*\((.+?)\)/s',
+            'endlayout' => '/@endlayout\s*/',
 
             // Include patterns
             'include' => '/@include\s*\([\'"](.+?)[\'"]\s*(?:,\s*(\[.+?\]|\$\w+))?\s*\)/s',
@@ -695,6 +697,7 @@ class ViewCompiler
         $content = $this->compilePhp($content);
 
         // Phase 2: Structural & Layout Compilation
+        $content = $this->compileLayoutDirective($content);
         $content = $this->compileSections($content);
         $content = $this->compileIncludes($content);
         $content = $this->compileStacks($content);
