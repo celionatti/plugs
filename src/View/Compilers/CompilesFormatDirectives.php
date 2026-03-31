@@ -773,5 +773,33 @@ trait CompilesFormatDirectives
             $content
         );
     }
+    /**
+     * Compile the flashPremium statements in the given string.
+     *
+     * @param  string  $content
+     * @return string
+     */
+    protected function compileFlashPremium(string $content): string
+    {
+        return preg_replace(
+            '/@flashPremium/s',
+            '<?php echo \Plugs\Utils\FlashMessage::renderPremium($view); ?>',
+            $content
+        );
+    }
 
+    /**
+     * Compile the flashBasic statements in the given string.
+     *
+     * @param  string  $content
+     * @return string
+     */
+    protected function compileFlashBasic(string $content): string
+    {
+        return preg_replace(
+            '/@flashBasic/s',
+            '<?php echo \Plugs\Utils\FlashMessage::render(); ?>',
+            $content
+        );
+    }
 }

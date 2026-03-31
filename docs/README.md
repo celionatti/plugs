@@ -28,6 +28,7 @@ Master the essential building blocks.
 - **[Controllers](./basics/controllers.md)**: Handling logic and requests.
 - **[Validation](./basics/validation.md)**: Securely validating user input.
 - **[Responses](./basics/responses.md)**: API JSON and session-based alerts.
+- **[Premium Notifications](./basics/notifications.md)**: Glassmorphism alerts and @flashPremium.
 - **[Helpers](./basics/helpers.md)**: Global utility functions.
 
 ---
@@ -39,6 +40,7 @@ Create stunning, reactive user interfaces.
 - **[Themes](./views/themes.md)**: Visual identity and custom layouts.
 - **[Asset Management](./views/asset-management.md)**: Vite and Asset Manager.
 - **[CSS Engine](./views/css-engine.md)**: Built-in utility-first CSS (like Tailwind).
+- **[Native SVG Icons](./views/icons.md)**: @icon directive and SVG management.
 
 ---
 

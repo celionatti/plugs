@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Plugs\Console;
 
+use Plugs\Console\Commands\AssetsCompressCommand;
 use Plugs\Console\Commands\CacheClearCommand;
 use Plugs\Console\Commands\DemoCommand;
 use Plugs\Console\Commands\HealthCommand;
@@ -212,6 +213,7 @@ class ConsoleKernel
         'css:build' => CssBuildCommand::class,
         'css:clear' => CssClearCommand::class,
         'sse:start' => SSEStartCommand::class,
+        'assets:compress' => AssetsCompressCommand::class,
     ];
 
 
@@ -298,7 +300,7 @@ class ConsoleKernel
             'theme:nebula',
         ],
         'Routes' => ['route:list', 'route:cache', 'route:clear', 'route:test'],
-        'Utility' => ['serve', 'tinker', 'env:sync', 'share', 'ai:scaffold', 'cache:clear', 'logs:clear', 'view:cache', 'view:clear', 'config:publish', 'config:cache', 'optimize', 'opcache:clear', 'opcache:status', 'queue:work', 'queue:failed', 'queue:retry', 'health', 'storage:link', 'type:gen', 'ai:chat', 'ai:fix', 'ai:audit', 'make:ai-test', 'ai:agent', 'ai:think', 'framework:scan-security', 'auth:install', 'identity:install', 'payment:install', 'admin:install', 'css:build', 'css:clear', 'sse:start'],
+        'Utility' => ['serve', 'tinker', 'env:sync', 'share', 'ai:scaffold', 'cache:clear', 'logs:clear', 'view:cache', 'view:clear', 'config:publish', 'config:cache', 'optimize', 'opcache:clear', 'opcache:status', 'queue:work', 'queue:failed', 'queue:retry', 'health', 'storage:link', 'type:gen', 'ai:chat', 'ai:fix', 'ai:audit', 'make:ai-test', 'ai:agent', 'ai:think', 'framework:scan-security', 'auth:install', 'identity:install', 'payment:install', 'admin:install', 'css:build', 'css:clear', 'sse:start', 'assets:compress'],
 
         'Scheduling' => ['schedule:run', 'schedule:list'],
         'Database' => ['migrate', 'migrate:rollback', 'migrate:status', 'migrate:fresh', 'migrate:validate', 'migrate:reset', 'make:migration', 'db:seed', 'db:analyze', 'db:backup', 'db:restore'],

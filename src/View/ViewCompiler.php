@@ -28,6 +28,7 @@ class ViewCompiler
         \Plugs\View\Compilers\CompilesEchos,
         \Plugs\View\Compilers\CompilesFormDirectives,
         \Plugs\View\Compilers\CompilesFormatDirectives,
+        \Plugs\View\Compilers\CompilesIcons,
         \Plugs\View\Compilers\CompilesLayouts,
         \Plugs\View\Compilers\CompilesStyles;
 
@@ -737,6 +738,9 @@ class ViewCompiler
         $content = $this->compileTooltip($content);
         $content = $this->compileDump($content);
         $content = $this->compileMarkdown($content);
+        $content = $this->compileIcon($content);
+        $content = $this->compileFlashPremium($content);
+        $content = $this->compileFlashBasic($content);
 
         // Phase 7: Assets, Security & Formatting
         $content = $this->compilePlugCss($content);

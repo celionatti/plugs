@@ -644,6 +644,32 @@ CSS;
     }
 
     /**
+     * Render all flash messages using the premium component
+     * 
+     * @param object $view The view engine instance (passed from @flashPremium directive)
+     * @return string
+     */
+    public static function renderPremium($view): string
+    {
+        $messages = self::get();
+        if (empty($messages)) {
+            return '';
+        }
+
+        $html = '';
+        foreach ($messages as $flash) {
+            $html .= $view->renderComponent('notification', [
+                'type' => $flash['type'],
+                'message' => $flash['message'],
+                'title' => $flash['title'] ?? ucfirst($flash['type']),
+                'duration' => self::$renderOptions['dismiss_delay'] ?? 5000,
+            ]);
+        }
+
+        return $html;
+    }
+
+    /**
      * Render as JSON
      */
     public static function toJson(): string

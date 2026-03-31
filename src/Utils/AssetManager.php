@@ -757,4 +757,52 @@ class AssetManager
 
         return file_exists($cachedFile);
     }
+    /**
+     * Pre-compress all assets in a directory (Gzip & Brotli)
+     *
+     * @param string $directory The directory to scan and compress
+     * @return array [compressed_files, saved_bytes]
+     */
+    public function precompress(string $directory): array
+    {
+        $stats = ['files' => 0, 'saved' => 0];
+        if (!is_dir($directory)) {
+            return $stats;
+        }
+
+        $iterator = new \RecursiveIteratorIterator(
+            new \RecursiveDirectoryIterator($directory, \FilesystemIterator::SKIP_DOTS),
+            \RecursiveIteratorIterator::LEAVES_ONLY
+        );
+
+        foreach ($iterator as $file) {
+            /** @var \SplFileInfo $file */
+            if (!$file->isFile()) continue;
+
+            $ext = strtolower($file->getExtension());
+            if (!in_array($ext, ['js', 'css', 'svg', 'html', 'json', 'txt'])) {
+                continue;
+            }
+
+            $path = $file->getPathname();
+            $content = file_get_contents($path);
+            $originalSize = strlen($content);
+
+            // Gzip
+            if (function_exists('gzencode')) {
+                file_put_contents($path . '.gz', gzencode($content, 9));
+                $stats['files']++;
+                $stats['saved'] += $originalSize - strlen(gzencode($content, 9));
+            }
+
+            // Brotli
+            if (function_exists('brotli_compress')) {
+                file_put_contents($path . '.br', brotli_compress($content, 11));
+                $stats['files']++;
+                $stats['saved'] += $originalSize - strlen(brotli_compress($content, 11));
+            }
+        }
+
+        return $stats;
+    }
 }

@@ -1380,7 +1380,7 @@ HTML;
         }
 
         // Fallback: search framework built-in components directory
-        $frameworkComponentPath = dirname(__DIR__) . DIRECTORY_SEPARATOR . 'View' . DIRECTORY_SEPARATOR . 'components';
+        $frameworkComponentPath = dirname(__DIR__) . DIRECTORY_SEPARATOR . 'View' . DIRECTORY_SEPARATOR . 'Components';
         foreach ($filenames as $filename) {
             // Check for folder-based framework component
             $folderPath = $frameworkComponentPath . DIRECTORY_SEPARATOR . $filename;

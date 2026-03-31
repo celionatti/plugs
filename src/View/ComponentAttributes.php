@@ -158,8 +158,12 @@ final class ComponentAttributes implements ArrayAccess, IteratorAggregate, Count
      * @param string|array $classList
      * @return string
      */
-    public static function resolveClass(string|array $classList): string
+    public static function resolveClass(string|array|null $classList): string
     {
+        if (is_null($classList) || $classList === '') {
+            return '';
+        }
+
         if (is_string($classList)) {
             return $classList;
         }
@@ -194,8 +198,12 @@ final class ComponentAttributes implements ArrayAccess, IteratorAggregate, Count
      * @param string|array $styleList
      * @return string
      */
-    public static function resolveStyle(string|array $styleList): string
+    public static function resolveStyle(string|array|null $styleList): string
     {
+        if (is_null($styleList) || $styleList === '') {
+            return '';
+        }
+
         if (is_string($styleList)) {
             return $styleList;
         }

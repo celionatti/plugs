@@ -26,13 +26,36 @@ Inject your assets using the `@vite` directive or the `<vite />` tag:
 <vite entries="['resources/css/app.css', 'resources/js/app.js']" />
 ```
 
-### Build Workflow
-- **Development**: `npm run dev` (Enables HMR and live reloading).
-- **Production**: `npm run build` (Compiles and versions assets in `public/build`).
+### Unified Build Workflow
+Vite now acts as the primary orchestrator for the **Plugs CSS Engine**. You no longer need to run separate watchers.
+
+- **Development**: `npm run dev`
+    - Starts the Vite server (with HMR).
+    - Automatically builds Plugs Utility CSS on every template change.
+- **Production**: `npm run build`
+    - Compiles, versions, and minifies all JS and CSS assets.
+    - Performs a final production-grade Plugs CSS build.
 
 ---
 
-## 2. Built-in Asset Manager
+## 2. Production Optimization
+
+The framework provides built-in tools for maximizing asset performance in production environments.
+
+### Asset Pre-compression
+Generating **Gzip** and **Brotli** variants of your assets allows your web server (like Nginx) to serve them directly without on-the-fly compression, saving CPU time and reducing load times.
+
+Run this command after your Vite build:
+```bash
+php theplugs assets:compress
+```
+
+- **Features**: Scans `public/build` for `.js`, `.css`, `.svg`, and `.html` files.
+- **Output**: Generates `.gz` and `.br` variants for each file.
+
+---
+
+## 3. Built-in Asset Manager
 
 For simpler projects that don't require compilation, you can use the built-in asset helper.
 
