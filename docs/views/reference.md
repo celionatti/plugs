@@ -130,7 +130,7 @@ For SPA layouts using `plugs-spa.js`, you can use shorthands for the main swappa
 <main-content :flash="basic" />
 ```
 
-Both of the above compile to a container with the configured SPA ID. The `:flash` attribute determines which notification directive to inject:
+Both of the above compile to a semantic `<main>` container with the configured SPA ID (SEO & Accessibility friendly). The `:flash` attribute determines which notification directive to inject:
 - `premium` (or `true` or empty): Injects `@flashPremium`.
 - `basic`: Injects `@flash`.
 - Omitted: No flash directive is injected.

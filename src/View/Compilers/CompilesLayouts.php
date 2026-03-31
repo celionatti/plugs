@@ -416,14 +416,30 @@ trait CompilesLayouts
         $id = $this->appContentId ?? 'app-content';
         $attrRegex = '((?:[^>"\']|"[^"]*"|\'[^\']*\')*)';
 
-        // 1. Convert <> ... </> to <div id="..."> ... </div>
-        $content = preg_replace('/<>\s*(.*?)\s*<\/>/is', '<div id="' . $id . '">$1</div>', $content);
-
-        // 2. Convert <main-content :flash="premium" /> to <div id="...">@flashPremium @yield('content')</div>
-        $content = preg_replace_callback('/<main-content' . $attrRegex . '\s*\/?>/i', function ($m) use ($id) {
+        // 1. Convert < ... > ... </> to <main id="..." ...> ... </main>
+        // Supports attributes like < class="container"> ... </>
+        $content = preg_replace_callback('/<([:\s]+' . $attrRegex . ')>\s*(.*?)\s*<\/>/is', function ($m) use ($id) {
             $attrs = $this->parseAttributes($m[1]);
-            $flashValue = $attrs['flash']['value'] ?? null;
+            $body = $m[3];
             
+            // Build attribute string
+            $attrString = '';
+            foreach ($attrs as $name => $attr) {
+                if ($name !== 'id') { // Preserve configured ID
+                    $attrString .= ' ' . $name . '="' . $attr['value'] . '"';
+                }
+            }
+            
+            return '<main id="' . $id . '"' . $attrString . '>' . $body . '</main>';
+        }, $content);
+
+        // 2. Convert <main-content ... /> or <main-content ...>...</main-content>
+        $content = preg_replace_callback('/<main-content' . $attrRegex . '\s*(?:\/>|>(.*?)<\/main-content\s*>)/is', function ($m) use ($id) {
+            $attrs = $this->parseAttributes($m[1]);
+            $body = (!empty($m[2])) ? $m[2] : "@yield('content')";
+            
+            // Extract flash and remove it from attributes
+            $flashValue = $attrs['flash']['value'] ?? null;
             $flashDirective = '';
             if (isset($attrs['flash'])) {
                 if ($flashValue === 'true' || $flashValue === '' || $flashValue === 'premium' || $flashValue === 'flash' || $flashValue === null) {
@@ -431,10 +447,19 @@ trait CompilesLayouts
                 } elseif ($flashValue === 'basic') {
                     $flashDirective = "@flash\n";
                 }
+                unset($attrs['flash']);
             }
             
-            $content = $flashDirective . "@yield('content')";
-            return '<div id="' . $id . '">' . $content . '</div>';
+            // Build remaining attributes string
+            $attrString = '';
+            foreach ($attrs as $name => $attr) {
+                if ($name !== 'id') {
+                    $attrString .= ' ' . $name . '="' . $attr['value'] . '"';
+                }
+            }
+            
+            $content = $flashDirective . $body;
+            return '<main id="' . $id . '"' . $attrString . '>' . $content . '</main>';
         }, $content);
 
         return $content;
