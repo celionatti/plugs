@@ -50,7 +50,7 @@ class MigrateStatusCommand extends Command
             $rows = [];
 
             foreach ($status as $item) {
-                $ranLabel = $item['ran'] ? '✓ Yes' : '✗ No';
+                $ranLabel = $item['ran'] ? $this->badge('✓ Yes', 'success') : $this->badge('✗ No', 'error');
                 $batchLabel = (string) ($item['batch'] ?? '-');
                 $ranAt = $item['migrated_at'] ?? '-';
 
@@ -71,8 +71,9 @@ class MigrateStatusCommand extends Command
             $this->table($headers, $rows);
 
             $this->checkpoint('finished');
-            $this->newLine();
-            $this->info("Total migrations: " . count($status));
+            $this->resultSummary([
+                'Total Migrations' => count($status)
+            ], $this->elapsed());
 
         } catch (\Exception $e) {
             $this->error("Failed to retrieve status: " . $e->getMessage());

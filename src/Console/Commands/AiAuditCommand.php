@@ -56,7 +56,9 @@ PROMPT;
 
         try {
             $ai = Container::getInstance()->make(AIManager::class);
-            $response = $ai->prompt($prompt);
+            $response = $this->task('Generating initial audit recommendations', function () use ($ai, $prompt) {
+                return $ai->prompt($prompt);
+            });
 
             $this->newLine();
             $this->panel($response, 'Initial Audit Recommendations');
@@ -102,8 +104,10 @@ PROMPT;
 
         $this->info("Performing deep audit on " . basename($path) . "...");
 
-        $ai = Container::getInstance()->make(AIManager::class);
-        $response = $ai->prompt($prompt);
+        $response = $this->task('Analyzing code...', function () use ($prompt) {
+            $ai = Container::getInstance()->make(AIManager::class);
+            return $ai->prompt($prompt);
+        });
 
         $this->newLine();
         $this->panel($response, 'Deep Audit Findings');

@@ -68,7 +68,12 @@ PROMPT;
                 $this->task('Updating file', function () use ($path, $improvedCode) {
                     Filesystem::put($path, $improvedCode);
                 });
-                $this->success("File updated successfully!");
+                $this->fileModified($path);
+                
+                $this->newLine();
+                $this->resultSummary([
+                    'File Fixed' => basename($path)
+                ], $this->elapsed());
             } else {
                 $this->warning("Changes discarded.");
             }

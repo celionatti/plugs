@@ -74,20 +74,16 @@ class MigrateFreshCommand extends Command
             if (!empty($result['migrations'])) {
                 $this->section('Migrated Files');
                 foreach ($result['migrations'] as $migration) {
-                    $this->success("  ✓ {$migration}");
+                    $this->fileCreated($migration . '.php');
                 }
             }
 
             $this->newLine();
-            $this->box(
-                "Database fresh migration completed successfully!\n\n" .
-                "Dropped: " . count($tables) . " tables\n" .
-                "Migrated: " . count($result['migrations'] ?? []) . " files\n" .
-                "Batch: " . ($result['batch'] ?? 'N/A') . "\n" .
-                "Time: {$this->formatTime($this->elapsed())}",
-                "✅ Success",
-                "success"
-            );
+            $this->resultSummary([
+                'Tables Dropped' => count($tables),
+                'Files Migrated' => count($result['migrations'] ?? []),
+                'Batch' => $result['batch'] ?? 'N/A'
+            ], $this->elapsed());
 
             return 0;
         } catch (\Exception $e) {

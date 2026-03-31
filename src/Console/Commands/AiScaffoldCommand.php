@@ -46,15 +46,21 @@ class AiScaffoldCommand extends Command
             }
 
             $this->section('Proposed Plan');
+            
+            $cmdList = [];
             foreach ($plan['commands'] as $cmd) {
                 $argsStr = implode(' ', $cmd['arguments']);
-                $this->line("  [CMD] php theplugs {$cmd['command']} {$argsStr}");
+                $cmdList[] = $this->badge($cmd['command'], 'accent') . " " . \Plugs\Console\Support\Output::SKY . $argsStr . \Plugs\Console\Support\Output::RESET;
             }
+            $this->output->numberedList($cmdList);
+            $this->newLine();
 
             if ($this->confirm("Would you like to execute this plan?", true)) {
                 $this->executePlan($plan['commands']);
                 $this->newLine();
-                $this->success("AI Scaffolding completed successfully!");
+                $this->resultSummary([
+                    'Tasks Executed' => count($plan['commands'])
+                ], $this->elapsed());
             } else {
                 $this->info("Plan aborted.");
             }

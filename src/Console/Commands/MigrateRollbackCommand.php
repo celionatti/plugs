@@ -64,17 +64,14 @@ class MigrateRollbackCommand extends Command
             $this->newLine();
             $this->section('Rolled Back Files');
             foreach ($result['migrations'] as $migration) {
-                $this->warning("  ✗ {$migration}");
+                $this->fileDeleted($migration . '.php');
             }
 
             $this->newLine();
-            $this->box(
-                "Database rollback completed successfully!\n\n" .
-                "Rolled Back: " . count($result['migrations']) . "\n" .
-                "Time: {$this->formatTime($this->elapsed())}",
-                "✅ Rollback Complete",
-                "success"
-            );
+            $this->resultSummary([
+                'Batch Reversed' => $result['batch'] ?? 'N/A',
+                'Migrated' => count($result['migrations'])
+            ], $this->elapsed());
 
             return 0;
         } catch (\Exception $e) {

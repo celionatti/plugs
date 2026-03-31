@@ -54,8 +54,8 @@ class TinkerCommand extends Command
 
     protected function prompt(): string
     {
-        $cyan = "\e[36m";
-        $reset = "\e[0m";
+        $cyan = \Plugs\Console\Support\Output::SKY;
+        $reset = \Plugs\Console\Support\Output::RESET;
 
         if (function_exists('readline')) {
             // Echo the colored prompt separately to avoid readline ANSI issues
