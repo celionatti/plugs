@@ -402,14 +402,33 @@
         }
 
         // Highlight active link
-        const currentPath = window.location.pathname;
-        const links = document.querySelectorAll('.sidebar-link');
-        links.forEach(link => {
-            if (link.getAttribute('href') !== '#' && currentPath.includes(link.getAttribute('href'))) {
-                links.forEach(l => l.classList.remove('sidebar-active', 'text-white'));
-                link.classList.add('sidebar-active');
-            }
-        });
+        function highlightSidebarLink() {
+            const currentPath = window.location.pathname;
+            const links = document.querySelectorAll('.sidebar-link');
+            
+            links.forEach(link => {
+                const href = link.getAttribute('href');
+                if (href && href !== '#') {
+                    // Normalize paths for comparison
+                    const normalizedHref = href.split('?')[0].split('#')[0];
+                    const normalizedPath = currentPath.split('?')[0].split('#')[0];
+                    
+                    // Exact match or sub-path match (if not just /admin)
+                    const isActive = normalizedPath === normalizedHref || 
+                                   (normalizedHref !== '/admin' && normalizedPath.startsWith(normalizedHref + '/'));
+                    
+                    if (isActive) {
+                        links.forEach(l => l.classList.remove('sidebar-active', 'text-white'));
+                        link.classList.add('sidebar-active');
+                    } else {
+                        link.classList.remove('sidebar-active');
+                    }
+                }
+            });
+        }
+
+        document.addEventListener('DOMContentLoaded', highlightSidebarLink);
+        document.addEventListener('plugs:spa:load', highlightSidebarLink);
 
         var themeToggleDarkIcon = document.getElementById('theme-toggle-dark-icon');
         var themeToggleLightIcon = document.getElementById('theme-toggle-light-icon');
@@ -447,13 +466,24 @@
         }
     </script>
     @yield('scripts')
-    <script src="{{ url('/plugs/plugs-spa.js') }}"></script>
+    <script src="{{ url('/plugs/plugs-spa.js?v=' . time()) }}"></script>
     <script src="{{ url('/plugs/plugs-lazy.js') }}"></script>
     <script>
-        window.plugsSPA = new PlugsSPA({
-            contentSelector: 'main',
-            loaderClass: 'spa-loading'
-        });
+        (function () {
+            const initLayoutSPA = () => {
+                if (typeof PlugsSPA === 'undefined') {
+                    setTimeout(initLayoutSPA, 50);
+                    return;
+                }
+                if (!window.plugsSPA) {
+                    window.plugsSPA = new PlugsSPA({
+                        contentSelector: 'main',
+                        loaderClass: 'spa-loading'
+                    });
+                }
+            };
+            initLayoutSPA();
+        })();
     </script>
 </body>
 </html>

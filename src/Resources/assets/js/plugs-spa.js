@@ -1483,6 +1483,11 @@ class PlugsSPA {
         }
 
         this.options.onComplete(url);
+        document.dispatchEvent(new CustomEvent('plugs:spa:load', {
+            detail: {
+                url
+            }
+        }));
 
         if (window.AOS) {
           window.AOS.refresh();
