@@ -1,0 +1,85 @@
+@extends('admin::layouts.admin')
+
+@section('title', 'Categories Management')
+
+@section('content')
+<div class="px-4 sm:px-6 lg:px-8 py-8">
+    <div class="sm:flex sm:items-center">
+        <div class="sm:flex-auto">
+            <h1 class="text-2xl font-semibold text-gray-900 dark:text-white">Categories</h1>
+            <p class="mt-2 text-sm text-gray-700 dark:text-gray-400">A list of all product categories in your store.</p>
+        </div>
+        <div class="mt-4 sm:ml-16 sm:mt-0 sm:flex-none">
+            <button id="addCategoryBtn" type="button" class="block rounded-md bg-indigo-600 px-3 py-2 text-center text-sm font-semibold text-white shadow-sm hover:bg-indigo-500">Add Category</button>
+        </div>
+    </div>
+    
+    <div class="mt-8 flow-root">
+        <div class="-mx-4 -my-2 overflow-x-auto sm:-mx-6 lg:-mx-8">
+            <div class="inline-block min-w-full py-2 align-middle sm:px-6 lg:px-8">
+                <div class="overflow-hidden shadow ring-1 ring-black ring-opacity-5 sm:rounded-lg">
+                    <table class="min-w-full divide-y divide-gray-300 dark:divide-gray-700">
+                        <thead class="bg-gray-50 dark:bg-gray-800">
+                            <tr>
+                                <th scope="col" class="py-3.5 pl-4 pr-3 text-left text-sm font-semibold text-gray-900 dark:text-white">Name</th>
+                                <th scope="col" class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900 dark:text-white">Slug</th>
+                                <th scope="col" class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900 dark:text-white">Description</th>
+                                <th scope="col" class="relative py-3.5 pl-3 pr-4 sm:pr-6"></th>
+                            </tr>
+                        </thead>
+                        <body class="divide-y divide-gray-200 dark:divide-gray-700 bg-white dark:bg-gray-900">
+                            @foreach($categories as $category)
+                            <tr>
+                                <td class="whitespace-nowrap py-4 pl-4 pr-3 text-sm font-medium text-gray-900 dark:text-white">{{ $category->name }}</td>
+                                <td class="whitespace-nowrap px-3 py-4 text-sm text-gray-500 dark:text-gray-400">{{ $category->slug }}</td>
+                                <td class="px-3 py-4 text-sm text-gray-500 dark:text-gray-400 truncate max-w-xs">{{ $category->description }}</td>
+                                <td class="relative whitespace-nowrap py-4 pl-3 pr-4 text-right text-sm font-medium">
+                                    <form action="/admin/{{lowerName}}/categories/delete/{{ $category->id }}" method="POST" class="inline">
+                                        @csrf
+                                        <button type="submit" class="text-red-600 hover:text-red-900" onclick="return confirm('Are you sure?')">Delete</button>
+                                    </form>
+                                </td>
+                            </tr>
+                            @endforeach
+                        </body>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal -->
+<div id="addCategoryModal" class="hidden fixed inset-0 z-50 overflow-y-auto">
+    <div class="flex items-center justify-center min-h-screen">
+        <div class="fixed inset-0 bg-gray-500 opacity-75"></div>
+        <div class="relative bg-white dark:bg-gray-800 rounded-lg max-w-md w-full m-4 shadow-xl">
+            <form action="/admin/{{lowerName}}/categories" method="POST">
+                @csrf
+                <div class="p-6">
+                    <h3 class="text-lg font-medium text-gray-900 dark:text-white">Add New Category</h3>
+                    <div class="mt-4 space-y-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Name</label>
+                            <input type="text" name="name" required class="mt-1 block w-full border-gray-300 rounded-md">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Description</label>
+                            <textarea name="description" class="mt-1 block w-full border-gray-300 rounded-md"></textarea>
+                        </div>
+                    </div>
+                </div>
+                <div class="bg-gray-50 dark:bg-gray-700 px-6 py-4 flex flex-row-reverse rounded-b-lg">
+                    <button type="submit" class="bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700 ml-3">Save</button>
+                    <button id="closeModalBtn" type="button" class="bg-white text-gray-700 px-4 py-2 rounded-md border">Cancel</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+    document.getElementById('addCategoryBtn').addEventListener('click', () => document.getElementById('addCategoryModal').classList.remove('hidden'));
+    document.getElementById('closeModalBtn').addEventListener('click', () => document.getElementById('addCategoryModal').classList.add('hidden'));
+</script>
+@endsection

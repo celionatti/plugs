@@ -1,0 +1,43 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Modules\{{name}}\Controllers\Admin;
+
+use Plugs\Http\Controller;
+use Plugs\Http\Request;
+use Psr\Http\Message\ResponseInterface;
+use Modules\{{name}}\Models\Order;
+
+class OrderController extends Controller
+{
+    public function index(): ResponseInterface
+    {
+        $orders = Order::all();
+        return response()->view('{{lowerName}}::admin/orders/index', [
+            'orders' => $orders
+        ]);
+    }
+
+    public function show(string $id): ResponseInterface
+    {
+        $order = Order::find((int) $id);
+        if (!$order) {
+            return response()->redirect('/admin/{{lowerName}}/orders');
+        }
+
+        return response()->view('{{lowerName}}::admin/orders/show', [
+            'order' => $order
+        ]);
+    }
+
+    public function updateStatus(Request $request, string $id): ResponseInterface
+    {
+        $order = Order::find((int) $id);
+        if ($order) {
+            $order->update($request->all());
+        }
+
+        return response()->redirect('/admin/{{lowerName}}/orders/show/' . $id);
+    }
+}

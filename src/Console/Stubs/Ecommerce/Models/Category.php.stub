@@ -1,0 +1,24 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Modules\{{name}}\Models;
+
+use Plugs\Base\Model\PlugModel;
+
+class Category extends PlugModel
+{
+    protected $table = 'categories';
+
+    protected $fillable = [
+        'name',
+        'slug',
+        'description',
+        'image',
+    ];
+
+    public function products()
+    {
+        return $this->hasMany(Product::class);
+    }
+}

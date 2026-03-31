@@ -1,0 +1,42 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Modules\{{name}}\Controllers\Admin;
+
+use Plugs\Http\Controller;
+use Plugs\Http\Request;
+use Psr\Http\Message\ResponseInterface;
+use Modules\{{name}}\Models\Category;
+use Plugs\Console\Support\Str;
+
+class CategoryController extends Controller
+{
+    public function index(): ResponseInterface
+    {
+        $categories = Category::all();
+        return response()->view('{{lowerName}}::admin/categories/index', [
+            'categories' => $categories
+        ]);
+    }
+
+    public function store(Request $request): ResponseInterface
+    {
+        $data = $request->all();
+        $data['slug'] = Str::slug($data['name']);
+
+        Category::create($data);
+
+        return response()->redirect('/admin/{{lowerName}}/categories');
+    }
+
+    public function delete(string $id): ResponseInterface
+    {
+        $category = Category::find((int) $id);
+        if ($category) {
+            $category->delete();
+        }
+
+        return response()->redirect('/admin/{{lowerName}}/categories');
+    }
+}

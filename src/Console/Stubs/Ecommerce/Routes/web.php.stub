@@ -1,0 +1,26 @@
+<?php
+
+declare(strict_types=1);
+
+use Plugs\Facades\Route;
+use Modules\{{name}}\Controllers\Admin\CategoryController;
+use Modules\{{name}}\Controllers\Admin\BrandController;
+use Modules\{{name}}\Controllers\Admin\ProductController;
+use Modules\{{name}}\Controllers\Admin\OrderController;
+
+// Admin Ecommerce routes
+Route::get('/categories', [CategoryController::class, 'index'])->name('admin.{{lowerName}}.categories.index');
+Route::post('/categories', [CategoryController::class, 'store'])->name('admin.{{lowerName}}.categories.store');
+Route::post('/categories/delete/{id}', [CategoryController::class, 'delete'])->name('admin.{{lowerName}}.categories.delete');
+
+Route::get('/brands', [BrandController::class, 'index'])->name('admin.{{lowerName}}.brands.index');
+Route::post('/brands', [BrandController::class, 'store'])->name('admin.{{lowerName}}.brands.store');
+Route::post('/brands/delete/{id}', [BrandController::class, 'delete'])->name('admin.{{lowerName}}.brands.delete');
+
+Route::get('/products', [ProductController::class, 'index'])->name('admin.{{lowerName}}.products.index');
+Route::post('/products', [ProductController::class, 'store'])->name('admin.{{lowerName}}.products.store');
+Route::post('/products/delete/{id}', [ProductController::class, 'delete'])->name('admin.{{lowerName}}.products.delete');
+
+Route::get('/orders', [OrderController::class, 'index'])->name('admin.{{lowerName}}.orders.index');
+Route::get('/orders/show/{id}', [OrderController::class, 'show'])->name('admin.{{lowerName}}.orders.show');
+Route::post('/orders/update-status/{id}', [OrderController::class, 'updateStatus'])->name('admin.{{lowerName}}.orders.update-status');

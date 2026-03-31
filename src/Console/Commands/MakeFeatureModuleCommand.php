@@ -139,6 +139,11 @@ class MakeFeatureModuleCommand extends Command
         Filesystem::put($basePath . '/Views/index.plug.php', $viewContent);
         $this->success("  ✓ Views/index.plug.php");
 
+        // Create the module class (Service Provider)
+        $moduleContent = $this->generateModuleClass($name);
+        Filesystem::put($basePath . '/' . $name . 'Module.php', $moduleContent);
+        $this->success("  ✓ {$name}Module.php");
+
         $this->newLine();
         $this->box(
             "Feature module '{$name}' created successfully!\n\n" .

@@ -1,0 +1,10 @@
+<?php
+
+declare(strict_types=1);
+
+use Plugs\Facades\Route;
+
+// API routes for the Ecommerce module
+Route::get('/v1/products', function() {
+    return response()->json(['message' => 'Product list API coming soon']);
+});

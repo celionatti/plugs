@@ -1,0 +1,38 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Modules\{{name}}\Models;
+
+use Plugs\Base\Model\PlugModel;
+use App\Models\User;
+
+class Order extends PlugModel
+{
+    protected $table = 'orders';
+
+    protected $fillable = [
+        'user_id',
+        'order_number',
+        'total_amount',
+        'status',
+        'shipping_address',
+        'payment_method',
+        'payment_status',
+    ];
+
+    public function user()
+    {
+        return $this->belongsTo(User::class);
+    }
+
+    public function items()
+    {
+        return $this->hasMany(OrderItem::class);
+    }
+
+    public function products()
+    {
+        return $this->belongsToMany(Product::class, 'order_items');
+    }
+}

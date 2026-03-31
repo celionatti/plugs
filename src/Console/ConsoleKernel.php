@@ -98,6 +98,7 @@ use Plugs\Console\Commands\AiScaffoldCommand;
 use Plugs\Console\Commands\CssBuildCommand;
 use Plugs\Console\Commands\CssClearCommand;
 use Plugs\Console\Commands\MakeIconCommand;
+use Plugs\Console\Commands\MakeEcommerceModuleCommand;
 use Plugs\Console\Commands\SSEStartCommand;
 use Plugs\Exceptions\ConsoleException;
 
@@ -143,6 +144,7 @@ class ConsoleKernel
         'make:feature-module' => MakeFeatureModuleCommand::class,
         'make:auth-module' => MakeAuthModuleCommand::class,
         'make:lang' => MakeLangCommand::class,
+        'make:ecommerce-module' => MakeEcommerceModuleCommand::class,
         'make:theme' => MakeThemeCommand::class,
         'make:welcome' => MakeWelcomeCommand::class,
         'make:crud' => MakeCrudCommand::class,
@@ -298,6 +300,7 @@ class ConsoleKernel
             'make:feature-module',
             'make:auth-module',
             'make:lang',
+            'make:ecommerce-module',
             'make:theme',
             'make:crud',
             'make:icon',

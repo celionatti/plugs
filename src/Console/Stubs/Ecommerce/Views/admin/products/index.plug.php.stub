@@ -1,0 +1,108 @@
+@extends('admin::layouts.admin')
+
+@section('title', 'Products Management')
+
+@section('content')
+<div class="px-4 sm:px-6 lg:px-8 py-8">
+    <div class="sm:flex sm:items-center">
+        <div class="sm:flex-auto">
+            <h1 class="text-2xl font-semibold text-gray-900 dark:text-white">Products</h1>
+            <p class="mt-2 text-sm text-gray-700 dark:text-gray-400">Manage your product inventory.</p>
+        </div>
+        <div class="mt-4 sm:ml-16 sm:mt-0 sm:flex-none">
+            <button id="addProductBtn" type="button" class="block rounded-md bg-indigo-600 px-3 py-2 text-center text-sm font-semibold text-white">Add Product</button>
+        </div>
+    </div>
+    
+    <div class="mt-8 flow-root">
+        <div class="-mx-4 -my-2 overflow-x-auto sm:-mx-6 lg:-mx-8">
+            <div class="inline-block min-w-full py-2 align-middle sm:px-6 lg:px-8">
+                <div class="overflow-hidden shadow ring-1 ring-black ring-opacity-5 sm:rounded-lg">
+                    <table class="min-w-full divide-y divide-gray-300 dark:divide-gray-700">
+                        <thead class="bg-gray-50 dark:bg-gray-800">
+                            <tr>
+                                <th scope="col" class="py-3.5 pl-4 pr-3 text-left text-sm font-semibold text-gray-900 dark:text-white">Product</th>
+                                <th scope="col" class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900 dark:text-white">Category</th>
+                                <th scope="col" class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900 dark:text-white">Price</th>
+                                <th scope="col" class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900 dark:text-white">Stock</th>
+                                <th scope="col" class="relative py-3.5 pl-3 pr-4 sm:pr-6"></th>
+                            </tr>
+                        </thead>
+                        <body class="divide-y divide-gray-200 dark:divide-gray-700 bg-white dark:bg-gray-900">
+                            @foreach($products as $product)
+                            <tr>
+                                <td class="whitespace-nowrap py-4 pl-4 pr-3 text-sm font-medium text-gray-900 dark:text-white">{{ $product->name }}</td>
+                                <td class="whitespace-nowrap px-3 py-4 text-sm text-gray-500 dark:text-gray-400">{{ $product->category()->name ?? 'N/A' }}</td>
+                                <td class="whitespace-nowrap px-3 py-4 text-sm text-gray-500 dark:text-gray-400">${{ number_format($product->price, 2) }}</td>
+                                <td class="whitespace-nowrap px-3 py-4 text-sm text-gray-500 dark:text-gray-400">{{ $product->stock }}</td>
+                                <td class="relative whitespace-nowrap py-4 pl-3 pr-4 text-right text-sm font-medium">
+                                    <form action="/admin/{{lowerName}}/products/delete/{{ $product->id }}" method="POST" class="inline">
+                                        @csrf
+                                        <button type="submit" class="text-red-600 hover:text-red-900" onclick="return confirm('Are you sure?')">Delete</button>
+                                    </form>
+                                </td>
+                            </tr>
+                            @endforeach
+                        </body>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal -->
+<div id="addProductModal" class="hidden fixed inset-0 z-50 overflow-y-auto">
+    <div class="flex items-center justify-center min-h-screen">
+        <div class="fixed inset-0 bg-gray-500 opacity-75"></div>
+        <div class="relative bg-white dark:bg-gray-800 rounded-lg max-w-lg w-full m-4 shadow-xl">
+            <form action="/admin/{{lowerName}}/products" method="POST">
+                @csrf
+                <div class="p-6">
+                    <h3 class="text-lg font-medium text-gray-900 dark:text-white">Add New Product</h3>
+                    <div class="mt-4 grid grid-cols-2 gap-4">
+                        <div class="col-span-2">
+                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Name</label>
+                            <input type="text" name="name" required class="mt-1 block w-full border-gray-300 rounded-md">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Category</label>
+                            <select name="category_id" required class="mt-1 block w-full border-gray-300 rounded-md">
+                                @foreach($categories as $category)
+                                    <option value="{{ $category->id }}">{{ $category->name }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Brand</label>
+                            <select name="brand_id" class="mt-1 block w-full border-gray-300 rounded-md">
+                                <option value="">No Brand</option>
+                                @foreach($brands as $brand)
+                                    <option value="{{ $brand->id }}">{{ $brand->name }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Price</label>
+                            <input type="number" step="0.01" name="price" required class="mt-1 block w-full border-gray-300 rounded-md">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Stock</label>
+                            <input type="number" name="stock" value="0" class="mt-1 block w-full border-gray-300 rounded-md">
+                        </div>
+                    </div>
+                </div>
+                <div class="bg-gray-50 dark:bg-gray-700 px-6 py-4 flex flex-row-reverse rounded-b-lg">
+                    <button type="submit" class="bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700 ml-3">Save</button>
+                    <button id="closeProductModalBtn" type="button" class="bg-white text-gray-700 px-4 py-2 rounded-md border">Cancel</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+    document.getElementById('addProductBtn').addEventListener('click', () => document.getElementById('addProductModal').classList.remove('hidden'));
+    document.getElementById('closeProductModalBtn').addEventListener('click', () => document.getElementById('addProductModal').classList.add('hidden'));
+</script>
+@endsection

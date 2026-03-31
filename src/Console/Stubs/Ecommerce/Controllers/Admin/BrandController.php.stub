@@ -1,0 +1,42 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Modules\{{name}}\Controllers\Admin;
+
+use Plugs\Http\Controller;
+use Plugs\Http\Request;
+use Psr\Http\Message\ResponseInterface;
+use Modules\{{name}}\Models\Brand;
+use Plugs\Console\Support\Str;
+
+class BrandController extends Controller
+{
+    public function index(): ResponseInterface
+    {
+        $brands = Brand::all();
+        return response()->view('{{lowerName}}::admin/brands/index', [
+            'brands' => $brands
+        ]);
+    }
+
+    public function store(Request $request): ResponseInterface
+    {
+        $data = $request->all();
+        $data['slug'] = Str::slug($data['name']);
+
+        Brand::create($data);
+
+        return response()->redirect('/admin/{{lowerName}}/brands');
+    }
+
+    public function delete(string $id): ResponseInterface
+    {
+        $brand = Brand::find((int) $id);
+        if ($brand) {
+            $brand->delete();
+        }
+
+        return response()->redirect('/admin/{{lowerName}}/brands');
+    }
+}

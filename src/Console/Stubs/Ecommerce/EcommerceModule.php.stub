@@ -1,0 +1,37 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Modules\{{name}};
+
+use Plugs\FeatureModule\AbstractFeatureModule;
+use Plugs\Container\Container;
+use Plugs\Plugs;
+
+class {{name}}Module extends AbstractFeatureModule
+{
+    public function getName(): string
+    {
+        return '{{name}}';
+    }
+
+    public function getRoutePrefix(): string
+    {
+        return 'admin/{{lowerName}}';
+    }
+
+    public function getMiddleware(): array
+    {
+        return ['web', 'auth', 'admin'];
+    }
+
+    public function register(Container $container): void
+    {
+        // Bind services if needed
+    }
+
+    public function boot(Plugs $app): void
+    {
+        // Boot logic
+    }
+}

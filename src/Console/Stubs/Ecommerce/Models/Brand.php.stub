@@ -1,0 +1,24 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Modules\{{name}}\Models;
+
+use Plugs\Base\Model\PlugModel;
+
+class Brand extends PlugModel
+{
+    protected $table = 'brands';
+
+    protected $fillable = [
+        'name',
+        'slug',
+        'logo',
+        'website',
+    ];
+
+    public function products()
+    {
+        return $this->hasMany(Product::class);
+    }
+}

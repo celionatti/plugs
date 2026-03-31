@@ -1,0 +1,49 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Modules\{{name}}\Controllers\Admin;
+
+use Plugs\Http\Controller;
+use Plugs\Http\Request;
+use Psr\Http\Message\ResponseInterface;
+use Modules\{{name}}\Models\Product;
+use Modules\{{name}}\Models\Category;
+use Modules\{{name}}\Models\Brand;
+use Plugs\Console\Support\Str;
+
+class ProductController extends Controller
+{
+    public function index(): ResponseInterface
+    {
+        $products = Product::all();
+        $categories = Category::all();
+        $brands = Brand::all();
+
+        return response()->view('{{lowerName}}::admin/products/index', [
+            'products' => $products,
+            'categories' => $categories,
+            'brands' => $brands
+        ]);
+    }
+
+    public function store(Request $request): ResponseInterface
+    {
+        $data = $request->all();
+        $data['slug'] = Str::slug($data['name']);
+
+        Product::create($data);
+
+        return response()->redirect('/admin/{{lowerName}}/products');
+    }
+
+    public function delete(string $id): ResponseInterface
+    {
+        $product = Product::find((int) $id);
+        if ($product) {
+            $product->delete();
+        }
+
+        return response()->redirect('/admin/{{lowerName}}/products');
+    }
+}
