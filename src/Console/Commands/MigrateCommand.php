@@ -64,22 +64,17 @@ class MigrateCommand extends Command
                 return 0;
             }
 
-            $this->newLine();
-            $this->section('Migrated Files');
+            $this->output->newLine();
+            $this->output->section('Migrated Files');
             foreach ($result['migrations'] as $migration) {
-                $this->success("  ✓ {$migration}");
+                $this->fileModified($migration . '.php');
             }
 
-            $this->newLine();
-            $this->box(
-                "Database migrations completed successfully!\n\n" .
-                "Batch: {$result['batch']}\n" .
-                "Migrated: " . count($result['migrations']),
-                "✅ Success",
-                "success"
-            );
-
-            $this->metrics($this->elapsed(), memory_get_peak_usage());
+            $this->output->newLine();
+            $this->resultSummary([
+                'Batch' => $result['batch'],
+                'Migrated' => count($result['migrations'])
+            ]);
 
             return 0;
         } catch (\Exception $e) {

@@ -140,33 +140,23 @@ class ConsolePlugs
         $this->metrics['memory_end'] = memory_get_usage(true);
 
         $totalTime = $this->metrics['end'] - $this->metrics['start'];
-        $memoryUsed = $this->metrics['memory_end'] - $this->metrics['memory_start'];
         $memoryPeak = memory_get_peak_usage(true);
 
-        $timeFormatted = $this->formatTime($totalTime);
-        $memoryFormatted = $this->formatMemory($memoryUsed);
-        $peakFormatted = $this->formatMemory($memoryPeak);
-
-        $output->newLine();
-        $output->success("Command completed successfully.");
-        $output->line("  " . Output::DIM . "Time: {$timeFormatted} | Memory: {$memoryFormatted} (Peak: {$peakFormatted})" . Output::RESET);
-        $output->newLine();
+        $output->commandFooter($totalTime, $memoryPeak);
     }
 
     private function displayError(Output $output, Throwable $e, $input): void
     {
         $output->line();
 
-        $errorContent = "Message: {$e->getMessage()}\n\n";
-        $errorContent .= "File: {$e->getFile()}\n";
-        $errorContent .= "Line: {$e->getLine()}";
+        $errorContent = $e->getMessage() . "\n\n";
+        $errorContent .= Output::MUTED . "File: " . Output::RESET . $e->getFile() . "\n";
+        $errorContent .= Output::MUTED . "Line: " . Output::RESET . $e->getLine();
 
-        $output->box($errorContent, "❌ Command Failed", "error");
+        $output->box($errorContent, Output::EMBER . "✖ Command Failed" . Output::RESET, 'error');
 
         if ($input->options['debug'] ?? $input->options['verbose'] ?? false) {
-            $output->line();
             $output->section('Stack Trace');
-            $output->line();
 
             foreach ($e->getTrace() as $index => $trace) {
                 $file = $trace['file'] ?? 'unknown';
@@ -176,8 +166,8 @@ class ConsolePlugs
                 $class = $trace['class'] ?? '';
                 $type = $trace['type'] ?? '';
 
-                $output->line("  \033[2m#{$index}\033[0m {$class}{$type}{$function}()");
-                $output->line("      \033[2m{$file}:{$line}\033[0m");
+                $output->line("  " . Output::MUTED . "#{$index}" . Output::RESET . " {$class}{$type}{$function}()");
+                $output->line("      " . Output::MUTED . "{$file}:{$line}" . Output::RESET);
             }
 
             $output->line();
@@ -206,7 +196,7 @@ class ConsolePlugs
             return;
         }
 
-        if ($output->confirm("\n  \033[93m💡 Would you like me to consult the AI for a potential fix?\033[0m", true)) {
+        if ($output->confirm("\n  " . Output::GOLD . "💡 Would you like me to consult the AI for a potential fix?" . Output::RESET, true)) {
             $output->newLine();
             $output->spinner("Consulting AI expert...", function () use ($output, $e, $ai) {
                 $prompt = <<<PROMPT

@@ -13,6 +13,7 @@ namespace Plugs\Console\Commands;
 
 use Plugs\Console\Command;
 use Plugs\Console\ConsoleKernel;
+use Plugs\Console\Support\Output;
 
 class HelpCommand extends Command
 {
@@ -28,8 +29,7 @@ class HelpCommand extends Command
     protected function defineOptions(): array
     {
         return [
-            '--format=FORMAT' => 'The output format (text, json)',
-            '--raw' => 'To output raw command help',
+            '--search=QUERY' => 'Search for commands matching query',
         ];
     }
 
@@ -55,22 +55,61 @@ class HelpCommand extends Command
             "--version, -V     Display framework version\n" .
             "--verbose, -v     Increase output verbosity";
 
-        $this->sideBySide($usage, $globalOptions, 'Usage', 'Global Options');
+        $this->output->sideBySide($usage, $globalOptions, 'Usage', 'Global Options');
 
         $commands = $kernel->commands();
-        $grouped = [];
-        foreach ($commands as $name => $command) {
-            $category = 'General';
-            if (str_contains($name, ':')) {
-                $category = ucfirst(explode(':', $name)[0]);
+        $search = $this->option('search');
+
+        if ($search) {
+            $commands = array_filter($commands, fn($class, $name) => str_contains(strtolower($name), strtolower($search)), ARRAY_FILTER_USE_BOTH);
+            if (empty($commands)) {
+                $this->output->warning("No commands found matching '{$search}'.");
+                return 0;
             }
-            $grouped[$category][$name] = $command;
         }
 
-        ksort($grouped);
+        $commandGroups = $kernel->commandGroups();
+        $aliases = $kernel->aliases();
+
+        // Create a fast lookup for aliases: command_name => array of aliases
+        $aliasMap = [];
+        foreach ($aliases as $alias => $cmd) {
+            $aliasMap[$cmd][] = $alias;
+        }
+
+        $grouped = [];
+        $allGroupedCmds = [];
+
+        foreach ($commandGroups as $groupName => $cmds) {
+            foreach ($cmds as $cmdName) {
+                if (isset($commands[$cmdName])) {
+                    $grouped[$groupName][$cmdName] = $commands[$cmdName];
+                    $allGroupedCmds[] = $cmdName;
+                }
+            }
+        }
+
+        // Add ungrouped commands to 'Other'
+        foreach ($commands as $name => $class) {
+            if (!in_array($name, $allGroupedCmds) && !isset($aliases[$name])) {
+                $grouped['Other'][$name] = $class;
+            }
+        }
+
+        // Add icons for common groups
+        $icons = [
+            'General' => '◈',
+            'Make' => '⟐',
+            'Database' => '●',
+            'Routes' => '✦',
+            'Utility' => '⚙',
+            'Scheduling' => '⏱',
+        ];
 
         foreach ($grouped as $category => $categoryCommands) {
-            $items = [];
+            $icon = $icons[$category] ?? '◈';
+            $this->output->line(Output::ACCENT . $icon . " " . Output::BRIGHT_WHITE . Output::BOLD . $category . Output::RESET);
+            
             foreach ($categoryCommands as $name => $commandClass) {
                 try {
                     $command = new $commandClass($name);
@@ -79,19 +118,28 @@ class HelpCommand extends Command
                     $description = 'No description available';
                 }
 
+                $cmdNameDisplay = Output::MINT . $name . Output::RESET;
+                
+                // Show aliases if any
+                if (isset($aliasMap[$name])) {
+                    $cmdNameDisplay .= Output::MUTED . " [" . implode(', ', $aliasMap[$name]) . "]" . Output::RESET;
+                }
+                
+                // Strip tags for length calculation
+                $visibleNameLen = mb_strwidth($this->output->stripAnsiCodes($cmdNameDisplay));
+                
                 if (mb_strlen($description) > 70) {
                     $description = mb_substr($description, 0, 67) . '...';
                 }
-                $items[$name] = $description;
+                
+                $padding = max(1, 35 - $visibleNameLen);
+                $this->output->line("  " . $cmdNameDisplay . str_repeat(' ', $padding) . Output::SUBTLE . $description . Output::RESET);
             }
-
-            $this->statusCard($category, $items, 'info');
-            $this->newLine();
+            $this->output->newLine();
         }
 
-        $this->newLine();
-        $this->note("Run 'php theplugs help <command>' for more information.");
-        $this->newLine();
+        $this->output->note("Run 'php theplugs help <command>' for more information.");
+        $this->output->newLine();
 
         return 0;
     }
@@ -101,9 +149,8 @@ class HelpCommand extends Command
         $command = $kernel->resolve($commandName);
 
         if (!$command) {
-            $this->error("Command '{$commandName}' not found.");
+            $this->output->error("Command '{$commandName}' not found.");
             $this->showCommandSuggestions($kernel, $commandName);
-
             return 1;
         }
 
@@ -111,25 +158,27 @@ class HelpCommand extends Command
 
         // Description
         if ($description = $command->description()) {
-            $this->line("  " . $description);
-            $this->newLine();
+            $this->output->line("  " . Output::MINT . "ℹ" . Output::RESET . " " . $description);
+            $this->output->newLine();
         }
 
         // Usage
-        $this->info("Usage: " . \Plugs\Console\Support\Output::BRIGHT_WHITE . "php theplugs {$commandName} [options] [arguments]" . \Plugs\Console\Support\Output::RESET);
+        $this->output->line("  " . Output::MUTED . "Usage:" . Output::RESET);
+        $this->output->line("  " . Output::BRIGHT_WHITE . "php theplugs " . Output::ACCENT . "{$commandName}" . Output::RESET . " [options] [arguments]");
+        $this->output->newLine();
 
         // Arguments & Options
         $arguments = $command->getArguments();
         $options = $command->getOptions();
 
         if (!empty($arguments)) {
-            $this->statusCard('Arguments', $arguments, 'info');
-            $this->newLine();
+            $this->output->section('Arguments');
+            $this->output->twoColumnList($arguments, 20);
         }
 
         if (!empty($options)) {
-            $this->statusCard('Options', $options, 'success');
-            $this->newLine();
+            $this->output->section('Options');
+            $this->output->twoColumnList($options, 25);
         }
 
         // Examples
@@ -139,15 +188,15 @@ class HelpCommand extends Command
         }
 
         if (!empty($examples)) {
-            $this->section('Usage Examples');
+            $this->output->section('Examples');
             foreach ($examples as $example => $description) {
-                $this->highlight("  # " . $description, [$description], \Plugs\Console\Support\Output::DIM);
-                $this->line("  php theplugs {$commandName} {$example}");
-                $this->newLine();
+                $this->output->line("  " . Output::MUTED . "● " . $description . Output::RESET);
+                $this->output->line("    " . Output::BRIGHT_WHITE . "php theplugs {$commandName} " . Output::SKY . $example . Output::RESET);
+                $this->output->newLine();
             }
         }
 
-        $this->newLine();
+        $this->output->newLine();
 
         return 0;
     }
@@ -166,11 +215,12 @@ class HelpCommand extends Command
         }
 
         if (!empty($suggestions)) {
-            $this->line();
-            $this->info("Did you mean one of these?");
-            foreach (array_slice($suggestions, 0, 5) as $suggestion) {
-                $this->line("  ➜ {$suggestion}");
-            }
+            $this->output->box(
+                "Did you mean one of these?\n\n" . 
+                implode("\n", array_map(fn($c) => "  • " . Output::BRIGHT_WHITE . $c . Output::RESET, array_slice($suggestions, 0, 5))),
+                "💡 Suggestions",
+                "warning"
+            );
         }
     }
 }

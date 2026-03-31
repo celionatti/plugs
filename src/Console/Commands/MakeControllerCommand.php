@@ -106,7 +106,7 @@ class MakeControllerCommand extends Command
 
         // Generate controller
         $currentStep++;
-        $this->progress($currentStep, $totalSteps, "Generating Controller...");
+        $this->timeline($currentStep, $totalSteps, "Generating Controller...");
         $controllerPath = $this->generateController($className, $options);
         $this->checkpoint('controller_generated');
 
@@ -115,17 +115,17 @@ class MakeControllerCommand extends Command
         // Generate related files
         if ($options['requests']) {
             $currentStep++;
-            $this->progress($currentStep, $totalSteps, "Generating Form Request 1/2...");
+            $this->timeline($currentStep, $totalSteps, "Generating Form Request 1/2...");
             // Internal logic refactored to allow progress updates if needed, or just step through
             $requestPaths = $this->generateRequests($className, $options);
             $currentStep++;
-            $this->progress($currentStep, $totalSteps, "Generating Form Request 2/2...");
+            $this->timeline($currentStep, $totalSteps, "Generating Form Request 2/2...");
             $filesCreated = array_merge($filesCreated, $requestPaths);
         }
 
         if ($options['test']) {
             $currentStep++;
-            $this->progress($currentStep, $totalSteps, "Generating Test Case...");
+            $this->timeline($currentStep, $totalSteps, "Generating Test Case...");
             $testPath = $this->generateTest($className, $options);
             $filesCreated[] = $testPath;
         }
@@ -249,7 +249,7 @@ class MakeControllerCommand extends Command
 
         Filesystem::put($path, $content);
 
-        $this->success("Controller created: {$path}");
+        $this->fileCreated($path);
 
         return $path;
     }
@@ -265,7 +265,7 @@ class MakeControllerCommand extends Command
         $storeContent = $this->generateRequestClass($storeRequestName, $options);
         Filesystem::put($storeRequestPath, $storeContent);
         $paths[] = $storeRequestPath;
-        $this->success("Request created: {$storeRequestName}");
+        $this->fileCreated($storeRequestPath);
 
         // Update Request
         $updateRequestName = "Update{$baseName}Request";
@@ -273,7 +273,7 @@ class MakeControllerCommand extends Command
         $updateContent = $this->generateRequestClass($updateRequestName, $options);
         Filesystem::put($updateRequestPath, $updateContent);
         $paths[] = $updateRequestPath;
-        $this->success("Request created: {$updateRequestName}");
+        $this->fileCreated($updateRequestPath);
 
         return $paths;
     }
@@ -297,7 +297,7 @@ class MakeControllerCommand extends Command
 
         Filesystem::put($path, $content);
 
-        $this->success("Test created: {$testName}");
+        $this->fileCreated($path);
 
         return $path;
     }
@@ -555,43 +555,28 @@ class MakeControllerCommand extends Command
 
     private function displayResults(string $name, array $filesCreated, array $options): void
     {
-        $this->newLine(2);
-
-        $this->box(
-            "Controller '{$name}' generated successfully!\n\n" .
-            "Type: " . ucfirst($options['type']) . "\n" .
-            "Files created: " . count($filesCreated),
-            "✅ Success",
-            "success"
-        );
-
-        $this->metrics($this->elapsed(), memory_get_peak_usage());
-
+        $this->resultSummary([
+            'Type' => ucfirst($options['type']),
+            'Files Generated' => count($filesCreated)
+        ], $this->elapsed(), memory_get_peak_usage(true));
+        
         $this->newLine();
-        $this->section('Generated Files');
-
-        foreach ($filesCreated as $file) {
-            $relativePath = str_replace(getcwd() . '/', '', $file);
-            $this->success("  ✓ {$relativePath}");
-        }
-
-        $this->newLine();
-        $this->section('Next Steps');
+        $this->output->section('Next Steps');
 
         $steps = [
-            "Implement methods in: {$name}",
+            "Implement methods in: " . $this->badge($name, 'accent'),
             "Register routes for the controller",
         ];
 
         if ($options['model']) {
-            $steps[] = "Ensure {$options['model']} model exists";
+            $steps[] = "Ensure " . $this->badge($options['model'], 'muted') . " model exists";
         }
 
         if ($options['test']) {
             $steps[] = "Write tests for the controller methods";
         }
 
-        $this->numberedList($steps);
+        $this->output->numberedList($steps);
         $this->newLine();
     }
 

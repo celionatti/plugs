@@ -260,7 +260,7 @@ abstract class Command implements CommandInterface
 
     protected function branding(string $version = '1.0.0'): void
     {
-        $this->banner('PLUGS FRAMEWORK ' . $version);
+        $this->output->branding($version);
     }
 
     protected function commandHeader(string $command): void
@@ -323,6 +323,64 @@ abstract class Command implements CommandInterface
     protected function diff(string $old, string $new): void
     {
         $this->output->diff($old, $new);
+    }
+
+    // ==================== FILE OPERATIONS OUTPUT ====================
+
+    protected function fileCreated(string $path): void
+    {
+        $this->output->fileResult('created', $path);
+    }
+
+    protected function fileModified(string $path): void
+    {
+        $this->output->fileResult('modified', $path);
+    }
+
+    protected function fileDeleted(string $path): void
+    {
+        $this->output->fileResult('deleted', $path);
+    }
+
+    protected function fileSkipped(string $path): void
+    {
+        $this->output->fileResult('skipped', $path);
+    }
+
+    // ==================== BADGES & SUMMARIES ====================
+
+    protected function badge(string $text, string $type = 'info'): string
+    {
+        return $this->output->badge($text, $type);
+    }
+
+    protected function inlineBadge(string $text, string $type = 'info'): void
+    {
+        $this->output->inlineBadge($text, $type);
+    }
+
+    protected function resultSummary(array $stats, float $time = 0, int $memory = 0): void
+    {
+        $this->output->resultSummary($stats, $time, $memory);
+    }
+
+    protected function commandSummary(string $title, array $stats): void
+    {
+        $this->output->statusCard($title, $stats, 'success');
+    }
+
+    // ==================== TIMELINE ====================
+
+    protected function timeline(int $current, int $total, string $message): void
+    {
+        $this->output->timeline($current, $total, $message);
+    }
+
+    // ==================== COLUMNS ====================
+
+    protected function columns(array $items, int $cols = 3): void
+    {
+        $this->output->columns($items, $cols);
     }
 
     // ==================== PROGRESS ====================

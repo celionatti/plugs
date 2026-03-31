@@ -18,4 +18,12 @@ class Input
         public array $options
     ) {
     }
+
+    /**
+     * Get the command name from arguments (if parsed from argv).
+     */
+    public function commandName(): ?string
+    {
+        return $this->arguments['_command'] ?? null;
+    }
 }

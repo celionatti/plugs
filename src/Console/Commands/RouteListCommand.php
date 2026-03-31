@@ -83,12 +83,7 @@ class RouteListCommand extends Command
 
         $this->checkpoint('routes_displayed');
 
-        // Display summary
         $this->displaySummary($routes);
-
-        if ($this->isVerbose()) {
-            $this->displayTimings();
-        }
 
         return 0;
     }
@@ -201,49 +196,40 @@ class RouteListCommand extends Command
 
     private function displaySummary(array $routes): void
     {
-        $this->section('Statistics');
-
-        $methods = [];
+        $this->output->newLine();
+        
         $withMiddleware = 0;
         $named = 0;
 
         foreach ($routes as $route) {
-            $method = $route->getMethod();
-            $methods[$method] = ($methods[$method] ?? 0) + 1;
-
             if (!empty($route->getMiddleware())) {
                 $withMiddleware++;
             }
-
             if ($route->getName()) {
                 $named++;
             }
         }
 
-        $this->keyValue('Total Routes', (string) count($routes));
-        $this->keyValue('Named Routes', (string) $named);
-        $this->keyValue('Protected Routes', (string) $withMiddleware);
-
-        $this->newLine();
-        $this->info('Routes by Method:');
-
-        foreach ($methods as $method => $count) {
-            $this->keyValue("  {$method}", (string) $count);
-        }
-
-        $this->newLine();
+        $this->resultSummary([
+            'Routes' => count($routes),
+            'Named' => $named,
+            'Protected' => $withMiddleware,
+        ]);
+        
+        $this->output->newLine();
     }
 
     private function colorizeMethod(string $method): string
     {
-        return match ($method) {
-            'GET' => "\033[32m{$method}\033[0m",      // Green
-            'POST' => "\033[33m{$method}\033[0m",     // Yellow
-            'PUT' => "\033[34m{$method}\033[0m",      // Blue
-            'PATCH' => "\033[35m{$method}\033[0m",    // Magenta
-            'DELETE' => "\033[31m{$method}\033[0m",   // Red
-            default => $method,
+        $type = match ($method) {
+            'GET' => 'success',
+            'POST' => 'warning',
+            'PUT', 'PATCH' => 'info',
+            'DELETE' => 'error',
+            default => 'muted',
         };
+        
+        return $this->badge($method, $type);
     }
 
     private function formatHandler($handler): string
