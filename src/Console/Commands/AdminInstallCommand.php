@@ -61,13 +61,11 @@ class AdminInstallCommand extends Command
         }
 
         $this->newLine();
-        $this->box(
-            "Monochrome Admin Panel installed successfully!\n\n" .
-            "Location: modules/Admin/\n" .
-            "Route Prefix: /admin",
-            "✅ Success",
-            "success"
-        );
+        $this->resultSummary([
+            'Module' => 'Monochrome Admin',
+            'Location' => 'modules/Admin/',
+            'Route Prefix' => '/admin'
+        ], $this->elapsed());
 
         return 0;
     }
@@ -90,14 +88,14 @@ class AdminInstallCommand extends Command
             $destination = $targetDir . '/' . $fileName;
             
             if (Filesystem::exists($destination) && !$this->hasOption('force')) {
-                $this->info("  - Model already exists: {$fileName}");
+                $this->fileSkipped($destination);
                 continue;
             }
 
             if (Filesystem::exists($stubFile)) {
                 $content = Filesystem::get($stubFile);
                 Filesystem::put($destination, $content);
-                $this->info("  - Published: {$fileName}");
+                $this->fileCreated($destination);
             }
         }
 
@@ -122,10 +120,9 @@ class AdminInstallCommand extends Command
         foreach ($migrations as $stubName => $fileName) {
             $stubFile = $stubsDir . '/' . $stubName;
             
-            // Check if migration already exists (checking for the file name suffix)
             $existing = glob($targetDir . '/*_' . $fileName);
             if (!empty($existing) && !$this->hasOption('force')) {
-                $this->info("  - Migration already exists: {$fileName}");
+                $this->fileSkipped($existing[0]);
                 continue;
             }
 
@@ -136,7 +133,7 @@ class AdminInstallCommand extends Command
             if (Filesystem::exists($stubFile)) {
                 $content = Filesystem::get($stubFile);
                 Filesystem::put($destination, $content);
-                $this->info("  - Published: {$newFileName}");
+                $this->fileCreated($destination);
                 sleep(1); // Ensure unique timestamps
             }
         }
@@ -183,14 +180,14 @@ class AdminInstallCommand extends Command
         $destination = $targetDir . '/' . $fileName;
 
         if (Filesystem::exists($destination) && !$this->hasOption('force')) {
-            $this->info("  - Already exists: {$fileName}");
+            $this->fileSkipped($destination);
             return;
         }
 
         if (Filesystem::exists($stubFile)) {
             $content = Filesystem::get($stubFile);
             Filesystem::put($destination, $content);
-            $this->info("  - Published: {$fileName}");
+            $this->fileCreated($destination);
         }
     }
 }

@@ -82,16 +82,18 @@ class MakeAuthModuleCommand extends Command
             'Views/components/AuthInput.plug.php.stub' => 'Views/components/AuthInput.plug.php',
         ];
 
+        $this->output->section('Generating Module Files');
+
         foreach ($filesToGenerate as $stub => $destination) {
-            $this->task("Generating {$destination}", function () use ($stubsPath, $stub, $basePath, $destination, $name, $lowerName) {
-                $content = Filesystem::get($stubsPath . '/' . $stub);
-                $content = str_replace(
-                    ['{{name}}', '{{lowerName}}'],
-                    [$name, $lowerName],
-                    $content
-                );
-                Filesystem::put($basePath . '/' . $destination, $content);
-            });
+            $content = Filesystem::get($stubsPath . '/' . $stub);
+            $content = str_replace(
+                ['{{name}}', '{{lowerName}}'],
+                [$name, $lowerName],
+                $content
+            );
+            $fullPath = $basePath . '/' . $destination;
+            Filesystem::put($fullPath, $content);
+            $this->fileCreated($fullPath);
         }
 
         $this->section('Publishing Global Scaffolding');
@@ -109,13 +111,11 @@ class MakeAuthModuleCommand extends Command
         });
 
         $this->newLine();
-        $this->box(
-            "Auth module '{$name}' scaffolded successfully!\n\n" .
-            "Location: modules/{$name}/\n" .
-            "Namespace: Modules\\{$name}\\",
-            "✅ Auth Module Ready",
-            "success"
-        );
+        $this->resultSummary([
+            'Module' => $name,
+            'Location' => "modules/{$name}/",
+            'Namespace' => "Modules\\{$name}\\"
+        ], $this->elapsed());
 
         $this->section('Next Steps');
         $this->numberedList([

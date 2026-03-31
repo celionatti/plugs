@@ -52,16 +52,15 @@ class MakeCommandCommand extends Command
         $content = $this->generateCommand($name, $commandName, $description);
         Filesystem::put($path, $content);
 
+        $this->fileCreated($path);
+
         $this->checkpoint('finished');
 
         $this->newLine();
-        $this->box(
-            "Console command '{$name}' generated successfully!\n\n" .
-            "Signature: {$commandName}\n" .
-            "Time: {$this->formatTime($this->elapsed())}",
-            "✅ Success",
-            "success"
-        );
+        $this->resultSummary([
+            'Command Name' => $name,
+            'Signature' => $commandName
+        ], $this->elapsed());
 
         $this->section('Next Steps');
         $this->bulletList([
