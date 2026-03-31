@@ -27,6 +27,7 @@ class PlugViewEngine implements ViewEngineInterface
     private ?string $theme = null;
     private array $namespaces = [];
     private ?string $defaultLayout = null;
+    private string $appContentId = 'app-content';
 
     private const VIEW_EXTENSIONS = ['.plug.php', '.php', '.html'];
     private const PRODUCTION_ERROR_LEVEL = E_ERROR | E_PARSE | E_CORE_ERROR | E_COMPILE_ERROR;
@@ -249,6 +250,26 @@ class PlugViewEngine implements ViewEngineInterface
     public function getDefaultLayout(): ?string
     {
         return $this->defaultLayout;
+    }
+
+    /**
+     * Set the application content ID (for plugs-spa.js)
+     */
+    public function setAppContentId(string $id): self
+    {
+        $this->appContentId = $id;
+        if ($this->viewCompiler) {
+            $this->viewCompiler->setAppContentId($id);
+        }
+        return $this;
+    }
+
+    /**
+     * Get the application content ID.
+     */
+    public function getAppContentId(): string
+    {
+        return $this->appContentId;
     }
 
     public function setCspNonce(string $nonce): void
@@ -1123,6 +1144,7 @@ class PlugViewEngine implements ViewEngineInterface
     {
         if ($this->viewCompiler === null) {
             $this->viewCompiler = new ViewCompiler();
+            $this->viewCompiler->setAppContentId($this->appContentId);
             $this->registerDefaultDirectives();
         }
 

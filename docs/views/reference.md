@@ -103,11 +103,31 @@ Enhanced tag syntax for layout inheritance. Supports arbitrary attributes as dat
 - **Default:** If `name` is omitted, uses the engine's default layout.
 - **Purpose:** Modern, clean way to extend layouts.
 
-### `@layout`
+### Simplified `@layout` Directive
+A concise shorthand for extending a layout and wrapping everything in the `content` section.
 
-Concise shorthand for extension and content wrapping.
+```blade
+@layout('layouts.app', ['title' => 'Home'])
+    <p>Main page content here.</p>
+@endlayout
+```
 
-- **Usage:** `@layout('layouts.app', ['title' => 'Home']) ... @endlayout`
+### Main Content Containers (SPA)
+For SPA layouts using `plugs-spa.js`, you can use shorthands for the main swappable container.
+
+```html
+{{-- Option 1: Fragment Syntax --}}
+<>
+    @yield('content')
+</>
+
+{{-- Option 2: Main Content Tag --}}
+<main-content />
+```
+
+Both of the above compile to `<div id="app-content"> @yield('content') </div>` by default.
+
+### UI Helpers
 - **Purpose:** Reduces boilerplate compared to `@extends` and `@section('content')`.
 
 ### `@title`
@@ -137,6 +157,14 @@ Sets the layout for a view fluently from the controller.
 
 - **Usage:** `return view('welcome')->layout('layouts.auth')`
 - **Purpose:** Move layout decisions to the controller when needed.
+
+### `setAppContentId()`
+
+Configures the ID used by `<main-content />` and `<> ... </>` fragments.
+
+- **Usage:** `$viewEngine->setAppContentId('my-app-root')`
+- **Default:** `app-content`
+- **Purpose:** Allows customization of the SPA swap target ID.
 
 ---
 

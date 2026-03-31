@@ -406,4 +406,21 @@ trait CompilesLayouts
             return "@extends({$head})\n@section('content')\n{$body}\n@endsection";
         }, $content);
     }
+
+    /**
+     * Compile layout fragments and main content markers.
+     * Supports: <> ... </> and <main-content />
+     */
+    protected function compileFragments(string $content): string
+    {
+        $id = $this->appContentId ?? 'app-content';
+
+        // 1. Convert <> ... </> to <div id="..."> ... </div>
+        $content = preg_replace('/<>\s*(.*?)\s*<\/>/is', '<div id="' . $id . '">$1</div>', $content);
+
+        // 2. Convert <main-content /> to <div id="...">@yield(\'content\')</div>
+        $content = preg_replace('/<main-content\s*\/?>/i', '<div id="' . $id . '">@yield(\'content\')</div>', $content);
+
+        return $content;
+    }
 }

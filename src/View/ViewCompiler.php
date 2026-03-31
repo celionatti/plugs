@@ -64,6 +64,7 @@ class ViewCompiler
      * View cache for block caching
      */
     private ?ViewCache $viewCache = null;
+    private string $appContentId = 'app-content';
 
     /**
      * Check if source maps are enabled
@@ -95,6 +96,15 @@ class ViewCompiler
     public function getFragmentRenderer(): ?FragmentRenderer
     {
         return $this->fragmentRenderer;
+    }
+
+    /**
+     * Set the application content ID.
+     */
+    public function setAppContentId(string $id): self
+    {
+        $this->appContentId = $id;
+        return $this;
     }
 
     /**
@@ -697,6 +707,7 @@ class ViewCompiler
         $content = $this->compilePhp($content);
 
         // Phase 2: Structural & Layout Compilation
+        $content = $this->compileFragments($content);
         $content = $this->compileLayoutDirective($content);
         $content = $this->compileSections($content);
         $content = $this->compileIncludes($content);
