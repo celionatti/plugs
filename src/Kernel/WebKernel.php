@@ -44,8 +44,6 @@ class WebKernel extends AbstractKernel
 
     protected function bootServices(): void
     {
-        $this->setupRouter();
-        $this->setupRequest();
         $this->loadSecurityMiddleware();
         $this->loadProfilerMiddleware();
         $this->loadRoutes();

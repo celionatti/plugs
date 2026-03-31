@@ -109,6 +109,8 @@ class Bootstrapper
 
         $manager->addModule([
             \Plugs\Module\Core\FunctionsModule::class,
+            \Plugs\Module\Core\RequestModule::class,
+            \Plugs\Module\Core\RouterModule::class,
             \Plugs\Module\Core\LogModule::class,
             \Plugs\Module\Core\CacheModule::class,
             \Plugs\Module\Core\CookieModule::class,
