@@ -21,6 +21,14 @@ use Psr\Http\Message\ResponseInterface;
 class ResponseFactory
 {
     /**
+     * Create a standardized API response
+     */
+    public static function api(mixed $data = null, int $statusCode = 200, ?string $message = null): StandardResponse
+    {
+        return new StandardResponse($data, true, $statusCode, $message);
+    }
+
+    /**
      * Create a basic response
      */
     public static function createResponse(int $statusCode = 200, array $headers = []): ResponseInterface

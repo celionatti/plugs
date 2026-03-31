@@ -235,6 +235,13 @@ class PlugResourceCollection implements JsonSerializable
         // Create the response
         $response = new StandardResponse($responseData, true, $status, $message);
 
+        // Apply wrapping if set
+        if (static::$wrap !== null) {
+            $response->wrap(static::$wrap);
+        } else {
+            $response->withoutWrapping();
+        }
+
         // Add meta data (including pagination)
         $meta = $this->meta;
         if ($this->pagination) {

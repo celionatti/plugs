@@ -117,7 +117,7 @@ if (!function_exists('api_response')) {
      */
     function api_response(mixed $data = null, int $status = 200, ?string $message = null): \Plugs\Http\StandardResponse
     {
-        return new \Plugs\Http\StandardResponse($data, true, $status, $message);
+        return \Plugs\Http\ResponseFactory::api($data, $status, $message);
     }
 }
 if (!function_exists('cookie')) {

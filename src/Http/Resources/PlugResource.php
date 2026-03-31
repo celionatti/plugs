@@ -355,11 +355,18 @@ abstract class PlugResource implements JsonSerializable
     public function toResponse(int $status = 200, ?string $message = 'Success'): StandardResponse
     {
         $response = new StandardResponse(
-            $this->resolveWithWrap(),
+            $this->resolve(),
             true,
             $status,
             $message
         );
+
+        // Apply wrapping if set
+        if (static::$wrap !== null) {
+            $response->wrap(static::$wrap);
+        } else {
+            $response->withoutWrapping();
+        }
 
         // Apply additional data as meta
         if (!empty($this->additional)) {

@@ -1459,11 +1459,31 @@ class Router
             return $response;
         }
 
+        // Handle StandardResponse
+        if ($response instanceof \Plugs\Http\StandardResponse) {
+            return $response->toPsr();
+        }
+
+        // Handle API Resources and Collections
+        if ($response instanceof \Plugs\Http\Resources\PlugResource || $response instanceof \Plugs\Http\Resources\PlugResourceCollection) {
+            return $response->toResponse()->toPsr();
+        }
+
+        // Handle Paginator (convert to StandardResponse)
+        if ($response instanceof \Plugs\Paginator\Paginator) {
+            return \Plugs\Http\StandardResponse::success($response)->toPsr();
+        }
+
         if (is_string($response)) {
             return ResponseFactory::html($response);
         }
 
         if (is_array($response)) {
+            // If it's an API request (ApiKernel or ForceJson), return StandardResponse
+            if (isset($GLOBALS['__current_request']) && strpos($GLOBALS['__current_request']->getHeaderLine('Accept'), 'application/json') !== false) {
+                return \Plugs\Http\StandardResponse::success($response)->toPsr();
+            }
+
             return ResponseFactory::json($response);
         }
 
@@ -1472,11 +1492,16 @@ class Router
         }
 
         if (is_bool($response)) {
-            return ResponseFactory::json(['success' => $response]);
+            return \Plugs\Http\StandardResponse::success(['success' => $response])->toPsr();
         }
 
         if (is_numeric($response)) {
             return ResponseFactory::html((string) $response);
+        }
+
+        // Handle JsonSerializable
+        if ($response instanceof \JsonSerializable) {
+            return ResponseFactory::json($response->jsonSerialize());
         }
 
         if (is_object($response) && method_exists($response, '__toString')) {

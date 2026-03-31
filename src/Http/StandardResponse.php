@@ -23,6 +23,7 @@ class StandardResponse implements JsonSerializable
     protected int $status;
     protected ?string $message;
     protected string $timestamp;
+    protected ?string $wrapKey = null;
 
     public function __construct(
         mixed $data = null,
@@ -35,6 +36,11 @@ class StandardResponse implements JsonSerializable
         $this->status = $status;
         $this->message = $message;
         $this->timestamp = date('c'); // ISO 8601
+
+        // Auto-detect pagination if data is a Paginator
+        if ($data instanceof \Plugs\Paginator\Paginator) {
+            $this->withPagination($data);
+        }
     }
 
     public static function success(mixed $data = null, int $status = 200, ?string $message = 'Success'): self
@@ -45,6 +51,73 @@ class StandardResponse implements JsonSerializable
     public static function error(string $message = 'Error', int $status = 400, mixed $data = null): self
     {
         return new self($data, false, $status, $message);
+    }
+
+    /**
+     * Set the HTTP status code.
+     */
+    public function setStatus(int $status): self
+    {
+        $this->status = $status;
+
+        return $this;
+    }
+
+    /**
+     * Set the response message.
+     */
+    public function withMessage(string $message): self
+    {
+        $this->message = $message;
+
+        return $this;
+    }
+
+    /**
+     * Wrap the data in a specific key.
+     */
+    public function wrap(string $key): self
+    {
+        $this->wrapKey = $key;
+
+        return $this;
+    }
+
+    /**
+     * Disable data wrapping.
+     */
+    public function withoutWrapping(): self
+    {
+        $this->wrapKey = null;
+
+        return $this;
+    }
+
+    /**
+     * Add pagination metadata from a Paginator instance.
+     */
+    public function withPagination(\Plugs\Paginator\Paginator $paginator): self
+    {
+        $this->data = $paginator->items();
+
+        $this->withMeta([
+            'pagination' => [
+                'total' => $paginator->total(),
+                'count' => count($paginator->items()),
+                'per_page' => $paginator->perPage(),
+                'current_page' => $paginator->currentPage(),
+                'total_pages' => $paginator->lastPage(),
+            ],
+        ]);
+
+        $this->withLinks([
+            'first' => $paginator->url(1),
+            'last' => $paginator->url($paginator->lastPage()),
+            'prev' => $paginator->previousPage() ? $paginator->url($paginator->previousPage()) : null,
+            'next' => $paginator->nextPage() ? $paginator->url($paginator->nextPage()) : null,
+        ]);
+
+        return $this;
     }
 
     public function withMeta(array $meta): self
@@ -82,8 +155,15 @@ class StandardResponse implements JsonSerializable
             'status' => $this->status,
             'message' => $this->message,
             'timestamp' => $this->timestamp,
-            'data' => $this->data,
         ];
+
+        // Handle data wrapping
+        $data = $this->data;
+        if ($this->wrapKey !== null) {
+            $response[$this->wrapKey] = $data;
+        } else {
+            $response['data'] = $data;
+        }
 
         if (!empty($this->meta)) {
             $response['meta'] = $this->meta;
@@ -99,14 +179,17 @@ class StandardResponse implements JsonSerializable
                 'memory' => memory_get_usage(true),
                 'peak_memory' => memory_get_peak_usage(true),
                 'php_version' => PHP_VERSION,
-                'models' => \Plugs\Base\Model\PlugModel::getLoadedModelStats(),
                 'execution_time' => microtime(true) - ($_SERVER['REQUEST_TIME_FLOAT'] ?? microtime(true)),
             ];
 
-            // Add query stats if available
-            /** @phpstan-ignore-next-line */
-            if (method_exists(\Plugs\Base\Model\PlugModel::class, 'getDebugStats')) {
-                $debugParams['queries'] = \Plugs\Base\Model\PlugModel::getDebugStats();
+            // Add model stats if available
+            if (class_exists(\Plugs\Base\Model\PlugModel::class)) {
+                $debugParams['models'] = \Plugs\Base\Model\PlugModel::getLoadedModelStats();
+
+                /** @phpstan-ignore-next-line */
+                if (method_exists(\Plugs\Base\Model\PlugModel::class, 'getDebugStats')) {
+                    $debugParams['queries'] = \Plugs\Base\Model\PlugModel::getDebugStats();
+                }
             }
 
             $response['debug'] = $debugParams;
@@ -122,7 +205,7 @@ class StandardResponse implements JsonSerializable
 
     public function toJson(int $options = 0): string
     {
-        return json_encode($this->jsonSerialize(), $options);
+        return json_encode($this->jsonSerialize(), $options | JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT);
     }
 
     /**
@@ -152,17 +235,18 @@ class StandardResponse implements JsonSerializable
             $response->send();
         } else {
             // Fallback for generic PSR-7 emitters if needed
-            // But here we know it's our Response
-            header(sprintf(
-                'HTTP/%s %d %s',
-                $response->getProtocolVersion(),
-                $response->getStatusCode(),
-                $response->getReasonPhrase()
-            ), true, $response->getStatusCode());
+            if (!headers_sent()) {
+                header(sprintf(
+                    'HTTP/%s %d %s',
+                    $response->getProtocolVersion(),
+                    $response->getStatusCode(),
+                    $response->getReasonPhrase()
+                ), true, $response->getStatusCode());
 
-            foreach ($response->getHeaders() as $name => $values) {
-                foreach ($values as $value) {
-                    header("{$name}: {$value}", false);
+                foreach ($response->getHeaders() as $name => $values) {
+                    foreach ($values as $value) {
+                        header("{$name}: {$value}", false);
+                    }
                 }
             }
 
@@ -175,3 +259,4 @@ class StandardResponse implements JsonSerializable
         return $this->toJson();
     }
 }
+
