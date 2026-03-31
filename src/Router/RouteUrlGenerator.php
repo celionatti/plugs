@@ -54,6 +54,10 @@ class RouteUrlGenerator
         if ($route === null) {
             $message = "Route [{$name}] not found.";
 
+            if (str_starts_with($name, '/') || str_starts_with($name, 'http')) {
+                $message .= " (Did you mean to use url('{$name}') instead of route('{$name}')?)";
+            }
+
             if ($suggestion = $this->getRouteSuggestion($name)) {
                 $message .= " Did you mean [{$suggestion}]?";
             }

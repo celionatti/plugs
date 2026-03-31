@@ -185,7 +185,7 @@
             <div class="flex flex-col h-full bg-black">
                 <!-- Sidebar Header -->
                 <div class="p-6">
-                    <a href="{{ route('welcome') }}" class="flex items-center gap-3 group">
+                    <a href="{{ url('/') }}" class="flex items-center gap-3 group">
                         <div class="w-10 h-10 gradient-bg rounded-xl flex items-center justify-center transition-transform group-hover:rotate-12">
                             <span class="text-white font-bold text-2xl brand-font">P</span>
                         </div>

@@ -28,6 +28,12 @@ if (!function_exists('route')) {
      */
     function route(string $name, array $parameters = [], bool $absolute = true): string
     {
+        // Safety net: if developers try to pass a path (e.g., '/') to route(),
+        // gracefully delegate to url() instead of throwing 'Route [/] not found'
+        if (str_starts_with($name, '/') || str_starts_with($name, 'http')) {
+            return url($name, $parameters);
+        }
+
         return app(Router::class)->route($name, $parameters, $absolute);
     }
 }
