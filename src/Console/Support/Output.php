@@ -865,6 +865,7 @@ class Output
             echo "\r  " . self::ACCENT . self::G_PIPE . self::RESET .
                 " " . self::SKY . $spinnerText . self::RESET .
                 str_repeat(" ", $padding);
+            flush();
 
             try {
                 $result = $callback();
@@ -909,6 +910,7 @@ class Output
                 echo "\r  " . self::ACCENT . self::G_PIPE . self::RESET .
                     " " . self::SKY . $text . self::RESET .
                     str_repeat(" ", max(0, $maxWidth - $textLen - 4));
+                flush();
                 usleep(120000);
                 if ($i > 500) break;
             }
@@ -920,6 +922,7 @@ class Output
                 echo "\r  " . self::ACCENT . self::G_PIPE . self::RESET .
                     " " . self::SKY . $text . self::RESET .
                     str_repeat(" ", max(0, $maxWidth - $textLen - 4));
+                flush();
                 usleep(120000);
             }
         }
@@ -952,6 +955,7 @@ class Output
             echo "\r  " . self::ACCENT . self::G_PIPE . self::RESET .
                 " " . $bar . " " . $pctText . " " . $counterText .
                 str_repeat(" ", 4);
+            flush();
 
             usleep(50000);
         }
@@ -975,6 +979,7 @@ class Output
         echo "\r  " . self::ACCENT . self::G_PIPE . self::RESET .
             " " . $bar . " " . $pctText . $msgText .
             str_repeat(" ", 4);
+        flush();
 
         if ($current === $total) echo PHP_EOL;
     }
@@ -1005,6 +1010,7 @@ class Output
             echo "\r  " . str_repeat(" ", $padding) .
                 self::GOLD . $text . self::RESET .
                 str_repeat(" ", max(0, $maxWidth - $textLen - $padding));
+            flush();
 
             sleep(1);
         }
@@ -1041,6 +1047,7 @@ class Output
             $prompt .= " " . self::MUTED . "({$default})" . self::RESET;
         }
         echo "  " . $prompt . self::MUTED . ": " . self::RESET;
+        flush();
 
         $handle = fopen("php://stdin", "r");
         $input = trim(fgets($handle));
@@ -1052,6 +1059,7 @@ class Output
     public function secret(string $question): string
     {
         echo "  " . self::ACCENT . "🔒" . self::RESET . " " . $question . ": ";
+        flush();
 
         if (strtoupper(substr(PHP_OS, 0, 3)) === 'WIN') {
             $password = '';
@@ -1081,6 +1089,7 @@ class Output
     {
         $suffix = $default ? self::MUTED . '[Y/n]' . self::RESET : self::MUTED . '[y/N]' . self::RESET;
         echo "  " . self::GOLD . "◆" . self::RESET . " " . $question . " " . $suffix . " ";
+        flush();
 
         $handle = fopen("php://stdin", "r");
         $input = strtolower(trim(fgets($handle)));
@@ -1113,6 +1122,7 @@ class Output
             $prompt .= " " . self::MUTED . "(" . ($defaultIndex + 1) . ")" . self::RESET;
         }
         echo "  " . $prompt . ": ";
+        flush();
 
         $handle = fopen("php://stdin", "r");
         $input = trim(fgets($handle));
@@ -1152,6 +1162,7 @@ class Output
 
         $this->line();
         echo "  " . self::MUTED . "Select (comma-separated)" . self::RESET . ": ";
+        flush();
 
         $handle = fopen("php://stdin", "r");
         $input = trim(fgets($handle));
@@ -1189,6 +1200,7 @@ class Output
             $prompt .= self::MUTED . "({$default})" . self::RESET . " ";
         }
         echo "  " . $prompt . ": ";
+        flush();
 
         $handle = fopen("php://stdin", "r");
         $input = trim(fgets($handle));
