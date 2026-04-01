@@ -373,7 +373,7 @@
             </header>
 
             <!-- Content Area -->
-            <main class="flex-1 overflow-y-auto custom-scrollbar p-8">
+            <main id="app-content" class="flex-1 overflow-y-auto custom-scrollbar p-8">
                 <!-- Flash Messages -->
                 {!! \Plugs\Utils\FlashMessage::render() !!}
 
@@ -466,24 +466,5 @@
         }
     </script>
     @yield('scripts')
-    <script src="{{ url('/plugs/plugs-spa.js?v=' . time()) }}"></script>
-    <script src="{{ url('/plugs/plugs-lazy.js') }}"></script>
-    <script>
-        (function () {
-            const initLayoutSPA = () => {
-                if (typeof PlugsSPA === 'undefined') {
-                    setTimeout(initLayoutSPA, 50);
-                    return;
-                }
-                if (!window.plugsSPA) {
-                    window.plugsSPA = new PlugsSPA({
-                        contentSelector: 'main',
-                        loaderClass: 'spa-loading'
-                    });
-                }
-            };
-            initLayoutSPA();
-        })();
-    </script>
 </body>
 </html>
