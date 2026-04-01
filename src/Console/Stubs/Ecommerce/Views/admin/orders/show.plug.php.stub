@@ -4,43 +4,49 @@
 
 @section('content')
 <div class="px-4 sm:px-6 lg:px-8 py-8">
-    <div class="sm:flex sm:items-center">
-        <div class="sm:flex-auto">
-            <h1 class="text-2xl font-semibold text-gray-900 dark:text-white">Order #{{ $order->order_number }}</h1>
-            <p class="mt-2 text-sm text-gray-700 dark:text-gray-400">Detailed order overview.</p>
+    <div class="flex items-center gap-4 mb-8">
+        <a href="/admin/{{lowerName}}/orders" class="p-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-500 hover:text-slate-900 dark:hover:text-white transition-all">
+            <i class="bi bi-arrow-left"></i>
+        </a>
+        <div>
+            <h1 class="text-2xl font-bold text-slate-900 dark:text-white">Order #{{ $order->order_number }}</h1>
+            <p class="text-sm text-slate-500 dark:text-slate-400">Placed on {{ date('M d, Y', strtotime($order->created_at)) }}</p>
         </div>
     </div>
 
-    <div class="mt-8 grid grid-cols-1 md:grid-cols-3 gap-8">
-        <div class="md:col-span-2 space-y-8">
-            <div class="bg-white dark:bg-gray-800 shadow rounded-lg overflow-hidden border border-gray-100 dark:border-gray-700">
-                <div class="px-4 py-5 sm:px-6 border-b border-gray-200 dark:border-gray-700">
-                    <h3 class="text-lg font-medium leading-6 text-gray-900 dark:text-white">Items</h3>
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <div class="lg:col-span-2 space-y-8">
+            <div class="bg-white dark:bg-slate-900 shadow-sm ring-1 ring-black/5 dark:ring-white/5 rounded-3xl overflow-hidden">
+                <div class="px-6 py-5 border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/50">
+                    <h3 class="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                        <i class="bi bi-cart3 text-indigo-500"></i>
+                        Order Items
+                    </h3>
                 </div>
-                <div class="px-4 py-5 sm:p-6">
-                    <table class="min-w-full divide-y divide-gray-300 dark:divide-gray-700">
+                <div class="p-6">
+                    <table class="min-w-full divide-y divide-slate-200 dark:divide-slate-800">
                         <thead>
-                            <tr>
-                                <th class="py-3.5 pl-4 pr-3 text-left text-sm font-semibold text-gray-900 dark:text-white">Product</th>
-                                <th class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900 dark:text-white">Price</th>
-                                <th class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900 dark:text-white">Qty</th>
-                                <th class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900 dark:text-white">Total</th>
+                            <tr class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+                                <th class="pb-4 text-left">Product</th>
+                                <th class="pb-4 text-left">Price</th>
+                                <th class="pb-4 text-center">Qty</th>
+                                <th class="pb-4 text-right">Total</th>
                             </tr>
                         </thead>
-                        <body class="divide-y divide-gray-200 dark:divide-gray-700">
+                        <tbody class="divide-y divide-slate-100 dark:divide-slate-800">
                             @foreach($order->items() as $item)
                             <tr>
-                                <td class="py-4 pl-4 pr-3 text-sm font-medium text-gray-900 dark:text-white">{{ $item->product()->name ?? 'Deleted Product' }}</td>
-                                <td class="px-3 py-4 text-sm text-gray-500 font-mono">${{ number_format($item->price, 2) }}</td>
-                                <td class="px-3 py-4 text-sm text-gray-500">{{ $item->quantity }}</td>
-                                <td class="px-3 py-4 text-sm text-gray-500 font-bold">${{ number_format($item->total, 2) }}</td>
+                                <td class="py-4 text-sm font-semibold text-slate-900 dark:text-white">{{ $item->product()->name ?? 'Deleted Product' }}</td>
+                                <td class="py-4 text-sm text-slate-500 dark:text-slate-400 font-mono">${{ number_format($item->price, 2) }}</td>
+                                <td class="py-4 text-sm text-slate-500 dark:text-slate-400 text-center">{{ $item->quantity }}</td>
+                                <td class="py-4 text-sm font-bold text-slate-900 dark:text-white text-right">${{ number_format($item->total, 2) }}</td>
                             </tr>
                             @endforeach
                         </tbody>
                         <tfoot>
                             <tr>
-                                <th colspan="3" class="px-3 py-4 text-right text-sm font-semibold">Total Amount</th>
-                                <th class="px-3 py-4 text-left text-sm font-bold">${{ number_format($order->total_amount, 2) }}</th>
+                                <th colspan="3" class="pt-6 text-right text-sm font-bold text-slate-500 dark:text-slate-400">Grand Total</th>
+                                <th class="pt-6 text-right text-xl font-black text-indigo-600 dark:text-indigo-400">${{ number_format($order->total_amount, 2) }}</th>
                             </tr>
                         </tfoot>
                     </table>
@@ -49,32 +55,46 @@
         </div>
 
         <div class="space-y-8">
-            <div class="bg-white dark:bg-gray-800 shadow rounded-lg p-6 border border-gray-100 dark:border-gray-700">
-                <h3 class="text-lg font-medium text-gray-900 dark:text-white mb-4">Customer Info</h3>
-                <div class="space-y-4">
+            <div class="bg-white dark:bg-slate-900 shadow-sm ring-1 ring-black/5 dark:ring-white/5 rounded-3xl p-6">
+                <h3 class="text-lg font-bold text-slate-900 dark:text-white mb-6 flex items-center gap-2">
+                    <i class="bi bi-person text-indigo-500"></i>
+                    Customer Details
+                </h3>
+                <div class="space-y-6">
                     <div>
-                        <span class="text-xs font-bold uppercase tracking-widest text-gray-400">Name</span>
-                        <p class="text-sm dark:text-white">{{ $order->user()->name ?? 'Guest' }}</p>
+                        <span class="text-[10px] font-bold uppercase tracking-widest text-slate-400 block mb-1">Customer Name</span>
+                        <p class="text-sm font-semibold text-slate-800 dark:text-slate-200">{{ $order->user()->name ?? 'Guest Customer' }}</p>
                     </div>
                     <div>
-                        <span class="text-xs font-bold uppercase tracking-widest text-gray-400">Shipping Address</span>
-                        <p class="text-sm dark:text-white">{{ $order->shipping_address }}</p>
+                        <span class="text-[10px] font-bold uppercase tracking-widest text-slate-400 block mb-1">Shipping Address</span>
+                        <p class="text-sm text-slate-600 dark:text-slate-300 leading-relaxed">{{ $order->shipping_address }}</p>
                     </div>
                 </div>
             </div>
 
-            <div class="bg-white dark:bg-gray-800 shadow rounded-lg p-6 border border-gray-100 dark:border-gray-700">
-                <h3 class="text-lg font-medium mb-4">Status</h3>
+            <div class="bg-white dark:bg-slate-900 shadow-sm ring-1 ring-black/5 dark:ring-white/5 rounded-3xl p-6">
+                <h3 class="text-lg font-bold text-slate-900 dark:text-white mb-6 flex items-center gap-2">
+                    <i class="bi bi-flag text-indigo-500"></i>
+                    Fulfillment Status
+                </h3>
                 <form action="/admin/{{lowerName}}/orders/update-status/{{ $order->id }}" method="POST">
                     @csrf
                     <div class="space-y-4">
-                        <select name="status" class="w-full rounded-md border-gray-300">
-                            <option value="pending" {{ $order->status === 'pending' ? 'selected' : '' }}>Pending</option>
-                            <option value="processing" {{ $order->status === 'processing' ? 'selected' : '' }}>Processing</option>
-                            <option value="shipped" {{ $order->status === 'shipped' ? 'selected' : '' }}>Shipped</option>
-                            <option value="delivered" {{ $order->status === 'delivered' ? 'selected' : '' }}>Delivered</option>
-                        </select>
-                        <button type="submit" class="w-full bg-indigo-600 text-white font-bold py-2 rounded">Update</button>
+                        <div class="relative">
+                            <select name="status" class="w-full pl-4 pr-10 py-3 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white rounded-2xl shadow-sm focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 transition-all outline-none sm:text-sm appearance-none cursor-pointer">
+                                <option value="pending" {{ $order->status === 'pending' ? 'selected' : '' }}>Pending</option>
+                                <option value="processing" {{ $order->status === 'processing' ? 'selected' : '' }}>Processing</option>
+                                <option value="shipped" {{ $order->status === 'shipped' ? 'selected' : '' }}>Shipped</option>
+                                <option value="delivered" {{ $order->status === 'delivered' ? 'selected' : '' }}>Delivered</option>
+                                <option value="cancelled" {{ $order->status === 'cancelled' ? 'selected' : '' }}>Cancelled</option>
+                            </select>
+                            <div class="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400">
+                                <i class="bi bi-chevron-down"></i>
+                            </div>
+                        </div>
+                        <button type="submit" class="w-full inline-flex justify-center rounded-xl px-4 py-3 bg-indigo-600 text-sm font-bold text-white shadow-lg shadow-indigo-500/20 hover:bg-indigo-500 hover:scale-[1.02] active:scale-[0.98] transition-all">
+                            Update Status
+                        </button>
                     </div>
                 </form>
             </div>

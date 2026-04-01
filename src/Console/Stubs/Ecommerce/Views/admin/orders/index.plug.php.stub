@@ -6,44 +6,57 @@
 <div class="px-4 sm:px-6 lg:px-8 py-8">
     <div class="sm:flex sm:items-center">
         <div class="sm:flex-auto">
-            <h1 class="text-2xl font-semibold text-gray-900 dark:text-white">Orders</h1>
-            <p class="mt-2 text-sm text-gray-700 dark:text-gray-400">Track and manage customer orders.</p>
+            <h1 class="text-2xl font-bold text-slate-900 dark:text-white">Orders</h1>
+            <p class="mt-2 text-sm text-slate-600 dark:text-slate-400">Track and manage customer orders and fulfillment status.</p>
         </div>
     </div>
     
     <div class="mt-8 flow-root">
         <div class="-mx-4 -my-2 overflow-x-auto sm:-mx-6 lg:-mx-8">
             <div class="inline-block min-w-full py-2 align-middle sm:px-6 lg:px-8">
-                <div class="overflow-hidden shadow ring-1 ring-black ring-opacity-5 sm:rounded-lg">
-                    <table class="min-w-full divide-y divide-gray-300 dark:divide-gray-700">
-                        <thead class="bg-gray-50 dark:bg-gray-800">
+                <div class="overflow-hidden shadow-sm ring-1 ring-black/5 dark:ring-white/5 sm:rounded-2xl bg-white dark:bg-slate-900">
+                    <table class="min-w-full divide-y divide-slate-200 dark:divide-slate-800">
+                        <thead class="bg-slate-50 dark:bg-slate-800/50">
                             <tr>
-                                <th scope="col" class="py-3.5 pl-4 pr-3 text-left text-sm font-semibold text-gray-900 dark:text-white sm:pl-6">Order ID</th>
-                                <th scope="col" class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900 dark:text-white">Customer</th>
-                                <th scope="col" class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900 dark:text-white">Total</th>
-                                <th scope="col" class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900 dark:text-white">Status</th>
-                                <th scope="col" class="relative py-3.5 pl-3 pr-4 sm:pr-6"></th>
+                                <th scope="col" class="py-4 pl-4 pr-3 text-left text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider sm:pl-6">Order ID</th>
+                                <th scope="col" class="px-3 py-4 text-left text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Customer</th>
+                                <th scope="col" class="px-3 py-4 text-left text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Total</th>
+                                <th scope="col" class="px-3 py-4 text-left text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Status</th>
+                                <th scope="col" class="relative py-4 pl-3 pr-4 sm:pr-6">
+                                    <span class="sr-only">Actions</span>
+                                </th>
                             </tr>
                         </thead>
-                        <body class="divide-y divide-gray-200 dark:divide-gray-700 bg-white dark:bg-gray-900">
+                        <tbody class="divide-y divide-slate-200 dark:divide-slate-800">
                             @forelse($orders as $order)
-                            <tr>
-                                <td class="whitespace-nowrap py-4 pl-4 pr-3 text-sm font-medium text-gray-900 dark:text-white sm:pl-6">#{{ $order->order_number }}</td>
-                                <td class="whitespace-nowrap px-3 py-4 text-sm text-gray-500 dark:text-gray-400">{{ $order->user()->name ?? 'Guest' }}</td>
-                                <td class="whitespace-nowrap px-3 py-4 text-sm text-gray-500 dark:text-gray-400 font-bold">${{ number_format($order->total_amount, 2) }}</td>
+                            <tr class="hover:bg-slate-50 dark:hover:bg-white/5 transition-colors">
+                                <td class="whitespace-nowrap py-4 pl-4 pr-3 text-sm font-bold text-slate-900 dark:text-white sm:pl-6">#{{ $order->order_number }}</td>
+                                <td class="whitespace-nowrap px-3 py-4 text-sm text-slate-600 dark:text-slate-400 font-medium">{{ $order->user()->name ?? 'Guest' }}</td>
+                                <td class="whitespace-nowrap px-3 py-4 text-sm font-bold text-slate-900 dark:text-white">${{ number_format($order->total_amount, 2) }}</td>
                                 <td class="whitespace-nowrap px-3 py-4 text-sm">
-                                    <span class="px-2 py-1 text-xs font-medium rounded-full bg-blue-100 text-blue-800">{{ ucfirst($order->status) }}</span>
+                                    @if($order->status === 'pending')
+                                        <span class="inline-flex rounded-full bg-amber-100 dark:bg-amber-500/10 px-2.5 py-0.5 text-xs font-bold leading-5 text-amber-800 dark:text-amber-400 uppercase tracking-wider">Pending</span>
+                                    @elseif($order->status === 'shipped')
+                                        <span class="inline-flex rounded-full bg-indigo-100 dark:bg-indigo-500/10 px-2.5 py-0.5 text-xs font-bold leading-5 text-indigo-800 dark:text-indigo-400 uppercase tracking-wider">Shipped</span>
+                                    @elseif($order->status === 'completed')
+                                        <span class="inline-flex rounded-full bg-emerald-100 dark:bg-emerald-500/10 px-2.5 py-0.5 text-xs font-bold leading-5 text-emerald-800 dark:text-emerald-400 uppercase tracking-wider">Completed</span>
+                                    @else
+                                        <span class="inline-flex rounded-full bg-slate-100 dark:bg-slate-800 px-2.5 py-0.5 text-xs font-bold leading-5 text-slate-600 dark:text-slate-400 uppercase tracking-wider">{{ $order->status }}</span>
+                                    @endif
                                 </td>
                                 <td class="relative whitespace-nowrap py-4 pl-3 pr-4 text-right text-sm font-medium sm:pr-6">
-                                    <a href="/admin/{{lowerName}}/orders/show/{{ $order->id }}" class="text-indigo-600 hover:text-indigo-900">Details</a>
+                                    <a href="/admin/{{lowerName}}/orders/show/{{ $order->id }}" class="text-indigo-600 hover:text-indigo-900 dark:text-indigo-400 dark:hover:text-indigo-300 transition-colors">
+                                        Details
+                                        <i class="bi bi-chevron-right ml-1"></i>
+                                    </a>
                                 </td>
                             </tr>
                             @empty
                             <tr>
-                                <td colspan="5" class="py-4 text-center text-sm text-gray-500">No orders found.</td>
+                                <td colspan="5" class="py-12 text-center text-sm text-slate-400 italic">No orders have been placed yet.</td>
                             </tr>
                             @endforelse
-                        </body>
+                        </tbody>
                     </table>
                 </div>
             </div>
