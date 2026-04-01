@@ -1,0 +1,76 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Modules\{{name}}\Services;
+
+use Modules\{{name}}\Models\{{name}};
+use Plugs\Upload\FileUploader;
+use Plugs\Utils\Str;
+
+class {{name}}Service
+{
+    /**
+     * Get all articles.
+     */
+    public function getAllArticles()
+    {
+        return {{name}}::all();
+    }
+
+    /**
+     * Find article by ID.
+     */
+    public function findArticle(int $id): ?{{name}}
+    {
+        return {{name}}::find($id);
+    }
+
+    /**
+     * Create article.
+     */
+    public function createArticle(array $data, $imageFile = null): {{name}}
+    {
+        $data['slug'] = $data['slug'] ?? Str::slug($data['title']);
+
+        if ($imageFile && $imageFile->getError() === UPLOAD_ERR_OK) {
+            $data['image'] = $this->handleImageUpload($imageFile);
+        }
+
+        return {{name}}::create($data);
+    }
+
+    /**
+     * Update article.
+     */
+    public function updateArticle({{name}} $article, array $data, $imageFile = null): bool
+    {
+        if ($imageFile && $imageFile->getError() === UPLOAD_ERR_OK) {
+            $data['image'] = $this->handleImageUpload($imageFile);
+        }
+
+        return $article->update($data);
+    }
+
+    /**
+     * Delete article.
+     */
+    public function deleteArticle({{name}} $article): bool
+    {
+        return $article->delete();
+    }
+
+    /**
+     * Handle image upload.
+     */
+    protected function handleImageUpload($file): string
+    {
+        $uploader = FileUploader::make('public')
+            ->setBasePath('articles')
+            ->imagesOnly();
+
+        $result = $uploader->upload(\Plugs\Upload\UploadedFile::fromPsr7($file));
+
+        return $result['path'];
+    }
+}

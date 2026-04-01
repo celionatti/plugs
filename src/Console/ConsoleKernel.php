@@ -99,6 +99,7 @@ use Plugs\Console\Commands\CssBuildCommand;
 use Plugs\Console\Commands\CssClearCommand;
 use Plugs\Console\Commands\MakeIconCommand;
 use Plugs\Console\Commands\MakeEcommerceModuleCommand;
+use Plugs\Console\Commands\MakeArticleModuleCommand;
 use Plugs\Console\Commands\SSEStartCommand;
 use Plugs\Exceptions\ConsoleException;
 
@@ -145,6 +146,7 @@ class ConsoleKernel
         'make:auth-module' => MakeAuthModuleCommand::class,
         'make:lang' => MakeLangCommand::class,
         'make:ecommerce-module' => MakeEcommerceModuleCommand::class,
+        'make:article-module' => MakeArticleModuleCommand::class,
         'make:theme' => MakeThemeCommand::class,
         'make:welcome' => MakeWelcomeCommand::class,
         'make:crud' => MakeCrudCommand::class,
@@ -247,6 +249,7 @@ class ConsoleKernel
         'g:mod' => 'make:module',
         'g:fmod' => 'make:feature-module',
         'g:auth' => 'make:auth-module',
+        'g:art' => 'make:article-module',
         'g:lang' => 'make:lang',
         'g:theme' => 'make:theme',
         'seed' => 'db:seed',
@@ -301,6 +304,7 @@ class ConsoleKernel
             'make:auth-module',
             'make:lang',
             'make:ecommerce-module',
+            'make:article-module',
             'make:theme',
             'make:crud',
             'make:icon',

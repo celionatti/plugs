@@ -1,0 +1,109 @@
+<layout name="admin::layouts.admin">
+    <slot:title>{{ $title }}</slot:title>
+
+    <div class="flex items-center justify-between mb-8">
+        <div>
+            <h1 class="text-3xl font-bold text-slate-900 dark:text-white items-center flex gap-3">
+                <x-icon name="newspaper" class="w-8 h-8 text-primary-500" />
+                {{ $title }}
+            </h1>
+            <p class="text-slate-500 dark:text-slate-400 mt-1">Manage and publish your latest articles.</p>
+        </div>
+        <a href="/admin/articles/create" class="inline-flex items-center gap-2 bg-primary-600 hover:bg-primary-700 text-white px-4 py-2.5 rounded-xl font-bold transition-all shadow-lg shadow-primary-500/20 active:scale-95">
+            <x-icon name="plus" class="w-5 h-5" />
+            Create New Article
+        </a>
+    </div>
+
+    @if(session('success'))
+        <div class="bg-emerald-50 border border-emerald-200 text-emerald-700 px-4 py-3 rounded-xl mb-6 flex items-center gap-3">
+            <x-icon name="check-circle" class="w-5 h-5" />
+            {{ session('success') }}
+        </div>
+    @endif
+
+    <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl overflow-hidden shadow-sm">
+        <div class="overflow-x-auto">
+            <table class="w-full text-left border-collapse">
+                <thead>
+                    <tr class="bg-slate-50 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-800">
+                        <th class="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Article</th>
+                        <th class="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Author</th>
+                        <th class="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Status</th>
+                        <th class="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Date</th>
+                        <th class="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Actions</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-200 dark:divide-slate-800">
+                    @foreach($articles as $article)
+                        <tr class="hover:bg-slate-50/80 dark:hover:bg-slate-800/30 transition-colors group">
+                            <td class="px-6 py-4">
+                                <div class="flex items-center gap-4">
+                                    <div class="w-12 h-12 rounded-lg bg-slate-100 dark:bg-slate-800 overflow-hidden flex-shrink-0 border border-slate-200 dark:border-slate-700">
+                                        @if($article->image)
+                                            <img src="{{ $article->getImageUrl() }}" alt="" class="w-full h-full object-cover">
+                                        @else
+                                            <div class="w-full h-full flex items-center justify-center text-slate-400">
+                                                <x-icon name="image" class="w-6 h-6" />
+                                            </div>
+                                        @endif
+                                    </div>
+                                    <div>
+                                        <div class="font-bold text-slate-900 dark:text-white group-hover:text-primary-600 transition-colors">{{ $article->title }}</div>
+                                        <div class="text-xs text-slate-500 dark:text-slate-400 font-medium font-mono mt-0.5">/{{ $article->slug }}</div>
+                                    </div>
+                                </div>
+                            </td>
+                            <td class="px-6 py-4">
+                                <div class="flex items-center gap-2">
+                                    <div class="w-6 h-6 rounded-full bg-primary-100 dark:bg-primary-900/30 flex items-center justify-center text-[10px] font-bold text-primary-600">
+                                        {{ strtoupper(substr($article->author->name ?? 'U', 0, 1)) }}
+                                    </div>
+                                    <span class="text-sm font-semibold text-slate-700 dark:text-slate-300">{{ $article->author->name ?? 'Unknown' }}</span>
+                                </div>
+                            </td>
+                            <td class="px-6 py-4">
+                                @php
+                                    $statusClass = [
+                                        'published' => 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400',
+                                        'draft' => 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400',
+                                        'scheduled' => 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400',
+                                    ][$article->status] ?? 'bg-slate-100 text-slate-600';
+                                @endphp
+                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold uppercase tracking-wider {{ $statusClass }}">
+                                    {{ $article->status }}
+                                </span>
+                            </td>
+                            <td class="px-6 py-4 text-sm text-slate-500 dark:text-slate-400 font-medium">
+                                {{ date('M d, Y', strtotime($article->published_at ?? $article->created_at)) }}
+                            </td>
+                            <td class="px-6 py-4">
+                                <div class="flex items-center gap-2">
+                                    <a href="/admin/articles/{{ $article->id }}/edit" class="p-2 text-slate-400 hover:text-primary-500 dark:hover:text-primary-400 transition-colors" title="Edit">
+                                        <x-icon name="edit" class="w-5 h-5" />
+                                    </a>
+                                    <form action="/admin/articles/{{ $article->id }}/delete" method="POST" onsubmit="return confirm('Delete this article?')" class="inline">
+                                        @csrf
+                                        <button type="submit" class="p-2 text-slate-400 hover:text-red-500 transition-colors" title="Delete">
+                                            <x-icon name="trash" class="w-5 h-5" />
+                                        </button>
+                                    </form>
+                                </div>
+                            </td>
+                        </tr>
+                    @endforeach
+                </tbody>
+            </table>
+        </div>
+        
+        @if(empty($articles))
+            <div class="px-6 py-12 text-center">
+                <div class="w-16 h-16 bg-slate-100 dark:bg-slate-800 rounded-full flex items-center justify-center mx-auto mb-4 text-slate-400">
+                    <x-icon name="newspaper" class="w-8 h-8" />
+                </div>
+                <h3 class="text-sm font-bold text-slate-900 dark:text-white">No articles found</h3>
+                <p class="text-xs text-slate-500 mt-1">Get started by creating your first article.</p>
+            </div>
+        @endif
+    </div>
+</layout>

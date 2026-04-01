@@ -1,0 +1,76 @@
+<layout name="admin::layouts.admin">
+    <slot:title>{{ $title }}</slot:title>
+
+    <div class="mb-8">
+        <a href="/admin/articles" class="inline-flex items-center gap-2 text-slate-500 dark:text-slate-400 hover:text-primary-600 dark:hover:text-primary-400 font-bold transition-colors mb-4">
+            <x-icon name="arrow-left" class="w-4 h-4" />
+            Back to Articles
+        </a>
+        <h1 class="text-3xl font-bold text-slate-900 dark:text-white">{{ $title }}</h1>
+        <p class="text-slate-500 dark:text-slate-400 mt-1">Fill in the details to create your new article.</p>
+    </div>
+
+    <form action="/admin/articles" method="POST" enctype="multipart/form-data" class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        @csrf
+
+        <div class="lg:col-span-2 space-y-6">
+            <!-- Article Content Card -->
+            <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 shadow-sm">
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">Article Title</label>
+                        <input type="text" name="title" value="{{ old('title') }}" placeholder="Enter a catchy title..." class="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 transition-all font-semibold" required>
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">Content</label>
+                        <textarea name="content" id="editor" class="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 transition-all font-medium min-h-[400px]">{{ old('content') }}</textarea>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="space-y-6">
+            <!-- Publishing Meta Card -->
+            <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 shadow-sm">
+                <h3 class="text-lg font-bold text-slate-900 dark:text-white mb-4">Publishing Info</h3>
+                
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">Status</label>
+                        <select name="status" class="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 transition-all font-semibold">
+                            <option value="draft">Draft</option>
+                            <option value="published">Published</option>
+                            <option value="scheduled">Scheduled</option>
+                        </select>
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">Custom Slug (Optional)</label>
+                        <input type="text" name="slug" value="{{ old('slug') }}" placeholder="article-slug-here" class="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 transition-all font-semibold">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Featured Image Card -->
+            <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 shadow-sm">
+                <h3 class="text-lg font-bold text-slate-900 dark:text-white mb-4">Featured Image</h3>
+                
+                <div class="space-y-4">
+                    <div class="flex flex-col items-center justify-center p-6 border-2 border-dashed border-slate-200 dark:border-slate-800 rounded-2xl bg-slate-50 dark:bg-slate-800/30">
+                        <x-icon name="upload" class="w-8 h-8 text-slate-400 mb-2" />
+                        <label class="cursor-pointer">
+                            <span class="text-sm font-bold text-primary-600 hover:text-primary-700 transition-colors">Click to upload</span>
+                            <input type="file" name="image" class="hidden" accept="image/*">
+                        </label>
+                        <p class="text-xs text-slate-500 mt-1">PNG, JPG, WEBP up to 5MB</p>
+                    </div>
+                </div>
+            </div>
+
+            <button type="submit" class="w-full bg-primary-600 hover:bg-primary-700 text-white font-bold py-3.5 rounded-xl transition-all shadow-lg shadow-primary-500/20 active:scale-95">
+                Save Article
+            </button>
+        </div>
+    </form>
+</layout>

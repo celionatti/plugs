@@ -1,0 +1,40 @@
+<?php
+
+declare(strict_types=1);
+
+use Plugs\Database\Migration;
+use Plugs\Database\Schema;
+use Plugs\Database\Blueprint;
+
+return new class extends Migration {
+    /**
+     * Run the migrations.
+     */
+    public function up(): void
+    {
+        Schema::create('articles', function (Blueprint $table) {
+            $table->id();
+            $table->string('title');
+            $table->string('slug')->unique();
+            $table->text('content')->nullable();
+            $table->string('image')->nullable();
+            $table->enum('status', ['draft', 'published', 'scheduled'])->default('draft');
+            $table->timestamp('published_at')->nullable();
+            $table->unsignedBigInteger('author_id');
+            $table->timestamps();
+            $table->softDeletes();
+
+            $table->foreign('author_id')->references('id')->on('users')->onDelete('cascade');
+            $table->index('status');
+            $table->index('author_id');
+        });
+    }
+
+    /**
+     * Reverse the migrations.
+     */
+    public function down(): void
+    {
+        Schema::dropIfExists('articles');
+    }
+};

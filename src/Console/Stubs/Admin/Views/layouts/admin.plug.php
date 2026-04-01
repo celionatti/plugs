@@ -214,12 +214,14 @@
                         Users
                     </a>
 
+                    @if (is_module_enabled('Article'))
                     <a href="/admin/articles" data-spa="true" class="sidebar-link flex items-center gap-3 px-4 py-3 text-sm font-semibold rounded-xl transition-all duration-200 text-slate-400 hover:text-white hover:bg-white/5 group">
                         <svg class="w-5 h-5 opacity-70 group-hover:text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10l4 4v10a2 2 0 01-2 2zM14 4v4h4" />
                         </svg>
                         Articles
                     </a>
+                    @endif
 
                     <div class="pt-6 pb-2 text-[10px] font-bold text-slate-400 uppercase tracking-widest px-4 mb-2">Management</div>
 
@@ -265,14 +267,14 @@
                         Settings
                     </a>
 
-                    @if (class_exists(\Modules\Payment\PaymentModule::class))
+                    @if (is_module_enabled('Payment'))
                     <a href="/admin/payment" data-spa="true" class="sidebar-link flex items-center gap-3 px-4 py-3 text-sm font-semibold rounded-xl transition-all duration-200 text-slate-400 hover:text-white hover:bg-white/5 group">
                         <svg class="w-5 h-5 opacity-70 group-hover:text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"/></svg>
                         Payments
                     </a>
                     @endif
 
-                    @if (class_exists(\Modules\Ecommerce\EcommerceModule::class))
+                    @if (is_module_enabled('Ecommerce'))
                     <div class="pt-6 pb-2 text-[10px] font-bold text-slate-400 uppercase tracking-widest px-4 mb-2">
                         eCommerce</div>
 

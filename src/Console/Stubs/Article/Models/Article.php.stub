@@ -1,0 +1,64 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Modules\{{name}}\Models;
+
+use Plugs\Base\Model\PlugModel;
+use App\Models\User;
+
+class {{name}} extends PlugModel
+{
+    /**
+     * The table associated with the model.
+     *
+     * @var string
+     */
+    protected $table = 'articles';
+
+    /**
+     * The attributes that are mass assignable.
+     *
+     * @var array
+     */
+    protected $fillable = [
+        'title',
+        'slug',
+        'content',
+        'image',
+        'status',
+        'published_at',
+        'author_id',
+    ];
+
+    /**
+     * Indicates if the model should be timestamped.
+     *
+     * @var bool
+     */
+    public $timestamps = true;
+
+    /**
+     * Get the author of the article.
+     */
+    public function author()
+    {
+        return $this->belongsTo(User::class, 'author_id');
+    }
+
+    /**
+     * Get the full URL of the article image.
+     */
+    public function getImageUrl(): ?string
+    {
+        if (empty($this->image)) {
+            return null;
+        }
+
+        if (str_starts_with($this->image, 'http')) {
+            return $this->image;
+        }
+
+        return \Plugs\Facades\Storage::url($this->image);
+    }
+}

@@ -87,7 +87,6 @@ class AdminInstallCommand extends Command
 
         $models = [
             'Setting.stub' => 'Setting.php',
-            'Article.stub' => 'Article.php',
         ];
 
         foreach ($models as $stubName => $fileName) {
@@ -118,8 +117,6 @@ class AdminInstallCommand extends Command
 
         $migrations = [
             'create_settings_table.stub' => 'create_settings_table.php',
-            'create_articles_table.stub' => 'create_articles_table.php',
-            'add_author_id_to_articles.stub' => 'add_author_id_to_articles.php',
         ];
 
         foreach ($migrations as $stubName => $fileName) {

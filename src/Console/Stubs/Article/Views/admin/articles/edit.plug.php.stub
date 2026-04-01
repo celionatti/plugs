@@ -1,0 +1,97 @@
+<layout name="admin::layouts.admin">
+    <slot:title>{{ $title }}</slot:title>
+
+    <div class="mb-8 font-bold">
+        <a href="/admin/articles" class="inline-flex items-center gap-2 text-slate-500 dark:text-slate-400 hover:text-primary-600 dark:hover:text-primary-400 transition-colors mb-4">
+            <x-icon name="arrow-left" class="w-4 h-4" />
+            Back to Articles
+        </a>
+        <h1 class="text-3xl font-bold text-slate-900 dark:text-white">{{ $title }}</h1>
+        <p class="text-slate-500 dark:text-slate-400 mt-1 font-medium italic">Editing: {{ $article->title }}</p>
+    </div>
+
+    <form action="/admin/articles/{{ $article->id }}/update" method="POST" enctype="multipart/form-data" class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        @csrf
+        @method('PUT')
+
+        <div class="lg:col-span-2 space-y-6">
+            <!-- Article Content Card -->
+            <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 shadow-sm">
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">Article Title</label>
+                        <input type="text" name="title" value="{{ old('title', $article->title) }}" placeholder="Enter a catchy title..." class="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 transition-all font-semibold" required>
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2 font-bold tracking-tight">Content</label>
+                        <textarea name="content" id="editor" class="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 transition-all font-medium min-h-[400px]">{{ old('content', $article->content) }}</textarea>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="space-y-6">
+            <!-- Publishing Meta Card -->
+            <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 shadow-sm">
+                <h3 class="text-lg font-bold text-slate-900 dark:text-white mb-4">Publishing Info</h3>
+                
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">Status</label>
+                        <select name="status" class="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 transition-all font-semibold">
+                            <option value="draft" {{ $article->status === 'draft' ? 'selected' : '' }}>Draft</option>
+                            <option value="published" {{ $article->status === 'published' ? 'selected' : '' }}>Published</option>
+                            <option value="scheduled" {{ $article->status === 'scheduled' ? 'selected' : '' }}>Scheduled</option>
+                        </select>
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2 font-bold uppercase tracking-widest text-[10px]">Custom Slug</label>
+                        <input type="text" name="slug" value="{{ old('slug', $article->slug) }}" placeholder="article-slug-here" class="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 transition-all font-semibold">
+                    </div>
+
+                    <div class="pt-4 border-t border-slate-100 dark:border-slate-800/50">
+                        <div class="flex items-center justify-between text-xs font-bold text-slate-500 mb-1">
+                            <span>Author</span>
+                            <span>{{ $article->author->name ?? 'Unknown' }}</span>
+                        </div>
+                        <div class="flex items-center justify-between text-xs font-bold text-slate-500">
+                            <span>Last Updated</span>
+                            <span>{{ date('M d, H:i', strtotime($article->updated_at)) }}</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Featured Image Card -->
+            <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 shadow-sm overflow-hidden">
+                <h3 class="text-lg font-bold text-slate-900 dark:text-white mb-4">Featured Image</h3>
+                
+                <div class="space-y-4">
+                    @if($article->image)
+                        <div class="relative w-full aspect-video rounded-xl overflow-hidden border border-slate-200 dark:border-slate-800 mb-4 group">
+                            <img src="{{ $article->getImageUrl() }}" alt="" class="w-full h-full object-cover">
+                            <div class="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                                <span class="text-white text-xs font-bold px-3 py-1.5 bg-black/50 backdrop-blur-sm rounded-full">Current Image</span>
+                            </div>
+                        </div>
+                    @endif
+
+                    <div class="flex flex-col items-center justify-center p-6 border-2 border-dashed border-slate-200 dark:border-slate-800 rounded-2xl bg-slate-50 dark:bg-slate-800/30">
+                        <x-icon name="upload" class="w-8 h-8 text-slate-400 mb-2" />
+                        <label class="cursor-pointer">
+                            <span class="text-sm font-bold text-primary-600 hover:text-primary-700 transition-colors">Replace Image</span>
+                            <input type="file" name="image" class="hidden" accept="image/*">
+                        </label>
+                        <p class="text-xs text-slate-500 mt-1 uppercase tracking-tight text-center">Leave blank to keep original</p>
+                    </div>
+                </div>
+            </div>
+
+            <button type="submit" class="w-full bg-primary-600 hover:bg-primary-700 text-white font-bold py-3.5 rounded-xl transition-all shadow-lg shadow-primary-500/20 active:scale-95">
+                Update Article
+            </button>
+        </div>
+    </form>
+</layout>

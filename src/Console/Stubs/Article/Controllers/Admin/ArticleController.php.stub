@@ -1,0 +1,129 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Modules\{{name}}\Controllers\Admin;
+
+use Modules\{{name}}\Services\{{name}}Service;
+use Plugs\Base\Controller\Controller;
+use Plugs\Facades\Auth;
+use Plugs\Http\ResponseFactory;
+use Psr\Http\Message\ResponseInterface;
+use Psr\Http\Message\ServerRequestInterface;
+
+class ArticleController extends Controller
+{
+    protected {{name}}Service $articleService;
+
+    public function __construct({{name}}Service $articleService)
+    {
+        parent::__construct();
+        $this->articleService = $articleService;
+    }
+
+    /**
+     * Display a listing of the articles.
+     */
+    public function index(ServerRequestInterface $request): ResponseInterface
+    {
+        $articles = $this->articleService->getAllArticles();
+
+        return $this->view('{{lowerName}}::admin.articles.index', [
+            'title' => 'Articles Management',
+            'articles' => $articles
+        ]);
+    }
+
+    /**
+     * Show the form for creating a new article.
+     */
+    public function create(ServerRequestInterface $request): ResponseInterface
+    {
+        return $this->view('{{lowerName}}::admin.articles.create', [
+            'title' => 'Create Article'
+        ]);
+    }
+
+    /**
+     * Store a newly created article.
+     */
+    public function store(ServerRequestInterface $request): ResponseInterface
+    {
+        $data = $request->getParsedBody();
+        $files = $request->getUploadedFiles();
+
+        // Auto-assign author
+        $data['author_id'] = Auth::id();
+
+        try {
+            $this->articleService->createArticle($data, $files['image'] ?? null);
+            
+            return $this->redirect('/admin/articles')
+                ->withSuccess('Article created successfully.');
+        } catch (\Exception $e) {
+            return $this->back()
+                ->withError('Error: ' . $e->getMessage())
+                ->withInput();
+        }
+    }
+
+    /**
+     * Show edit form.
+     */
+    public function edit(ServerRequestInterface $request, $id): ResponseInterface
+    {
+        $article = $this->articleService->findArticle((int)$id);
+
+        if (!$article) {
+            return $this->redirect('/admin/articles')
+                ->withError('Article not found.');
+        }
+
+        return $this->view('{{lowerName}}::admin.articles.edit', [
+            'title' => 'Edit Article',
+            'article' => $article
+        ]);
+    }
+
+    /**
+     * Update article.
+     */
+    public function update(ServerRequestInterface $request, $id): ResponseInterface
+    {
+        $article = $this->articleService->findArticle((int)$id);
+
+        if (!$article) {
+            return $this->redirect('/admin/articles')
+                ->withError('Article not found.');
+        }
+
+        $data = $request->getParsedBody();
+        $files = $request->getUploadedFiles();
+
+        try {
+            $this->articleService->updateArticle($article, $data, $files['image'] ?? null);
+            
+            return $this->redirect('/admin/articles')
+                ->withSuccess('Article updated successfully.');
+        } catch (\Exception $e) {
+            return $this->back()
+                ->withError('Error: ' . $e->getMessage())
+                ->withInput();
+        }
+    }
+
+    /**
+     * Delete article.
+     */
+    public function destroy(ServerRequestInterface $request, $id): ResponseInterface
+    {
+        $article = $this->articleService->findArticle((int)$id);
+
+        if ($article) {
+            $this->articleService->deleteArticle($article);
+        }
+
+        return $this->redirect('/admin/articles')
+            ->withSuccess('Article deleted successfully.');
+    }
+}

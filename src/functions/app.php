@@ -430,6 +430,29 @@ if (!function_exists('extractFilesFromArray')) {
     }
 }
 
+if (!function_exists('is_module_enabled')) {
+    /**
+     * Check if a module is installed and enabled.
+     */
+    function is_module_enabled(string $name): bool
+    {
+        $basePath = base_path('modules' . DIRECTORY_SEPARATOR . $name);
+        $jsonPath = $basePath . DIRECTORY_SEPARATOR . 'module.json';
+
+        if (!is_dir($basePath)) {
+            return false;
+        }
+
+        if (file_exists($jsonPath)) {
+            $content = file_get_contents($jsonPath);
+            $data = json_decode($content, true);
+            return (bool) ($data['enabled'] ?? true);
+        }
+
+        return true;
+    }
+}
+
 // Manual require for helper files not listed in composer.json
 $extraHelpers = [
     'async.php',
