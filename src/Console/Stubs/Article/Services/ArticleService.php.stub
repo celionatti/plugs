@@ -31,7 +31,7 @@ class {{name}}Service
      */
     public function createArticle(array $data, $imageFile = null): {{name}}
     {
-        $data['slug'] = $data['slug'] ?? Str::slug($data['title']);
+        $data['slug'] = !empty($data['slug']) ? $data['slug'] : Str::slug($data['title']);
 
         if ($imageFile && $imageFile->getError() === UPLOAD_ERR_OK) {
             $data['image'] = $this->handleImageUpload($imageFile);
@@ -69,7 +69,7 @@ class {{name}}Service
             ->setBasePath('articles')
             ->imagesOnly();
 
-        $result = $uploader->upload(\Plugs\Upload\UploadedFile::fromPsr7($file));
+        $result = $uploader->upload($file);
 
         return $result['path'];
     }
