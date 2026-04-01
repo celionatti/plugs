@@ -79,6 +79,7 @@ class MakeEcommerceModuleCommand extends Command
             'Views/admin/products/index.plug.php.stub' => 'Views/admin/products/index.plug.php',
             'Views/admin/orders/index.plug.php.stub' => 'Views/admin/orders/index.plug.php',
             'Views/admin/orders/show.plug.php.stub' => 'Views/admin/orders/show.plug.php',
+            'module.json.stub' => 'module.json',
         ];
 
         $this->output->section('Generating Module Files');

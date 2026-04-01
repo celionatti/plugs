@@ -9,7 +9,6 @@ use Modules\Admin\Controllers\AdminSettingsController;
 use Modules\Admin\Controllers\AdminProfileController;
 use Modules\Admin\Controllers\AdminModuleController;
 use Modules\Admin\Controllers\AdminThemeController;
-use Modules\Admin\Controllers\LogController;
 use Modules\Admin\Controllers\MigrationController;
 use Modules\Admin\Controllers\AiPromptController;
 
@@ -56,10 +55,6 @@ Route::post('/modules/{name}/settings', [AdminModuleController::class, 'updateSe
 Route::post('/modules/{name}/delete', [AdminModuleController::class, 'destroy'])->name('modules.destroy');
 Route::delete('/modules/{name}', [AdminModuleController::class, 'destroy']);
 
-// Log Viewer Routes
-Route::get('/logs', [LogController::class, 'index'])->name('logs');
-Route::get('/logs/api', [LogController::class, 'fetch'])->name('logs.api');
-Route::post('/logs/clear', [LogController::class, 'clear'])->name('logs.clear');
 
 // Migration Management
 Route::get('/migrations', [MigrationController::class, 'index'])->name('migrations.index');

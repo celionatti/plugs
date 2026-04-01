@@ -1,0 +1,7 @@
+{
+    "name": "{{name}}",
+    "description": "Powerful content management system for publishing and organizing articles. Includes SEO tools, featured images, and author management.",
+    "version": "1.0.0",
+    "author": "Plugs Team",
+    "enabled": true
+}

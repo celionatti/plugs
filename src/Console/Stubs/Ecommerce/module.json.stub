@@ -1,0 +1,7 @@
+{
+    "name": "{{name}}",
+    "description": "Full-featured storefront solution with advanced product catalogs, multi-tier categories, and automated order tracking.",
+    "version": "1.0.0",
+    "author": "Plugs Team",
+    "enabled": true
+}

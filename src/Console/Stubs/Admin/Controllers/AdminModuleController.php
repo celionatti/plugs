@@ -121,6 +121,12 @@ class AdminModuleController
      */
     public function destroy(ServerRequestInterface $request, string $name): ResponseInterface
     {
+        // Safeguard: Prevent deleting core modules
+        $protectedModules = ['Admin', 'Auth'];
+        if (in_array($name, $protectedModules)) {
+            return redirect('/admin/modules?error=Core modules cannot be deleted');
+        }
+
         if ($this->moduleService->deleteModule($name)) {
             return redirect('/admin/modules?success=Module deleted successfully');
         }

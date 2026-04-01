@@ -68,6 +68,7 @@ class MakeArticleModuleCommand extends Command
             'Views/admin/articles/index.plug.php.stub' => 'Views/admin/articles/index.plug.php',
             'Views/admin/articles/create.plug.php.stub' => 'Views/admin/articles/create.plug.php',
             'Views/admin/articles/edit.plug.php.stub' => 'Views/admin/articles/edit.plug.php',
+            'module.json.stub' => 'module.json',
         ];
 
         $this->output->section('Generating Module Files');
