@@ -4,13 +4,13 @@ declare(strict_types=1);
 
 namespace Modules\{{name}}\Controllers\Admin;
 
-use Plugs\Http\Controller;
+use Plugs\Base\Controller\Controller;
 use Plugs\Http\Request;
 use Psr\Http\Message\ResponseInterface;
 use Modules\{{name}}\Models\Product;
 use Modules\{{name}}\Models\Category;
 use Modules\{{name}}\Models\Brand;
-use Plugs\Console\Support\Str;
+use Plugs\Utils\Str;
 
 class ProductController extends Controller
 {
@@ -20,7 +20,7 @@ class ProductController extends Controller
         $categories = Category::all();
         $brands = Brand::all();
 
-        return response()->view('{{lowerName}}::admin/products/index', [
+        return $this->view('{{lowerName}}::admin/products/index', [
             'products' => $products,
             'categories' => $categories,
             'brands' => $brands
@@ -34,7 +34,7 @@ class ProductController extends Controller
 
         Product::create($data);
 
-        return response()->redirect('/admin/{{lowerName}}/products');
+        return $this->redirect('/admin/{{lowerName}}/products')->withSuccess('Product added successfully.');
     }
 
     public function delete(string $id): ResponseInterface
@@ -44,6 +44,6 @@ class ProductController extends Controller
             $product->delete();
         }
 
-        return response()->redirect('/admin/{{lowerName}}/products');
+        return $this->redirect('/admin/{{lowerName}}/products')->withSuccess('Product deleted successfully.');
     }
 }

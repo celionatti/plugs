@@ -4,18 +4,18 @@ declare(strict_types=1);
 
 namespace Modules\{{name}}\Controllers\Admin;
 
-use Plugs\Http\Controller;
+use Plugs\Base\Controller\Controller;
 use Plugs\Http\Request;
 use Psr\Http\Message\ResponseInterface;
 use Modules\{{name}}\Models\Brand;
-use Plugs\Console\Support\Str;
+use Plugs\Utils\Str;
 
 class BrandController extends Controller
 {
     public function index(): ResponseInterface
     {
         $brands = Brand::all();
-        return response()->view('{{lowerName}}::admin/brands/index', [
+        return $this->view('{{lowerName}}::admin/brands/index', [
             'brands' => $brands
         ]);
     }
@@ -27,7 +27,7 @@ class BrandController extends Controller
 
         Brand::create($data);
 
-        return response()->redirect('/admin/{{lowerName}}/brands');
+        return $this->redirect('/admin/{{lowerName}}/brands')->withSuccess('Brand added successfully.');
     }
 
     public function delete(string $id): ResponseInterface
@@ -37,6 +37,6 @@ class BrandController extends Controller
             $brand->delete();
         }
 
-        return response()->redirect('/admin/{{lowerName}}/brands');
+        return $this->redirect('/admin/{{lowerName}}/brands')->withSuccess('Brand deleted successfully.');
     }
 }

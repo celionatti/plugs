@@ -4,18 +4,18 @@ declare(strict_types=1);
 
 namespace Modules\{{name}}\Controllers\Admin;
 
-use Plugs\Http\Controller;
+use Plugs\Base\Controller\Controller;
 use Plugs\Http\Request;
 use Psr\Http\Message\ResponseInterface;
 use Modules\{{name}}\Models\Category;
-use Plugs\Console\Support\Str;
+use Plugs\Utils\Str;
 
 class CategoryController extends Controller
 {
     public function index(): ResponseInterface
     {
         $categories = Category::all();
-        return response()->view('{{lowerName}}::admin/categories/index', [
+        return $this->view('{{lowerName}}::admin/categories/index', [
             'categories' => $categories
         ]);
     }
@@ -27,7 +27,7 @@ class CategoryController extends Controller
 
         Category::create($data);
 
-        return response()->redirect('/admin/{{lowerName}}/categories');
+        return $this->redirect('/admin/{{lowerName}}/categories')->withSuccess('Category added successfully.');
     }
 
     public function delete(string $id): ResponseInterface
@@ -37,6 +37,6 @@ class CategoryController extends Controller
             $category->delete();
         }
 
-        return response()->redirect('/admin/{{lowerName}}/categories');
+        return $this->redirect('/admin/{{lowerName}}/categories')->withSuccess('Category deleted successfully.');
     }
 }

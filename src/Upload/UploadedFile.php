@@ -101,6 +101,31 @@ class UploadedFile
     }
 
     /**
+     * Create from PSR-7 UploadedFileInterface
+     */
+    public static function fromPsr7(\Psr\Http\Message\UploadedFileInterface $file): self
+    {
+        $error = $file->getError();
+        $tmpName = '';
+
+        if ($error === UPLOAD_ERR_OK) {
+            // We need a temporary path for the rest of the class to work.
+            // Since PSR-7 doesn't guarantee a path, we might need to stream it.
+            // However, most implementations provide a path or we can use the stream.
+            $stream = $file->getStream();
+            $tmpName = $stream->getMetadata('uri') ?: '';
+        }
+
+        return new self([
+            'name' => $file->getClientFilename(),
+            'type' => $file->getClientMediaType(),
+            'tmp_name' => $tmpName,
+            'error' => $error,
+            'size' => $file->getSize(),
+        ]);
+    }
+
+    /**
      * Create from $_FILES array entry
      */
     public static function createFromFilesArray(array $file): self

@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Modules\{{name}}\Controllers\Admin;
 
-use Plugs\Http\Controller;
+use Plugs\Base\Controller\Controller;
 use Plugs\Http\Request;
 use Psr\Http\Message\ResponseInterface;
 use Modules\{{name}}\Models\Order;
@@ -14,7 +14,7 @@ class OrderController extends Controller
     public function index(): ResponseInterface
     {
         $orders = Order::all();
-        return response()->view('{{lowerName}}::admin/orders/index', [
+        return $this->view('{{lowerName}}::admin/orders/index', [
             'orders' => $orders
         ]);
     }
@@ -23,10 +23,10 @@ class OrderController extends Controller
     {
         $order = Order::find((int) $id);
         if (!$order) {
-            return response()->redirect('/admin/{{lowerName}}/orders');
+            return $this->redirect('/admin/{{lowerName}}/orders')->withError('Order not found.');
         }
 
-        return response()->view('{{lowerName}}::admin/orders/show', [
+        return $this->view('{{lowerName}}::admin/orders/show', [
             'order' => $order
         ]);
     }
@@ -38,6 +38,6 @@ class OrderController extends Controller
             $order->update($request->all());
         }
 
-        return response()->redirect('/admin/{{lowerName}}/orders/show/' . $id);
+        return $this->redirect('/admin/{{lowerName}}/orders/show/' . $id)->withSuccess('Order status updated.');
     }
 }
