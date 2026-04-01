@@ -1,0 +1,142 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Modules\{{name}}\Controllers;
+
+use Modules\{{name}}\Repositories\UserRepository;
+use Plugs\Base\Controller\Controller;
+use Plugs\Facades\Auth;
+use Plugs\Security\Hash;
+use Plugs\Utils\Str;
+use Psr\Http\Message\ResponseInterface;
+use Psr\Http\Message\ServerRequestInterface;
+use League\OAuth2\Client\Provider\Google;
+
+class GoogleAuthController extends Controller
+{
+    private Google $provider;
+    protected UserRepository $userRepository;
+
+    public function __construct()
+    {
+        parent::__construct();
+        $this->userRepository = new UserRepository();
+
+        // Using getenv as a universal fallback, assuming framework has an env loader.
+        $this->provider = new Google([
+            'clientId'     => getenv('GOOGLE_CLIENT_ID') ?: ($_ENV['GOOGLE_CLIENT_ID'] ?? ''),
+            'clientSecret' => getenv('GOOGLE_CLIENT_SECRET') ?: ($_ENV['GOOGLE_CLIENT_SECRET'] ?? ''),
+            'redirectUri'  => getenv('GOOGLE_REDIRECT_URI') ?: ($_ENV['GOOGLE_REDIRECT_URI'] ?? 'http://localhost/auth/google/callback'),
+        ]);
+    }
+
+    /**
+     * Redirect to Google consent screen.
+     */
+    public function redirectToProvider(ServerRequestInterface $request): ResponseInterface
+    {
+        $authUrl = $this->provider->getAuthorizationUrl();
+
+        if (session_status() === PHP_SESSION_NONE) {
+            session_start();
+        }
+        $_SESSION['oauth2state'] = $this->provider->getState();
+
+        return $this->redirect($authUrl);
+    }
+
+    /**
+     * Handle callback from Google.
+     */
+    public function handleProviderCallback(ServerRequestInterface $request): ResponseInterface
+    {
+        if (session_status() === PHP_SESSION_NONE) {
+            session_start();
+        }
+
+        $params = $request->getQueryParams();
+
+        if (empty($params['state']) || (isset($_SESSION['oauth2state']) && $params['state'] !== $_SESSION['oauth2state'])) {
+            unset($_SESSION['oauth2state']);
+            return $this->redirect('/login')->withError('Invalid session state.');
+        }
+
+        try {
+            $token = $this->provider->getAccessToken('authorization_code', [
+                'code' => $params['code']
+            ]);
+
+            /** @var \League\OAuth2\Client\Provider\GoogleUser $googleUser */
+            $googleUser = $this->provider->getResourceOwner($token);
+
+            $user = $this->findOrCreateUser($googleUser);
+
+            Auth::login($user, true); // login and remember
+
+            $redirectPath = ($user && method_exists($user, 'isAdmin') && $user->isAdmin()) ? '/admin' : '/';
+            return $this->redirect($redirectPath)->withSuccess('Welcome back!');
+
+        } catch (\Exception $e) {
+            error_log('Google Auth Error: ' . $e->getMessage());
+            return $this->redirect('/login')->withError('Failed to authenticate with Google: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Find existing or create new user based on Google Profile
+     */
+    protected function findOrCreateUser($googleUser): object
+    {
+        $googleId = $googleUser->getId();
+        $email = $googleUser->getEmail();
+        $name = $googleUser->getName();
+        $avatar = $googleUser->getAvatar();
+
+        // Check if user exists by email
+        $existingUser = $this->userRepository->findByEmail($email);
+
+        if ($existingUser) {
+            // Update google_id and avatar if not set
+            $needsUpdate = false;
+            if (empty($existingUser->google_id)) {
+                $existingUser->google_id = $googleId;
+                $needsUpdate = true;
+            }
+            if (empty($existingUser->avatar) && !empty($avatar)) {
+                $existingUser->avatar = $avatar;
+                $needsUpdate = true;
+            }
+            
+            // Auto-verify email if not verified
+            if (empty($existingUser->email_verified_at)) {
+                $existingUser->email_verified_at = date('Y-m-d H:i:s');
+                $needsUpdate = true;
+            }
+
+            if ($needsUpdate) {
+                $existingUser->save(); 
+            }
+
+            return $existingUser;
+        }
+
+        // Generate strong random password
+        $randomPassword = Str::random(32);
+        
+        // Create new user
+        $newUser = $this->userRepository->create([
+            'name' => $name,
+            'email' => $email,
+            'password' => Hash::make($randomPassword),
+        ]);
+
+        // Manually update google mappings and email verification
+        $newUser->google_id = $googleId;
+        $newUser->avatar = $avatar;
+        $newUser->email_verified_at = date('Y-m-d H:i:s');
+        $newUser->save();
+
+        return $newUser;
+    }
+}

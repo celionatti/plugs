@@ -111,7 +111,7 @@ class AuthInstallCommand extends Command
 
     private function publishUsersMigration(): void
     {
-        $migrationFile = 'create_users_table.php';
+        $migrationFile = 'auth_scaffold_users_table.php';
         $basePath = base_path('database/migrations');
 
         if (!is_dir($basePath)) {
@@ -249,24 +249,64 @@ return new class extends Migration {
      */
     public function up(): void
     {
-        Schema::create('users', function (Blueprint $table) {
-            $table->id();
-            $table->string('name');
-            $table->string('email')->unique();
-            $table->timestamp('email_verified_at')->nullable();
-            $table->string('password');
-            $table->string('remember_token', 100)->nullable();
-            $table->string('avatar')->nullable();
-            $table->text('bio')->nullable();
-            $table->enum('role', ['user', 'admin', 'editor'])->default('user');
-            $table->boolean('is_active')->default(true);
-            $table->timestamp('last_login_at')->nullable();
-            $table->timestamps();
-            $table->softDeletes();
+        if (Schema::hasTable('users')) {
+            Schema::table('users', function (Blueprint $table) {
+                if (!Schema::hasColumn('users', 'email_verified_at')) {
+                    $table->timestamp('email_verified_at')->nullable();
+                }
+                if (!Schema::hasColumn('users', 'password')) {
+                    $table->string('password');
+                }
+                if (!Schema::hasColumn('users', 'remember_token')) {
+                    $table->string('remember_token', 100)->nullable();
+                }
+                if (!Schema::hasColumn('users', 'google_id')) {
+                    $table->string('google_id')->nullable()->after('remember_token');
+                    $table->index('google_id');
+                }
+                if (!Schema::hasColumn('users', 'avatar')) {
+                    $table->string('avatar')->nullable();
+                }
+                if (!Schema::hasColumn('users', 'bio')) {
+                    $table->text('bio')->nullable();
+                }
+                if (!Schema::hasColumn('users', 'role')) {
+                    $table->enum('role', ['user', 'admin', 'editor'])->default('user');
+                    $table->index('role');
+                }
+                if (!Schema::hasColumn('users', 'is_active')) {
+                    $table->boolean('is_active')->default(true);
+                    $table->index('is_active');
+                }
+                if (!Schema::hasColumn('users', 'last_login_at')) {
+                    $table->timestamp('last_login_at')->nullable();
+                }
+                if (!Schema::hasColumn('users', 'deleted_at')) {
+                    $table->softDeletes();
+                }
+            });
+        } else {
+            Schema::create('users', function (Blueprint $table) {
+                $table->id();
+                $table->string('name');
+                $table->string('email')->unique();
+                $table->timestamp('email_verified_at')->nullable();
+                $table->string('password');
+                $table->string('remember_token', 100)->nullable();
+                $table->string('google_id')->nullable();
+                $table->string('avatar')->nullable();
+                $table->text('bio')->nullable();
+                $table->enum('role', ['user', 'admin', 'editor'])->default('user');
+                $table->boolean('is_active')->default(true);
+                $table->timestamp('last_login_at')->nullable();
+                $table->timestamps();
+                $table->softDeletes();
 
-            $table->index('role');
-            $table->index('is_active');
-        });
+                $table->index('role');
+                $table->index('is_active');
+                $table->index('google_id');
+            });
+        }
     }
 
     /**
@@ -274,7 +314,12 @@ return new class extends Migration {
      */
     public function down(): void
     {
-        Schema::dropIfExists('users');
+        // For safety, we drop the specific columns added if the table already existed, 
+        // to prevent wiping the base users table. However, since we can't easily know 
+        // if we created or modified it in down(), we do not drop the users table by default 
+        // if this was an update. If it's a completely generated table, safe to drop.
+        // As a compromise, we just leave the table.
+        // Schema::dropIfExists('users'); 
     }
 };
 EOT;

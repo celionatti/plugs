@@ -7,6 +7,7 @@ use Modules\{{name}}\Controllers\AuthController;
 use Modules\{{name}}\Controllers\ForgotPasswordController;
 use Modules\{{name}}\Controllers\ResetPasswordController;
 use Modules\{{name}}\Controllers\VerifyEmailController;
+use Modules\{{name}}\Controllers\GoogleAuthController;
 
 // Guest Routes
 Route::middleware(['web', 'guest'])->group(function () {
@@ -21,6 +22,10 @@ Route::middleware(['web', 'guest'])->group(function () {
 
     Route::get('/reset-password', [ResetPasswordController::class, 'showResetForm'])->name('password.reset');
     Route::post('/reset-password', [ResetPasswordController::class, 'reset'])->name('password.update');
+
+    // Google Auth Routes
+    Route::get('/auth/google', [GoogleAuthController::class, 'redirectToProvider'])->name('auth.google');
+    Route::get('/auth/google/callback', [GoogleAuthController::class, 'handleProviderCallback'])->name('auth.google.callback');
 });
 
 // Authenticated Routes

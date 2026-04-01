@@ -54,6 +54,7 @@
     "ext-pdo": "*",
     "clue/redis-react": "^2.8",
     "guzzlehttp/guzzle": "^7.10",
+    "league/oauth2-google": "^5.0",
     "predis/predis": "^3.4",
     "psr/container": "^1.0",
     "psr/event-dispatcher": "^1.0",

@@ -65,6 +65,7 @@ class MakeAuthModuleCommand extends Command
             'Controllers/ForgotPasswordController.php.stub' => 'Controllers/ForgotPasswordController.php',
             'Controllers/ResetPasswordController.php.stub' => 'Controllers/ResetPasswordController.php',
             'Controllers/VerifyEmailController.php.stub' => 'Controllers/VerifyEmailController.php',
+            'Controllers/GoogleAuthController.php.stub' => 'Controllers/GoogleAuthController.php',
             'Repositories/UserRepository.php.stub' => 'Repositories/UserRepository.php',
             'Requests/LoginRequest.php.stub' => 'Requests/LoginRequest.php',
             'Requests/RegisterRequest.php.stub' => 'Requests/RegisterRequest.php',
