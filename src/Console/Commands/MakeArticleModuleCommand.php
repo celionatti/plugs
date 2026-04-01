@@ -91,6 +91,25 @@ class MakeArticleModuleCommand extends Command
             $this->fileCreated($fullPath);
         }
 
+        // Ensure the icon component exists (required by article views)
+        $this->task('Ensuring icon component exists', function () {
+            $iconPath = getcwd() . '/resources/views/components/icon.plug.php';
+            if (!Filesystem::exists($iconPath)) {
+                Filesystem::ensureDir(dirname($iconPath));
+                $iconContent = <<<'ICON'
+<?php
+$name = $name ?? '';
+$class = $class ?? 'w-5 h-5';
+?>
+<i class="bi bi-<?= $name ?> <?= $class ?>" <?= $attributes ?? '' ?>></i>
+ICON;
+                Filesystem::put($iconPath, $iconContent);
+                $this->fileCreated($iconPath);
+            } else {
+                $this->note('Icon component already exists.');
+            }
+        });
+
         $this->newLine();
         $this->resultSummary([
             'Module' => $name,

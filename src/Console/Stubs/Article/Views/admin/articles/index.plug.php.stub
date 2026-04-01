@@ -59,7 +59,7 @@
                                     <div class="w-6 h-6 rounded-full bg-primary-100 dark:bg-primary-900/30 flex items-center justify-center text-[10px] font-bold text-primary-600">
                                         {{ strtoupper(substr($article->author->name ?? 'U', 0, 1)) }}
                                     </div>
-                                    <span class="text-sm font-semibold text-slate-700 dark:text-slate-300">{{ $article->author->name ?? 'Unknown' }}</span>
+                                    <span class="text-sm font-semibold text-slate-700 dark:text-slate-300">{{ $article->author->name ?? 'System' }}</span>
                                 </div>
                             </td>
                             <td class="px-6 py-4">
@@ -96,7 +96,7 @@
             </table>
         </div>
         
-        @if(empty($articles))
+        @if($articles->isEmpty())
             <div class="px-6 py-12 text-center">
                 <div class="w-16 h-16 bg-slate-100 dark:bg-slate-800 rounded-full flex items-center justify-center mx-auto mb-4 text-slate-400">
                     <x-icon name="newspaper" class="w-8 h-8" />
