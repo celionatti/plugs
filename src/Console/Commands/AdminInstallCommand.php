@@ -23,6 +23,14 @@ class AdminInstallCommand extends Command
     {
         $this->title('Admin Panel Installation');
 
+        // Ensure Auth module is installed first
+        if (!$this->isAuthInstalled()) {
+            $this->info('Admin module requires Auth module. Installing full Auth module first...');
+            $this->call('make:auth-module', [
+                '--no-migrate' => true,
+            ]);
+        }
+
         $stubPath = __DIR__ . '/../Stubs/Admin';
         $destinationPath = getcwd() . '/modules/Admin';
 
@@ -78,7 +86,6 @@ class AdminInstallCommand extends Command
         Filesystem::ensureDir($targetDir);
 
         $models = [
-            'User.stub' => 'User.php',
             'Setting.stub' => 'Setting.php',
             'Article.stub' => 'Article.php',
         ];
@@ -110,11 +117,9 @@ class AdminInstallCommand extends Command
         Filesystem::ensureDir($targetDir);
 
         $migrations = [
-            'create_users_table.stub' => 'create_users_table.php',
             'create_settings_table.stub' => 'create_settings_table.php',
             'create_articles_table.stub' => 'create_articles_table.php',
             'add_author_id_to_articles.stub' => 'add_author_id_to_articles.php',
-            'add_role_to_users_table.stub' => 'add_role_to_users_table.php',
         ];
 
         foreach ($migrations as $stubName => $fileName) {
@@ -189,5 +194,16 @@ class AdminInstallCommand extends Command
             Filesystem::put($destination, $content);
             $this->fileCreated($destination);
         }
+    }
+
+    /**
+     * Check if Auth module is installed.
+     */
+    private function isAuthInstalled(): bool
+    {
+        $authModulePath = getcwd() . '/modules/Auth';
+        $userModelPath = getcwd() . '/app/Models/User.php';
+
+        return Filesystem::isDirectory($authModulePath) || Filesystem::exists($userModelPath);
     }
 }
