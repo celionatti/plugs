@@ -145,13 +145,29 @@ class PlugsSPA {
   init() {
     if (window.plugsSPAInitialized) return;
 
+    const style = document.createElement('style');
+    style.innerHTML = `
+      @keyframes plugs-spa-progress-gradient {
+        0% { background-position: 100% 50%; }
+        100% { background-position: 0% 50%; }
+      }
+      #spa-progress-bar {
+        background: linear-gradient(90deg, #3b82f6, #ec4899, #8b5cf6, #14b8a6, #3b82f6) !important;
+        background-size: 400% 100% !important;
+        animation: plugs-spa-progress-gradient 3s linear infinite !important;
+        box-shadow: 0 1px 12px rgba(139, 92, 246, 0.6), 0 1px 4px rgba(236, 72, 153, 0.4) !important;
+        border-radius: 0 4px 4px 0 !important;
+      }
+    `;
+    document.head.appendChild(style);
+
     this.progressBar = document.createElement("div");
     this.progressBar.id = "spa-progress-bar";
     Object.assign(this.progressBar.style, {
       position: "fixed",
       top: "0",
       left: "0",
-      height: "3px",
+      height: "4px",
       width: "0",
       backgroundColor: "#3b82f6",
       zIndex: "9999",
