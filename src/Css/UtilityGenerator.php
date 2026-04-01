@@ -58,8 +58,10 @@ class UtilityGenerator
             ?? $this->tryTransition($baseClass)
             ?? $this->tryTransform($baseClass, $isNegative)
             ?? $this->tryPosition($baseClass, $isNegative)
+            ?? $this->tryAnimation($baseClass)
             ?? $this->tryGradient($baseClass)
             ?? $this->tryContainer($baseClass)
+            ?? $this->tryPremium($baseClass)
             ?? $this->tryMisc($baseClass)
             ?? $this->tryArbitrary($baseClass);
     }
@@ -436,6 +438,7 @@ class UtilityGenerator
             'shadow-sm'=>'0 1px 2px 0 rgb(0 0 0 / 0.05)','shadow'=>'0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1)','shadow-md'=>'0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1)','shadow-lg'=>'0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1)','shadow-xl'=>'0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1)','shadow-2xl'=>'0 25px 50px -12px rgb(0 0 0 / 0.25)','shadow-inner'=>'inset 0 2px 4px 0 rgb(0 0 0 / 0.05)','shadow-none'=>'0 0 #0000',
         ];
         if (isset($shadows[$c])) return "box-shadow: {$shadows[$c]};";
+        if ($c === 'shadow-glow') return 'box-shadow: 0 0 20px -5px currentColor; filter: drop-shadow(0 0 8px currentColor);';
 
         if (preg_match('/^opacity-(\d+)$/', $c, $m)) { $v = (int) $m[1] / 100; return "opacity: $v;"; }
 
@@ -596,6 +599,23 @@ class UtilityGenerator
         return null;
     }
 
+    // ─── Animations ───────────────────────────────────────
+    private function tryAnimation(string $c): ?string
+    {
+        $animations = [
+            'animate-none'   => 'animation: none;',
+            'animate-spin'   => 'animation: spin 1s linear infinite;',
+            'animate-ping'   => 'animation: ping 1s cubic-bezier(0, 0, 0.2, 1) infinite;',
+            'animate-pulse'  => 'animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;',
+            'animate-bounce' => 'animation: bounce 1s infinite;',
+            'animate-hue'    => 'animation: hue-rotate 5s linear infinite;',
+            'animate-shimmer' => 'animation: shimmer 2s linear infinite;',
+            'animate-border' => 'animation: border-flow 3s ease infinite;',
+        ];
+
+        return $animations[$c] ?? null;
+    }
+
     // ─── Misc ─────────────────────────────────────────────
     private function tryMisc(string $c): ?string
     {
@@ -628,7 +648,39 @@ class UtilityGenerator
         ];
         if (isset($map[$c])) return $map[$c];
 
+        if (preg_match('/^bg-size-(\d+)$/', $c, $m)) { $v = $m[1] . '%'; return "background-size: $v $v;"; }
+
         if (preg_match('/^stroke-(\d+)$/', $c, $m)) return "stroke-width: {$m[1]};";
+
+        return null;
+    }
+
+    // ─── Premium UI Pack ──────────────────────────────────
+    private function tryPremium(string $c): ?string
+    {
+        // Glassmorphism
+        if ($c === 'glass') {
+            return 'background: rgba(255, 255, 255, 0.2); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); border: 1px solid rgba(255, 255, 255, 0.1);';
+        }
+        if ($c === 'glass-dark') {
+            return 'background: rgba(0, 0, 0, 0.3); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.05);';
+        }
+        if ($c === 'glass-border') {
+            return 'border: 1px solid rgba(255, 255, 255, 0.15); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.05);';
+        }
+
+        // Reveal Animations
+        if (str_starts_with($c, 'reveal-')) {
+            $type = substr($c, 7);
+            if (in_array($type, ['up', 'down', 'fade'])) {
+                return "animation: reveal-{$type} 0.8s cubic-bezier(0.4, 0, 0.2, 1) forwards;";
+            }
+        }
+
+        // Text Gradient Animation
+        if ($c === 'text-gradient-animate') {
+            return 'background-size: 200% auto; animation: border-flow 4s linear infinite;';
+        }
 
         return null;
     }

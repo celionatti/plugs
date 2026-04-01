@@ -457,6 +457,44 @@ Prefix utilities with `@container-[breakpoint]:` to apply styles based on the co
 
 ---
 
+## Animations
+
+Plugs CSS includes a suite of built-in animations for common UI patterns and premium effects.
+
+### Basic Animations
+| Class | Effect | CSS |
+|---|---|---|
+| `animate-spin` | Linear rotation | `animation: spin 1s linear infinite;` |
+| `animate-ping` | Ping/Scale effect | `animation: ping 1s cubic-bezier(0, 0, 0.2, 1) infinite;` |
+| `animate-pulse` | Opacity pulse | `animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;` |
+| `animate-bounce` | Vertical bounce | `animation: bounce 1s infinite;` |
+| `animate-none` | Remove animation | `animation: none;` |
+
+### Advanced & Premium Effects
+These utilities allow for complex, high-end motion designs.
+
+| Class | Effect | Description |
+|---|---|---|
+| `animate-hue` | Hue Rotation | Slowly cycles through the entire color spectrum. |
+| `animate-border`| Flowing Border | Animates `background-position` for gradient borders. |
+| `animate-shimmer`| Shimmer Highlight| Fast linear highlight for skeletons and loaders. |
+| `shadow-glow` | Pulsating Glow | Adds a vibrant drop-shadow matching the element color. |
+| `bg-size-{n}` | Scaling BG | Scales background (e.g., `bg-size-200`) for motion. |
+| `glass` | Glassmorphism | Frosted glass effect with backdrop-blur. |
+| `glass-dark` | Dark Glass | Premium dark mode glass effect. |
+| `reveal-up` | Reveal Up | Fade in and slide up transition. |
+| `text-gradient`| Text Gradient | Base class to clip gradients to text. |
+| `text-gradient-animate` | Moving Text | Animates the text's background gradient. |
+
+#### Example: Rotating Gradient Border
+```html
+<div class="border-2 border-transparent bg-gradient-to-r from-blue-500 to-purple-500 bg-size-200 animate-border">
+    Animated Content
+</div>
+```
+
+---
+
 ## Position
 
 | Class | CSS |

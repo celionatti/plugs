@@ -472,10 +472,14 @@ The engine ships with **22 named colors × 11 shades** (50–950), using the mod
 
 ### Transitions & Animations
 
+Plugs CSS provides both smooth transition utilities and powerful built-in animations for dynamic UI elements.
+
+### 1. Transitions
+
+Apply transitions to smoothly animate property changes:
+
 ```html
-<button
-  class="transition duration-300 ease-in-out hover:scale-105 hover:shadow-lg"
->
+<button class="transition duration-300 ease-in-out hover:scale-105 hover:shadow-lg">
   Animated Button
 </button>
 
@@ -483,6 +487,118 @@ The engine ships with **22 named colors × 11 shades** (50–950), using the mod
   Color transition
 </div>
 ```
+
+| Utility             | Description                                     |
+| ------------------- | ----------------------------------------------- |
+| `transition`        | Combines most common properties                 |
+| `transition-all`    | Transitions all animatable properties           |
+| `transition-colors` | `color`, `background-color`, `border-color`, etc |
+| `duration-{ms}`     | Set duration (e.g., `duration-200`, `duration-1000`) |
+| `delay-{ms}`        | Set delay (e.g., `delay-150`)                   |
+| `ease-{type}`       | `ease-linear`, `ease-in`, `ease-out`, `ease-in-out` |
+
+### 2. Built-in Animations
+
+Standard animations with pre-defined keyframes:
+
+```html
+<!-- Spinning loader -->
+<svg class="animate-spin ..."></svg>
+
+<!-- Pinging notification dot -->
+<span class="animate-ping absolute ..."></span>
+
+<!-- Pulsing skeleton loader -->
+<div class="animate-pulse bg-gray-200 ..."></div>
+
+<!-- Bouncing indicator -->
+<div class="animate-bounce ..."></div>
+```
+
+| Class            | Animation Effect                                         |
+| ---------------- | -------------------------------------------------------- |
+| `animate-spin`   | 360° linear rotation                                     |
+| `animate-ping`   | Expanding and fading scale                               |
+| `animate-pulse`  | Gentle opacity transition                                |
+| `animate-bounce` | Smooth vertical bounce                                   |
+| `animate-none`   | Disables animations                                      |
+
+### 3. Advanced & Premium Effects
+
+For "high-end" UI components, Plugs include several advanced motion utilities:
+
+```html
+<!-- Dynamic Rotating Border -->
+<div class="border-2 border-transparent bg-gradient-to-r from-gold via-red-500 to-gold bg-size-200 animate-border">
+  Premium Content
+</div>
+
+<!-- Color Spectrum Shifting -->
+<div class="animate-hue bg-gradient-to-r from-blue-500 to-purple-500">
+  Vibrant Element
+</div>
+
+<!-- Glowing Shadow -->
+<button class="text-emerald-500 shadow-glow animate-pulse">
+  Interactive Glow
+</button>
+```
+
+| Class             | Effect                                                  |
+| ----------------- | ------------------------------------------------------- |
+| `animate-border`  | Animates background positions (perfect for gradient borders) |
+| `animate-hue`     | Slowly rotates the color hue of an element              |
+| `animate-shimmer` | A quick linear highlight (for skeleton loaders)          |
+| `shadow-glow`     | A vibrant, pulsating drop-shadow matching element color |
+| `bg-size-{n}`     | Sets background size (e.g., `bg-size-200`) for animations |
+
+### 4. Glassmorphism Utilities
+
+Create sophisticated "frosted glass" interfaces with a single class:
+
+```html
+<div class="glass p-8 rounded-xl">
+  Light glass effect with backdrop blur.
+</div>
+
+<div class="glass-dark p-8 rounded-xl">
+  Premium dark mode glass.
+</div>
+```
+
+| Class | Effect |
+| --- | --- |
+| `glass` | Translucent white background + backdrop blur + subtle border |
+| `glass-dark` | Translucent black background + backdrop blur + subtle border |
+| `glass-border` | Inset glow and border that mimics light catching on glass edges |
+
+### 5. Scroll & Entry Animations
+
+Animate elements as they enter the screen. Can be used standalone or triggered via JavaScript.
+
+```html
+<div class="reveal-up">Slides up on entry</div>
+<div class="reveal-fade">Fades in slowly</div>
+```
+
+| Class | Animation |
+| --- | --- |
+| `reveal-up` | Fades in while moving up (20px) |
+| `reveal-down` | Fades in while moving down (20px) |
+| `reveal-fade` | Simple opacity fade-in |
+
+### 6. Premium Typography
+
+```html
+<h1 class="text-gradient bg-gradient-to-r from-blue-500 to-purple-500 text-gradient-animate">
+  Animated Hero Text
+</h1>
+```
+
+| Class | Effect |
+| --- | --- |
+| `.text-gradient` | (Base class) Clips any background to the text |
+| `text-gradient-animate` | Moves the text's gradient background infinitely |
 
 ---
 
