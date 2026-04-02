@@ -844,12 +844,16 @@ trait HasAttributes
 
     public function __isset($key)
     {
-        return isset($this->attributes[$key]);
+        return ! is_null($this->getAttribute($key));
     }
 
     public function __unset($key)
     {
         unset($this->attributes[$key]);
+        
+        if (property_exists($this, 'relations')) {
+            unset($this->relations[$key]);
+        }
     }
 
     /**

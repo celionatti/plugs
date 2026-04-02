@@ -15,7 +15,7 @@ class {{name}}Service
      */
     public function getAllArticles()
     {
-        return {{name}}::with('author')->all();
+        return {{name}}::with('author')->get();
     }
 
     /**
