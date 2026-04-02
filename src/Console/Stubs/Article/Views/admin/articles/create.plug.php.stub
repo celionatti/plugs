@@ -1,9 +1,11 @@
-<layout name="admin::layouts.admin">
-    <slot:title>{{ $title }}</slot:title>
+@extends('admin::layouts.admin')
 
+@section('title', $title)
+
+@section('content')
     <div class="mb-8">
         <a href="/admin/articles" class="inline-flex items-center gap-2 text-slate-500 dark:text-slate-400 hover:text-primary dark:hover:text-primary font-bold transition-colors mb-4">
-            <x-icon name="arrow-left" class="w-4 h-4" />
+            <i class="bi bi-arrow-left"></i>
             Back to Articles
         </a>
         <h1 class="text-3xl font-bold text-slate-900 dark:text-white">{{ $title }}</h1>
@@ -58,7 +60,7 @@
                 
                 <div class="space-y-4">
                     <div class="flex flex-col items-center justify-center p-6 border-2 border-dashed border-slate-200 dark:border-slate-800 rounded-2xl bg-slate-50 dark:bg-slate-800/30">
-                        <x-icon name="upload" class="w-8 h-8 text-slate-400 mb-2" />
+                        <i class="bi bi-upload text-3xl text-slate-400 mb-2"></i>
                         <label class="cursor-pointer">
                             <span class="text-sm font-bold text-primary hover:brightness-110 transition-colors">Click to upload</span>
                             <input type="file" name="image" class="hidden" accept="image/*">
@@ -73,4 +75,4 @@
             </button>
         </div>
     </form>
-</layout>
+@endsection

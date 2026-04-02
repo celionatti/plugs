@@ -10,7 +10,7 @@
             <p class="mt-2 text-sm text-slate-600 dark:text-slate-400">Add, edit, and manage your inventory here.</p>
         </div>
         <div class="mt-4 sm:ml-16 sm:mt-0 sm:flex-none">
-            <a href="/admin/{{lowerName}}/products/create" class="inline-flex rounded-xl bg-primary px-4 py-2.5 text-center text-sm font-bold text-white shadow-lg shadow-primary/20 hover:brightness-110 active:scale-95 transition-all">
+            <a href="/admin/{{lowerName}}/products/create" class="inline-flex rounded-xl bg-primary px-5 py-3 text-center text-sm font-bold text-white shadow-xl shadow-primary/30 hover:brightness-110 btn-primary-vibrant active:scale-95 transition-all">
                 <i class="bi bi-plus-lg mr-2"></i>Add Product
             </a>
         </div>
@@ -90,7 +90,7 @@
                                 </td>
                             </tr>
                             @endforeach
-                            @if($products->isEmpty())
+                            @if(empty($products))
                             <tr>
                                 <td colspan="5" class="px-6 py-12 text-center text-slate-500 dark:text-slate-400">
                                     <i class="bi bi-box-seam text-4xl mb-3 block opacity-50"></i>

@@ -94,21 +94,20 @@ class ProductController extends Controller
             }
         }
 
-        $this->handleProductImages($product, $request);
-
-        // Update featured image selection
-        if (isset($data['featured_image_id'])) {
+        // Update featured image selection from existing images
+        if (isset($data['featured_image_id']) && !empty($data['featured_image_id'])) {
             // reset all
-            foreach ($product->images as $img) {
-                $img->update(['is_featured' => 0]);
-            }
+            ProductImage::where('product_id', $product->id)->update(['is_featured' => 0]);
+            
             // set one
             $featured = ProductImage::find((int) $data['featured_image_id']);
             if ($featured && $featured->product_id === $product->id) {
                 $featured->update(['is_featured' => 1]);
-                $product->update(['image' => $featured->image_path]); // Cache the main image for easy access
+                $product->update(['image' => $featured->image_path]); // Denormalize main image
             }
         }
+
+        $this->handleProductImages($product, $request);
 
         return $this->redirect('/admin/{{lowerName}}/products')->withSuccess('Product updated successfully.');
     }
@@ -159,7 +158,13 @@ class ProductController extends Controller
             if ($file && $file->getError() === UPLOAD_ERR_OK) {
                 $result = $uploader->upload($file);
                 
-                $isFeatured = ($index === $featuredIndex && !$product->image);
+                // If this index is selected as featured
+                $isFeatured = ($index === $featuredIndex);
+                
+                if ($isFeatured) {
+                    // Reset others first if we are setting a new featured one
+                    ProductImage::where('product_id', $product->id)->update(['is_featured' => 0]);
+                }
                 
                 $imgModel = ProductImage::create([
                     'product_id'  => $product->id,
@@ -168,7 +173,6 @@ class ProductController extends Controller
                     'is_featured' => $isFeatured ? 1 : 0
                 ]);
                 
-                // Set the denormalized image column if this is the first featured image
                 if ($isFeatured) {
                     $product->update(['image' => $result['path']]);
                 }

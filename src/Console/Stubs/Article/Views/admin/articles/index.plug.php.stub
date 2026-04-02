@@ -1,23 +1,25 @@
-<layout name="admin::layouts.admin">
-    <slot:title>{{ $title }}</slot:title>
+@extends('admin::layouts.admin')
 
+@section('title', $title)
+
+@section('content')
     <div class="flex items-center justify-between mb-8">
         <div>
             <h1 class="text-3xl font-bold text-slate-900 dark:text-white items-center flex gap-3">
-                <x-icon name="newspaper" class="w-8 h-8 text-primary" />
+                <i class="bi bi-newspaper text-primary"></i>
                 {{ $title }}
             </h1>
             <p class="text-slate-500 dark:text-slate-400 mt-1">Manage and publish your latest articles.</p>
         </div>
-        <a href="/admin/articles/create" class="inline-flex items-center gap-2 bg-primary hover:brightness-110 text-white px-4 py-2.5 rounded-xl font-bold transition-all shadow-lg shadow-primary/20 active:scale-95">
-            <x-icon name="plus" class="w-5 h-5" />
+        <a href="/admin/articles/create" class="inline-flex items-center gap-2 bg-primary hover:brightness-110 text-white px-4 py-2.5 rounded-xl font-bold transition-all shadow-xl shadow-primary/30 active:scale-95 btn-primary-vibrant">
+            <i class="bi bi-plus-lg"></i>
             Create New {{name}}
         </a>
     </div>
 
     @if(session('success'))
         <div class="bg-emerald-50 border border-emerald-200 text-emerald-700 px-4 py-3 rounded-xl mb-6 flex items-center gap-3">
-            <x-icon name="check-circle" class="w-5 h-5" />
+            <i class="bi bi-check-circle-fill"></i>
             {{ session('success') }}
         </div>
     @endif
@@ -44,7 +46,7 @@
                                             <img src="{{ $article->getImageUrl() }}" alt="" class="w-full h-full object-cover">
                                         @else
                                             <div class="w-full h-full flex items-center justify-center text-slate-400">
-                                                <x-icon name="image" class="w-6 h-6" />
+                                                <i class="bi bi-image"></i>
                                             </div>
                                         @endif
                                     </div>
@@ -56,7 +58,7 @@
                             </td>
                             <td class="px-6 py-4">
                                 <div class="flex items-center gap-2 group/author cursor-pointer w-fit">
-                                    <div class="w-6 h-6 rounded-full bg-primary/10 dark:bg-primary/30 flex items-center justify-center text-[10px] font-bold text-primary group-hover/author:bg-primary group-hover/author:text-white group-hover/author:shadow-md group-hover/author:scale-110 transition-all">
+                                    <div class="w-6 h-6 rounded-full bg-primary/10 dark:bg-primary/30 flex items-center justify-center text-[10px] font-bold text-primary group-hover/author:bg-primary group-hover/author:text-white group-hover/author:shadow-lg group-hover/author:shadow-primary/40 group-hover/author:scale-110 transition-all duration-300">
                                         {{ strtoupper(substr($article->author->name ?? 'U', 0, 1)) }}
                                     </div>
                                     <span class="text-sm font-semibold text-slate-700 dark:text-slate-300 group-hover/author:text-primary transition-colors">{{ $article->author->name ?? 'System' }}</span>
@@ -80,12 +82,12 @@
                             <td class="px-6 py-4">
                                 <div class="flex items-center gap-2">
                                     <a href="/admin/articles/{{ $article->id }}/edit" class="p-2 text-slate-500 hover:text-primary hover:bg-primary/10 dark:text-slate-400 dark:hover:bg-primary/20 rounded-lg transition-all" title="Edit">
-                                        <x-icon name="pencil-square" class="w-5 h-5" />
+                                        <i class="bi bi-pencil-square"></i>
                                     </a>
                                     <form action="/admin/articles/{{ $article->id }}/delete" method="POST" onsubmit="return confirm('Delete this article?')" class="inline">
                                         @csrf
                                         <button type="submit" class="p-2 text-slate-500 hover:text-red-600 hover:bg-red-50 dark:text-slate-400 dark:hover:bg-red-500/10 rounded-lg transition-all" title="Delete">
-                                            <x-icon name="trash" class="w-5 h-5" />
+                                            <i class="bi bi-trash"></i>
                                         </button>
                                     </form>
                                 </div>
@@ -96,14 +98,14 @@
             </table>
         </div>
         
-        @if($articles->isEmpty())
+        @if(empty($articles))
             <div class="px-6 py-12 text-center">
                 <div class="w-16 h-16 bg-slate-100 dark:bg-slate-800 rounded-full flex items-center justify-center mx-auto mb-4 text-slate-400">
-                    <x-icon name="newspaper" class="w-8 h-8" />
+                    <i class="bi bi-newspaper text-3xl opacity-50"></i>
                 </div>
                 <h3 class="text-sm font-bold text-slate-900 dark:text-white">No articles found</h3>
                 <p class="text-xs text-slate-500 mt-1">Get started by creating your first article.</p>
             </div>
         @endif
     </div>
-</layout>
+@endsection

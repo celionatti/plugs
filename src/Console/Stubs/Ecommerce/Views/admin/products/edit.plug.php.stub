@@ -208,15 +208,15 @@ function handleImagePreview(event) {
         const card = document.createElement('div');
         
         card.className = 'group relative aspect-square rounded-xl overflow-hidden shadow-sm border-2 border-slate-200 dark:border-slate-700 hover:border-slate-300 transition-all';
-        card.innerHTML = `
-            <img src="${url}" class="w-full h-full object-cover">
-            <div class="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                <button type="button" onclick="setFeaturedNew(${index}, this)" class="bg-white text-slate-900 p-2 rounded-full hover:bg-primary hover:text-white transition-all shadow-lg" title="Set as Featured">
-                    <i class="bi bi-star"></i>
-                </button>
-            </div>
-            <div class="absolute top-1 right-1 bg-emerald-500 text-white text-[8px] font-bold px-1.5 py-0.5 rounded">NEW</div>
-        `;
+        card.innerHTML = ' \
+            <img src="' + url + '" class="w-full h-full object-cover"> \
+            <div class="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center"> \
+                <button type="button" onclick="setFeaturedNew(' + index + ', this)" class="bg-white text-slate-900 p-2 rounded-full hover:bg-primary hover:text-white transition-all shadow-lg" title="Set as Featured"> \
+                    <i class="bi bi-star"></i> \
+                </button> \
+            </div> \
+            <div class="absolute top-1 right-1 bg-emerald-500 text-white text-[8px] font-bold px-1.5 py-0.5 rounded">NEW</div> \
+        ';
         previewContainer.appendChild(card);
     });
 }

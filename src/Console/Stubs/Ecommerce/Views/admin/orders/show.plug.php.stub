@@ -34,9 +34,9 @@
                             </tr>
                         </thead>
                         <tbody class="divide-y divide-slate-100 dark:divide-slate-800">
-                            @foreach($order->items() as $item)
+                            @foreach($order->items as $item)
                             <tr>
-                                <td class="py-4 text-sm font-semibold text-slate-900 dark:text-white">{{ $item->product()->name ?? 'Deleted Product' }}</td>
+                                <td class="py-4 text-sm font-semibold text-slate-900 dark:text-white">{{ $item->product->name ?? 'Deleted Product' }}</td>
                                 <td class="py-4 text-sm text-slate-500 dark:text-slate-400 font-mono">${{ number_format($item->price, 2) }}</td>
                                 <td class="py-4 text-sm text-slate-500 dark:text-slate-400 text-center">{{ $item->quantity }}</td>
                                 <td class="py-4 text-sm font-bold text-slate-900 dark:text-white text-right">${{ number_format($item->total, 2) }}</td>
@@ -63,7 +63,7 @@
                 <div class="space-y-6">
                     <div>
                         <span class="text-[10px] font-bold uppercase tracking-widest text-slate-400 block mb-1">Customer Name</span>
-                        <p class="text-sm font-semibold text-slate-800 dark:text-slate-200">{{ $order->user()->name ?? 'Guest Customer' }}</p>
+                        <p class="text-sm font-semibold text-slate-800 dark:text-slate-200">{{ $order->user->name ?? 'Guest Customer' }}</p>
                     </div>
                     <div>
                         <span class="text-[10px] font-bold uppercase tracking-widest text-slate-400 block mb-1">Shipping Address</span>
