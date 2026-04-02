@@ -1,13 +1,13 @@
-<div class="space-y-1.5">
+<div class="space-y-2">
     @if($label ?? null)
-        <label for="{{ $id ?? $name }}" class="block text-[12px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest ml-1">
+        <label for="{{ $id ?? $name }}" class="block text-[11px] font-extrabold text-slate-500 uppercase tracking-[0.2em] ml-2">
             {{ $label }}
         </label>
     @endif
     
     <div class="relative group">
         @if($icon ?? null)
-            <div class="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-black dark:group-focus-within:text-white transition-colors duration-300">
+            <div class="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-indigo-400 transition-colors duration-300">
                 {!! $icon !!}
             </div>
         @endif
@@ -15,12 +15,17 @@
         <input 
             {{ $attributes->merge([
                 'type' => 'text',
-                'class' => 'w-full ' . (($icon ?? null) ? 'pl-11 pr-4' : 'px-4') . ' py-3 rounded-xl border-2 border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 text-slate-900 dark:text-white text-[15px] placeholder-slate-400 focus:outline-none focus:ring-4 focus:ring-black/5 dark:focus:ring-white/5 focus:border-black dark:focus:border-white transition-all duration-300'
+                'class' => 'w-full ' . (($icon ?? null) ? 'pl-11 pr-5' : 'px-5') . ' py-3.5 rounded-2xl border border-white/5 bg-white/5 text-white text-[15px] placeholder-slate-500 focus:outline-none focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500/40 focus:bg-white/10 transition-all duration-300'
             ]) }}
         >
+        
+        <!-- Bottom Line Accent -->
+        <div class="absolute bottom-0 left-1/2 -translate-x-1/2 w-0 h-0.5 bg-gradient-to-r from-transparent via-indigo-500 to-transparent group-focus-within:w-full transition-all duration-500"></div>
     </div>
     
     @error($name)
-        <p class="text-xs text-rose-500 font-semibold mt-1.5 ml-1">{{ $message }}</p>
+        <p class="text-[11px] text-rose-400 font-bold mt-1.5 ml-2 flex items-center gap-1.5">
+            <i class="bi bi-exclamation-circle-fill"></i> {{ $message }}
+        </p>
     @enderror
 </div>

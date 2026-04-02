@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en" class="h-full bg-slate-50 dark:bg-slate-900">
+<html lang="en" class="h-full">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -8,79 +8,116 @@
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
     <style>
-        body { font-family: 'Plus Jakarta Sans', sans-serif; }
+        body { 
+            font-family: 'Plus Jakarta Sans', sans-serif; 
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            height: 100vh;
+        }
         .font-outfit { font-family: 'Outfit', sans-serif; }
+        
+        .mesh-bg {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 1;
+            background-color: #0f172a;
+            background-image: 
+                radial-gradient(at 0% 0%, hsla(253,16%,7%,1) 0, transparent 50%), 
+                radial-gradient(at 50% 0%, hsla(225,39%,30%,1) 0, transparent 50%), 
+                radial-gradient(at 100% 0%, hsla(339,49%,30%,1) 0, transparent 50%), 
+                radial-gradient(at 0% 50%, hsla(253,16%,7%,1) 0, transparent 50%), 
+                radial-gradient(at 100% 50%, hsla(253,16%,7%,1) 0, transparent 50%), 
+                radial-gradient(at 0% 100%, hsla(225,39%,30%,1) 0, transparent 50%), 
+                radial-gradient(at 50% 100%, hsla(339,49%,30%,1) 0, transparent 50%), 
+                radial-gradient(at 100% 100%, hsla(253,16%,7%,1) 0, transparent 50%);
+            filter: blur(60px);
+            opacity: 0.9;
+            animation: mesh-move 20s ease infinite alternate;
+        }
+
+        @keyframes mesh-move {
+            0% { transform: scale(1) rotate(0deg); }
+            100% { transform: scale(1.1) rotate(3deg); }
+        }
+
+        .glass-panel {
+            background: rgba(15, 23, 42, 0.4);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        ::-webkit-scrollbar { width: 0px; background: transparent; }
+        * { -ms-overflow-style: none; scrollbar-width: none; }
     </style>
     <stack:styles />
 </head>
-<body class="bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 h-screen relative overflow-hidden font-plus-jakarta">
-    <!-- Flash Messages -->
-    {!! \Plugs\Utils\FlashMessage::render() !!}
+<body class="bg-slate-950 text-slate-100 h-screen overflow-hidden relative">
+    <!-- Global Full-Screen Mesh Background -->
+    <div class="mesh-bg fixed inset-0 z-0"></div>
 
-    <!-- Split Layout Grid -->
-    <div class="grid grid-cols-1 lg:grid-cols-2 h-full">
+    <div class="flex h-full w-full relative z-10 overflow-hidden">
         
-        <!-- Left Column: Authentication Form -->
-        <div class="flex flex-col justify-center px-4 sm:px-6 lg:px-20 relative z-10 bg-white dark:bg-slate-950 lg:bg-transparent overflow-y-auto overflow-x-hidden min-h-[100dvh]">
-            <!-- Mobile/Tablet Mesh Background (Subtle) -->
-            <div class="absolute inset-0 -z-10 lg:hidden opacity-30 overflow-hidden pointer-events-none">
-                <div class="absolute top-[-10%] left-[-10%] w-[60%] h-[60%] rounded-full bg-indigo-500/20 blur-[100px] animate-pulse"></div>
-                <div class="absolute bottom-[-10%] right-[-10%] w-[60%] h-[60%] rounded-full bg-purple-500/20 blur-[100px] animate-pulse" style="animation-delay: 2s;"></div>
-            </div>
-
-            <div class="w-full max-w-[440px] mx-auto animate-in fade-in slide-in-from-bottom-8 duration-1000 ease-out py-12">
-                <!-- Compact Header -->
-                <div class="mb-6 text-center lg:text-left">
-                    <h1 class="text-3xl font-black tracking-tight font-outfit text-slate-900 dark:text-white mb-2"><yield:heading /></h1>
-                    <p class="text-[15px] text-slate-600 dark:text-slate-400 font-medium leading-relaxed"><yield:subheading /></p>
+        <!-- Visual Section (Left) -->
+        <div class="hidden lg:flex lg:w-1/2 relative items-center justify-center overflow-hidden">
+            <div class="relative z-10 p-16 w-full max-w-2xl">
+                <div class="mb-10 inline-flex items-center justify-center w-16 h-16 rounded-3xl bg-gradient-to-tr from-indigo-500 to-purple-500 shadow-2xl shadow-indigo-500/20">
+                    <i class="bi bi-shield-lock-fill text-3xl text-white"></i>
                 </div>
-
-                <!-- Glassmorphism Card (Refined) -->
-                <div class="bg-white/80 dark:bg-slate-900/60 backdrop-blur-2xl border border-slate-200 dark:border-slate-800/50 rounded-3xl shadow-2xl shadow-slate-200/50 dark:shadow-none p-6 lg:p-8">
-                    <div class="mb-2" id="app-content">
-                        @yield('content')
-                    </div>
-
-                    <!-- Footer Integrated -->
-                    <div class="mt-6 pt-6 border-t border-slate-100 dark:border-slate-800/50 text-center">
-                        <yield:footer />
-                    </div>
+                <h1 class="text-6xl font-black tracking-tight font-outfit text-white mb-6 leading-none">
+                    Security <span class="text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 to-purple-400">Simplified.</span>
+                </h1>
+                <p class="text-xl text-slate-300/80 font-medium leading-relaxed max-w-lg">
+                    Experience the next generation of authentication. Secure, sleek, and optimized for high-performance workflows.
+                </p>
+                
+                <!-- Status Indicators -->
+                <div class="mt-12 flex items-center gap-8 text-[11px] font-bold uppercase tracking-[0.2em] text-slate-400/60">
+                    <span class="flex items-center gap-2"><span class="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.5)]"></span> Systems Active</span>
+                    <span class="flex items-center gap-2"><i class="bi bi-shield-check text-indigo-400"></i> Encrypted Mode</span>
                 </div>
             </div>
         </div>
 
-        <!-- Right Column: Visual & Info (Ultra-Compacted) -->
-        <div class="hidden lg:flex relative overflow-hidden bg-slate-900 items-center justify-center p-8">
-            <!-- Brand Image Background -->
-            <img src="/assets/images/auth/auth_brand_visual.png" 
-                 alt="Branding" 
-                 class="absolute inset-0 w-full h-full object-cover opacity-60 scale-105 hover:scale-100 transition-transform duration-10000 ease-linear">
-            
-            <!-- Animated Overlays -->
-            <div class="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-900/40 to-transparent"></div>
-            
-            <div class="relative z-20 text-center max-w-sm">
-                <div class="inline-flex px-2 py-0.5 rounded-full bg-white/10 backdrop-blur-md border border-white/20 text-white/80 text-[10px] font-bold tracking-widest uppercase mb-4 animate-bounce">
-                    Secure Access
-                </div>
-                <h2 class="text-3xl font-black text-white font-outfit leading-tight mb-4">
-                    Welcome to <br/>
-                    <span class="text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 to-purple-400">The Future.</span>
-                </h2>
-                <p class="text-base text-slate-300 font-medium leading-relaxed mb-8">
-                    Experience a seamless, secure, and lightning-fast platform designed for you.
-                </p>
+        <!-- Form Section (Right) -->
+        <div class="w-full lg:w-1/2 flex items-center justify-center p-3 sm:p-6 lg:p-5">
+            <!-- Inset Rounded Panel -->
+            <div class="glass-panel w-full lg:h-full max-w-xl lg:max-w-none flex flex-col items-center justify-center relative p-6 sm:p-10 lg:p-12 rounded-[2rem] lg:rounded-[3rem] overflow-y-auto custom-scrollbar shadow-2xl">
                 
-                <!-- Feature Pills -->
-                <div class="flex flex-wrap justify-center gap-2">
-                    <span class="px-3 py-1.5 rounded-lg bg-white/5 backdrop-blur-xl border border-white/10 text-white text-xs font-bold">🔒 Secure</span>
-                    <span class="px-3 py-1.5 rounded-lg bg-white/5 backdrop-blur-xl border border-white/10 text-white text-xs font-bold">⚡ Fast</span>
+                <!-- Flash Messages -->
+                <div class="absolute top-6 left-1/2 -translate-x-1/2 z-50 w-full max-w-md px-6">
+                    {!! \Plugs\Utils\FlashMessage::render() !!}
+                </div>
+
+                <div class="w-full max-w-md relative z-10 transition-all duration-500">
+                    <!-- Branding for Mobile -->
+                    <div class="lg:hidden mb-6 text-center">
+                        <div class="inline-flex items-center justify-center w-11 h-11 rounded-2xl bg-gradient-to-tr from-indigo-500 to-purple-500 mb-4 shadow-lg shadow-indigo-500/20">
+                            <i class="bi bi-shield-lock-fill text-xl text-white"></i>
+                        </div>
+                    </div>
+
+                    <div class="mb-8 text-left">
+                        <h2 class="text-3xl font-extrabold tracking-tight font-outfit text-white mb-1.5"><yield:heading /></h2>
+                        <p class="text-[14px] text-slate-400 font-medium leading-relaxed"><yield:subheading /></p>
+                    </div>
+
+                    <div id="app-content" class="w-full">
+                        @yield('content')
+                    </div>
+
+                    <!-- Integrated Footer -->
+                    @if(isset($__sections['footer']) && trim($__sections['footer']) !== '')
+                        <div class="mt-8 pt-8 border-t border-white/5 text-center lg:text-left">
+                            <yield:footer />
+                        </div>
+                    @endif
                 </div>
             </div>
-
-            <!-- Floating Decorative Elements -->
-            <div class="absolute top-20 right-20 w-32 h-32 bg-indigo-500/20 rounded-full blur-3xl animate-pulse"></div>
-            <div class="absolute bottom-20 left-20 w-40 h-40 bg-purple-500/20 rounded-full blur-3xl animate-pulse" style="animation-delay: 2s;"></div>
         </div>
     </div>
 

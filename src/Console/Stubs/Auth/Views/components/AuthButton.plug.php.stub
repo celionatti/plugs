@@ -1,13 +1,16 @@
 <button 
     {{ $attributes->merge([
         'type' => 'submit',
-        'class' => 'w-full bg-gradient-to-r from-slate-900 to-slate-800 dark:from-white dark:to-slate-200 text-white dark:text-black font-bold py-2 px-6 rounded-lg shadow-xl shadow-slate-900/10 dark:shadow-none hover:shadow-2xl hover:shadow-slate-900/20 active:scale-[0.98] transition-all duration-300 flex items-center justify-center gap-2 mt-1 text-sm'
+        'class' => 'group relative w-full h-12 overflow-hidden rounded-2xl bg-gradient-to-tr from-indigo-500 to-purple-500 p-px font-extrabold text-white transition-all hover:shadow-[0_0_20px_rgba(99,102,241,0.4)] active:scale-[0.98]'
     ]) }}
 >
-    {{ $slot }}
-    @if($icon ?? null)
-        {!! $icon !!}
-    @else
-        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"/></svg>
-    @endif
+    <div class="relative flex h-full w-full items-center justify-center rounded-2xl bg-slate-900/10 group-hover:bg-slate-900/0 transition-colors duration-300">
+        <span class="relative z-10 flex items-center gap-2 uppercase tracking-[0.2em] text-xs">
+            {{ $slot }}
+            <i class="bi bi-arrow-right text-sm transition-transform duration-500 group-hover:translate-x-1"></i>
+        </span>
+    </div>
+    
+    <!-- Shine Effect -->
+    <div class="absolute inset-0 z-0 h-full w-full translate-x-[-100%] bg-gradient-to-r from-transparent via-white/20 to-transparent transition-transform duration-1000 group-hover:translate-x-[100%]"></div>
 </button>
