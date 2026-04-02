@@ -1,0 +1,32 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Modules\{{name}}\Requests;
+
+use Plugs\Http\Requests\FormRequest;
+
+class CategoryRequest extends FormRequest
+{
+    public function authorize(): bool
+    {
+        return true;
+    }
+
+    public function rules(): array
+    {
+        return [
+            'name' => 'required|min:2',
+            'slug' => 'nullable|string',
+            'description' => 'nullable|string',
+        ];
+    }
+
+    public function sanitizers(): array
+    {
+        return [
+            'name' => 'string',
+            'description' => 'safeHtml',
+        ];
+    }
+}

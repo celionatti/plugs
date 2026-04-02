@@ -35,16 +35,11 @@ class ProductController extends Controller
         ]);
     }
 
-    public function store(Request $request): ResponseInterface
+    public function store(ProductRequest $request): ResponseInterface
     {
-        $data = $request->all();
+        $data = $this->validate(ProductRequest::class);
         $data['slug'] = !empty($data['slug']) ? Str::slug($data['slug']) : Str::slug($data['name']);
         
-        // Ensure price formatting
-        if (isset($data['price'])) {
-            $data['price'] = (float) $data['price'];
-        }
-
         $product = Product::create($data);
 
         $this->handleProductImages($product, $request);
@@ -66,14 +61,14 @@ class ProductController extends Controller
         ]);
     }
 
-    public function update(Request $request, string $id): ResponseInterface
+    public function update(ProductRequest $request, string $id): ResponseInterface
     {
         $product = Product::find((int) $id);
         if (!$product) {
             return $this->redirect('/admin/{{lowerName}}/products')->withError('Product not found.');
         }
 
-        $data = $request->all();
+        $data = $this->validate(ProductRequest::class);
         $data['slug'] = !empty($data['slug']) ? Str::slug($data['slug']) : Str::slug($data['name']);
         
         // Status checks

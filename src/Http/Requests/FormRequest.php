@@ -263,7 +263,25 @@ abstract class FormRequest
     }
 
     /**
-     * Get all input data.
+     * Get an uploaded file from the request.
+     *
+     * @param string $key
+     * @param mixed $default
+     * @return mixed
+     */
+    public function file(string $key, $default = null): mixed
+    {
+        if (!$this->request) {
+            return $default;
+        }
+
+        $files = $this->request->getUploadedFiles();
+
+        return $files[$key] ?? $default;
+    }
+
+    /**
+     * Get all input data, including files if requested.
      */
     public function all(): array
     {

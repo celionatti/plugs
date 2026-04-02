@@ -8,6 +8,7 @@ use Plugs\Base\Controller\Controller;
 use Plugs\Http\Request;
 use Psr\Http\Message\ResponseInterface;
 use Modules\{{name}}\Models\Category;
+use Modules\{{name}}\Requests\CategoryRequest;
 use Plugs\Upload\FileUploader;
 use Plugs\Facades\Storage;
 use Plugs\Utils\Str;
@@ -29,9 +30,9 @@ class CategoryController extends Controller
         ]);
     }
 
-    public function store(Request $request): ResponseInterface
+    public function store(CategoryRequest $request): ResponseInterface
     {
-        $data = $request->all();
+        $data = $this->validate(CategoryRequest::class);
         $data['slug'] = !empty($data['slug']) ? Str::slug($data['slug']) : Str::slug($data['name']);
 
         $imageFile = $request->file('image');
@@ -56,14 +57,14 @@ class CategoryController extends Controller
         ]);
     }
 
-    public function update(Request $request, string $id): ResponseInterface
+    public function update(CategoryRequest $request, string $id): ResponseInterface
     {
         $category = Category::find((int) $id);
         if (!$category) {
             return $this->redirect('/admin/{{lowerName}}/categories')->withError('Category not found.');
         }
 
-        $data = $request->all();
+        $data = $this->validate(CategoryRequest::class);
         $data['slug'] = !empty($data['slug']) ? Str::slug($data['slug']) : Str::slug($data['name']);
 
         $imageFile = $request->file('image');
