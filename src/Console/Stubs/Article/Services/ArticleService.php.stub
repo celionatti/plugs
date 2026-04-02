@@ -6,6 +6,7 @@ namespace Modules\{{name}}\Services;
 
 use Modules\{{name}}\Models\{{name}};
 use Plugs\Upload\FileUploader;
+use Plugs\Facades\Storage;
 use Plugs\Utils\Str;
 
 class {{name}}Service
@@ -46,6 +47,10 @@ class {{name}}Service
     public function updateArticle({{name}} $article, array $data, $imageFile = null): bool
     {
         if ($imageFile && $imageFile->getError() === UPLOAD_ERR_OK) {
+            // Delete old image if it exists
+            if (!empty($article->image)) {
+                Storage::disk('public')->delete($article->image);
+            }
             $data['image'] = $this->handleImageUpload($imageFile);
         }
 
@@ -57,6 +62,10 @@ class {{name}}Service
      */
     public function deleteArticle({{name}} $article): bool
     {
+        if (!empty($article->image)) {
+            Storage::disk('public')->delete($article->image);
+        }
+
         return $article->delete();
     }
 
