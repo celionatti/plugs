@@ -7,9 +7,11 @@ namespace Plugs\Console\Commands;
 use Plugs\Console\Command;
 use Plugs\Console\Support\Filesystem;
 use Plugs\Console\Support\Str;
+use Plugs\Console\Traits\RegistersModules;
 
 class MakeEcommerceModuleCommand extends Command
 {
+    use RegistersModules;
     protected string $description = 'Create a fully functional eCommerce module with products, categories, and orders';
 
     protected function defineArguments(): array
@@ -110,11 +112,11 @@ class MakeEcommerceModuleCommand extends Command
             'Namespace' => "Modules\\{$name}\\"
         ], $this->elapsed());
 
-        $this->section('Next Steps');
-        $this->numberedList([
-            "Run `php theplugs migrate` to create the database tables.",
-            "Visit `/admin/{$lowerName}/products` to start managing your store."
-        ]);
+        $this->newLine();
+        $this->note("The eCommerce module has been automatically registered in config/modules.php.");
+
+        // Register the module in the config file
+        $this->registerModuleInConfig($name);
 
         return 0;
     }

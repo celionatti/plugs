@@ -6,9 +6,11 @@ namespace Plugs\Console\Commands;
 
 use Plugs\Console\Command;
 use Plugs\Console\Support\Filesystem;
+use Plugs\Console\Traits\RegistersModules;
 
 class AuthInstallCommand extends Command
 {
+    use RegistersModules;
     protected string $description = 'Publish the authentication scaffolding and migrations';
 
     protected function defineOptions(): array
@@ -59,12 +61,10 @@ class AuthInstallCommand extends Command
         }
 
         $this->newLine();
-        $this->box(
-            "Auth scaffolding installed successfully!\n\n" .
-            "Your database and models are fully configured.",
-            "✅ Success",
-            "success"
-        );
+        $this->note("The Authentication module has been automatically registered in config/modules.php.");
+
+        // Register the module in the config file
+        $this->registerModuleInConfig('Auth');
 
         return 0;
     }

@@ -7,9 +7,11 @@ namespace Plugs\Console\Commands;
 use Plugs\Console\Command;
 use Plugs\Console\Support\Filesystem;
 use Plugs\Console\Support\Str;
+use Plugs\Console\Traits\RegistersModules;
 
 class MakeFeatureModuleCommand extends Command
 {
+    use RegistersModules;
     protected string $description = 'Create a new feature module (mini-app with Controllers, Models, Routes, Migrations)';
 
     protected function defineArguments(): array
@@ -200,7 +202,10 @@ class MakeFeatureModuleCommand extends Command
         ]);
 
         $this->newLine();
-        $this->note("The module will be auto-discovered on next request. No manual registration needed!");
+        $this->note("The module has been automatically registered and enabled in config/modules.php.");
+
+        // Register the module in the config file
+        $this->registerModuleInConfig($name);
 
         return 0;
     }

@@ -7,9 +7,11 @@ namespace Plugs\Console\Commands;
 use Plugs\Console\Command;
 use Plugs\Console\Support\Filesystem;
 use Plugs\Console\Support\Str;
+use Plugs\Console\Traits\RegistersModules;
 
 class MakeArticleModuleCommand extends Command
 {
+    use RegistersModules;
     protected string $description = 'Create a dedicated Article module with images and author relationships';
 
     protected function defineArguments(): array
@@ -117,11 +119,11 @@ ICON;
             'Namespace' => "Modules\\{$name}\\"
         ], $this->elapsed());
 
-        $this->section('Next Steps');
-        $this->numberedList([
-            "Run `php theplugs migrate` to create the article tables.",
-            "Visit `/admin/articles` to start managing your content."
-        ]);
+        $this->newLine();
+        $this->note("The Article module has been automatically registered in config/modules.php.");
+
+        // Register the module in the config file
+        $this->registerModuleInConfig($name);
 
         return 0;
     }

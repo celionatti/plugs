@@ -6,9 +6,11 @@ namespace Plugs\Console\Commands;
 
 use Plugs\Console\Command;
 use Plugs\Console\Support\Filesystem;
+use Plugs\Console\Traits\RegistersModules;
 
 class AdminInstallCommand extends Command
 {
+    use RegistersModules;
     protected string $description = 'Install the Monochrome Admin Panel module';
 
     protected function defineOptions(): array
@@ -69,11 +71,10 @@ class AdminInstallCommand extends Command
         }
 
         $this->newLine();
-        $this->resultSummary([
-            'Module' => 'Monochrome Admin',
-            'Location' => 'modules/Admin/',
-            'Route Prefix' => '/admin'
-        ], $this->elapsed());
+        $this->note("The Administrative module has been automatically registered in config/modules.php.");
+
+        // Register the module in the config file
+        $this->registerModuleInConfig('Admin');
 
         return 0;
     }
