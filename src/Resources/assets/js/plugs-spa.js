@@ -1536,7 +1536,9 @@ class PlugsSPA {
       styleFragments.forEach((el) => el.remove());
       scriptFragments.forEach((el) => el.remove());
 
-      const cleanHTML = doc.body.innerHTML;
+      // Extract only the part we actually need
+      const targetInDoc = doc.querySelector(targetSelector);
+      const cleanHTML = targetInDoc ? targetInDoc.innerHTML : doc.body.innerHTML;
 
       const performUpdate = () => {
         if (this.currentView?.unmount) {
@@ -1560,8 +1562,12 @@ class PlugsSPA {
         const existingScripts = Array.from(document.querySelectorAll("script"));
         scriptFragments.forEach((oldScript) => {
           if (oldScript.hasAttribute("data-spa-ignore")) return;
-          if (oldScript.src && existingScripts.some(s => s.src === oldScript.src)) return;
-          if (!oldScript.src && oldScript.innerHTML && existingScripts.some(s => s.innerHTML === oldScript.innerHTML)) return;
+          
+          // Only skip external scripts that are already in the document, ignoring version strings.
+          if (oldScript.src) {
+            const oldUrl = oldScript.src.split('?')[0];
+            if (existingScripts.some(s => s.src && s.src.split('?')[0] === oldUrl)) return;
+          }
 
           const newScript = document.createElement("script");
           Array.from(oldScript.attributes).forEach((attr) =>
@@ -1569,12 +1575,15 @@ class PlugsSPA {
           );
           newScript.setAttribute("data-spa-injected", "true");
           if (oldScript.innerHTML) {
-            newScript.appendChild(document.createTextNode(oldScript.innerHTML));
+            newScript.text = oldScript.innerHTML;
           }
           document.body.appendChild(newScript);
         });
 
-        this.initializeComponents(contentArea);
+        // Ensure scripts are parsed and executed before initializing components
+        requestAnimationFrame(() => {
+            this.initializeComponents(contentArea);
+        });
 
         if (pushState && isMainContent) {
           window.history.pushState({ spa: true }, "", url);

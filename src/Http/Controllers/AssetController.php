@@ -56,11 +56,16 @@ class AssetController
         $content = file_get_contents($path);
         $contentType = self::MIME_TYPES[$type] ?? 'application/octet-stream';
 
+        $isLocal = config('app.env') === 'local';
+        $cacheControl = $isLocal 
+            ? 'public, max-age=60' 
+            : 'public, max-age=31536000, immutable';
+
         return response($content, 200, [
             'Content-Type' => $contentType,
             'Content-Length' => (string) $size,
             'ETag' => $etag,
-            'Cache-Control' => 'public, max-age=31536000, immutable',
+            'Cache-Control' => $cacheControl,
             'X-Plugs-Asset' => basename($path),
         ]);
     }
@@ -101,6 +106,25 @@ class AssetController
 
         // Fallback to the exact requested file
         $path = $dir . $file;
+        
+        // DEVELOPMENT ENHANCEMENT: If the un-minified source exists and is newer than 
+        // the minified version, or if we are in local development, prefer the source.
+        if ($type === 'js' && str_ends_with($file, '.min.js')) {
+            $sourceFile = str_replace('.min.js', '.js', $file);
+            // Handle plugs-framework.min.js -> plugs-spa.js mapping
+            if ($file === 'plugs-framework.min.js') {
+                $sourceFile = 'plugs-spa.js';
+            }
+            
+            $sourcePath = $dir . $sourceFile;
+            if (file_exists($sourcePath)) {
+                // If source is newer or minified doesn't exist, use source
+                if (!file_exists($path) || filemtime($sourcePath) > filemtime($path)) {
+                    return $sourcePath;
+                }
+            }
+        }
+
         return file_exists($path) ? $path : null;
     }
 }
