@@ -14,11 +14,17 @@ class QueryAnalyzer
     ];
     private static array $queryLog = [];
     private static bool $loggingQueries = false;
+    private static bool $silenceConsoleWarnings = false;
 
     public static function enable(bool $enable = true): void
     {
         self::$enableQueryAnalysis = $enable;
         self::$loggingQueries = $enable;
+    }
+
+    public static function silenceConsoleWarnings(bool $silence = true): void
+    {
+        self::$silenceConsoleWarnings = $silence;
     }
 
     public static function isEnabled(): bool
@@ -131,7 +137,9 @@ class QueryAnalyzer
 
     private static function logWarning(string $message, array $context): void
     {
-        error_log(sprintf("[DB Warning] %s: %s", $message, json_encode($context, JSON_UNESCAPED_SLASHES)));
+        if (!self::$silenceConsoleWarnings) {
+            error_log(sprintf("[DB Warning] %s: %s", $message, json_encode($context, JSON_UNESCAPED_SLASHES)));
+        }
     }
 
     public static function getReport(): array

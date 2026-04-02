@@ -63,6 +63,10 @@ class Connection
         'n_plus_one_threshold' => 10, // Similar queries in a row
     ];
 
+    // Observability & Alerts
+    private static bool $silenceSlowQueryAlerts = false;
+    private static float $slowQueryAlertThreshold = 0.1;
+
     private ?PDO $pdo = null;
     private ?PDO $readPdo = null;
     private string $connectionName;
@@ -573,6 +577,30 @@ class Connection
     public static function resetQueryStats(): void
     {
         QueryAnalyzer::resetStats();
+    }
+
+    /**
+     * Silence slow query alerts globally for this process.
+     */
+    public static function silenceSlowQueryAlerts(bool $silence = true): void
+    {
+        self::$silenceSlowQueryAlerts = $silence;
+    }
+
+    /**
+     * Set the global threshold for slow query alerts.
+     */
+    public static function setSlowQueryAlertThreshold(float $threshold): void
+    {
+        self::$slowQueryAlertThreshold = $threshold;
+    }
+
+    /**
+     * Check if slow query alerts are currently silenced.
+     */
+    public static function areSlowQueryAlertsSilenced(): bool
+    {
+        return self::$silenceSlowQueryAlerts;
     }
 
     // ==================== EXISTING METHODS (Enhanced) ====================
@@ -1234,12 +1262,12 @@ class Connection
             );
         }
 
-        $threshold = 0.1; // Default 100ms
-        $shouldAlert = true;
+        $threshold = self::$slowQueryAlertThreshold;
+        $shouldAlert = !self::$silenceSlowQueryAlerts;
 
         if ($modelClass && property_exists($modelClass, 'observabilityConfig') && $modelClass::$observabilityConfig) {
             $threshold = $modelClass::$observabilityConfig->slowQueryThreshold;
-            $shouldAlert = $modelClass::$observabilityConfig->alertOnSlow;
+            $shouldAlert = $modelClass::$observabilityConfig->alertOnSlow && !self::$silenceSlowQueryAlerts;
         }
 
         $isSlow = $time > $threshold;

@@ -34,6 +34,15 @@ class MigrateResetCommand extends Command
 
         try {
             $connection = Connection::getInstance();
+
+            // Silence slow query warnings during migrations unless verbose mode is enabled
+            if (!$this->isVerbose()) {
+                Connection::silenceSlowQueryAlerts(true);
+                if (class_exists(\Plugs\Database\Analysis\QueryAnalyzer::class)) {
+                    \Plugs\Database\Analysis\QueryAnalyzer::silenceConsoleWarnings(true);
+                }
+            }
+
             $migrationPath = base_path('database/Migrations');
 
             // Collect migration paths: base + feature modules
