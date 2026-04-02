@@ -21,4 +21,13 @@ class Brand extends PlugModel
     {
         return $this->hasMany(Product::class);
     }
+
+    public function getLogoUrl()
+    {
+        if ($this->logo && filter_var($this->logo, FILTER_VALIDATE_URL)) {
+            return $this->logo;
+        }
+
+        return $this->logo ? '/storage/' . ltrim($this->logo, '/') : null;
+    }
 }

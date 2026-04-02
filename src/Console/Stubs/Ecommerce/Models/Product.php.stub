@@ -37,4 +37,18 @@ class Product extends PlugModel
     {
         return $this->belongsToMany(Order::class, 'order_items');
     }
+
+    public function images()
+    {
+        return $this->hasMany(ProductImage::class);
+    }
+
+    public function getImageUrl()
+    {
+        if ($this->image && filter_var($this->image, FILTER_VALIDATE_URL)) {
+            return $this->image;
+        }
+
+        return $this->image ? '/storage/' . ltrim($this->image, '/') : null;
+    }
 }

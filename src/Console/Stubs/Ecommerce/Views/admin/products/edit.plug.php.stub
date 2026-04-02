@@ -1,0 +1,239 @@
+@extends('admin::layouts.admin')
+
+@section('title', 'Edit Product')
+
+@section('content')
+<div class="px-4 sm:px-6 lg:px-8 py-8 w-full max-w-5xl mx-auto">
+    <div class="mb-8 font-bold">
+        <a href="/admin/{{lowerName}}/products" class="inline-flex items-center gap-2 text-slate-500 dark:text-slate-400 hover:text-primary dark:hover:text-primary transition-colors mb-4">
+            <i class="bi bi-arrow-left"></i>
+            Back to Products
+        </a>
+        <h1 class="text-3xl font-bold text-slate-900 dark:text-white">Edit Product</h1>
+        <p class="text-slate-500 dark:text-slate-400 mt-1 font-medium italic">Editing: {{ $product->name }}</p>
+    </div>
+
+    <form action="/admin/{{lowerName}}/products/{{ $product->id }}" method="POST" enctype="multipart/form-data" class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        @csrf
+        @method('PUT')
+        <input type="hidden" name="featured_image_id" id="featured_image_id" value="">
+        <input type="hidden" name="featured_image_index" id="featured_image_index" value="">
+
+        <div class="lg:col-span-2 space-y-6">
+            <!-- Details Card -->
+            <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 shadow-sm">
+                <h3 class="text-lg font-bold text-slate-900 dark:text-white mb-6">General Information</h3>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div class="md:col-span-2">
+                        <label class="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">Product Name</label>
+                        <input type="text" name="name" value="{{ old('name', $product->name) }}" placeholder="e.g. Wireless Noise-Cancelling Headphones" class="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-white focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all font-semibold" required>
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">Category</label>
+                        <select name="category_id" required class="block w-full px-4 py-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-white rounded-xl shadow-sm focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all font-semibold">
+                            <option value="">Select Category</option>
+                            @foreach($categories as $category)
+                                <option value="{{ $category->id }}" {{ $product->category_id == $category->id ? 'selected' : '' }}>{{ $category->name }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">Brand</label>
+                        <select name="brand_id" class="block w-full px-4 py-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-white rounded-xl shadow-sm focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all font-semibold">
+                            <option value="">Select Brand</option>
+                            @foreach($brands as $brand)
+                                <option value="{{ $brand->id }}" {{ $product->brand_id == $brand->id ? 'selected' : '' }}>{{ $brand->name }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+
+                    <div class="md:col-span-2">
+                        <label class="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">Description</label>
+                        <textarea name="description" rows="5" class="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-white focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all font-medium">{{ old('description', $product->description) }}</textarea>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Existing Images Card -->
+            <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 shadow-sm">
+                <h3 class="text-lg font-bold text-slate-900 dark:text-white mb-4">Manage Current Images</h3>
+                <div class="grid grid-cols-2 sm:grid-cols-4 gap-4" id="existing-images">
+                    @foreach($product->images as $image)
+                        <div class="group relative aspect-square rounded-xl overflow-hidden shadow-sm border-2 {{ $image->is_featured ? 'border-primary ring-2 ring-primary/20 bg-primary/5' : 'border-slate-200 dark:border-slate-700' }}" id="img-container-{{ $image->id }}">
+                            <img src="{{ $image->getUrl() }}" class="w-full h-full object-cover">
+                            <div class="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+                                <label class="cursor-pointer bg-white text-slate-900 p-2 rounded-full hover:bg-primary hover:text-white transition-all shadow-lg" title="Set as Featured">
+                                    <input type="radio" name="existing_featured" value="{{ $image->id }}" {{ $image->is_featured ? 'checked' : '' }} class="hidden" onclick="setFeaturedExisting('{{ $image->id }}')">
+                                    <i class="bi bi-star{{ $image->is_featured ? '-fill' : '' }}"></i>
+                                </label>
+                                <button type="button" onclick="deleteExisting('{{ $image->id }}')" class="bg-white text-rose-600 p-2 rounded-full hover:bg-rose-600 hover:text-white transition-all shadow-lg" title="Delete Image">
+                                    <i class="bi bi-trash"></i>
+                                </button>
+                            </div>
+                            @if($image->is_featured)
+                                <div class="absolute top-2 left-2 bg-primary text-white text-[10px] font-bold px-2 py-0.5 rounded shadow-sm">FEATURED</div>
+                            @endif
+                            <input type="checkbox" name="delete_images[]" value="{{ $image->id }}" id="delete-{{ $image->id }}" class="hidden">
+                        </div>
+                    @endforeach
+                </div>
+            </div>
+
+            <!-- New Images Card -->
+            <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 shadow-sm">
+                <div class="flex items-center justify-between mb-4">
+                    <h3 class="text-lg font-bold text-slate-900 dark:text-white">Upload New Images</h3>
+                    <div class="relative">
+                        <input type="file" name="images[]" id="images_input" multiple accept="image/*" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer w-32" onchange="handleImagePreview(event)">
+                        <button type="button" class="bg-primary/10 text-primary font-bold text-sm px-4 py-2 rounded-lg hover:bg-primary/20 transition-colors pointer-events-none">
+                            <i class="bi bi-plus-lg mr-1"></i> Add More
+                        </button>
+                    </div>
+                </div>
+                <div id="image-previews" class="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                    <!-- New previews will appear here -->
+                </div>
+            </div>
+        </div>
+
+        <div class="space-y-6">
+            <!-- Pricing & Stock Card -->
+            <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 shadow-sm">
+                <h3 class="text-lg font-bold text-slate-900 dark:text-white mb-4">Pricing & Inventory</h3>
+                
+                <div class="space-y-5">
+                    <div>
+                        <label class="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">Price ($)</label>
+                        <div class="relative">
+                            <div class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-4">
+                                <span class="text-slate-400 font-bold">$</span>
+                            </div>
+                            <input type="number" step="0.01" name="price" value="{{ old('price', $product->price) }}" class="block w-full pl-8 py-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-white rounded-xl shadow-sm focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all font-bold" required>
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">Stock Level</label>
+                        <input type="number" name="stock" value="{{ old('stock', $product->stock) }}" class="block w-full px-4 py-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-white rounded-xl shadow-sm focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all font-bold">
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2 font-mono text-[10px]">SKU</label>
+                        <input type="text" name="sku" value="{{ old('sku', $product->sku) }}" placeholder="PROD-001" class="block w-full px-4 py-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-white rounded-xl shadow-sm focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all font-medium uppercase font-mono">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Meta Card -->
+            <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 shadow-sm">
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">Status</label>
+                        <select name="status" class="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-white focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all font-bold">
+                            <option value="active" {{ $product->status === 'active' ? 'selected' : '' }}>Active</option>
+                            <option value="draft" {{ $product->status === 'draft' ? 'selected' : '' }}>Draft</option>
+                            <option value="out_of_stock" {{ $product->status === 'out_of_stock' ? 'selected' : '' }}>Out of Stock</option>
+                            <option value="inactive" {{ $product->status === 'inactive' ? 'selected' : '' }}>Inactive</option>
+                        </select>
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2 uppercase tracking-widest text-[10px]">Custom Slug</label>
+                        <input type="text" name="slug" value="{{ old('slug', $product->slug) }}" class="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-white focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all font-semibold text-sm">
+                    </div>
+                </div>
+            </div>
+
+            <button type="submit" class="w-full bg-primary hover:brightness-110 text-white font-bold py-4 rounded-2xl transition-all shadow-xl shadow-primary/20 active:scale-[0.98] flex items-center justify-center gap-2">
+                <i class="bi bi-cloud-check text-lg"></i>
+                Update Product
+            </button>
+        </div>
+    </form>
+</div>
+
+<script>
+function setFeaturedExisting(id) {
+    document.getElementById('featured_image_id').value = id;
+    document.getElementById('featured_image_index').value = ''; // clear new selection
+    
+    // Reset all existing containers UI
+    const containers = document.querySelectorAll('[id^="img-container-"]');
+    containers.forEach(c => {
+        c.classList.remove('border-primary', 'ring-2', 'ring-primary/20', 'bg-primary/5');
+        c.classList.add('border-slate-200', 'dark:border-slate-700');
+        const star = c.querySelector('.bi-star-fill');
+        if(star) star.classList.replace('bi-star-fill', 'bi-star');
+        const badge = c.querySelector('.absolute.top-2.left-2');
+        if(badge) badge.remove();
+    });
+    
+    // Set active container UI
+    const active = document.getElementById('img-container-' + id);
+    active.classList.add('border-primary', 'ring-2', 'ring-primary/20', 'bg-primary/5');
+    active.classList.remove('border-slate-200', 'dark:border-slate-700');
+    const star = active.querySelector('.bi-star');
+    if(star) star.classList.replace('bi-star', 'bi-star-fill');
+    
+    // Add badge
+    const badge = document.createElement('div');
+    badge.className = 'absolute top-2 left-2 bg-primary text-white text-[10px] font-bold px-2 py-0.5 rounded shadow-sm';
+    badge.innerText = 'FEATURED';
+    active.appendChild(badge);
+
+    // Clear any new image featured selection UI
+    const newCards = document.getElementById('image-previews').children;
+    Array.from(newCards).forEach(card => card.classList.remove('border-primary', 'ring-2', 'ring-primary/20', 'bg-primary/5'));
+}
+
+function deleteExisting(id) {
+    if(!confirm('Mark this image for deletion? It will be removed when you save.')) return;
+    const container = document.getElementById('img-container-' + id);
+    container.classList.add('opacity-30', 'grayscale', 'pointer-events-none');
+    document.getElementById('delete-' + id).checked = true;
+}
+
+function handleImagePreview(event) {
+    const files = event.target.files;
+    const previewContainer = document.getElementById('image-previews');
+    const featuredIndexInput = document.getElementById('featured_image_index');
+    const featuredIdInput = document.getElementById('featured_image_id');
+    
+    previewContainer.innerHTML = '';
+    
+    Array.from(files).forEach((file, index) => {
+        const url = URL.createObjectURL(file);
+        const card = document.createElement('div');
+        
+        card.className = 'group relative aspect-square rounded-xl overflow-hidden shadow-sm border-2 border-slate-200 dark:border-slate-700 hover:border-slate-300 transition-all';
+        card.innerHTML = `
+            <img src="${url}" class="w-full h-full object-cover">
+            <div class="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                <button type="button" onclick="setFeaturedNew(${index}, this)" class="bg-white text-slate-900 p-2 rounded-full hover:bg-primary hover:text-white transition-all shadow-lg" title="Set as Featured">
+                    <i class="bi bi-star"></i>
+                </button>
+            </div>
+            <div class="absolute top-1 right-1 bg-emerald-500 text-white text-[8px] font-bold px-1.5 py-0.5 rounded">NEW</div>
+        `;
+        previewContainer.appendChild(card);
+    });
+}
+
+function setFeaturedNew(index, btn) {
+    document.getElementById('featured_image_index').value = index;
+    document.getElementById('featured_image_id').value = ''; // clear existing selection
+    
+    // Reset all (existing + new)
+    const existing = document.querySelectorAll('[id^="img-container-"]');
+    existing.forEach(c => c.classList.remove('border-primary', 'ring-2', 'ring-primary/20', 'bg-primary/5'));
+    
+    const newCards = document.getElementById('image-previews').children;
+    Array.from(newCards).forEach((card, i) => {
+        card.classList.remove('border-primary', 'ring-2', 'ring-primary/20', 'bg-primary/5');
+        if(i === index) card.classList.add('border-primary', 'ring-2', 'ring-primary/20', 'bg-primary/5');
+    });
+}
+</script>
+@endsection

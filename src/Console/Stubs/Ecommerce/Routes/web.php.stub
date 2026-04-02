@@ -8,19 +8,50 @@ use Modules\{{name}}\Controllers\Admin\BrandController;
 use Modules\{{name}}\Controllers\Admin\ProductController;
 use Modules\{{name}}\Controllers\Admin\OrderController;
 
-// Admin Ecommerce routes
-Route::get('/categories', [CategoryController::class, 'index'])->name('admin.{{lowerName}}.categories.index');
-Route::post('/categories', [CategoryController::class, 'store'])->name('admin.{{lowerName}}.categories.store');
-Route::post('/categories/delete/{id}', [CategoryController::class, 'delete'])->name('admin.{{lowerName}}.categories.delete');
+/*
+|--------------------------------------------------------------------------
+| {{name}} Admin Routes
+|--------------------------------------------------------------------------
+| Prefix: /admin/{{lowerName}}
+*/
 
-Route::get('/brands', [BrandController::class, 'index'])->name('admin.{{lowerName}}.brands.index');
-Route::post('/brands', [BrandController::class, 'store'])->name('admin.{{lowerName}}.brands.store');
-Route::post('/brands/delete/{id}', [BrandController::class, 'delete'])->name('admin.{{lowerName}}.brands.delete');
+Route::get('/', function() {
+    return Plugs\Facades\Response::redirect('/admin/{{lowerName}}/products');
+})->name('admin.{{lowerName}}.dashboard');
 
-Route::get('/products', [ProductController::class, 'index'])->name('admin.{{lowerName}}.products.index');
-Route::post('/products', [ProductController::class, 'store'])->name('admin.{{lowerName}}.products.store');
-Route::post('/products/delete/{id}', [ProductController::class, 'delete'])->name('admin.{{lowerName}}.products.delete');
+// Categories
+Route::group(['prefix' => '/categories'], function () {
+    Route::get('/', [CategoryController::class, 'index'])->name('admin.{{lowerName}}.categories.index');
+    Route::get('/create', [CategoryController::class, 'create'])->name('admin.{{lowerName}}.categories.create');
+    Route::post('/', [CategoryController::class, 'store'])->name('admin.{{lowerName}}.categories.store');
+    Route::get('/{id}/edit', [CategoryController::class, 'edit'])->name('admin.{{lowerName}}.categories.edit');
+    Route::put('/{id}', [CategoryController::class, 'update'])->name('admin.{{lowerName}}.categories.update');
+    Route::post('/delete/{id}', [CategoryController::class, 'delete'])->name('admin.{{lowerName}}.categories.delete');
+});
 
-Route::get('/orders', [OrderController::class, 'index'])->name('admin.{{lowerName}}.orders.index');
-Route::get('/orders/show/{id}', [OrderController::class, 'show'])->name('admin.{{lowerName}}.orders.show');
-Route::post('/orders/update-status/{id}', [OrderController::class, 'updateStatus'])->name('admin.{{lowerName}}.orders.update-status');
+// Brands
+Route::group(['prefix' => '/brands'], function () {
+    Route::get('/', [BrandController::class, 'index'])->name('admin.{{lowerName}}.brands.index');
+    Route::get('/create', [BrandController::class, 'create'])->name('admin.{{lowerName}}.brands.create');
+    Route::post('/', [BrandController::class, 'store'])->name('admin.{{lowerName}}.brands.store');
+    Route::get('/{id}/edit', [BrandController::class, 'edit'])->name('admin.{{lowerName}}.brands.edit');
+    Route::put('/{id}', [BrandController::class, 'update'])->name('admin.{{lowerName}}.brands.update');
+    Route::post('/delete/{id}', [BrandController::class, 'delete'])->name('admin.{{lowerName}}.brands.delete');
+});
+
+// Products
+Route::group(['prefix' => '/products'], function () {
+    Route::get('/', [ProductController::class, 'index'])->name('admin.{{lowerName}}.products.index');
+    Route::get('/create', [ProductController::class, 'create'])->name('admin.{{lowerName}}.products.create');
+    Route::post('/', [ProductController::class, 'store'])->name('admin.{{lowerName}}.products.store');
+    Route::get('/{id}/edit', [ProductController::class, 'edit'])->name('admin.{{lowerName}}.products.edit');
+    Route::put('/{id}', [ProductController::class, 'update'])->name('admin.{{lowerName}}.products.update');
+    Route::post('/delete/{id}', [ProductController::class, 'delete'])->name('admin.{{lowerName}}.products.delete');
+});
+
+// Orders
+Route::group(['prefix' => '/orders'], function () {
+    Route::get('/', [OrderController::class, 'index'])->name('admin.{{lowerName}}.orders.index');
+    Route::get('/{id}', [OrderController::class, 'show'])->name('admin.{{lowerName}}.orders.show');
+    Route::post('/status/{id}', [OrderController::class, 'updateStatus'])->name('admin.{{lowerName}}.orders.update_status');
+});

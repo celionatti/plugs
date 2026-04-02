@@ -8,6 +8,8 @@ use Plugs\Base\Controller\Controller;
 use Plugs\Http\Request;
 use Psr\Http\Message\ResponseInterface;
 use Modules\{{name}}\Models\Brand;
+use Plugs\Upload\FileUploader;
+use Plugs\Facades\Storage;
 use Plugs\Utils\Str;
 
 class BrandController extends Controller
@@ -20,23 +22,84 @@ class BrandController extends Controller
         ]);
     }
 
+    public function create(): ResponseInterface
+    {
+        return $this->view('{{lowerName}}::admin/brands/create', [
+            'brand' => new Brand()
+        ]);
+    }
+
     public function store(Request $request): ResponseInterface
     {
         $data = $request->all();
-        $data['slug'] = Str::slug($data['name']);
+        $data['slug'] = !empty($data['slug']) ? Str::slug($data['slug']) : Str::slug($data['name']);
+
+        $imageFile = $request->file('logo');
+        if ($imageFile && $imageFile->getError() === UPLOAD_ERR_OK) {
+            $data['logo'] = $this->handleLogoUpload($imageFile);
+        }
 
         Brand::create($data);
 
-        return $this->redirect('/admin/{{lowerName}}/brands')->withSuccess('Brand added successfully.');
+        return $this->redirect('/admin/{{lowerName}}/brands')->withSuccess('Brand created successfully.');
+    }
+
+    public function edit(string $id): ResponseInterface
+    {
+        $brand = Brand::find((int) $id);
+        if (!$brand) {
+            return $this->redirect('/admin/{{lowerName}}/brands')->withError('Brand not found.');
+        }
+
+        return $this->view('{{lowerName}}::admin/brands/edit', [
+            'brand' => $brand
+        ]);
+    }
+
+    public function update(Request $request, string $id): ResponseInterface
+    {
+        $brand = Brand::find((int) $id);
+        if (!$brand) {
+            return $this->redirect('/admin/{{lowerName}}/brands')->withError('Brand not found.');
+        }
+
+        $data = $request->all();
+        $data['slug'] = !empty($data['slug']) ? Str::slug($data['slug']) : Str::slug($data['name']);
+
+        $imageFile = $request->file('logo');
+        if ($imageFile && $imageFile->getError() === UPLOAD_ERR_OK) {
+            if (!empty($brand->logo)) {
+                Storage::disk('public')->delete($brand->logo);
+            }
+            $data['logo'] = $this->handleLogoUpload($imageFile);
+        }
+
+        $brand->update($data);
+
+        return $this->redirect('/admin/{{lowerName}}/brands')->withSuccess('Brand updated successfully.');
     }
 
     public function delete(string $id): ResponseInterface
     {
         $brand = Brand::find((int) $id);
         if ($brand) {
+            if (!empty($brand->logo)) {
+                Storage::disk('public')->delete($brand->logo);
+            }
             $brand->delete();
         }
 
         return $this->redirect('/admin/{{lowerName}}/brands')->withSuccess('Brand deleted successfully.');
+    }
+
+    protected function handleLogoUpload($file): string
+    {
+        $uploader = FileUploader::make('public')
+            ->setBasePath('brands')
+            ->imagesOnly();
+
+        $result = $uploader->upload($file);
+
+        return $result['path'];
     }
 }

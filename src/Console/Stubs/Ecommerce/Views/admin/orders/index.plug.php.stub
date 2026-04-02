@@ -37,17 +37,17 @@
                                     @if($order->status === 'pending')
                                         <span class="inline-flex rounded-full bg-amber-100 dark:bg-amber-500/10 px-2.5 py-0.5 text-xs font-bold leading-5 text-amber-800 dark:text-amber-400 uppercase tracking-wider">Pending</span>
                                     @elseif($order->status === 'shipped')
-                                        <span class="inline-flex rounded-full bg-indigo-100 dark:bg-indigo-500/10 px-2.5 py-0.5 text-xs font-bold leading-5 text-indigo-800 dark:text-indigo-400 uppercase tracking-wider">Shipped</span>
-                                    @elseif($order->status === 'completed')
+                                        <span class="inline-flex rounded-full bg-primary/10 dark:bg-primary/20 px-2.5 py-0.5 text-xs font-bold leading-5 text-primary uppercase tracking-wider">Shipped</span>
+                                    @elseif($order->status === 'completed' || $order->status === 'delivered')
                                         <span class="inline-flex rounded-full bg-emerald-100 dark:bg-emerald-500/10 px-2.5 py-0.5 text-xs font-bold leading-5 text-emerald-800 dark:text-emerald-400 uppercase tracking-wider">Completed</span>
                                     @else
                                         <span class="inline-flex rounded-full bg-slate-100 dark:bg-slate-800 px-2.5 py-0.5 text-xs font-bold leading-5 text-slate-600 dark:text-slate-400 uppercase tracking-wider">{{ $order->status }}</span>
                                     @endif
                                 </td>
                                 <td class="relative whitespace-nowrap py-4 pl-3 pr-4 text-right text-sm font-medium sm:pr-6">
-                                    <a href="/admin/{{lowerName}}/orders/show/{{ $order->id }}" class="text-indigo-600 hover:text-indigo-900 dark:text-indigo-400 dark:hover:text-indigo-300 transition-colors">
-                                        Details
-                                        <i class="bi bi-chevron-right ml-1"></i>
+                                    <a href="/admin/{{lowerName}}/orders/{{ $order->id }}" class="text-primary hover:brightness-110 transition-colors font-bold flex items-center justify-end gap-1">
+                                        View Details
+                                        <i class="bi bi-arrow-right"></i>
                                     </a>
                                 </td>
                             </tr>

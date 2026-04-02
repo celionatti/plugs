@@ -8,42 +8,171 @@ use Plugs\Base\Controller\Controller;
 use Plugs\Http\Request;
 use Psr\Http\Message\ResponseInterface;
 use Modules\{{name}}\Models\Product;
+use Modules\{{name}}\Models\ProductImage;
 use Modules\{{name}}\Models\Category;
 use Modules\{{name}}\Models\Brand;
+use Plugs\Upload\FileUploader;
+use Plugs\Facades\Storage;
 use Plugs\Utils\Str;
 
 class ProductController extends Controller
 {
     public function index(): ResponseInterface
     {
-        $products = Product::all();
-        $categories = Category::all();
-        $brands = Brand::all();
-
+        $products = Product::with(['category', 'brand'])->get();
+        
         return $this->view('{{lowerName}}::admin/products/index', [
-            'products' => $products,
-            'categories' => $categories,
-            'brands' => $brands
+            'products' => $products
+        ]);
+    }
+
+    public function create(): ResponseInterface
+    {
+        return $this->view('{{lowerName}}::admin/products/create', [
+            'product' => new Product(),
+            'categories' => Category::all(),
+            'brands' => Brand::all()
         ]);
     }
 
     public function store(Request $request): ResponseInterface
     {
         $data = $request->all();
-        $data['slug'] = Str::slug($data['name']);
+        $data['slug'] = !empty($data['slug']) ? Str::slug($data['slug']) : Str::slug($data['name']);
+        
+        // Ensure price formatting
+        if (isset($data['price'])) {
+            $data['price'] = (float) $data['price'];
+        }
 
-        Product::create($data);
+        $product = Product::create($data);
+
+        $this->handleProductImages($product, $request);
 
         return $this->redirect('/admin/{{lowerName}}/products')->withSuccess('Product added successfully.');
     }
 
-    public function delete(string $id): ResponseInterface
+    public function edit(string $id): ResponseInterface
     {
-        $product = Product::find((int) $id);
-        if ($product) {
-            $product->delete();
+        $product = Product::with('images')->find((int) $id);
+        if (!$product) {
+            return $this->redirect('/admin/{{lowerName}}/products')->withError('Product not found.');
         }
 
-        return $this->redirect('/admin/{{lowerName}}/products')->withSuccess('Product deleted successfully.');
+        return $this->view('{{lowerName}}::admin/products/edit', [
+            'product' => $product,
+            'categories' => Category::all(),
+            'brands' => Brand::all()
+        ]);
+    }
+
+    public function update(Request $request, string $id): ResponseInterface
+    {
+        $product = Product::find((int) $id);
+        if (!$product) {
+            return $this->redirect('/admin/{{lowerName}}/products')->withError('Product not found.');
+        }
+
+        $data = $request->all();
+        $data['slug'] = !empty($data['slug']) ? Str::slug($data['slug']) : Str::slug($data['name']);
+        
+        // Status checks
+        if (!isset($data['status'])) {
+            $data['status'] = 'draft';
+        }
+
+        $product->update($data);
+
+        // Handle existing image deletions if requested
+        if (!empty($data['delete_images']) && is_array($data['delete_images'])) {
+            foreach ($data['delete_images'] as $imageId) {
+                $img = ProductImage::find((int)$imageId);
+                if ($img && $img->product_id === $product->id) {
+                    Storage::disk('public')->delete($img->image_path);
+                    $img->delete();
+                }
+            }
+        }
+
+        $this->handleProductImages($product, $request);
+
+        // Update featured image selection
+        if (isset($data['featured_image_id'])) {
+            // reset all
+            foreach ($product->images as $img) {
+                $img->update(['is_featured' => 0]);
+            }
+            // set one
+            $featured = ProductImage::find((int) $data['featured_image_id']);
+            if ($featured && $featured->product_id === $product->id) {
+                $featured->update(['is_featured' => 1]);
+                $product->update(['image' => $featured->image_path]); // Cache the main image for easy access
+            }
+        }
+
+        return $this->redirect('/admin/{{lowerName}}/products')->withSuccess('Product updated successfully.');
+    }
+
+    public function delete(string $id): ResponseInterface
+    {
+        $product = Product::with('images')->find((int) $id);
+        if ($product) {
+            // Delete all associated files
+            foreach ($product->images as $img) {
+                Storage::disk('public')->delete($img->image_path);
+            }
+            if (!empty($product->image)) {
+                Storage::disk('public')->delete($product->image);
+            }
+            
+            $product->delete();
+            return $this->redirect('/admin/{{lowerName}}/products')->withSuccess('Product deleted successfully.');
+        }
+
+        return $this->redirect('/admin/{{lowerName}}/products')->withError('Product not found.');
+    }
+
+    /**
+     * Process multiple uploaded images for a product.
+     */
+    protected function handleProductImages(Product $product, Request $request): void
+    {
+        $files = $request->file('images');
+        
+        // In PLUGS framework, file() might return object, array, or null.
+        if (empty($files)) {
+            return;
+        }
+
+        // Normalize to array
+        if (!is_array($files)) {
+            $files = [$files];
+        }
+
+        $featuredIndex = (int) $request->input('featured_image_index', 0);
+        $uploader = FileUploader::make('public')->setBasePath('products')->imagesOnly();
+        
+        $currentOrder = ProductImage::where('product_id', $product->id)
+            ->max('sort_order') ?? 0;
+
+        foreach ($files as $index => $file) {
+            if ($file && $file->getError() === UPLOAD_ERR_OK) {
+                $result = $uploader->upload($file);
+                
+                $isFeatured = ($index === $featuredIndex && !$product->image);
+                
+                $imgModel = ProductImage::create([
+                    'product_id'  => $product->id,
+                    'image_path'  => $result['path'],
+                    'sort_order'  => ++$currentOrder,
+                    'is_featured' => $isFeatured ? 1 : 0
+                ]);
+                
+                // Set the denormalized image column if this is the first featured image
+                if ($isFeatured) {
+                    $product->update(['image' => $result['path']]);
+                }
+            }
+        }
     }
 }

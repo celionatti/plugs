@@ -8,6 +8,8 @@ use Plugs\Base\Controller\Controller;
 use Plugs\Http\Request;
 use Psr\Http\Message\ResponseInterface;
 use Modules\{{name}}\Models\Category;
+use Plugs\Upload\FileUploader;
+use Plugs\Facades\Storage;
 use Plugs\Utils\Str;
 
 class CategoryController extends Controller
@@ -20,23 +22,84 @@ class CategoryController extends Controller
         ]);
     }
 
+    public function create(): ResponseInterface
+    {
+        return $this->view('{{lowerName}}::admin/categories/create', [
+            'category' => new Category()
+        ]);
+    }
+
     public function store(Request $request): ResponseInterface
     {
         $data = $request->all();
-        $data['slug'] = Str::slug($data['name']);
+        $data['slug'] = !empty($data['slug']) ? Str::slug($data['slug']) : Str::slug($data['name']);
+
+        $imageFile = $request->file('image');
+        if ($imageFile && $imageFile->getError() === UPLOAD_ERR_OK) {
+            $data['image'] = $this->handleImageUpload($imageFile);
+        }
 
         Category::create($data);
 
-        return $this->redirect('/admin/{{lowerName}}/categories')->withSuccess('Category added successfully.');
+        return $this->redirect('/admin/{{lowerName}}/categories')->withSuccess('Category created successfully.');
+    }
+
+    public function edit(string $id): ResponseInterface
+    {
+        $category = Category::find((int) $id);
+        if (!$category) {
+            return $this->redirect('/admin/{{lowerName}}/categories')->withError('Category not found.');
+        }
+
+        return $this->view('{{lowerName}}::admin/categories/edit', [
+            'category' => $category
+        ]);
+    }
+
+    public function update(Request $request, string $id): ResponseInterface
+    {
+        $category = Category::find((int) $id);
+        if (!$category) {
+            return $this->redirect('/admin/{{lowerName}}/categories')->withError('Category not found.');
+        }
+
+        $data = $request->all();
+        $data['slug'] = !empty($data['slug']) ? Str::slug($data['slug']) : Str::slug($data['name']);
+
+        $imageFile = $request->file('image');
+        if ($imageFile && $imageFile->getError() === UPLOAD_ERR_OK) {
+            if (!empty($category->image)) {
+                Storage::disk('public')->delete($category->image);
+            }
+            $data['image'] = $this->handleImageUpload($imageFile);
+        }
+
+        $category->update($data);
+
+        return $this->redirect('/admin/{{lowerName}}/categories')->withSuccess('Category updated successfully.');
     }
 
     public function delete(string $id): ResponseInterface
     {
         $category = Category::find((int) $id);
         if ($category) {
+            if (!empty($category->image)) {
+                Storage::disk('public')->delete($category->image);
+            }
             $category->delete();
         }
 
         return $this->redirect('/admin/{{lowerName}}/categories')->withSuccess('Category deleted successfully.');
+    }
+
+    protected function handleImageUpload($file): string
+    {
+        $uploader = FileUploader::make('public')
+            ->setBasePath('categories')
+            ->imagesOnly();
+
+        $result = $uploader->upload($file);
+
+        return $result['path'];
     }
 }

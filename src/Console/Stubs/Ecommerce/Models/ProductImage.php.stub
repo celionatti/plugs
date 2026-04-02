@@ -1,0 +1,33 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Modules\{{name}}\Models;
+
+use Plugs\Base\Model\PlugModel;
+
+class ProductImage extends PlugModel
+{
+    protected $table = 'product_images';
+
+    protected $fillable = [
+        'product_id',
+        'image_path',
+        'is_featured',
+        'sort_order',
+    ];
+
+    public function product()
+    {
+        return $this->belongsTo(Product::class);
+    }
+
+    public function getUrl()
+    {
+        if ($this->image_path && filter_var($this->image_path, FILTER_VALIDATE_URL)) {
+            return $this->image_path;
+        }
+
+        return rtrim('/storage/' . ltrim($this->image_path ?? '', '/'), '/');
+    }
+}

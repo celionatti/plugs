@@ -49,6 +49,16 @@ return new class extends Migration
             $table->timestamps();
         });
 
+        // Product Images
+        Schema::create('product_images', function (Blueprint $table) {
+            $table->id();
+            $table->foreignId('product_id')->constrained('products')->onDelete('cascade');
+            $table->string('image_path');
+            $table->boolean('is_featured')->default(false);
+            $table->integer('sort_order')->default(0);
+            $table->timestamps();
+        });
+
         // Orders
         Schema::create('orders', function (Blueprint $table) {
             $table->id();
@@ -81,6 +91,7 @@ return new class extends Migration
     {
         Schema::dropIfExists('order_items');
         Schema::dropIfExists('orders');
+        Schema::dropIfExists('product_images');
         Schema::dropIfExists('products');
         Schema::dropIfExists('brands');
         Schema::dropIfExists('categories');

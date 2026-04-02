@@ -38,6 +38,6 @@ class OrderController extends Controller
             $order->update($request->all());
         }
 
-        return $this->redirect('/admin/{{lowerName}}/orders/show/' . $id)->withSuccess('Order status updated.');
+        return $this->redirect('/admin/{{lowerName}}/orders/' . $id)->withSuccess('Order status updated.');
     }
 }

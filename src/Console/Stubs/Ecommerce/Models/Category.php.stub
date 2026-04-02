@@ -21,4 +21,13 @@ class Category extends PlugModel
     {
         return $this->hasMany(Product::class);
     }
+
+    public function getImageUrl()
+    {
+        if ($this->image && filter_var($this->image, FILTER_VALIDATE_URL)) {
+            return $this->image;
+        }
+
+        return $this->image ? '/storage/' . ltrim($this->image, '/') : null;
+    }
 }
