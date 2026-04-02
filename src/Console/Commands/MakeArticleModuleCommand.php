@@ -49,6 +49,7 @@ class MakeArticleModuleCommand extends Command
                 $basePath . '/Migrations',
                 $basePath . '/Models',
                 $basePath . '/Services',
+                $basePath . '/Requests',
                 $basePath . '/Routes',
                 $basePath . '/Views/admin/articles',
             ];
@@ -64,6 +65,7 @@ class MakeArticleModuleCommand extends Command
             'ArticleModule.php.stub' => $name . 'Module.php',
             'Models/Article.php.stub' => 'Models/Article.php',
             'Controllers/Admin/ArticleController.php.stub' => 'Controllers/Admin/ArticleController.php',
+            'Requests/ArticleRequest.php.stub' => 'Requests/' . $name . 'Request.php',
             'Services/ArticleService.php.stub' => 'Services/ArticleService.php',
             'Migrations/create_article_tables.php.stub' => 'Migrations/' . date('Y_m_d_His') . '_create_' . $lowerName . '_tables.php',
             'Routes/web.php.stub' => 'Routes/web.php',

@@ -49,7 +49,7 @@ class ArticleController extends Controller
      */
     public function store(ServerRequestInterface $request): ResponseInterface
     {
-        $data = $request->getParsedBody();
+        $data = $this->validate(\Modules\{{name}}\Requests\{{name}}Request::class);
         $files = $request->getUploadedFiles();
 
         // Auto-assign author
@@ -97,7 +97,7 @@ class ArticleController extends Controller
                 ->withError('Article not found.');
         }
 
-        $data = $request->getParsedBody();
+        $data = $this->validate(\Modules\{{name}}\Requests\{{name}}Request::class);
         $files = $request->getUploadedFiles();
 
         try {

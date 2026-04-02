@@ -1,0 +1,42 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Modules\{{name}}\Requests;
+
+use Plugs\Http\Requests\FormRequest;
+
+class {{name}}Request extends FormRequest
+{
+    /**
+     * Determine if the user is authorized to make this request.
+     */
+    public function authorize(): bool
+    {
+        return true;
+    }
+
+    /**
+     * Get validation rules.
+     */
+    public function rules(): array
+    {
+        return [
+            'title' => 'required|min:3',
+            'content' => 'required',
+            'status' => 'required|in:draft,published',
+            'slug' => 'nullable|string',
+        ];
+    }
+
+    /**
+     * Get sanitization rules.
+     */
+    public function sanitizers(): array
+    {
+        return [
+            'title' => 'string',
+            'content' => 'safeHtml',
+        ];
+    }
+}
