@@ -1,0 +1,7 @@
+{
+    "name": "{{name}}",
+    "description": "Centralized media library and file management.",
+    "version": "1.0.0",
+    "author": "System",
+    "enabled": true
+}

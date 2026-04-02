@@ -1,0 +1,68 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Modules\{{name}}\Models;
+
+use Plugs\Base\Model\PlugModel;
+
+class Media extends PlugModel
+{
+    /**
+     * The table associated with the model.
+     *
+     * @var string
+     */
+    protected $table = 'media';
+
+    /**
+     * The attributes that are mass assignable.
+     *
+     * @var array
+     */
+    protected $fillable = [
+        'filename',
+        'path',
+        'mime_type',
+        'size',
+        'width',
+        'height',
+        'alt_text',
+        'disk'
+    ];
+
+    /**
+     * Get the full URL for the media.
+     *
+     * @return string
+     */
+    public function getUrl(): string
+    {
+        return asset('storage/' . $this->path);
+    }
+
+    /**
+     * Check if the media is an image.
+     *
+     * @return bool
+     */
+    public function isImage(): bool
+    {
+        return str_starts_with($this->mime_type, 'image/');
+    }
+
+    /**
+     * Format the file size.
+     *
+     * @return string
+     */
+    public function getFormattedSize(): string
+    {
+        $bytes = $this->size;
+        $units = ['B', 'KB', 'MB', 'GB', 'TB'];
+        for ($i = 0; $bytes > 1024 && $i < count($units) - 1; $i++) {
+            $bytes /= 1024;
+        }
+        return round($bytes, 2) . ' ' . $units[$i];
+    }
+}

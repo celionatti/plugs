@@ -1,0 +1,82 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Modules\{{name}}\Controllers;
+
+use Modules\{{name}}\Services\NewsletterService;
+use Psr\Http\Message\ResponseInterface;
+use Psr\Http\Message\ServerRequestInterface;
+
+class AdminNewsletterController
+{
+    public function __construct(
+        protected NewsletterService $service = new NewsletterService()
+    ) {}
+
+    /**
+     * Display the newsletter dashboard.
+     */
+    public function index(ServerRequestInterface $request): ResponseInterface
+    {
+        $campaigns = $this->service->getCampaigns();
+        $subscribersCount = count($this->service->getSubscribers());
+
+        return response(view('{{lowerName}}::admin.dashboard', [
+            'campaigns' => $campaigns,
+            'subscribersCount' => $subscribersCount
+        ]));
+    }
+
+    /**
+     * Display the subscriber list.
+     */
+    public function subscribers(ServerRequestInterface $request): ResponseInterface
+    {
+        $subscribers = $this->service->getSubscribers();
+        return response(view('{{lowerName}}::admin.subscribers', [
+            'subscribers' => $subscribers
+        ]));
+    }
+
+    /**
+     * Create a new campaign.
+     */
+    public function storeCampaign(ServerRequestInterface $request): ResponseInterface
+    {
+        $data = $request->getParsedBody();
+        $this->service->createCampaign($data);
+        return response(['success' => true]);
+    }
+
+    /**
+     * Send a campaign.
+     */
+    public function send(ServerRequestInterface $request, array $args): ResponseInterface
+    {
+        $id = (int) ($args['id'] ?? 0);
+        if ($this->service->sendCampaign($id)) {
+            return response(['success' => true]);
+        }
+        return response(['error' => 'Campaign not found or already sent'], 404);
+    }
+
+    /**
+     * Store a new subscriber.
+     */
+    public function storeSubscriber(ServerRequestInterface $request): ResponseInterface
+    {
+        $data = json_decode((string) $request->getBody(), true);
+        
+        if (empty($data['email'])) {
+            return response(['error' => 'Email is required'], 400);
+        }
+
+        try {
+            $this->service->createSubscriber($data);
+            return response(['success' => true]);
+        } catch (\Exception $e) {
+            return response(['error' => 'Failed to create subscriber'], 500);
+        }
+    }
+}

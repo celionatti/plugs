@@ -1,0 +1,74 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Modules\{{name}}\Services;
+
+use Plugs\AI\AIManager;
+use Plugs\Plugs;
+
+class AIHelperService
+{
+    protected AIManager $ai;
+
+    public function __construct()
+    {
+        $this->ai = app(AIManager::class);
+    }
+
+    /**
+     * General chat generation.
+     */
+    public function generate(string $prompt, array $options = []): string
+    {
+        return $this->ai->prompt($prompt, [], $options);
+    }
+
+    /**
+     * Generate content for articles.
+     */
+    public function generateArticleContent(string $topic, string $tone = 'professional'): string
+    {
+        $prompt = "Write a high-quality blog post about '{$topic}'. The tone should be '{$tone}'. include a title, introduction, body, and conclusion.";
+        return $this->ai->prompt($prompt, [], ['max_tokens' => 2000]);
+    }
+
+    /**
+     * Generate product descriptions.
+     */
+    public function generateProductDescription(string $name, array $features): string
+    {
+        $featureList = implode(', ', $features);
+        $prompt = "Create a premium product description for '{$name}' with these features: {$featureList}. Focus on benefits and use vibrant language.";
+        return $this->ai->prompt($prompt, [], ['max_tokens' => 500]);
+    }
+
+    /**
+     * Analyze image and generate alt text.
+     */
+    public function generateAltText(string $imagePath): string
+    {
+        return $this->ai->analyze("Describe this image in detail for a blind person. Keep it under 25 words.", [$imagePath]);
+    }
+
+    /**
+     * Get list of available drivers.
+     */
+    public function getAvailableDrivers(): array
+    {
+        $config = config('ai.providers');
+        $drivers = [];
+
+        foreach ($config as $name => $data) {
+            if (!empty($data['api_key'])) {
+                $drivers[] = [
+                    'id' => $name,
+                    'name' => ucfirst($name),
+                    'model' => $data['model']
+                ];
+            }
+        }
+
+        return $drivers;
+    }
+}

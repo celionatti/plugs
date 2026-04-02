@@ -1,0 +1,141 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Modules\{{name}}\Services;
+
+use Modules\Article\Models\Article;
+use Modules\Newsletter\Models\Subscriber;
+use Modules\MediaManager\Models\Media;
+use App\Models\User;
+use Plugs\Database\DB;
+
+class AnalyticsService
+{
+    /**
+     * Get aggregate statistics for the dashboard.
+     */
+    public function getDashboardStats(): array
+    {
+        $hasArticles = class_exists(Article::class);
+        $hasMedia = class_exists(Media::class);
+        $hasNewsletter = class_exists(Subscriber::class);
+
+        // Calculate total media storage safely
+        $totalStorage = 0;
+        if ($hasMedia) {
+            $totalStorage = Media::sum('size') ?? 0;
+        }
+
+        return [
+            'total_users' => User::count(),
+            'total_articles' => $hasArticles ? Article::count() : 0,
+            'total_subscribers' => $hasNewsletter ? Subscriber::where('status', 'active')->count() : 0,
+            'total_storage' => $totalStorage,
+        ];
+    }
+
+    /**
+     * Get chart data for the last 7 days.
+     * Aggregates new users and articles by day.
+     */
+    public function getVisitorChartData(): array
+    {
+        $labels = [];
+        $userData = [];
+        $articleData = [];
+
+        $hasArticles = class_exists(Article::class);
+
+        // Generate the last 7 days
+        for ($i = 6; $i >= 0; $i--) {
+            $date = date('Y-m-d', strtotime("-$i days"));
+            $labels[] = date('D', strtotime($date));
+
+            // Count users generated on this day
+            $userCount = User::whereDate("created_at", $date)->count();
+            $userData[] = $userCount;
+
+            // Count articles generated on this day
+            if ($hasArticles) {
+                $articleCount = Article::whereDate("created_at", $date)->count();
+                $articleData[] = $articleCount;
+            } else {
+                $articleData[] = 0;
+            }
+        }
+
+        return [
+            'labels' => $labels,
+            'data' => $userData,
+            'article_data' => $articleData
+        ];
+    }
+
+    /**
+     * Get recent activities from across the framework.
+     */
+    public function getRecentActivity(): array
+    {
+        $activities = [];
+
+        // 1. Users
+        $recentUsers = User::orderBy('created_at', 'desc')->limit(5)->get();
+        foreach ($recentUsers as $user) {
+            $activities[] = [
+                'type' => 'user',
+                'description' => 'New user registered: ' . ($user->name ?? 'Unknown'),
+                'timestamp' => strtotime($user->created_at),
+                'time_formatted' => $this->timeAgo($user->created_at)
+            ];
+        }
+
+        // 2. Articles
+        if (class_exists(Article::class)) {
+            $recentArticles = Article::orderBy('created_at', 'desc')->limit(5)->get();
+            foreach ($recentArticles as $article) {
+                $activities[] = [
+                    'type' => 'article',
+                    'description' => 'Drafted article: "' . substr($article->title, 0, 30) . '..."',
+                    'timestamp' => strtotime($article->created_at),
+                    'time_formatted' => $this->timeAgo($article->created_at)
+                ];
+            }
+        }
+
+        // 3. Media
+        if (class_exists(Media::class)) {
+            $recentMedia = Media::orderBy('created_at', 'desc')->limit(5)->get();
+            foreach ($recentMedia as $media) {
+                $activities[] = [
+                    'type' => 'media',
+                    'description' => 'Uploaded asset: ' . $media->filename,
+                    'timestamp' => strtotime($media->created_at),
+                    'time_formatted' => $this->timeAgo($media->created_at)
+                ];
+            }
+        }
+
+        // Sort combined feed by timestamp descending
+        usort($activities, function($a, $b) {
+            return $b['timestamp'] <=> $a['timestamp'];
+        });
+
+        // Return the top 10 most recent actions overall
+        return array_slice($activities, 0, 10);
+    }
+
+    /**
+     * Helper logic to format "time ago" string.
+     */
+    protected function timeAgo(string $datetime): string
+    {
+        $time = strtotime($datetime);
+        $diff = time() - $time;
+
+        if ($diff < 60) return "Just now";
+        if ($diff < 3600) return floor($diff / 60) . " mins ago";
+        if ($diff < 86400) return floor($diff / 3600) . " hours ago";
+        return floor($diff / 86400) . " days ago";
+    }
+}

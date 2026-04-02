@@ -1,0 +1,56 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Modules\{{name}};
+
+use Plugs\FeatureModule\AbstractFeatureModule;
+use Plugs\Container\Container;
+use Plugs\Plugs;
+
+class {{name}}Module extends AbstractFeatureModule
+{
+    /**
+     * Get the unique name for this module.
+     */
+    public function getName(): string
+    {
+        return '{{name}}';
+    }
+
+    /**
+     * Get the URL prefix for this module's routes.
+     * Return '' for no prefix (routes at root level).
+     */
+    public function getRoutePrefix(): string
+    {
+        return 'admin/newsletter';
+    }
+
+    /**
+     * Get middleware to apply to all routes in this module.
+     *
+     * @return string[]
+     */
+    public function getMiddleware(): array
+    {
+        return ['web', 'auth', 'admin'];
+    }
+
+    /**
+     * Register services in the container.
+     */
+    public function register(Container $container): void
+    {
+        $container->singleton('NewsletterRepository', fn() => new Repositories\NewsletterRepository());
+        $container->singleton('NewsletterService', fn() => new Services\NewsletterService($container->get('NewsletterRepository')));
+    }
+
+    /**
+     * Boot the module after all modules have been registered.
+     */
+    public function boot(Plugs $app): void
+    {
+        // Any boot-time logic (event listeners, etc.)
+    }
+}

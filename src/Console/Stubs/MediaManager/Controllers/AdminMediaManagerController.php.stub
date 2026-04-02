@@ -1,0 +1,88 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Modules\{{name}}\Controllers;
+
+use Modules\{{name}}\Services\MediaManagerService;
+use Psr\Http\Message\ResponseInterface;
+use Psr\Http\Message\ServerRequestInterface;
+
+class AdminMediaManagerController
+{
+    public function __construct(
+        protected MediaManagerService $service = new MediaManagerService()
+    ) {}
+
+    /**
+     * Display the media library page.
+     */
+    public function index(ServerRequestInterface $request): ResponseInterface
+    {
+        $items = $this->service->getAll();
+        return response(view('{{lowerName}}::admin.library', [
+            'mediaItems' => $items
+        ]));
+    }
+
+    /**
+     * Handle multi-file uploads.
+     */
+    public function upload(ServerRequestInterface $request): ResponseInterface
+    {
+        $uploadedFiles = $request->getUploadedFiles();
+        
+        if (empty($uploadedFiles['files'])) {
+            return response(['error' => 'No files uploaded'], 400);
+        }
+
+        $files = $uploadedFiles['files'];
+        if (!is_array($files)) {
+            $files = [$files];
+        }
+
+        $results = [];
+        foreach ($files as $file) {
+            try {
+                $media = $this->service->upload($file);
+                $results[] = $media;
+            } catch (\Exception $e) {
+                return response(['error' => 'Upload failed: ' . $e->getMessage()], 500);
+            }
+        }
+
+        return response([
+            'success' => true,
+            'media' => $results
+        ]);
+    }
+
+    /**
+     * Update media details.
+     */
+    public function update(ServerRequestInterface $request, $id): ResponseInterface
+    {
+        $id = (int) $id;
+        $data = $request->getParsedBody() ?? [];
+
+        if ($this->service->update($id, $data)) {
+            return response(['success' => true]);
+        }
+
+        return response(['error' => 'Media not found or could not be updated'], 404);
+    }
+
+    /**
+     * Delete a media item.
+     */
+    public function destroy(ServerRequestInterface $request, $id): ResponseInterface
+    {
+        $id = (int) $id;
+        
+        if ($this->service->delete($id)) {
+            return response(['success' => true]);
+        }
+
+        return response(['error' => 'Media not found or could not be deleted'], 404);
+    }
+}

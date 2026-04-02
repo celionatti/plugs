@@ -1,0 +1,19 @@
+<?php
+
+declare(strict_types=1);
+
+/*
+|--------------------------------------------------------------------------
+| {{name}} Module — Web Routes
+|--------------------------------------------------------------------------
+*/
+
+use Plugs\Facades\Route;
+use Modules\{{name}}\Controllers\AdminNewsletterController;
+
+// Prefixed with /admin/newsletter via Module class
+Route::get('/', [AdminNewsletterController::class, 'index'])->name('admin.index');
+Route::get('/subscribers', [AdminNewsletterController::class, 'subscribers'])->name('admin.subscribers');
+Route::post('/subscribers', [AdminNewsletterController::class, 'storeSubscriber'])->name('admin.subscribers.store');
+Route::post('/campaigns', [AdminNewsletterController::class, 'storeCampaign'])->name('admin.campaigns.store');
+Route::post('/campaigns/{id}/send', [AdminNewsletterController::class, 'send'])->name('admin.campaigns.send');

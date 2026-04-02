@@ -1,0 +1,20 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Modules\{{name}}\Models;
+
+use Plugs\Base\Model\PlugModel;
+
+class Newsletter extends PlugModel
+{
+    /**
+     * The table associated with the model.
+     */
+    protected $table = 'newsletters';
+
+    /**
+     * The attributes that are mass assignable.
+     */
+    protected $fillable = [];
+}

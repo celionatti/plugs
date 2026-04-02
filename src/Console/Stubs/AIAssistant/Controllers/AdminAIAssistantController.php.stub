@@ -1,0 +1,60 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Modules\{{name}}\Controllers;
+
+use Modules\{{name}}\Services\AIHelperService;
+use Psr\Http\Message\ResponseInterface;
+use Psr\Http\Message\ServerRequestInterface;
+
+class AdminAIAssistantController
+{
+    public function __construct(
+        protected AIHelperService $service = new AIHelperService()
+    ) {}
+
+    /**
+     * Display the AI playground page.
+     */
+    public function index(ServerRequestInterface $request): ResponseInterface
+    {
+        $drivers = $this->service->getAvailableDrivers();
+        return response(view('{{lowerName}}::admin.playground', [
+            'drivers' => $drivers,
+            'default_driver' => config('ai.default')
+        ]));
+    }
+
+    /**
+     * Handle AI generation requests.
+     */
+    public function generate(ServerRequestInterface $request): ResponseInterface
+    {
+        $data = $request->getParsedBody();
+        $prompt = $data['prompt'] ?? '';
+        $driver = $data['driver'] ?? null;
+        $maxTokens = (int) ($data['max_tokens'] ?? 1000);
+
+        if (empty($prompt)) {
+            return response(['error' => 'Prompt is required'], 400);
+        }
+
+        try {
+            $response = $this->service->generate($prompt, [
+                'driver' => $driver,
+                'max_tokens' => $maxTokens
+            ]);
+
+            return response([
+                'status' => 'success',
+                'response' => $response
+            ]);
+        } catch (\Exception $e) {
+            return response([
+                'status' => 'error',
+                'message' => $e->getMessage()
+            ], 500);
+        }
+    }
+}

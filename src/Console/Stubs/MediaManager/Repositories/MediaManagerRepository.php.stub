@@ -1,0 +1,53 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Modules\{{name}}\Repositories;
+
+use Modules\{{name}}\Models\Media;
+use Plugs\Database\Collection;
+
+class MediaManagerRepository
+{
+    /**
+     * Get all records.
+     */
+    public function all(): Collection
+    {
+        return Media::all();
+    }
+
+    /**
+     * Create a new record.
+     */
+    public function create(array $data): Media
+    {
+        return Media::create($data);
+    }
+
+    /**
+     * Find a record by ID.
+     */
+    public function find(int $id): ?Media
+    {
+        return Media::find($id);
+    }
+
+    /**
+     * Delete a record by ID.
+     */
+    public function delete(int $id): bool
+    {
+        $media = $this->find($id);
+        return $media ? $media->delete() : false;
+    }
+
+    /**
+     * Update a record by ID.
+     */
+    public function update(int $id, array $data): bool
+    {
+        $media = $this->find($id);
+        return $media ? $media->update($data) : false;
+    }
+}

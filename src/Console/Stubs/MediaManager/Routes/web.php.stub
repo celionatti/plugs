@@ -1,0 +1,18 @@
+<?php
+
+declare(strict_types=1);
+
+/*
+|--------------------------------------------------------------------------
+| {{name}} Module — Web Routes
+|--------------------------------------------------------------------------
+*/
+
+use Plugs\Facades\Route;
+use Modules\{{name}}\Controllers\AdminMediaManagerController;
+
+// Prefixed with /admin/media via Module class
+Route::get('/', [AdminMediaManagerController::class, 'index'])->name('admin.index');
+Route::post('/upload', [AdminMediaManagerController::class, 'upload'])->name('admin.upload');
+Route::put('/{id}', [AdminMediaManagerController::class, 'update'])->name('admin.update');
+Route::delete('/{id}', [AdminMediaManagerController::class, 'destroy'])->name('admin.destroy');

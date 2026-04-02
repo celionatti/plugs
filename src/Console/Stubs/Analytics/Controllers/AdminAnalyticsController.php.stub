@@ -1,0 +1,40 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Modules\{{name}}\Controllers;
+
+use Modules\{{name}}\Services\AnalyticsService;
+use Psr\Http\Message\ResponseInterface;
+use Psr\Http\Message\ServerRequestInterface;
+
+class AdminAnalyticsController
+{
+    public function __construct(
+        protected AnalyticsService $service = new AnalyticsService()
+    ) {}
+
+    /**
+     * Display the analytics dashboard.
+     */
+    public function index(ServerRequestInterface $request): ResponseInterface
+    {
+        $stats = $this->service->getDashboardStats();
+        $chartData = $this->service->getVisitorChartData();
+        $recentActivity = $this->service->getRecentActivity();
+
+        return response(view('{{lowerName}}::admin.dashboard', [
+            'stats' => $stats,
+            'chartData' => $chartData,
+            'recentActivity' => $recentActivity
+        ]));
+    }
+
+    /**
+     * Get real-time stats for AJAX updates.
+     */
+    public function apiStats(ServerRequestInterface $request): ResponseInterface
+    {
+        return response($this->service->getDashboardStats());
+    }
+}

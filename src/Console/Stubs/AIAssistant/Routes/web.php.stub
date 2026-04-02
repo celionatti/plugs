@@ -1,0 +1,16 @@
+<?php
+
+declare(strict_types=1);
+
+/*
+|--------------------------------------------------------------------------
+| {{name}} Module — Web Routes
+|--------------------------------------------------------------------------
+*/
+
+use Plugs\Facades\Route;
+use Modules\{{name}}\Controllers\AdminAIAssistantController;
+
+// Prefixed with /admin/ai-assistant via Module class
+Route::get('/', [AdminAIAssistantController::class, 'index'])->name('admin.index');
+Route::post('/generate', [AdminAIAssistantController::class, 'generate'])->name('admin.generate');

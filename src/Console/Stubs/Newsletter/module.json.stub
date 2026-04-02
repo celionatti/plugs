@@ -1,0 +1,7 @@
+{
+    "name": "{{name}}",
+    "description": "Newsletter management and targeted campaigns.",
+    "version": "1.0.0",
+    "author": "System",
+    "enabled": true
+}

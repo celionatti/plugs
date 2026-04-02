@@ -100,6 +100,10 @@ use Plugs\Console\Commands\CssClearCommand;
 use Plugs\Console\Commands\MakeIconCommand;
 use Plugs\Console\Commands\MakeEcommerceModuleCommand;
 use Plugs\Console\Commands\MakeArticleModuleCommand;
+use Plugs\Console\Commands\MakeAIAssistantModuleCommand;
+use Plugs\Console\Commands\MakeAnalyticsModuleCommand;
+use Plugs\Console\Commands\MakeNewsletterModuleCommand;
+use Plugs\Console\Commands\MakeMediaManagerModuleCommand;
 use Plugs\Console\Commands\SSEStartCommand;
 use Plugs\Exceptions\ConsoleException;
 
@@ -151,6 +155,10 @@ class ConsoleKernel
         'make:welcome' => MakeWelcomeCommand::class,
         'make:crud' => MakeCrudCommand::class,
         'make:icon' => MakeIconCommand::class,
+        'make:ai-assistant-module' => MakeAIAssistantModuleCommand::class,
+        'make:analytics-module' => MakeAnalyticsModuleCommand::class,
+        'make:newsletter-module' => MakeNewsletterModuleCommand::class,
+        'make:media-manager-module' => MakeMediaManagerModuleCommand::class,
         'theme:nebula' => NebulaThemeCommand::class,
 
         'db:backup' => DatabaseBackupCommand::class,
@@ -250,6 +258,10 @@ class ConsoleKernel
         'g:fmod' => 'make:feature-module',
         'g:auth' => 'make:auth-module',
         'g:art' => 'make:article-module',
+        'g:ai' => 'make:ai-assistant-module',
+        'g:ana' => 'make:analytics-module',
+        'g:news' => 'make:newsletter-module',
+        'g:media' => 'make:media-manager-module',
         'g:lang' => 'make:lang',
         'g:theme' => 'make:theme',
         'seed' => 'db:seed',
@@ -308,6 +320,10 @@ class ConsoleKernel
             'make:theme',
             'make:crud',
             'make:icon',
+            'make:ai-assistant-module',
+            'make:analytics-module',
+            'make:newsletter-module',
+            'make:media-manager-module',
             'theme:nebula',
         ],
         'Routes' => ['route:list', 'route:cache', 'route:clear', 'route:test'],

@@ -1,0 +1,16 @@
+<?php
+
+declare(strict_types=1);
+
+/*
+|--------------------------------------------------------------------------
+| {{name}} Module — Web Routes
+|--------------------------------------------------------------------------
+*/
+
+use Plugs\Facades\Route;
+use Modules\{{name}}\Controllers\AdminAnalyticsController;
+
+// Prefixed with /admin/analytics via Module class
+Route::get('/', [AdminAnalyticsController::class, 'index'])->name('admin.index');
+Route::get('/api/stats', [AdminAnalyticsController::class, 'apiStats'])->name('admin.api.stats');

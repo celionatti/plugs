@@ -1,0 +1,54 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Modules\{{name}}\Models;
+
+use Plugs\Base\Model\PlugModel;
+
+class Campaign extends PlugModel
+{
+    /**
+     * The attributes that are mass assignable.
+     *
+     * @var array
+     */
+    protected $fillable = [
+        'subject',
+        'content',
+        'status',
+        'scheduled_at',
+        'sent_at',
+        'recipients_count'
+    ];
+
+    /**
+     * Check if the campaign is a draft.
+     *
+     * @return bool
+     */
+    public function isDraft(): bool
+    {
+        return $this->status === 'draft';
+    }
+
+    /**
+     * Check if the campaign is currently sending.
+     *
+     * @return bool
+     */
+    public function isSending(): bool
+    {
+        return $this->status === 'sending';
+    }
+
+    /**
+     * Check if the campaign has been sent.
+     *
+     * @return bool
+     */
+    public function isSent(): bool
+    {
+        return $this->status === 'sent';
+    }
+}

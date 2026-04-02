@@ -1,0 +1,82 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Modules\{{name}}\Services;
+
+use Modules\{{name}}\Repositories\MediaManagerRepository;
+use Modules\{{name}}\Models\Media;
+use Plugs\Upload\FileUploader;
+use Plugs\Upload\UploadedFile;
+
+class MediaManagerService
+{
+    public function __construct(
+        protected MediaManagerRepository $repository = new MediaManagerRepository()
+    ) {}
+
+    /**
+     * Get all media items.
+     */
+    public function getAll(): \Plugs\Database\Collection
+    {
+        return $this->repository->all();
+    }
+
+    /**
+     * Upload and store a new media item.
+     */
+    public function upload(UploadedFile $file, array $options = []): Media
+    {
+        $uploader = FileUploader::make($options['disk'] ?? 'public')
+            ->setBasePath($options['path'] ?? 'media')
+            ->allowSvg(true)
+            ->setAllowedExtensions(['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg', 'pdf', 'doc', 'docx', 'xls', 'xlsx', 'txt', 'csv', 'mp4', 'mp3', 'zip']);
+
+        $result = $uploader->upload($file);
+
+        return $this->repository->create([
+            'filename' => $result['name'],
+            'path' => $result['path'],
+            'mime_type' => $result['mime_type'],
+            'size' => $result['size'],
+            'alt_text' => $options['alt_text'] ?? null,
+            'disk' => $options['disk'] ?? 'public',
+        ]);
+    }
+
+    /**
+     * Update a media item's metadata.
+     */
+    public function update(int $id, array $data): bool
+    {
+        $allowedFields = ['alt_text'];
+        $updateData = [];
+        
+        foreach ($allowedFields as $field) {
+            if (array_key_exists($field, $data)) {
+                $updateData[$field] = $data[$field];
+            }
+        }
+        
+        if (empty($updateData)) {
+            return true;
+        }
+
+        return $this->repository->update($id, $updateData);
+    }
+
+    /**
+     * Delete a media item and its physical file.
+     */
+    public function delete(int $id): bool
+    {
+        $media = $this->repository->find($id);
+        if (!$media) return false;
+
+        // Delete physical file
+        \Plugs\Facades\Storage::disk($media->disk)->delete($media->path);
+
+        return $this->repository->delete($id);
+    }
+}

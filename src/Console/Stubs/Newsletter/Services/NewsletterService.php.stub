@@ -1,0 +1,99 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Modules\{{name}}\Services;
+
+use Modules\{{name}}\Models\Subscriber;
+use Modules\{{name}}\Models\Campaign;
+use Plugs\Facades\Mail;
+use Plugs\Database\Collection;
+
+class NewsletterService
+{
+    /**
+     * Get all subscribers.
+     */
+    public function getSubscribers(): Collection
+    {
+        $result = Subscriber::all();
+        return $result instanceof Collection ? $result : new Collection(is_array($result) ? $result : []);
+    }
+
+    /**
+     * Add a new subscriber.
+     */
+    public function addSubscriber(array $data): Subscriber
+    {
+        return Subscriber::create([
+            'email' => $data['email'],
+            'first_name' => $data['first_name'] ?? null,
+            'last_name' => $data['last_name'] ?? null,
+            'status' => 'active',
+            'source' => $data['source'] ?? 'admin'
+        ]);
+    }
+
+    /**
+     * Get all campaigns.
+     */
+    public function getCampaigns(): Collection
+    {
+        $result = Campaign::orderBy('created_at', 'desc')->get();
+        return $result instanceof Collection ? $result : new Collection(is_array($result) ? $result : []);
+    }
+
+    /**
+     * Create a new campaign.
+     */
+    public function createCampaign(array $data): Campaign
+    {
+        return Campaign::create([
+            'subject' => $data['subject'],
+            'content' => $data['content'],
+            'status' => 'draft'
+        ]);
+    }
+
+    /**
+     * Add a new subscriber.
+     */
+    public function createSubscriber(array $data): Subscriber
+    {
+        return Subscriber::create([
+            'email' => $data['email'],
+            'first_name' => $data['first_name'] ?? null,
+            'last_name' => $data['last_name'] ?? null,
+            'status' => 'active',
+            'source' => 'admin'
+        ]);
+    }
+
+    /**
+     * Send a campaign to all active subscribers.
+     */
+    public function sendCampaign(int $campaignId): bool
+    {
+        $campaign = Campaign::find($campaignId);
+        if (!$campaign || !$campaign->isDraft()) return false;
+
+        $result = Subscriber::where('status', 'active')->get();
+        $subscribers = $result instanceof Collection ? $result : new Collection(is_array($result) ? $result : []);
+        
+        $campaign->update([
+            'status' => 'sending',
+            'recipients_count' => count($subscribers)
+        ]);
+
+        foreach ($subscribers as $subscriber) {
+            // Mail::send($subscriber->email, $campaign->subject, $campaign->content);
+        }
+
+        $campaign->update([
+            'status' => 'sent',
+            'sent_at' => date('Y-m-d H:i:s')
+        ]);
+
+        return true;
+    }
+}
