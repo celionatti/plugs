@@ -1,0 +1,136 @@
+<layout name="admin::layouts.admin">
+    <slot:title>{{name}} Hub</slot:title>
+
+    <div class="h-full flex flex-col space-y-8">
+        <!-- Dashboard Header & Overview -->
+        <div class="relative overflow-hidden rounded-[2rem] bg-gradient-to-br from-indigo-600 to-violet-800 p-8 text-white shadow-2xl shadow-indigo-900/20">
+            <!-- Decorative Background Elements -->
+            <div class="absolute -top-24 -right-24 w-96 h-96 bg-white/10 rounded-full blur-3xl pointer-events-none"></div>
+            
+            <div class="relative z-10 flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
+                <div>
+                    <h1 class="text-4xl font-extrabold tracking-tight">{{name}} <span class="text-indigo-200">Hub</span></h1>
+                    <p class="text-indigo-100 mt-2 text-sm font-medium tracking-wide">Real-time engagement & platform metrics</p>
+                </div>
+            </div>
+
+            <!-- Core Stats Bar -->
+            <div class="relative z-10 grid grid-cols-2 md:grid-cols-4 gap-4 mt-10">
+                <div class="bg-white/10 backdrop-blur-md border border-white/10 rounded-2xl p-5 hover:bg-white/15 transition duration-300">
+                    <div class="flex items-center gap-3 mb-2 opacity-80">
+                        <i class="bi bi-people text-lg"></i>
+                        <span class="text-xs font-bold uppercase tracking-wider">Total Users</span>
+                    </div>
+                    <div class="text-3xl font-black">{{ number_format($stats['total_users'] ?? 0) }}</div>
+                </div>
+
+                <div class="bg-white/10 backdrop-blur-md border border-white/10 rounded-2xl p-5 hover:bg-white/15 transition duration-300">
+                    <div class="flex items-center gap-3 mb-2 opacity-80">
+                        <i class="bi bi-file-text text-lg"></i>
+                        <span class="text-xs font-bold uppercase tracking-wider">Published Articles</span>
+                    </div>
+                    <div class="text-3xl font-black">{{ number_format($stats['total_articles'] ?? 0) }}</div>
+                </div>
+
+                <div class="bg-white/10 backdrop-blur-md border border-white/10 rounded-2xl p-5 hover:bg-white/15 transition duration-300">
+                    <div class="flex items-center gap-3 mb-2 opacity-80">
+                        <i class="bi bi-envelope-paper text-lg"></i>
+                        <span class="text-xs font-bold uppercase tracking-wider">Active Subscribers</span>
+                    </div>
+                    <div class="text-3xl font-black">{{ number_format($stats['total_subscribers'] ?? 0) }}</div>
+                </div>
+
+                <div class="bg-white/10 backdrop-blur-md border border-white/10 rounded-2xl p-5 hover:bg-white/15 transition duration-300">
+                    <div class="flex items-center gap-3 mb-2 opacity-80">
+                        <i class="bi bi-hdd-network text-lg"></i>
+                        <span class="text-xs font-bold uppercase tracking-wider">Storage Footprint</span>
+                    </div>
+                    <div class="text-3xl font-black">{{ number_format(($stats['total_storage'] ?? 0) / 1048576, 1) }} <span class="text-lg text-indigo-200">MB</span></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Main Content Area -->
+        <div class="grid grid-cols-1 xl:grid-cols-3 gap-8 flex-1 min-h-0">
+            <!-- Unified Chart Section -->
+            <div class="xl:col-span-2 flex flex-col bg-white dark:bg-slate-900 rounded-[2rem] border border-slate-100 dark:border-slate-800 shadow-xl shadow-slate-200/40 dark:shadow-none p-8 relative overflow-hidden">
+                <div class="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500"></div>
+                <div class="flex items-center justify-between mb-8">
+                    <div>
+                        <h3 class="text-xl font-bold text-slate-800 dark:text-white">Engagement Overview</h3>
+                        <p class="text-sm text-slate-500 dark:text-slate-400 mt-1">Users vs. Content Creation (Last 7 Days)</p>
+                    </div>
+                </div>
+                <div class="flex-1 relative min-h-[300px]">
+                    <canvas id="{{lowerName}}EngagementChart"></canvas>
+                </div>
+            </div>
+
+            <!-- Live Activity Timeline -->
+            <div class="flex flex-col bg-white dark:bg-slate-900 rounded-[2rem] border border-slate-100 dark:border-slate-800 shadow-xl shadow-slate-200/40 dark:shadow-none p-8">
+                <h3 class="text-xl font-bold text-slate-800 dark:text-white flex items-center gap-3 mb-8">Live Activity</h3>
+                <div class="flex-1 overflow-y-auto pr-2 custom-scrollbar">
+                    <div class="relative border-l-2 border-slate-100 dark:border-slate-800 ml-4 space-y-8 pb-4">
+                        @forelse($recentActivity ?? [] as $activity)
+                            <div class="relative pl-8">
+                                <div class="absolute -left-[17px] top-0.5 w-8 h-8 rounded-full flex items-center justify-center shadow-md border-2 border-white dark:border-slate-900 bg-indigo-500 text-white">
+                                    <i class="bi bi-activity text-sm"></i>
+                                </div>
+                                <div class="flex flex-col">
+                                    <span class="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">{{ $activity['time_formatted'] }}</span>
+                                    <span class="text-sm font-semibold text-slate-700 dark:text-slate-200">{{ $activity['description'] }}</span>
+                                </div>
+                            </div>
+                        @empty
+                            <div class="pl-8 text-sm text-slate-500 italic">No recent activity.</div>
+                        @endforelse
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <slot:scripts>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+        window.{{lowerName}}ChartLabels = {!! json_encode($chartData['labels'] ?? []) !!};
+        window.{{lowerName}}UserData = {!! json_encode($chartData['data'] ?? []) !!};
+        window.{{lowerName}}ArticleData = {!! json_encode($chartData['article_data'] ?? []) !!};
+    </script>
+    @verbatim
+    <script>
+        if (document.getElementById('{{lowerName}}EngagementChart')) {
+            const ctx = document.getElementById('{{lowerName}}EngagementChart').getContext('2d');
+            
+            new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: window.{{lowerName}}ChartLabels,
+                    datasets: [
+                        {
+                            label: 'New Users',
+                            data: window.{{lowerName}}UserData,
+                            borderColor: '#6366f1',
+                            tension: 0.4,
+                            fill: false
+                        },
+                        {
+                            label: 'New Articles',
+                            data: window.{{lowerName}}ArticleData,
+                            borderColor: '#ec4899',
+                            tension: 0.4,
+                            fill: false
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false } }
+                }
+            });
+        }
+    </script>
+    @endverbatim
+    </slot:scripts>
+</layout>

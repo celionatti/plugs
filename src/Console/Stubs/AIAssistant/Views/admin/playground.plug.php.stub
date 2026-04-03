@@ -1,0 +1,157 @@
+<layout name="admin::layouts.admin">
+    <slot:title>{{name}} Playground</slot:title>
+
+    <div class="h-full flex flex-col">
+        <!-- Header -->
+        <div class="mb-8 flex items-center justify-between">
+            <div>
+                <h1 class="text-3xl font-bold text-slate-900 dark:text-white items-center flex gap-3 leading-none">
+                    <x-icon name="sparkles" class="w-8 h-8 text-indigo-600" />
+                    {{name}} <span class="text-indigo-600">Playground</span>
+                </h1>
+                <p class="text-slate-500 dark:text-slate-400 mt-1">Harness the power of multiple AI models in one place.</p>
+            </div>
+            <div class="flex items-center gap-3">
+                <div class="px-3 py-1.5 rounded-lg bg-indigo-50 dark:bg-indigo-900/30 border border-indigo-100 dark:border-indigo-800 flex items-center gap-2">
+                    <div class="w-2 h-2 rounded-full bg-indigo-500 animate-pulse"></div>
+                    <span class="text-xs font-bold text-indigo-700 dark:text-indigo-300 uppercase tracking-wider">AI Native</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Main Content Grid -->
+        <div class="flex-1 grid grid-cols-1 lg:grid-cols-12 gap-8 min-h-0">
+            <!-- Configuration Panel -->
+            <div class="lg:col-span-4 space-y-6 overflow-y-auto pr-2 custom-scrollbar">
+                <div class="p-6 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm">
+                    <h3 class="text-sm font-bold text-slate-800 dark:text-slate-200 uppercase tracking-widest mb-4">Model Configuration</h3>
+                    
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-2">Select Driver</label>
+                            <select id="driver-select" class="w-full px-4 py-3 rounded-xl bg-slate-50 dark:bg-slate-800 border-none ring-1 ring-slate-200 dark:ring-slate-700 focus:ring-2 focus:ring-indigo-500 transition-all text-sm font-medium">
+                                @foreach($drivers as $driver)
+                                    <option value="{{ $driver['id'] }}" {{ $driver['id'] === $default_driver ? 'selected' : '' }}>
+                                        {{ $driver['name'] }} ({{ $driver['model'] }})
+                                    </option>
+                                @endforeach
+                            </select>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Chat Panel -->
+            <div class="lg:col-span-8 flex flex-col bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden">
+                <!-- Chat Header -->
+                <div class="px-6 py-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
+                    <div class="flex items-center gap-3">
+                        <div class="w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center">
+                            <i class="bi bi-robot text-slate-600 dark:text-slate-400"></i>
+                        </div>
+                        <div>
+                            <h4 class="text-sm font-bold text-slate-900 dark:text-white">Active Session</h4>
+                        </div>
+                    </div>
+                    <button onclick="clearChat()" class="text-xs font-bold text-slate-400 hover:text-rose-500 transition-colors uppercase tracking-widest">
+                        Clear Chat
+                    </button>
+                </div>
+
+                <!-- Messages Area -->
+                <div id="chat-messages" class="flex-1 overflow-y-auto p-6 space-y-6 custom-scrollbar min-h-[400px]">
+                    <div class="flex gap-4">
+                        <div class="w-8 h-8 rounded-full bg-indigo-100 dark:bg-indigo-900/30 flex-shrink-0 flex items-center justify-center">
+                            <i class="bi bi-stars text-indigo-600 dark:text-indigo-400 text-sm"></i>
+                        </div>
+                        <div class="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-2xl rounded-tl-none border border-slate-100 dark:border-slate-800/50 max-w-[85%]">
+                            <p class="text-sm leading-relaxed">Hello! I'm your **Plugs AI Assistant**. How can I help you today?</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Input Area -->
+                <div class="p-6 border-t border-slate-100 dark:border-slate-800">
+                    <div class="relative group">
+                        <textarea id="prompt-input" rows="3" placeholder="Type your prompt here..." 
+                            class="w-full px-6 py-4 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border-none ring-1 ring-slate-200 dark:ring-slate-700 focus:ring-2 focus:ring-indigo-500 transition-all text-sm pr-16 custom-scrollbar resize-none"></textarea>
+                        <button id="send-btn" onclick="sendPrompt()" class="absolute right-3 bottom-3 w-10 h-10 rounded-xl bg-indigo-600 text-white flex items-center justify-center shadow-lg shadow-indigo-600/20 hover:scale-105 active:scale-95 transition-all">
+                            <i class="bi bi-send-fill"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <slot:scripts>
+    @verbatim
+    <script>
+        window.appendMessage = function(role, content) {
+            const chatMessages = document.getElementById('chat-messages');
+            if(!chatMessages) return;
+            const isAI = role === 'ai';
+            const msgHtml = `
+                <div class="flex gap-4 ${!isAI ? 'flex-row-reverse' : ''}">
+                    <div class="w-8 h-8 rounded-full ${isAI ? 'bg-indigo-100 dark:bg-indigo-900/30' : 'bg-slate-800'} flex-shrink-0 flex items-center justify-center">
+                        <i class="bi ${isAI ? 'bi-stars text-indigo-600 dark:text-indigo-400' : 'bi-person text-white'} text-sm"></i>
+                    </div>
+                    <div class="${isAI ? 'bg-slate-50 dark:bg-slate-800/50 rounded-tl-none border-slate-100 dark:border-slate-800/50' : 'bg-indigo-600 text-white rounded-tr-none border-indigo-500'} p-4 rounded-2xl border max-w-[85%] whitespace-pre-wrap">
+                        <p class="text-sm leading-relaxed">${content}</p>
+                    </div>
+                </div>
+            `;
+            chatMessages.insertAdjacentHTML('beforeend', msgHtml);
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        }
+
+        window.sendPrompt = async function() {
+            const promptInput = document.getElementById('prompt-input');
+            const sendBtn = document.getElementById('send-btn');
+            const driverSelect = document.getElementById('driver-select');
+            if(!promptInput || !sendBtn) return;
+
+            const prompt = promptInput.value.trim();
+            if(!prompt) return;
+
+            window.appendMessage('user', prompt);
+            promptInput.value = '';
+            promptInput.disabled = true;
+            sendBtn.disabled = true;
+
+            try {
+                const response = await fetch('/admin/{{lowerName}}/generate', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        prompt: prompt,
+                        driver: driverSelect?.value
+                    })
+                });
+
+                const data = await response.json();
+                if(data.status === 'success') {
+                    window.appendMessage('ai', data.response);
+                } else {
+                    window.appendMessage('ai', 'Error: ' + data.message);
+                }
+            } catch (error) {
+                window.appendMessage('ai', 'System Error: Could not connect to the AI engine.');
+            } finally {
+                promptInput.disabled = false;
+                sendBtn.disabled = false;
+                promptInput.focus();
+            }
+        }
+
+        window.clearChat = function() {
+            const chatMessages = document.getElementById('chat-messages');
+            if(chatMessages) {
+                chatMessages.innerHTML = '';
+                window.appendMessage('ai', "Chat cleared. Ready for a new session!");
+            }
+        }
+    </script>
+    @endverbatim
+    </slot:scripts>
+</layout>

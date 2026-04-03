@@ -69,6 +69,7 @@ class MakeMediaManagerModuleCommand extends Command
             'Repositories/MediaManagerRepository.php.stub' => 'Repositories/MediaManagerRepository.php',
             'Services/MediaManagerService.php.stub' => 'Services/MediaManagerService.php',
             'Routes/web.php.stub' => 'Routes/web.php',
+            'Views/admin/library.plug.php.stub' => 'Views/admin/library.plug.php',
             'module.json.stub' => 'module.json',
         ];
 

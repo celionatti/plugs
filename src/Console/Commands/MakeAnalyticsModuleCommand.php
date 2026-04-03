@@ -66,6 +66,7 @@ class MakeAnalyticsModuleCommand extends Command
             'Controllers/AdminAnalyticsController.php.stub' => 'Controllers/AdminAnalyticsController.php',
             'Services/AnalyticsService.php.stub' => 'Services/AnalyticsService.php',
             'Routes/web.php.stub' => 'Routes/web.php',
+            'Views/admin/dashboard.plug.php.stub' => 'Views/admin/dashboard.plug.php',
             'module.json.stub' => 'module.json',
         ];
 

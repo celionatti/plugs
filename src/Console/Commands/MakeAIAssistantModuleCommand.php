@@ -66,6 +66,7 @@ class MakeAIAssistantModuleCommand extends Command
             'Controllers/AdminAIAssistantController.php.stub' => 'Controllers/AdminAIAssistantController.php',
             'Services/AIHelperService.php.stub' => 'Services/AIHelperService.php',
             'Routes/web.php.stub' => 'Routes/web.php',
+            'Views/admin/playground.plug.php.stub' => 'Views/admin/playground.plug.php',
             'module.json.stub' => 'module.json',
         ];
 

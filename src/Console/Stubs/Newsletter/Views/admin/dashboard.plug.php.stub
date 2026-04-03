@@ -1,0 +1,176 @@
+<layout name="admin::layouts.admin">
+    <slot:title>{{name}} Dashboard</slot:title>
+
+    <div class="h-full flex flex-col">
+        <!-- Header -->
+        <div class="mb-8 flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div>
+                <h1 class="text-3xl font-bold text-slate-900 dark:text-white items-center flex gap-3 leading-none tracking-tight">
+                    <x-icon name="envelope-paper" class="w-8 h-8 text-indigo-600" />
+                    {{name}} <span class="text-indigo-600">Campaigns</span>
+                </h1>
+                <p class="text-slate-500 dark:text-slate-400 mt-1">Engage your audience with professional email campaigns.</p>
+            </div>
+            <div class="flex items-center gap-3">
+                <a href="/admin/{{lowerName}}/subscribers" data-spa="true" class="px-5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-300 font-bold text-xs hover:bg-slate-50 dark:hover:bg-slate-800 transition-all flex items-center gap-2">
+                    <i class="bi bi-people-fill"></i>
+                    Manage Audience ({{ $subscribersCount }})
+                </a>
+                <button onclick="openCampaignModal()" class="px-6 py-3 rounded-2xl bg-indigo-600 text-white font-bold text-sm shadow-lg shadow-indigo-600/20 hover:scale-105 active:scale-95 transition-all flex items-center gap-2">
+                    <i class="bi bi-plus-lg text-lg"></i>
+                    New Campaign
+                </button>
+            </div>
+        </div>
+
+        <!-- Campaigns List -->
+        <div class="flex-1 bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden flex flex-col">
+            <div class="overflow-x-auto">
+                <table class="w-full text-left border-collapse">
+                    <thead>
+                        <tr class="bg-slate-50/50 dark:bg-slate-800/50">
+                            <th class="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest border-b border-slate-100 dark:border-slate-800">Subject</th>
+                            <th class="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest border-b border-slate-100 dark:border-slate-800">Status</th>
+                            <th class="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest border-b border-slate-100 dark:border-slate-800">Recipients</th>
+                            <th class="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest border-b border-slate-100 dark:border-slate-800">Sent Date</th>
+                            <th class="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest border-b border-slate-100 dark:border-slate-800 text-right">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-100 dark:divide-slate-800">
+                        @foreach($campaigns as $campaign)
+                        <tr class="group hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors">
+                            <td class="px-6 py-4" data-id="{{ $campaign->id }}">
+                                <span class="text-sm font-bold text-slate-900 dark:text-white">{{ $campaign->subject }}</span>
+                            </td>
+                            <td class="px-6 py-4">
+                                @if($campaign->status === 'sent')
+                                    <span class="px-2 py-1 rounded-md bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 text-[10px] font-bold uppercase tracking-wide">Sent</span>
+                                @elseif($campaign->status === 'sending')
+                                    <span class="px-2 py-1 rounded-md bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 text-[10px] font-bold uppercase tracking-wide animate-pulse">Sending...</span>
+                                @else
+                                    <span class="px-2 py-1 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-500 text-[10px] font-bold uppercase tracking-wide">Draft</span>
+                                @endif
+                            </td>
+                            <td class="px-6 py-4">
+                                <span class="text-xs font-semibold text-slate-600 dark:text-slate-400">{{ $campaign->recipients_count }}</span>
+                            </td>
+                            <td class="px-6 py-4">
+                                <span class="text-xs font-medium text-slate-500">{{ $campaign->sent_at ?: '-' }}</span>
+                            </td>
+                            <td class="px-6 py-4 text-right">
+                                <div class="flex items-center justify-end gap-2">
+                                    @if($campaign->status === 'draft')
+                                    <button onclick="sendCampaign({{ $campaign->id }})" class="p-2 rounded-lg bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-600 hover:text-white transition-all shadow-sm">
+                                        <i class="bi bi-send-fill text-xs"></i>
+                                    </button>
+                                    @endif
+                                    <button class="p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-400 transition-colors">
+                                        <i class="bi bi-pencil-square text-xs"></i>
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                        @endforeach
+                        
+                        @if(empty($campaigns))
+                        <tr>
+                            <td colspan="5" class="px-6 py-20 text-center">
+                                <div class="w-16 h-16 rounded-full bg-slate-50 dark:bg-slate-800 flex items-center justify-center mx-auto mb-4">
+                                    <i class="bi bi-megaphone text-3xl text-slate-300"></i>
+                                </div>
+                                <h3 class="text-sm font-bold text-slate-900 dark:text-white">No campaigns created</h3>
+                                <p class="text-xs text-slate-500 mt-1">Start your first marketing campaign today.</p>
+                            </td>
+                        </tr>
+                        @endif
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Campaign Modal -->
+    <div id="campaign-modal" class="fixed inset-0 z-[60] hidden flex items-center justify-center p-4">
+        <div onclick="closeCampaignModal()" class="absolute inset-0 bg-slate-950/80 backdrop-blur-sm"></div>
+        <div class="relative bg-white dark:bg-slate-900 rounded-3xl w-full max-w-2xl overflow-hidden shadow-2xl scale-95 opacity-0 transition-all duration-300" id="{{lowerName}}-modal-content">
+            <div class="p-8 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
+                <h3 class="text-xl font-bold text-slate-900 dark:text-white">Create <span class="text-indigo-600">Campaign</span></h3>
+                <button onclick="closeCampaignModal()" class="text-slate-400 hover:text-slate-600 transition-colors">
+                    <i class="bi bi-x-lg text-lg"></i>
+                </button>
+            </div>
+            <div class="p-8 space-y-6">
+                <div>
+                    <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">Email Subject</label>
+                    <input type="text" id="campaign-subject" placeholder="What's new in Plugs?" class="w-full px-4 py-3 rounded-xl bg-slate-50 dark:bg-slate-800 border-none ring-1 ring-slate-200 dark:ring-slate-700 text-sm font-medium focus:ring-2 focus:ring-indigo-500 transition-all">
+                </div>
+                <div>
+                    <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">Campaign Content (HTML Support)</label>
+                    <textarea id="campaign-content" rows="10" placeholder="Hello subscribers..." class="w-full px-4 py-3 rounded-xl bg-slate-50 dark:bg-slate-800 border-none ring-1 ring-slate-200 dark:ring-slate-700 text-sm font-medium focus:ring-2 focus:ring-indigo-500 transition-all resize-none custom-scrollbar"></textarea>
+                </div>
+            </div>
+            <div class="p-8 bg-slate-50/50 dark:bg-slate-800/30 flex justify-end gap-3">
+                <button onclick="closeCampaignModal()" class="px-5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-300 font-bold text-xs hover:bg-slate-100 dark:hover:bg-slate-800 transition-all">Cancel</button>
+                <button onclick="saveCampaign()" class="px-6 py-2.5 rounded-xl bg-indigo-600 text-white font-bold text-xs hover:scale-105 active:scale-95 transition-all shadow-lg shadow-indigo-600/20">Create Draft</button>
+            </div>
+        </div>
+    </div>
+
+    <slot:scripts>
+    @verbatim
+    <script>
+        window.openCampaignModal = function() {
+            const modal = document.getElementById('campaign-modal');
+            const modalContent = document.getElementById('{{lowerName}}-modal-content');
+            if (!modal || !modalContent) return;
+            modal.classList.remove('hidden');
+            setTimeout(() => {
+                modalContent.classList.remove('scale-95', 'opacity-0');
+                modalContent.classList.add('scale-100', 'opacity-100');
+            }, 10);
+        };
+
+        window.closeCampaignModal = function() {
+            const modal = document.getElementById('campaign-modal');
+            const modalContent = document.getElementById('{{lowerName}}-modal-content');
+            if (!modal || !modalContent) return;
+            modalContent.classList.add('scale-95', 'opacity-0');
+            modalContent.classList.remove('scale-100', 'opacity-100');
+            setTimeout(() => modal.classList.add('hidden'), 300);
+        };
+
+        window.saveCampaign = async function() {
+            const subject = document.getElementById('campaign-subject').value;
+            const content = document.getElementById('campaign-content').value;
+            
+            if(!subject || !content) return alert('Both subject and content are required');
+
+            try {
+                const response = await fetch('/admin/{{lowerName}}/campaigns', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ subject, content })
+                });
+                const data = await response.json();
+                if(data.success) window.location.reload();
+            } catch (error) {
+                alert('Failed to save campaign');
+            }
+        };
+
+        window.sendCampaign = async function(id) {
+            if(!confirm('Send this campaign to all active subscribers?')) return;
+            
+            try {
+                const response = await fetch(`/admin/{{lowerName}}/campaigns/${id}/send`, { method: 'POST' });
+                const data = await response.json();
+                if(data.success) window.location.reload();
+                else alert(data.error);
+            } catch (error) {
+                alert('Failed to send campaign');
+            }
+        };
+    </script>
+    @endverbatim
+    </slot:scripts>
+</layout>

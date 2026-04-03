@@ -71,6 +71,7 @@ class MakeNewsletterModuleCommand extends Command
             'Repositories/NewsletterRepository.php.stub' => 'Repositories/NewsletterRepository.php',
             'Services/NewsletterService.php.stub' => 'Services/NewsletterService.php',
             'Routes/web.php.stub' => 'Routes/web.php',
+            'Views/admin/dashboard.plug.php.stub' => 'Views/admin/dashboard.plug.php',
             'module.json.stub' => 'module.json',
         ];
 

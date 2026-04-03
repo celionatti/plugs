@@ -537,52 +537,63 @@ PHP;
 @section('title', '{$name} Module')
 
 @section('content')
-<div class="container py-8">
-    <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-8">
+<div class="h-full flex flex-col p-8">
+    <div class="bg-white dark:bg-slate-900 rounded-[2rem] border border-slate-200 dark:border-slate-800 shadow-sm p-8">
         <div class="flex items-center gap-4 mb-6">
-            <div class="w-12 h-12 bg-blue-500 rounded-lg flex items-center justify-center text-white shadow-lg shadow-blue-500/20">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 002-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
-                </svg>
+            <div class="w-12 h-12 bg-indigo-600 rounded-2xl flex items-center justify-center text-white shadow-lg shadow-indigo-600/20">
+                <i class="bi bi-box-seam text-2xl"></i>
             </div>
-            <h1 class="text-3xl font-extrabold text-gray-900 dark:text-white">Welcome to the {$name} Module</h1>
+            <h1 class="text-3xl font-bold text-slate-900 dark:text-white">Welcome to {$name}</h1>
         </div>
 
-        <p class="text-lg text-gray-600 dark:text-gray-400 mb-8">
-            Modular architecture allows you to build self-contained features that act like mini-applications.
-            This view is located at <span class="px-2 py-1 bg-gray-100 dark:bg-gray-900 rounded font-mono text-sm">modules/{$name}/Views/index.plug.php</span>.
+        <p class="text-slate-500 dark:text-slate-400 mb-8">
+            This module was automatically generated and is fully SPA-compatible.
         </p>
 
         <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div class="p-6 bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-900/10 dark:to-indigo-900/10 rounded-xl border border-blue-100 dark:border-blue-800">
-                <h3 class="font-bold text-blue-900 dark:text-blue-200 mb-2">Rendering this view</h3>
-                <p class="text-sm text-blue-800/80 dark:text-blue-300/80 mb-4">You can return this view from your controller using the module namespace:</p>
-                <code class="block p-3 bg-white dark:bg-gray-900 rounded border border-blue-200 dark:border-blue-800 text-blue-600 dark:text-blue-400 text-sm">
-                    return view('{$namespace}::index');
-                </code>
-            </div>
-
-            <div class="p-6 bg-gradient-to-br from-purple-50 to-pink-50 dark:from-purple-900/10 dark:to-pink-900/10 rounded-xl border border-purple-100 dark:border-purple-800">
-                <h3 class="font-bold text-purple-900 dark:text-purple-200 mb-2">Next Steps</h3>
-                <ul class="text-sm text-purple-800/80 dark:text-purple-300/80 space-y-2">
-                    <li class="flex items-center gap-2">
-                        <span class="w-1.5 h-1.5 bg-purple-400 rounded-full"></span>
-                        Define routes in <code>Routes/web.php</code>
-                    </li>
-                    <li class="flex items-center gap-2">
-                        <span class="w-1.5 h-1.5 bg-purple-400 rounded-full"></span>
-                        Create a controller in <code>Controllers/</code>
-                    </li>
-                    <li class="flex items-center gap-2">
-                        <span class="w-1.5 h-1.5 bg-purple-400 rounded-full"></span>
-                        Build your feature!
-                    </li>
-                </ul>
+            <div class="p-6 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-slate-100 dark:border-slate-800">
+                <h3 class="font-bold text-slate-900 dark:text-white mb-2">Interactive Demo</h3>
+                <button onclick="window.open{$name}Modal()" class="px-4 py-2 bg-indigo-600 text-white rounded-xl font-bold text-sm">Open Modal</button>
             </div>
         </div>
     </div>
 </div>
-@endsection
+
+<!-- Sample Modal -->
+<div id="{$namespace}-modal" class="fixed inset-0 z-[60] hidden flex items-center justify-center p-4">
+    <div onclick="window.close{$name}Modal()" class="absolute inset-0 bg-slate-950/80 backdrop-blur-sm"></div>
+    <div class="relative bg-white dark:bg-slate-900 rounded-3xl w-full max-w-lg p-8 shadow-2xl scale-95 opacity-0 transition-all duration-300" id="{$namespace}-modal-content">
+        <h3 class="text-xl font-bold text-slate-900 dark:text-white mb-4">SPA Modal Success!</h3>
+        <p class="text-slate-500 text-sm mb-6">This modal works perfectly during SPA navigation because its IDs are unique and its functions are globally scoped.</p>
+        <button onclick="window.close{$name}Modal()" class="w-full py-3 bg-indigo-600 text-white rounded-xl font-bold">Close</button>
+    </div>
+</div>
+
+<slot:scripts>
+@verbatim
+<script>
+    window.open{$name}Modal = function() {
+        const modal = document.getElementById('{$namespace}-modal');
+        const content = document.getElementById('{$namespace}-modal-content');
+        if (!modal || !content) return;
+        modal.classList.remove('hidden');
+        setTimeout(() => {
+            content.classList.remove('scale-95', 'opacity-0');
+            content.classList.add('scale-100', 'opacity-100');
+        }, 10);
+    };
+
+    window.close{$name}Modal = function() {
+        const modal = document.getElementById('{$namespace}-modal');
+        const content = document.getElementById('{$namespace}-modal-content');
+        if (!modal || !content) return;
+        content.classList.add('scale-95', 'opacity-0');
+        content.classList.remove('scale-100', 'opacity-100');
+        setTimeout(() => modal.classList.add('hidden'), 300);
+    };
+</script>
+@endverbatim
+</slot:scripts>
 PHP;
     }
 }
