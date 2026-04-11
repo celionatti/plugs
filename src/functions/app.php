@@ -128,6 +128,47 @@ if (!function_exists('config')) {
     }
 }
 
+if (!function_exists('setting')) {
+    /**
+     * Get a setting value from the database or fallback to config.
+     *
+     * @param string $key
+     * @param mixed $default
+     * @return mixed
+     */
+    function setting(string $key, $default = null)
+    {
+        static $settings = [];
+
+        if (array_key_exists($key, $settings)) {
+            return $settings[$key];
+        }
+
+        try {
+            // Attempt to fetch from Setting model if available
+            if (class_exists(\App\Models\Setting::class)) {
+                $value = \App\Models\Setting::getValue($key);
+                if ($value !== null) {
+                    // Try to decode common boolean/numeric string representations
+                    if ($value === 'true' || $value === '1') $value = true;
+                    elseif ($value === 'false' || $value === '0') $value = false;
+                    
+                    $settings[$key] = $value;
+                    return $value;
+                }
+            }
+        } catch (\Throwable $e) {
+            // Silently fail and fallback to config
+        }
+
+        // Fallback to configuration
+        $configValue = config($key, $default);
+        $settings[$key] = $configValue;
+
+        return $configValue;
+    }
+}
+
 if (!function_exists('base_path')) {
     /**
      * Get the base path of the installation.

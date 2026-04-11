@@ -41,8 +41,11 @@ class AuthController extends Controller
         if ($this->authService->attemptLogin($loginRequest)) {
             $user = Auth::user();
 
+            // Check if email verification is enabled
+            $enabled = (bool) setting('auth_verification', config('auth.email_verification.enabled', true));
+
             // Check if email is verified
-            if ($user && method_exists($user, 'hasVerifiedEmail') && !$user->hasVerifiedEmail()) {
+            if ($enabled && $user && method_exists($user, 'hasVerifiedEmail') && !$user->hasVerifiedEmail()) {
                 try {
                     // Refresh verification code on login if unverified
                     $this->authService->sendEmailVerificationNotification($user);
@@ -88,26 +91,37 @@ class AuthController extends Controller
             
             $user = $this->authService->registerUser($registerRequest);
             
-            // Send email verification
-            $sent = $this->authService->sendEmailVerificationNotification($user);
-            
-            if (!$sent) {
-                DB::rollBack();
-                return $this->back()
-                    ->withError('Registration failed: System could not send verification email. Please try again later.')
-                    ->withInput();
+            // Check if email verification is enabled
+            $enabled = (bool) setting('auth_verification', config('auth.email_verification.enabled', true));
+
+            if ($enabled) {
+                // Send email verification
+                $sent = $this->authService->sendEmailVerificationNotification($user);
+                
+                if (!$sent) {
+                    DB::rollBack();
+                    return $this->back()
+                        ->withError('Registration failed: System could not send verification email. Please try again later.')
+                        ->withInput();
+                }
             }
-            
+
             DB::commit();
 
-            // Don't login the user after registration if we want them to verify first
-            // But we store their email in session so the verify page knows who they are
-            if (session_status() === PHP_SESSION_NONE) {
-                session_start();
-            }
-            $_SESSION['auth.verify_email'] = method_exists($user, 'getAttribute') ? $user->getAttribute('email') : $user->email;
+            // Log the user in after registration
+            Auth::login($user);
 
-            return $this->redirect('/verify-email')->withSuccess('Account created! Please check your email for a verification code.');
+            if ($enabled) {
+                // Store email in session as a fallback and for display on verification page
+                if (session_status() === PHP_SESSION_NONE) {
+                    session_start();
+                }
+                $_SESSION['auth.verify_email'] = method_exists($user, 'getAttribute') ? $user->getAttribute('email') : $user->email;
+
+                return $this->redirect('/verify-email')->withSuccess('Account created! Please check your email for a verification code.');
+            }
+
+            return $this->redirect('/')->withSuccess('Account created successfully! Welcome to ' . config('app.name', 'Plugs'));
 
         } catch (\InvalidArgumentException $e) {
             if (DB::getConnection()->getPdo()->inTransaction()) {
