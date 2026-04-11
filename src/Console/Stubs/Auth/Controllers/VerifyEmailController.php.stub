@@ -7,6 +7,7 @@ namespace Modules\{{name}}\Controllers;
 use Modules\{{name}}\Services\AuthService;
 use Plugs\Base\Controller\Controller;
 use Plugs\Facades\Auth;
+use Plugs\Facades\DB;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 
@@ -21,14 +22,15 @@ class VerifyEmailController extends Controller
 
     public function show(ServerRequestInterface $request): ResponseInterface
     {
-        if (Auth::check() && Auth::user()?->hasVerifiedEmail()) {
+        $user = Auth::user();
+        if (Auth::check() && $user && method_exists($user, 'hasVerifiedEmail') && $user->hasVerifiedEmail()) {
             return $this->redirect('/');
         }
 
         if (session_status() === PHP_SESSION_NONE) {
             session_start();
         }
-        $email = $_SESSION['auth.verify_email'] ?? Auth::user()?->email;
+        $email = $_SESSION['auth.verify_email'] ?? ($user ? (method_exists($user, 'getAttribute') ? $user->getAttribute('email') : $user->email) : null);
 
         if (!$email && !Auth::check()) {
             return $this->redirect('/login');
@@ -50,7 +52,8 @@ class VerifyEmailController extends Controller
         // We allow verifying without being logged in
         $user = (new \Modules\{{name}}\Repositories\UserRepository())->findById((int)$id);
 
-        if (!$user || sha1($user->email) !== $hash) {
+        $email = method_exists($user, 'getAttribute') ? $user->getAttribute('email') : $user->email;
+        if (!$user || sha1((string)$email) !== $hash) {
             return $this->redirect('/login')->withError('Invalid or expired verification link.');
         }
 
@@ -75,14 +78,15 @@ class VerifyEmailController extends Controller
 
     public function resend(ServerRequestInterface $request): ResponseInterface
     {
-        if (Auth::check() && Auth::user()?->hasVerifiedEmail()) {
+        $user = Auth::user();
+        if (Auth::check() && $user && method_exists($user, 'hasVerifiedEmail') && $user->hasVerifiedEmail()) {
             return $this->redirect('/');
         }
 
         if (session_status() === PHP_SESSION_NONE) {
             session_start();
         }
-        $email = $_SESSION['auth.verify_email'] ?? Auth::user()?->email;
+        $email = $_SESSION['auth.verify_email'] ?? ($user ? (method_exists($user, 'getAttribute') ? $user->getAttribute('email') : $user->email) : null);
 
         if (!$email) {
             return $this->redirect('/login')->withError('Please login first.');
@@ -90,9 +94,18 @@ class VerifyEmailController extends Controller
 
         $user = (new \Modules\{{name}}\Repositories\UserRepository())->findByEmail($email);
         if ($user) {
-            $sent = $this->authService->sendEmailVerificationNotification($user);
-            if (!$sent) {
-                return $this->back()->withError('System could not send verification email. Please contact support.');
+            DB::beginTransaction();
+            try {
+                $sent = $this->authService->sendEmailVerificationNotification($user);
+                if (!$sent) {
+                    DB::rollBack();
+                    return $this->back()->withError('System could not send verification email. Please try again later.');
+                }
+                DB::commit();
+            } catch (\Exception $e) {
+                DB::rollBack();
+                error_log('Verification Resend Error: ' . $e->getMessage());
+                return $this->back()->withError('An error occurred while sending verification email.');
             }
         }
 
@@ -106,10 +119,8 @@ class VerifyEmailController extends Controller
     {
         $body = $request->getParsedBody();
 
-        if (session_status() === PHP_SESSION_NONE) {
-            session_start();
-        }
-        $email = $_SESSION['auth.verify_email'] ?? Auth::user()?->email;
+        $user = Auth::user();
+        $email = $_SESSION['auth.verify_email'] ?? ($user ? (method_exists($user, 'getAttribute') ? $user->getAttribute('email') : $user->email) : null);
 
         if (!$email) {
             return $this->redirect('/login')->withError('Session expired. Please login and try again.');

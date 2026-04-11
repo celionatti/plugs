@@ -9,6 +9,7 @@ use Modules\{{name}}\Requests\RegisterRequest;
 use Modules\{{name}}\Services\AuthService;
 use Plugs\Base\Controller\Controller;
 use Plugs\Facades\Auth;
+use Plugs\Facades\DB;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 
@@ -42,45 +43,56 @@ class AuthController extends Controller
 
             // Check if email is verified
             if ($user && method_exists($user, 'hasVerifiedEmail') && !$user->hasVerifiedEmail()) {
-                // Attempt to send verification email
-                $sent = $this->authService->sendEmailVerificationNotification($user);
-                
-                $email = $user->email;
-                
-                if (!$sent) {
+                DB::beginTransaction();
+                try {
+                    // Attempt to send verification email
+                    $sent = $this->authService->sendEmailVerificationNotification($user);
+
+                    if (!$sent) {
+                        DB::rollBack();
+
+                        if (session_status() === PHP_SESSION_NONE) {
+                            session_start();
+                        }
+
+                        // Soft logout to preserve session (Auth::logout() destroys flashes)
+                        foreach ($_SESSION as $key => $value) {
+                            if (is_string($key) && str_starts_with($key, 'login_')) {
+                                unset($_SESSION[$key]);
+                            }
+                        }
+
+                        return $this->redirect('/login')->withError('Unable to send verification email. Please try again later.');
+                    }
+
+                    DB::commit();
+
+                    $email = method_exists($user, 'getAttribute') ? $user->getAttribute('email') : $user->email;
+
+                    // Store email in session to show on notice page
                     if (session_status() === PHP_SESSION_NONE) {
                         session_start();
                     }
-                    
-                    // Soft logout to preserve session (Auth::logout() destroys flashes)
+
+                    // Soft logout to preserve session
                     foreach ($_SESSION as $key => $value) {
                         if (is_string($key) && str_starts_with($key, 'login_')) {
                             unset($_SESSION[$key]);
                         }
                     }
-                    
-                    return $this->redirect('/login')->withError('System was unable to send a verification email. Please contact support.');
+
+                    $_SESSION['auth.verify_email'] = $email;
+
+                    return $this->redirect('/verify-email')->withError('Please verify your email address before logging in. A new code has been sent.');
+                } catch (\Exception $e) {
+                    DB::rollBack();
+                    error_log('Login Verification Error: ' . $e->getMessage());
+                    return $this->redirect('/login')->withError('An error occurred while sending verification email.');
                 }
-                
-                // Store email in session to show on notice page
-                if (session_status() === PHP_SESSION_NONE) {
-                    session_start();
-                }
-                
-                // Soft logout to preserve session (Auth::logout() destroys flashes)
-                foreach ($_SESSION as $key => $value) {
-                    if (is_string($key) && str_starts_with($key, 'login_')) {
-                        unset($_SESSION[$key]);
-                    }
-                }
-                
-                $_SESSION['auth.verify_email'] = $email;
-                
-                return $this->redirect('/verify-email')->withError('Please verify your email address before logging in. A new code has been sent.');
             }
 
             $redirectPath = ($user && method_exists($user, 'isAdmin') && $user->isAdmin()) ? '/admin' : '/';
-            
+
             return $this->redirect($redirectPath)->withSuccess('Welcome back!');
         }
 
@@ -108,30 +120,43 @@ class AuthController extends Controller
         $registerRequest = new RegisterRequest($validated);
 
         try {
+            DB::beginTransaction();
+            
             $user = $this->authService->registerUser($registerRequest);
             
             // Send email verification
             $sent = $this->authService->sendEmailVerificationNotification($user);
             
             if (!$sent) {
-                return $this->redirect('/login')->withError('Account created, but system could not send verification email. Please contact support.');
+                DB::rollBack();
+                return $this->back()
+                    ->withError('Registration failed: System could not send verification email. Please try again later.')
+                    ->withInput();
             }
             
+            DB::commit();
+
             // Don't login the user after registration if we want them to verify first
             // But we store their email in session so the verify page knows who they are
             if (session_status() === PHP_SESSION_NONE) {
                 session_start();
             }
-            $_SESSION['auth.verify_email'] = $user->email;
+            $_SESSION['auth.verify_email'] = method_exists($user, 'getAttribute') ? $user->getAttribute('email') : $user->email;
 
             return $this->redirect('/verify-email')->withSuccess('Account created! Please check your email for a verification code.');
 
         } catch (\InvalidArgumentException $e) {
+            if (DB::getConnection()->getPdo()->inTransaction()) {
+                DB::rollBack();
+            }
             return $this->back()
                 ->withError($e->getMessage())
                 ->withErrors(['email' => $e->getMessage()])
                 ->withInput();
         } catch (\Exception $e) {
+            if (DB::getConnection()->getPdo()->inTransaction()) {
+                DB::rollBack();
+            }
             error_log('Registration Error: ' . $e->getMessage() . ' in ' . $e->getFile() . ':' . $e->getLine());
             return $this->back()
                 ->withError('Application Error: ' . $e->getMessage())
