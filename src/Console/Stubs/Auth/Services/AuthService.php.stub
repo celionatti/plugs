@@ -63,10 +63,16 @@ class AuthService
         if (!$user) return; // Don't throw to prevent email enumeration
 
         $token = Str::random(60);
+        $expiryMinutes = (int) config('auth.password_reset.expiry_minutes', 60);
+
         // Assuming there is a DB facade or model for password_reset_tokens
         DB::table('password_reset_tokens')->updateOrInsert(
             ['email' => $email],
-            ['token' => $token, 'created_at' => now()]
+            [
+                'token' => $token,
+                'created_at' => date('Y-m-d H:i:s'),
+                'expires_at' => date('Y-m-d H:i:s', strtotime("+{$expiryMinutes} minutes"))
+            ]
         );
 
         $appUrl = rtrim((string) config('app.url', 'http://localhost'), '/');
@@ -89,6 +95,12 @@ class AuthService
         $resetRecord = DB::table('password_reset_tokens')->where('email', $email)->first();
 
         if (!$resetRecord || $resetRecord->token !== $token) {
+            return false;
+        }
+
+        // Check if token has expired
+        if (isset($resetRecord->expires_at) && strtotime($resetRecord->expires_at) < time()) {
+            DB::table('password_reset_tokens')->where('email', $email)->delete();
             return false;
         }
 

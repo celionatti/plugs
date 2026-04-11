@@ -43,51 +43,15 @@ class AuthController extends Controller
 
             // Check if email is verified
             if ($user && method_exists($user, 'hasVerifiedEmail') && !$user->hasVerifiedEmail()) {
-                DB::beginTransaction();
                 try {
-                    // Attempt to send verification email
-                    $sent = $this->authService->sendEmailVerificationNotification($user);
+                    // Refresh verification code on login if unverified
+                    $this->authService->sendEmailVerificationNotification($user);
 
-                    if (!$sent) {
-                        DB::rollBack();
-
-                        if (session_status() === PHP_SESSION_NONE) {
-                            session_start();
-                        }
-
-                        // Soft logout to preserve session (Auth::logout() destroys flashes)
-                        foreach ($_SESSION as $key => $value) {
-                            if (is_string($key) && str_starts_with($key, 'login_')) {
-                                unset($_SESSION[$key]);
-                            }
-                        }
-
-                        return $this->redirect('/login')->withError('Unable to send verification email. Please try again later.');
-                    }
-
-                    DB::commit();
-
-                    $email = method_exists($user, 'getAttribute') ? $user->getAttribute('email') : $user->email;
-
-                    // Store email in session to show on notice page
-                    if (session_status() === PHP_SESSION_NONE) {
-                        session_start();
-                    }
-
-                    // Soft logout to preserve session
-                    foreach ($_SESSION as $key => $value) {
-                        if (is_string($key) && str_starts_with($key, 'login_')) {
-                            unset($_SESSION[$key]);
-                        }
-                    }
-
-                    $_SESSION['auth.verify_email'] = $email;
-
-                    return $this->redirect('/verify-email')->withError('Please verify your email address before logging in. A new code has been sent.');
+                    return $this->redirect('/verify-email')->withError('Please verify your email address. A new code has been sent.');
                 } catch (\Exception $e) {
-                    DB::rollBack();
-                    error_log('Login Verification Error: ' . $e->getMessage());
-                    return $this->redirect('/login')->withError('An error occurred while sending verification email.');
+                    error_log('Login Verification Notification Error: ' . $e->getMessage());
+                    // We still redirect to verify-email since they are unverified
+                    return $this->redirect('/verify-email');
                 }
             }
 

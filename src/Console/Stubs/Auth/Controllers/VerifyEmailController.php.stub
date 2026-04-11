@@ -27,10 +27,7 @@ class VerifyEmailController extends Controller
             return $this->redirect('/');
         }
 
-        if (session_status() === PHP_SESSION_NONE) {
-            session_start();
-        }
-        $email = $_SESSION['auth.verify_email'] ?? ($user ? (method_exists($user, 'getAttribute') ? $user->getAttribute('email') : $user->email) : null);
+        $email = ($user ? (method_exists($user, 'getAttribute') ? $user->getAttribute('email') : $user->email) : ($_SESSION['auth.verify_email'] ?? null));
 
         if (!$email && !Auth::check()) {
             return $this->redirect('/login');
@@ -83,10 +80,7 @@ class VerifyEmailController extends Controller
             return $this->redirect('/');
         }
 
-        if (session_status() === PHP_SESSION_NONE) {
-            session_start();
-        }
-        $email = $_SESSION['auth.verify_email'] ?? ($user ? (method_exists($user, 'getAttribute') ? $user->getAttribute('email') : $user->email) : null);
+        $email = ($user ? (method_exists($user, 'getAttribute') ? $user->getAttribute('email') : $user->email) : ($_SESSION['auth.verify_email'] ?? null));
 
         if (!$email) {
             return $this->redirect('/login')->withError('Please login first.');
@@ -120,7 +114,7 @@ class VerifyEmailController extends Controller
         $body = $request->getParsedBody();
 
         $user = Auth::user();
-        $email = $_SESSION['auth.verify_email'] ?? ($user ? (method_exists($user, 'getAttribute') ? $user->getAttribute('email') : $user->email) : null);
+        $email = ($user ? (method_exists($user, 'getAttribute') ? $user->getAttribute('email') : $user->email) : ($_SESSION['auth.verify_email'] ?? null));
 
         if (!$email) {
             return $this->redirect('/login')->withError('Session expired. Please login and try again.');
