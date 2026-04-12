@@ -6,20 +6,8 @@
     <title>@yield('title', 'Admin Panel') - Plugs Framework</title>
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <meta name="app-url" content="{{ url('/') }}">
-    <script src="https://cdn.tailwindcss.com"></script>
+    @plugcss
     <script>
-        tailwind.config = {
-            darkMode: 'class',
-            theme: {
-                extend: {
-                    colors: {
-                        primary: 'var(--primary-color)',
-                        secondary: 'var(--secondary-color)',
-                    }
-                }
-            }
-        }
-        
         const forceDarkMode = "{{ \App\Models\Setting::getValue('dark_mode', 'false') }}" === 'true';
         if (forceDarkMode || localStorage.getItem('color-theme') === 'dark' || (!('color-theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
             document.documentElement.classList.add('dark');
