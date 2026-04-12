@@ -756,8 +756,12 @@ class PlugsSPA {
 
             if (modifiers.includes("window")) {
               window.addEventListener(eventName, handler);
+              if (!actionEl._plugGlobalListeners) actionEl._plugGlobalListeners = [];
+              actionEl._plugGlobalListeners.push({ target: window, name: eventName, handler });
             } else if (modifiers.includes("document")) {
               document.addEventListener(eventName, handler);
+              if (!actionEl._plugGlobalListeners) actionEl._plugGlobalListeners = [];
+              actionEl._plugGlobalListeners.push({ target: document, name: eventName, handler });
             } else {
               actionEl.addEventListener(eventName, handler);
             }
@@ -1103,6 +1107,9 @@ class PlugsSPA {
           node.querySelectorAll("[p-unmounted]").forEach((child) => {
             this.runAction(child.getAttribute("p-unmounted"), { $el: child });
           });
+          
+          this.cleanupElement(node);
+          node.querySelectorAll("*").forEach((child) => this.cleanupElement(child));
         }
         target.removeChild(node);
       }
@@ -1422,6 +1429,32 @@ class PlugsSPA {
         );
       } catch (e) {}
     }
+  }
+
+  cleanupElement(el) {
+    if (!el) return;
+
+    // Close SSE connections
+    if (el._plugEventSource) {
+      el._plugEventSource.close();
+      delete el._plugEventSource;
+    }
+
+    // Clear Poll Timers
+    if (el._pollTimer) {
+      clearInterval(el._pollTimer);
+      delete el._pollTimer;
+    }
+
+    // Remove Global Listeners (window/document)
+    if (el._plugGlobalListeners) {
+      el._plugGlobalListeners.forEach(({ target, name, handler }) => {
+        target.removeEventListener(name, handler);
+      });
+      delete el._plugGlobalListeners;
+    }
+
+    // Recursive cleanup if needed (though usually handled by DOM morphing caller)
   }
 
   // ─── SPA Navigation ─────────────────────────────────────────
