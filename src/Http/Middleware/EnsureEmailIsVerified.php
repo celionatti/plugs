@@ -34,7 +34,7 @@ class EnsureEmailIsVerified implements MiddlewareInterface
         $user = Auth::user();
 
         // Check if email verification is enabled via DB settings or config
-        $enabled = (bool) setting('auth_verification', config('auth.email_verification.enabled', true));
+        $enabled = (bool) \setting('auth_verification', config('auth.email_verification.enabled', true));
 
         if ($enabled && $user && method_exists($user, 'hasVerifiedEmail') && !$user->hasVerifiedEmail()) {
             $path = $request->getUri()->getPath();

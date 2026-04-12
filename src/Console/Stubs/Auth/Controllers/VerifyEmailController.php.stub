@@ -22,6 +22,12 @@ class VerifyEmailController extends Controller
 
     public function show(ServerRequestInterface $request): ResponseInterface
     {
+        // Check if email verification is enabled
+        $enabled = (bool) \setting('auth_verification', config('auth.email_verification.enabled', true));
+        if (!$enabled) {
+            return $this->redirect('/');
+        }
+
         $user = Auth::user();
         if (Auth::check() && $user && method_exists($user, 'hasVerifiedEmail') && $user->hasVerifiedEmail()) {
             return $this->redirect('/');
@@ -43,6 +49,12 @@ class VerifyEmailController extends Controller
 
     public function verify(ServerRequestInterface $request): ResponseInterface
     {
+        // Check if email verification is enabled
+        $enabled = (bool) \setting('auth_verification', config('auth.email_verification.enabled', true));
+        if (!$enabled) {
+            return $this->redirect('/');
+        }
+
         $id = $request->getAttribute('id');
         $hash = $request->getAttribute('hash');
 
@@ -75,6 +87,12 @@ class VerifyEmailController extends Controller
 
     public function resend(ServerRequestInterface $request): ResponseInterface
     {
+        // Check if email verification is enabled
+        $enabled = (bool) \setting('auth_verification', config('auth.email_verification.enabled', true));
+        if (!$enabled) {
+            return $this->redirect('/');
+        }
+
         $user = Auth::user();
         if (Auth::check() && $user && method_exists($user, 'hasVerifiedEmail') && $user->hasVerifiedEmail()) {
             return $this->redirect('/');
@@ -111,6 +129,12 @@ class VerifyEmailController extends Controller
      */
     public function verifyCode(ServerRequestInterface $request): ResponseInterface
     {
+        // Check if email verification is enabled
+        $enabled = (bool) \setting('auth_verification', config('auth.email_verification.enabled', true));
+        if (!$enabled) {
+            return $this->redirect('/');
+        }
+
         $body = $request->getParsedBody();
 
         $user = Auth::user();

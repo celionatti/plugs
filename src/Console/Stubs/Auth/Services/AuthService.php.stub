@@ -138,7 +138,7 @@ class AuthService
     public function sendEmailVerificationNotification(object $user): bool
     {
         // Check if email verification is enabled
-        $enabled = (bool) setting('auth_verification', config('auth.email_verification.enabled', true));
+        $enabled = (bool) \setting('auth_verification', config('auth.email_verification.enabled', true));
 
         if (!$enabled || (method_exists($user, 'hasVerifiedEmail') && $user->hasVerifiedEmail())) {
             return true;
