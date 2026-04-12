@@ -78,11 +78,6 @@
         <div class="w-full lg:w-1/2 flex items-center justify-center p-3 sm:p-6 lg:p-5">
             <!-- Inset Rounded Panel -->
             <div class="glass-panel w-full lg:h-full max-w-xl lg:max-w-none flex flex-col items-center justify-center relative p-6 sm:p-10 lg:p-12 rounded-[2rem] lg:rounded-[3rem] overflow-y-auto custom-scrollbar shadow-2xl">
-                
-                <!-- Flash Messages -->
-                <div class="absolute top-6 left-1/2 -translate-x-1/2 z-50 w-full max-w-md px-6">
-                    {!! \Plugs\Utils\FlashMessage::render() !!}
-                </div>
 
                 <div class="w-full max-w-md relative z-10 transition-all duration-500">
                     <!-- Branding for Mobile -->
@@ -97,9 +92,7 @@
                         <p class="text-[14px] text-slate-400 font-medium leading-relaxed"><yield:subheading /></p>
                     </div>
 
-                    <div id="app-content" class="w-full">
-                        @yield('content')
-                    </div>
+                    <main-content class="w-full" flash />
 
                     <!-- Integrated Footer -->
                     @if(isset($__sections['footer']) && trim($__sections['footer']) !== '')
