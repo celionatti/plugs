@@ -39,12 +39,13 @@ class EnsureEmailIsVerified implements MiddlewareInterface
         if ($enabled && $user && method_exists($user, 'hasVerifiedEmail') && !$user->hasVerifiedEmail()) {
             $path = $request->getUri()->getPath();
             
-            // Allow access to verification routes and logout
+            // Allow access to verification routes, logout and Admin Panel
             $excludedPaths = [
                 '/verify-email', 
                 '/logout', 
                 '/email/verification-notification',
-                '/email/verify'
+                '/email/verify',
+                '/admin'
             ];
 
             // Simple prefix/exact check

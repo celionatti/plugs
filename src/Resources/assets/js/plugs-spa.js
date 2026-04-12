@@ -1538,7 +1538,15 @@ class PlugsSPA {
 
       // Extract only the part we actually need
       const targetInDoc = doc.querySelector(targetSelector);
-      const cleanHTML = targetInDoc ? targetInDoc.innerHTML : doc.body.innerHTML;
+      
+      if (!targetInDoc) {
+        // If target content area is not found, fallout gracefully to full page reload
+        // instead of injecting body.innerHTML which causes UI nested layouts (loop).
+        window.location.href = url;
+        return true;
+      }
+
+      const cleanHTML = targetInDoc.innerHTML;
 
       const performUpdate = () => {
         if (this.currentView?.unmount) {
