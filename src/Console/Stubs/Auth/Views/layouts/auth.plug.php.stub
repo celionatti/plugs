@@ -8,121 +8,215 @@
         <yield:title default="Auth" /> | {{ config('app.name', 'Plugs') }}
     </title>
     @plugcss
-    <link
-        href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=Outfit:wght@400;500;600;700;800&display=swap"
-        rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
     <style>
         :root {
-            --primary-color: {{ \App\Models\Setting::getValue('primary_color', '#6366f1') }};
-            --secondary-color: {{ \App\Models\Setting::getValue('secondary_color', '#a855f7') }};
+            --primary-color: {{ \Modules\Admin\Models\Setting::getValue('primary_color', '#6366f1') }};
+            --secondary-color: {{ \Modules\Admin\Models\Setting::getValue('secondary_color', '#a855f7') }};
         }
 
-        body { font-family: 'Plus Jakarta Sans', sans-serif; }
+        * { box-sizing: border-box; }
+        body { font-family: 'Plus Jakarta Sans', sans-serif; margin: 0; }
         .font-outfit { font-family: 'Outfit', sans-serif; }
 
+        /* ── Background ── */
         .mesh-bg {
-            position: fixed;
-            inset: 0;
-            z-index: 0;
-            background-color: #020617;
-            background-image: 
-                radial-gradient(circle at 0% 0%, rgba(99, 102, 241, 0.15) 0%, transparent 50%),
-                radial-gradient(circle at 100% 0%, rgba(168, 85, 247, 0.15) 0%, transparent 50%),
-                radial-gradient(circle at 100% 100%, rgba(99, 102, 241, 0.15) 0%, transparent 50%),
-                radial-gradient(circle at 0% 100%, rgba(99, 102, 241, 0.15) 0%, transparent 50%);
-            filter: blur(100px);
-            animation: mesh-pulse 10s ease-in-out infinite alternate;
+            position: fixed; inset: 0; z-index: 0;
+            background: #0f172a;
+            overflow: hidden;
+        }
+        .mesh-bg::before, .mesh-bg::after {
+            content: ''; position: absolute; border-radius: 50%;
+            filter: blur(100px); opacity: 0.4;
+            animation: float 12s ease-in-out infinite alternate;
+        }
+        .mesh-bg::before {
+            width: 600px; height: 600px; top: -10%; left: -5%;
+            background: radial-gradient(circle, rgba(99,102,241,0.35), transparent 70%);
+        }
+        .mesh-bg::after {
+            width: 500px; height: 500px; bottom: -10%; right: -5%;
+            background: radial-gradient(circle, rgba(168,85,247,0.3), transparent 70%);
+            animation-delay: -6s;
+        }
+        @keyframes float {
+            to { transform: translate(30px, -20px) scale(1.1); }
         }
 
-        @keyframes mesh-pulse {
-            from { transform: scale(1); opacity: 0.8; }
-            to { transform: scale(1.1); opacity: 1; }
+        /* ── Glass Panel ── */
+        .auth-panel {
+            background: rgba(15, 23, 42, 0.55);
+            backdrop-filter: blur(30px);
+            -webkit-backdrop-filter: blur(30px);
+            border: 1px solid rgba(255, 255, 255, 0.06);
         }
 
-        .glass-panel {
-            background: rgba(15, 23, 42, 0.6);
-            backdrop-filter: blur(20px);
-            -webkit-backdrop-filter: blur(20px);
+        /* ── Input ── */
+        .auth-field {
+            width: 100%;
+            padding: 14px 18px;
+            border-radius: 12px;
+            font-size: 15px;
+            font-weight: 500;
+            color: #ffffff;
+            background: rgba(255, 255, 255, 0.04);
+            border: 1px solid rgba(255, 255, 255, 0.10);
+            outline: none;
+            transition: all 0.25s ease;
+        }
+        .auth-field:focus {
+            background: rgba(255, 255, 255, 0.07);
+            border-color: rgba(99, 102, 241, 0.5);
+            box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+        }
+        .auth-field::placeholder { color: rgba(148, 163, 184, 0.4); }
+        .auth-field-icon { padding-left: 46px; }
+
+        /* ── Button ── */
+        .auth-btn {
+            width: 100%;
+            padding: 15px;
+            border-radius: 12px;
+            font-size: 14px;
+            font-weight: 700;
+            color: #fff;
+            border: none;
+            cursor: pointer;
+            letter-spacing: 0.05em;
+            background: linear-gradient(135deg, var(--primary-color, #6366f1), var(--secondary-color, #a855f7));
+            transition: all 0.2s ease;
+        }
+        .auth-btn:hover { transform: translateY(-1px); box-shadow: 0 8px 25px rgba(99,102,241,0.3); }
+        .auth-btn:active { transform: scale(0.98); }
+
+        /* ── Social Button ── */
+        .social-btn {
+            display: flex; align-items: center; justify-content: center; gap: 10px;
+            width: 100%; padding: 13px; border-radius: 12px;
+            font-size: 14px; font-weight: 600;
+            color: rgba(203, 213, 225, 0.8);
+            background: rgba(255, 255, 255, 0.03);
             border: 1px solid rgba(255, 255, 255, 0.08);
-            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+            text-decoration: none;
+            transition: all 0.2s ease;
+        }
+        .social-btn:hover { background: rgba(255,255,255,0.07); border-color: rgba(255,255,255,0.18); }
+
+        /* ── Checkbox ── */
+        .auth-check {
+            width: 16px; height: 16px;
+            border-radius: 4px; cursor: pointer;
+            appearance: none; -webkit-appearance: none;
+            background: rgba(255,255,255,0.05);
+            border: 1.5px solid rgba(255,255,255,0.18);
+            transition: all 0.15s ease;
+        }
+        .auth-check:checked {
+            background: var(--primary-color, #6366f1);
+            border-color: var(--primary-color, #6366f1);
         }
 
-        .premium-text-gradient {
-            background: linear-gradient(135deg, #fff 0%, rgba(255,255,255,0.7) 100%);
+        /* ── Gradient text (left panel) ── */
+        .gradient-text {
+            background: linear-gradient(135deg, #818cf8, #c084fc);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
+            background-clip: text;
         }
 
-        ::-webkit-scrollbar { width: 0px; background: transparent; }
-        * { -ms-overflow-style: none; scrollbar-width: none; }
+        /* ── Divider ── */
+        .auth-divider { position: relative; text-align: center; margin: 28px 0; }
+        .auth-divider::before {
+            content: ''; position: absolute; top: 50%; left: 0; right: 0;
+            height: 1px; background: rgba(255,255,255,0.06);
+        }
+        .auth-divider span {
+            position: relative; padding: 0 16px;
+            font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.1em;
+            color: rgba(148,163,184,0.4);
+            background: rgba(15,23,42,0.55);
+        }
+
+        /* ── Footer divider ── */
+        .auth-footer { margin-top: 32px; padding-top: 28px; border-top: 1px solid rgba(255,255,255,0.06); }
+
+        /* ── Scrollbar ── */
+        .no-scroll::-webkit-scrollbar { width: 0; }
+        .no-scroll { scrollbar-width: none; }
     </style>
     <stack:styles />
 </head>
 
-<body class="bg-slate-950 text-slate-100 h-screen overflow-hidden relative">
-    <!-- Global Full-Screen Mesh Background -->
-    <div class="mesh-bg fixed inset-0 z-0"></div>
+<body style="background: #0f172a; color: #e2e8f0; height: 100vh; overflow: hidden;">
+    <div class="mesh-bg"></div>
 
-    <div class="flex h-full w-full relative z-10 overflow-hidden">
+    <div style="display: flex; height: 100%; width: 100%; position: relative; z-index: 1;">
 
-        <!-- Visual Section (Left) -->
-        <div class="hidden lg:flex lg:w-1/2 relative items-center justify-center overflow-hidden">
-            <div class="relative z-10 p-16 w-full max-w-2xl">
-                <div
-                    class="mb-10 inline-flex items-center justify-center w-16 h-16 rounded-3xl bg-gradient-to-tr from-indigo-500 to-purple-500 shadow-2xl shadow-indigo-500/20">
-                    <i class="bi bi-shield-lock-fill text-3xl text-white"></i>
+        <!-- ═══ Left Branding Panel ═══ -->
+        <div class="hidden lg:flex" style="width: 42%; align-items: center; justify-content: center; padding: 48px;">
+            <div style="max-width: 440px;">
+                <!-- Icon -->
+                <div style="width: 52px; height: 52px; border-radius: 16px; display: inline-flex; align-items: center; justify-content: center; margin-bottom: 32px; background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));">
+                    <i class="bi bi-shield-lock-fill" style="font-size: 24px; color: #fff;"></i>
                 </div>
-                <h1 class="text-6xl font-black tracking-tight font-outfit text-white mb-6 leading-none">
-                    Security <span
-                        class="text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 to-purple-400">Simplified.</span>
+
+                <!-- Heading -->
+                <h1 class="font-outfit" style="font-size: 48px; font-weight: 800; color: #fff; line-height: 1.1; margin: 0 0 10px 0;">
+                    Secure Access.
                 </h1>
-                <p class="text-xl text-slate-300/80 font-medium leading-relaxed max-w-lg">
-                    Experience the next generation of authentication. Secure, sleek, and optimized for high-performance
-                    workflows.
+                <h1 class="font-outfit gradient-text" style="font-size: 48px; font-weight: 800; line-height: 1.1; margin: 0 0 24px 0;">
+                    Total Control.
+                </h1>
+
+                <!-- Description -->
+                <p style="font-size: 17px; line-height: 1.7; color: rgba(203,213,225,0.6); margin: 0 0 40px 0; max-width: 380px;">
+                    Your gateway to a powerful admin platform. Fast, encrypted, and built for modern teams.
                 </p>
 
-                <!-- Status Indicators -->
-                <div
-                    class="mt-12 flex items-center gap-8 text-[11px] font-bold uppercase tracking-[0.2em] text-slate-400/60">
-                    <span class="flex items-center gap-2"><span
-                            class="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.5)]"></span>
-                        Systems Active</span>
-                    <span class="flex items-center gap-2"><i class="bi bi-shield-check text-indigo-400"></i> Encrypted
-                        Mode</span>
+                <!-- Status pills -->
+                <div style="display: flex; align-items: center; gap: 20px;">
+                    <span style="display: flex; align-items: center; gap: 6px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.12em; color: rgba(148,163,184,0.45);">
+                        <span style="width: 6px; height: 6px; border-radius: 50%; background: #10b981;"></span>
+                        Online
+                    </span>
+                    <span style="display: flex; align-items: center; gap: 6px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.12em; color: rgba(148,163,184,0.45);">
+                        <i class="bi bi-shield-check" style="color: #818cf8;"></i>
+                        Encrypted
+                    </span>
                 </div>
             </div>
         </div>
 
-        <!-- Form Section (Right) -->
-        <div class="w-full lg:w-1/2 flex items-center justify-center p-3 sm:p-6 lg:p-5">
-            <!-- Inset Rounded Panel -->
-            <div
-                class="glass-panel w-full lg:h-full max-w-xl lg:max-w-none flex flex-col items-center justify-center relative p-6 sm:p-10 lg:p-12 rounded-[2rem] lg:rounded-[3rem] overflow-y-auto custom-scrollbar shadow-2xl">
+        <!-- ═══ Right Form Panel ═══ -->
+        <div style="flex: 1; display: flex; align-items: center; justify-content: center; padding: 16px;" class="sm:p-8 lg:p-10">
+            <div class="auth-panel no-scroll" style="width: 100%; max-width: 520px; max-height: 100%; overflow-y: auto; border-radius: 24px; padding: 40px;"
+                 class="lg:max-w-none lg:h-full lg:rounded-[2.5rem] lg:p-14">
 
-                <div class="w-full max-w-md relative z-10 transition-all duration-500">
-                    <!-- Branding for Mobile -->
-                    <div class="lg:hidden mb-6 text-center">
-                        <div
-                            class="inline-flex items-center justify-center w-11 h-11 rounded-2xl bg-gradient-to-tr from-indigo-500 to-purple-500 mb-4 shadow-lg shadow-indigo-500/20">
-                            <i class="bi bi-shield-lock-fill text-xl text-white"></i>
+                <div style="width: 100%; max-width: 420px; margin: 0 auto;">
+                    <!-- Mobile logo -->
+                    <div class="lg:hidden" style="text-align: center; margin-bottom: 32px;">
+                        <div style="width: 44px; height: 44px; border-radius: 14px; display: inline-flex; align-items: center; justify-content: center; background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));">
+                            <i class="bi bi-shield-lock-fill" style="font-size: 18px; color: #fff;"></i>
                         </div>
                     </div>
 
-                    <div class="mb-8 text-left">
-                        <h2 class="text-3xl font-extrabold tracking-tight font-outfit text-white mb-1.5">
+                    <!-- Page heading -->
+                    <div style="margin-bottom: 36px;">
+                        <h2 class="font-outfit" style="font-size: 28px; font-weight: 800; color: #fff; margin: 0 0 8px 0; letter-spacing: -0.02em;">
                             <yield:heading />
                         </h2>
-                        <p class="text-[14px] text-slate-400 font-medium leading-relaxed">
+                        <p style="font-size: 15px; color: rgba(148,163,184,0.7); margin: 0;">
                             <yield:subheading />
                         </p>
                     </div>
 
+                    <!-- Form content (login/register views inject here) -->
                     <main-content class="w-full" flash />
 
-                    <!-- Integrated Footer -->
+                    <!-- Footer -->
                     @if(isset($__sections['footer']) && trim($__sections['footer']) !== '')
-                    <div class="mt-8 pt-8 border-t border-white/5 text-center lg:text-left">
+                    <div class="auth-footer" style="text-align: center;">
                         <yield:footer />
                     </div>
                     @endif
@@ -133,5 +227,4 @@
 
     <stack:scripts />
 </body>
-
 </html>

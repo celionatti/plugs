@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace Modules\Admin\Controllers;
 
 use Modules\Admin\Services\AdminUserService;
-use App\Models\User;
+use Modules\Auth\Models\User;
 use Plugs\Http\ResponseFactory;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;

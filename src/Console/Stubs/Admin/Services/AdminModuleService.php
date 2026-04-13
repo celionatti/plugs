@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Modules\Admin\Services;
 
-use App\Services\ModuleService;
+use Modules\Admin\Services\ModuleService;
 
 class AdminModuleService
 {

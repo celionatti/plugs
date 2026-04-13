@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace App\Models;
+namespace Modules\Auth\Models;
 
 use Plugs\Base\Model\PlugModel;
 use Plugs\Security\Auth\Authenticatable;

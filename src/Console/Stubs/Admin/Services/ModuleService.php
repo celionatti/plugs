@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-namespace App\Services;
+namespace Modules\Admin\Services;
 
-use App\Modules\ModuleRepository;
-use App\Modules\ModuleScaffolder;
+use Modules\Admin\Services\ModuleRepository;
+use Modules\Admin\Services\ModuleScaffolder;
 
 /**
  * Orchestrates module management by delegating to focused components.

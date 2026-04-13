@@ -194,7 +194,7 @@
             <div class="result-nav-inner">
                 <a href="/" class="result-brand">
                     <div class="result-brand-icon">P</div>
-                    <span style="font-weight:800; font-size:18px;">{{ \App\Models\Setting::getValue('site_name', 'Plugs App') }}</span>
+                    <span style="font-weight:800; font-size:18px;">{{ \Modules\Admin\Models\Setting::getValue('site_name', 'Plugs App') }}</span>
                 </a>
                 <a href="/payment/checkout" style="font-size:14px; font-weight:600; color:#64748b; text-decoration:none;">← Back to Checkout</a>
             </div>

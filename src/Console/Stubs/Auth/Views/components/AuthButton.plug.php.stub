@@ -1,16 +1,6 @@
-<button 
-    {{ $attributes->merge([
-        'type' => 'submit',
-        'class' => 'group relative w-full h-12 overflow-hidden rounded-2xl bg-gradient-to-tr from-indigo-500 to-purple-500 p-px font-extrabold text-white transition-all hover:shadow-[0_0_20px_rgba(99,102,241,0.4)] active:scale-[0.98]'
-    ]) }}
->
-    <div class="relative flex h-full w-full items-center justify-center rounded-2xl bg-slate-900/10 group-hover:bg-slate-900/0 transition-colors duration-300">
-        <span class="relative z-10 flex items-center gap-2 uppercase tracking-[0.2em] text-xs">
-            {{ $slot }}
-            <i class="bi bi-arrow-right text-sm transition-transform duration-500 group-hover:translate-x-1"></i>
-        </span>
-    </div>
-    
-    <!-- Shine Effect -->
-    <div class="absolute inset-0 z-0 h-full w-full translate-x-[-100%] bg-gradient-to-r from-transparent via-white/20 to-transparent transition-transform duration-1000 group-hover:translate-x-[100%]"></div>
+<button {{ $attributes->merge(['type' => 'submit', 'class' => 'auth-btn']) }}>
+    <span style="display: flex; align-items: center; justify-content: center; gap: 8px;">
+        {{ $slot }}
+        <i class="bi bi-arrow-right" style="font-size: 16px;"></i>
+    </span>
 </button>

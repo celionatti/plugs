@@ -55,13 +55,18 @@ class AdminInstallCommand extends Command
             return $this->publishMigrations();
         });
 
-        $this->task('Publishing models', function () {
-            return $this->publishModels();
+        $this->task('Publishing database migrations', function () {
+            return $this->publishMigrations();
         });
 
-        $this->task('Publishing services', function () {
-            return $this->publishServices();
-        });
+        // Clean up the copied migration stub from modules/Admin/Migrations
+        $migrationStubDir = $destinationPath . '/Migrations';
+        if (Filesystem::isDirectory($migrationStubDir)) {
+            $existingStub = $migrationStubDir . '/create_settings_table.stub';
+            if (Filesystem::exists($existingStub)) {
+                @unlink($existingStub);
+            }
+        }
 
         if (!$this->hasOption('no-migrate')) {
             $this->task('Running database migrations', function () {
@@ -79,40 +84,12 @@ class AdminInstallCommand extends Command
         return 0;
     }
 
-    private function publishModels(): bool
-    {
-        $stubsDir = __DIR__ . '/../Stubs/Admin/Models';
-        $targetDir = getcwd() . '/app/Models';
 
-        Filesystem::ensureDir($targetDir);
-
-        $models = [
-            'Setting.stub' => 'Setting.php',
-        ];
-
-        foreach ($models as $stubName => $fileName) {
-            $stubFile = $stubsDir . '/' . $stubName;
-            $destination = $targetDir . '/' . $fileName;
-            
-            if (Filesystem::exists($destination) && !$this->hasOption('force')) {
-                $this->fileSkipped($destination);
-                continue;
-            }
-
-            if (Filesystem::exists($stubFile)) {
-                $content = Filesystem::get($stubFile);
-                Filesystem::put($destination, $content);
-                $this->fileCreated($destination);
-            }
-        }
-
-        return true;
-    }
 
     private function publishMigrations(): bool
     {
         $stubsDir = __DIR__ . '/../Stubs/Admin/Migrations';
-        $targetDir = getcwd() . '/database/migrations';
+        $targetDir = getcwd() . '/modules/Admin/Migrations';
 
         Filesystem::ensureDir($targetDir);
 
@@ -144,55 +121,7 @@ class AdminInstallCommand extends Command
         return true;
     }
 
-    private function publishServices(): bool
-    {
-        $stubsDir = __DIR__ . '/../Stubs/Admin/Services';
 
-        // Service class → app/Services/
-        $serviceStubs = [
-            'ModuleService.stub' => 'ModuleService.php',
-        ];
-
-        $servicesDir = getcwd() . '/app/Services';
-        Filesystem::ensureDir($servicesDir);
-
-        foreach ($serviceStubs as $stubName => $fileName) {
-            $this->publishStub($stubsDir, $servicesDir, $stubName, $fileName);
-        }
-
-        // Module infrastructure classes → app/Modules/
-        $moduleStubs = [
-            'ModuleData.stub'       => 'ModuleData.php',
-            'ModuleRepository.stub' => 'ModuleRepository.php',
-            'ModuleScaffolder.stub' => 'ModuleScaffolder.php',
-        ];
-
-        $modulesDir = getcwd() . '/app/Modules';
-        Filesystem::ensureDir($modulesDir);
-
-        foreach ($moduleStubs as $stubName => $fileName) {
-            $this->publishStub($stubsDir, $modulesDir, $stubName, $fileName);
-        }
-
-        return true;
-    }
-
-    private function publishStub(string $stubsDir, string $targetDir, string $stubName, string $fileName): void
-    {
-        $stubFile = $stubsDir . '/' . $stubName;
-        $destination = $targetDir . '/' . $fileName;
-
-        if (Filesystem::exists($destination) && !$this->hasOption('force')) {
-            $this->fileSkipped($destination);
-            return;
-        }
-
-        if (Filesystem::exists($stubFile)) {
-            $content = Filesystem::get($stubFile);
-            Filesystem::put($destination, $content);
-            $this->fileCreated($destination);
-        }
-    }
 
     /**
      * Check if Auth module is installed.

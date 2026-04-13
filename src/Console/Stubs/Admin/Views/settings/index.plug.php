@@ -82,11 +82,11 @@
                             <div class="space-y-2">
                                 <label class="text-sm font-bold text-slate-700 ml-1">Interface Border Radius</label>
                                 <select name="border_radius" id="border_radius" class="w-full px-5 py-4 rounded-2xl bg-slate-50 border border-slate-100 focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 transition-all font-medium text-slate-800" onchange="updateThemePreview('radius', this.value)">
-                                    <option value="0px" {{ (\App\Models\Setting::getValue('border_radius') === '0px') ? 'selected' : '' }}>None (Square)</option>
-                                    <option value="0.5rem" {{ (\App\Models\Setting::getValue('border_radius') === '0.5rem') ? 'selected' : '' }}>Small (8px)</option>
-                                    <option value="1rem" {{ (\App\Models\Setting::getValue('border_radius') === '1rem') ? 'selected' : '' }}>Medium (16px)</option>
-                                    <option value="1.5rem" {{ (\App\Models\Setting::getValue('border_radius') === '1.5rem' || !\App\Models\Setting::getValue('border_radius')) ? 'selected' : '' }}>Large (24px)</option>
-                                    <option value="2rem" {{ (\App\Models\Setting::getValue('border_radius') === '2rem') ? 'selected' : '' }}>Extra Large (32px)</option>
+                                    <option value="0px" {{ (\Modules\Admin\Models\Setting::getValue('border_radius') === '0px') ? 'selected' : '' }}>None (Square)</option>
+                                    <option value="0.5rem" {{ (\Modules\Admin\Models\Setting::getValue('border_radius') === '0.5rem') ? 'selected' : '' }}>Small (8px)</option>
+                                    <option value="1rem" {{ (\Modules\Admin\Models\Setting::getValue('border_radius') === '1rem') ? 'selected' : '' }}>Medium (16px)</option>
+                                    <option value="1.5rem" {{ (\Modules\Admin\Models\Setting::getValue('border_radius') === '1.5rem' || !\Modules\Admin\Models\Setting::getValue('border_radius')) ? 'selected' : '' }}>Large (24px)</option>
+                                    <option value="2rem" {{ (\Modules\Admin\Models\Setting::getValue('border_radius') === '2rem') ? 'selected' : '' }}>Extra Large (32px)</option>
                                 </select>
                             </div>
 

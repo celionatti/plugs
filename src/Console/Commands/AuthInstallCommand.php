@@ -72,7 +72,7 @@ class AuthInstallCommand extends Command
     private function publishUserModel(): void
     {
         $stubFile = __DIR__ . '/../Stubs/Auth/Models/User.stub';
-        $targetDir = getcwd() . '/app/Models';
+        $targetDir = getcwd() . '/modules/Auth/Models';
         $destination = $targetDir . '/User.php';
 
         Filesystem::ensureDir($targetDir);
@@ -92,7 +92,7 @@ class AuthInstallCommand extends Command
     private function publishGuestMiddleware(): void
     {
         $stubFile = __DIR__ . '/../Stubs/Auth/Middleware/GuestMiddleware.stub';
-        $targetDir = getcwd() . '/app/Http/Middleware';
+        $targetDir = getcwd() . '/modules/Auth/Middleware';
         $destination = $targetDir . '/GuestMiddleware.php';
 
         Filesystem::ensureDir($targetDir);
@@ -112,7 +112,7 @@ class AuthInstallCommand extends Command
     private function publishUsersMigration(): void
     {
         $migrationFile = 'auth_scaffold_users_table.php';
-        $basePath = base_path('database/migrations');
+        $basePath = getcwd() . '/modules/Auth/Migrations';
 
         if (!is_dir($basePath)) {
             mkdir($basePath, 0755, true);
@@ -139,7 +139,7 @@ class AuthInstallCommand extends Command
     private function publishPasswordResetTokensMigration(): void
     {
         $migrationFile = 'create_password_reset_tokens_table.php';
-        $basePath = base_path('database/migrations');
+        $basePath = getcwd() . '/modules/Auth/Migrations';
 
         if (!is_dir($basePath)) {
             mkdir($basePath, 0755, true);
@@ -166,7 +166,7 @@ class AuthInstallCommand extends Command
     private function publishPersonalAccessTokensMigration(): void
     {
         $migrationFile = 'create_personal_access_tokens_table.php';
-        $basePath = base_path('database/migrations');
+        $basePath = getcwd() . '/modules/Auth/Migrations';
 
         if (!is_dir($basePath)) {
             mkdir($basePath, 0755, true);
@@ -328,7 +328,7 @@ EOT;
     private function publishSessionsMigration(): void
     {
         $migrationFile = 'create_sessions_table.php';
-        $basePath = base_path('database/migrations');
+        $basePath = getcwd() . '/modules/Auth/Migrations';
 
         if (!is_dir($basePath)) {
             mkdir($basePath, 0755, true);
@@ -433,7 +433,7 @@ EOT;
     private function publishEmailVerificationTokensMigration(): void
     {
         $migrationFile = 'create_email_verification_tokens_table.php';
-        $basePath = base_path('database/migrations');
+        $basePath = getcwd() . '/modules/Auth/Migrations';
 
         if (!is_dir($basePath)) {
             mkdir($basePath, 0755, true);

@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace App\Http\Middleware;
+namespace Modules\Auth\Middleware;
 
 use Plugs\Facades\Auth;
 use Plugs\Http\ResponseFactory;

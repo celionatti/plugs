@@ -1,64 +1,54 @@
-<layout name="{{lowerName}}::layouts.auth">
-    <slot:title>{{ $title ?? 'Access Secure Area' }}</slot:title>
+<layout name="auth::layouts.auth">
+    <slot:title>{{ $title ?? 'Sign In' }}</slot:title>
     
-    <slot:heading>Welcome Back</slot:heading>
-    <slot:subheading>Authenticate with your credentials to continue.</slot:subheading>
+    <slot:heading>Welcome back</slot:heading>
+    <slot:subheading>Enter your credentials to access your account.</slot:subheading>
 
-    <form action="/login" method="POST" class="space-y-5">
+    <form action="/login" method="POST">
         @csrf
 
-        <x-{{lowerName}}::auth-input 
+        <x-auth::auth-input 
             name="email" 
             type="email" 
-            label="Security Identifier" 
-            placeholder="your@email.com" 
+            label="Email" 
+            placeholder="you@example.com" 
             :value="old('email')" 
             required 
             autofocus 
         >
             <slot:icon>
-                <i class="bi bi-envelope-at"></i>
+                <i class="bi bi-envelope"></i>
             </slot:icon>
-        </x-{{lowerName}}::auth-input>
+        </x-auth::auth-input>
 
-        <x-{{lowerName}}::auth-input 
+        <x-auth::auth-input 
             name="password" 
             type="password" 
-            label="Access Token" 
-            placeholder="••••••••••••" 
+            label="Password" 
+            placeholder="Enter your password" 
             required 
         >
             <slot:icon>
-                <i class="bi bi-shield-lock"></i>
+                <i class="bi bi-lock"></i>
             </slot:icon>
-        </x-{{lowerName}}::auth-input>
+        </x-auth::auth-input>
 
-        <div class="flex items-center justify-between px-1">
-            <label class="flex items-center gap-3 cursor-pointer group">
-                <div class="relative flex items-center justify-center">
-                    <input type="checkbox" name="remember" class="peer h-4 w-4 cursor-pointer appearance-none rounded border border-white/10 bg-white/5 transition-all checked:bg-indigo-500 checked:border-indigo-500">
-                    <i class="bi bi-check absolute text-[10px] text-white opacity-0 peer-checked:opacity-100 transition-opacity pointer-events-none"></i>
-                </div>
-                <span class="text-[12px] font-bold text-slate-500 group-hover:text-slate-400 transition-colors uppercase tracking-wider">Remember</span>
+        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 24px;">
+            <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                <input type="checkbox" name="remember" class="auth-check">
+                <span style="font-size: 13px; font-weight: 500; color: rgba(148,163,184,0.6);">Remember me</span>
             </label>
-            <a href="/forgot-password" class="text-[12px] font-bold text-indigo-400 hover:text-indigo-300 transition-colors uppercase tracking-wider">Recovery</a>
+            <a href="/forgot-password" style="font-size: 13px; font-weight: 600; color: #818cf8; text-decoration: none; transition: color 0.2s;">Forgot password?</a>
         </div>
 
-        <x-{{lowerName}}::auth-button>
-            Unlock Access
-        </x-{{lowerName}}::auth-button>
+        <x-auth::auth-button>
+            Sign In
+        </x-auth::auth-button>
 
-        <div class="relative py-2">
-            <div class="absolute inset-0 flex items-center" aria-hidden="true">
-                <div class="w-full border-t border-white/5"></div>
-            </div>
-            <div class="relative flex justify-center">
-                <span class="bg-slate-950 px-4 text-[10px] font-black uppercase tracking-[0.3em] text-slate-600">Fast Access</span>
-            </div>
-        </div>
+        <div class="auth-divider"><span>or</span></div>
 
-        <a href="/auth/google" class="group flex w-full items-center justify-center gap-3 rounded-2xl border border-white/5 bg-white/5 px-4 py-3 text-sm font-bold text-slate-400 transition-all hover:bg-white/10 hover:border-white/20 active:scale-[0.98]">
-            <svg class="h-4 w-4 transition-transform group-hover:scale-110" viewBox="0 0 24 24">
+        <a href="/auth/google" class="social-btn">
+            <svg style="width: 18px; height: 18px;" viewBox="0 0 24 24">
                 <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4" />
                 <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853" />
                 <path d="M5.84 14.1c-.22-.66-.35-1.36-.35-2.1s.13-1.44.35-2.1V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l3.66-2.84z" fill="#FBBC05" />
@@ -69,9 +59,9 @@
     </form>
 
     <slot:footer>
-        <p class="text-[13px] text-slate-500 font-medium tracking-tight">
-            New operative? 
-            <a href="/register" class="text-white font-bold hover:text-indigo-400 transition-all font-outfit ml-2 uppercase text-[11px] tracking-widest leading-none border-b border-white/10 pb-0.5">Initialize Account</a>
+        <p style="font-size: 14px; color: rgba(148,163,184,0.55); margin: 0;">
+            Don't have an account? 
+            <a href="/register" style="color: #fff; font-weight: 600; text-decoration: none; margin-left: 4px;">Create one</a>
         </p>
     </slot:footer>
 </layout>

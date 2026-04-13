@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace App\Modules;
+namespace Modules\Admin\Services;
 
 /**
  * Data Transfer Object representing a feature module's metadata.

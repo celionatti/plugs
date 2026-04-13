@@ -1,13 +1,13 @@
-<div class="space-y-2">
+<div style="margin-bottom: 20px;">
     @if($label ?? null)
-        <label for="{{ $id ?? $name }}" class="block text-[11px] font-extrabold text-slate-500 uppercase tracking-[0.2em] ml-2">
+        <label for="{{ $id ?? $name }}" style="display: block; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: rgba(148,163,184,0.6); margin-bottom: 8px; padding-left: 2px;">
             {{ $label }}
         </label>
     @endif
     
-    <div class="relative group">
+    <div style="position: relative;">
         @if($icon ?? null)
-            <div class="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-indigo-400 transition-colors duration-300">
+            <div style="position: absolute; left: 16px; top: 50%; transform: translateY(-50%); color: rgba(100,116,139,0.6); font-size: 15px; pointer-events: none;">
                 {!! $icon !!}
             </div>
         @endif
@@ -15,17 +15,14 @@
         <input 
             {{ $attributes->merge([
                 'type' => 'text',
-                'class' => 'w-full ' . (($icon ?? null) ? 'pl-11 pr-5' : 'px-5') . ' py-3.5 rounded-2xl border border-white/5 bg-white/5 text-white text-[15px] placeholder-slate-500 focus:outline-none focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500/40 focus:bg-white/10 transition-all duration-300'
+                'class' => 'auth-field' . (($icon ?? null) ? ' auth-field-icon' : ''),
             ]) }}
         >
-        
-        <!-- Bottom Line Accent -->
-        <div class="absolute bottom-0 left-1/2 -translate-x-1/2 w-0 h-0.5 bg-gradient-to-r from-transparent via-indigo-500 to-transparent group-focus-within:w-full transition-all duration-500"></div>
     </div>
     
     @error($name)
-        <p class="text-[11px] text-rose-400 font-bold mt-1.5 ml-2 flex items-center gap-1.5">
-            <i class="bi bi-exclamation-circle-fill"></i> {{ $message }}
+        <p style="font-size: 12px; color: #fb7185; font-weight: 600; margin-top: 6px; padding-left: 2px; display: flex; align-items: center; gap: 5px;">
+            <i class="bi bi-exclamation-circle-fill" style="font-size: 11px;"></i> {{ $message }}
         </p>
     @enderror
 </div>

@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Modules\Admin\Services;
 
-use App\Models\User;
+use Modules\Auth\Models\User;
 use Plugs\Database\Collection;
 
 class AdminUserService

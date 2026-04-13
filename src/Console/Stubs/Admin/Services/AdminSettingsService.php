@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Modules\Admin\Services;
 
-use App\Models\Setting;
+use Modules\Admin\Models\Setting;
 
 class AdminSettingsService
 {

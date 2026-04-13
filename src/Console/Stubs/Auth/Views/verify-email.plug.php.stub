@@ -1,16 +1,17 @@
-<layout name="{{lowerName}}::layouts.auth">
-    <slot:title>{{ $title ?? 'Verify Identity' }}</slot:title>
+<layout name="auth::layouts.auth">
+    <slot:title>{{ $title ?? 'Verify Email' }}</slot:title>
     
-    <slot:heading>Verification</slot:heading>
+    <slot:heading>Verify your email</slot:heading>
     <slot:subheading>
-        A 6-digit secure code was sent to <span class="text-indigo-400 font-bold uppercase tracking-wider text-[13px] ml-1">{{ $email ?? 'your email' }}</span>.
+        We've sent a 6-digit code to <br/>
+        <span style="color: #818cf8; font-weight: 700;">{{ $email ?? 'your email' }}</span>.
     </slot:subheading>
 
-    <form action="/verify-email" method="POST" class="mt-6" id="verify-form">
+    <form action="/verify-email" method="POST" id="verify-form" style="margin-top: 24px;">
         @csrf
 
         <!-- 6-Digit Code Input -->
-        <div class="flex justify-between gap-2 sm:gap-3 mb-8" id="code-inputs">
+        <div id="code-inputs" style="display: flex; justify-content: space-between; gap: 8px; margin-bottom: 32px;" class="sm:gap-12">
             @for($i = 1; $i <= 6; $i++)
                 <input
                     type="text"
@@ -20,40 +21,41 @@
                     inputmode="numeric"
                     pattern="[0-9]"
                     autocomplete="one-time-code"
-                    class="w-full h-14 sm:h-16 text-center text-xl sm:text-2xl font-black rounded-2xl border border-white/5 bg-white/5 text-white focus:border-indigo-500/50 focus:ring-4 focus:ring-indigo-500/10 outline-none transition-all duration-300 shadow-xl"
+                    class="auth-field"
+                    style="width: 100%; height: 56px; text-align: center; font-size: 24px; font-weight: 800; padding: 0;"
                     required
                 />
             @endfor
         </div>
 
-        <x-{{lowerName}}::auth-button>
-            Unlock Access
-        </x-{{lowerName}}::auth-button>
+        <x-auth::auth-button>
+            Verify Account
+        </x-auth::auth-button>
     </form>
 
     <!-- Resend Section -->
-    <div class="mt-6 text-center bg-white/5 rounded-2xl p-4 border border-white/5 border-dashed">
-        <p class="text-[11px] text-slate-500 font-bold mb-2 uppercase tracking-[0.2em]">Signal Lost?</p>
-        <form action="/email/verification-notification" method="POST" class="inline">
+    <div style="margin-top: 24px; text-align: center; background: rgba(255,255,255,0.03); border: 1px dashed rgba(255,255,255,0.1); border-radius: 16px; padding: 16px;">
+        <p style="font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: rgba(148,163,184,0.6); margin: 0 0 8px 0;">Didn't receive the code?</p>
+        <form action="/email/verification-notification" method="POST" style="display: inline;">
             @csrf
-            <button type="submit" class="text-[11px] font-black text-indigo-400 hover:text-indigo-300 transition-all uppercase tracking-[0.2em] flex items-center justify-center gap-2 mx-auto">
-                <i class="bi bi-arrow-clockwise"></i> Request New Transmission
+            <button type="submit" style="background: none; border: none; font-size: 12px; font-weight: 700; color: #818cf8; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px; margin: 0 auto;">
+                <i class="bi bi-arrow-clockwise"></i> Resend Code
             </button>
         </form>
     </div>
 
     <slot:footer>
-        <div class="flex items-center justify-center lg:justify-start gap-6">
+        <div style="display: flex; align-items: center; justify-content: center; gap: 24px;">
             @if(\Plugs\Facades\Auth::check())
-                <form action="/logout" method="POST" class="inline">
+                <form action="/logout" method="POST" style="display: inline;">
                     @csrf
-                    <button type="submit" class="text-[11px] text-slate-500 font-bold hover:text-white transition-all uppercase tracking-widest border-b border-white/5 pb-0.5">
-                        Terminate Session
+                    <button type="submit" style="background: none; border: none; font-size: 13px; font-weight: 600; color: rgba(148,163,184,0.7); cursor: pointer;">
+                        Sign Out
                     </button>
                 </form>
             @else
-                <a href="/login" class="text-[11px] text-slate-500 font-bold hover:text-white transition-all uppercase tracking-widest border-b border-white/5 pb-0.5">
-                   Return to Entry
+                <a href="/login" style="font-size: 13px; font-weight: 600; color: rgba(148,163,184,0.7); text-decoration: none;">
+                   Return to Sign In
                 </a>
             @endif
         </div>

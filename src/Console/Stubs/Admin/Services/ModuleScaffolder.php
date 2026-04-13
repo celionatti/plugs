@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace App\Modules;
+namespace Modules\Admin\Services;
 
 /**
  * Scaffolds new feature module directories and boilerplate files.

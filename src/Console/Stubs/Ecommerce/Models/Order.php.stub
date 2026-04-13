@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace Modules\{{name}}\Models;
 
 use Plugs\Base\Model\PlugModel;
-use App\Models\User;
+use Modules\Auth\Models\User;
 
 class Order extends PlugModel
 {

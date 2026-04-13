@@ -7,8 +7,8 @@ namespace Modules\Admin\Controllers;
 use Plugs\Http\ResponseFactory;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
-use App\Models\User;
-use App\Models\Article;
+use Modules\Auth\Models\User;
+use Modules\Article\Models\Article;
 use Plugs\FeatureModule\FeatureModuleManager;
 
 class AdminDashboardController

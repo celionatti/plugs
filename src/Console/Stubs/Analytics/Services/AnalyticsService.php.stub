@@ -7,7 +7,7 @@ namespace Modules\{{name}}\Services;
 use Modules\Article\Models\Article;
 use Modules\Newsletter\Models\Subscriber;
 use Modules\MediaManager\Models\Media;
-use App\Models\User;
+use Modules\Auth\Models\User;
 use Plugs\Database\DB;
 
 class AnalyticsService

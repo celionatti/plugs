@@ -8,7 +8,7 @@ use Plugs\Http\ResponseFactory;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Modules\Admin\Services\AdminUserService;
-use App\Models\User;
+use Modules\Auth\Models\User;
 
 class AdminProfileController
 {
