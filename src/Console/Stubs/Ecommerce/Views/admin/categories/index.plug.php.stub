@@ -10,7 +10,7 @@
             <p class="mt-2 text-sm text-slate-600 dark:text-slate-400">Manage grouping categories for your store.</p>
         </div>
         <div class="mt-4 sm:ml-16 sm:mt-0 sm:flex-none">
-            <a href="/admin/{{lowerName}}/categories/create" class="inline-flex rounded-xl bg-primary px-4 py-2.5 text-center text-sm font-bold text-white shadow-lg shadow-primary/20 hover:brightness-110 active:scale-95 transition-all">
+            <a href="/admin/{{lowerName}}/categories/create" class="inline-flex rounded-xl bg-primary px-4 py-2.5 text-center text-sm font-bold text-white shadow-lg shadow-primary-200 hover:brightness-110 active:scale-95 transition-all">
                 <i class="bi bi-plus-lg mr-2"></i>Add Category
             </a>
         </div>
@@ -19,9 +19,9 @@
     <div class="mt-8 flow-root">
         <div class="-mx-4 -my-2 overflow-x-auto sm:-mx-6 lg:-mx-8">
             <div class="inline-block min-w-full py-2 align-middle sm:px-6 lg:px-8">
-                <div class="overflow-hidden shadow-sm ring-1 ring-black/5 dark:ring-white/5 sm:rounded-2xl bg-white dark:bg-slate-900">
+                <div class="overflow-hidden shadow-sm ring-1 ring-slate-200 dark:ring-slate-800 sm:rounded-2xl bg-white dark:bg-slate-900">
                     <table class="min-w-full divide-y divide-slate-200 dark:divide-slate-800">
-                        <thead class="bg-slate-50 dark:bg-slate-800/50">
+                        <thead class="bg-slate-50 dark:bg-slate-800">
                             <tr>
                                 <th scope="col" class="py-4 pl-4 pr-3 text-left text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider sm:pl-6">Category</th>
                                 <th scope="col" class="px-3 py-4 text-left text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Description</th>
@@ -33,7 +33,7 @@
                         </thead>
                         <tbody class="divide-y divide-slate-200 dark:divide-slate-800">
                             @foreach($categories as $category)
-                            <tr class="hover:bg-slate-50 dark:hover:bg-white/5 transition-colors">
+                            <tr class="hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
                                 <td class="whitespace-nowrap py-4 pl-4 pr-3 text-sm sm:pl-6">
                                     <div class="flex items-center">
                                         <div class="h-10 w-10 flex-shrink-0">
@@ -61,12 +61,12 @@
                                 </td>
                                 <td class="relative whitespace-nowrap py-4 pl-3 pr-4 text-right text-sm font-medium sm:pr-6">
                                     <div class="flex items-center justify-end gap-2">
-                                        <a href="/admin/{{lowerName}}/categories/{{ $category->id }}/edit" class="p-2 text-slate-500 hover:text-primary hover:bg-primary/10 dark:text-slate-400 dark:hover:bg-primary/20 rounded-lg transition-all" title="Edit">
+                                        <a href="/admin/{{lowerName}}/categories/{{ $category->id }}/edit" class="p-2 text-slate-500 hover:text-primary hover:bg-primary-100 dark:text-slate-400 dark:hover:bg-primary-200 rounded-lg transition-all" title="Edit">
                                             <i class="bi bi-pencil-square"></i>
                                         </a>
                                         <form action="/admin/{{lowerName}}/categories/delete/{{ $category->id }}" method="POST" class="inline">
                                             @csrf
-                                            <button type="submit" class="p-2 text-slate-500 hover:text-rose-600 hover:bg-rose-50 dark:text-slate-400 dark:hover:bg-rose-500/10 rounded-lg transition-all" title="Delete" onclick="return confirm('Are you sure you want to delete this category?')">
+                                            <button type="submit" class="p-2 text-slate-500 hover:text-rose-600 hover:bg-rose-50 dark:text-slate-400 dark:hover:bg-rose-50 rounded-lg transition-all" title="Delete" onclick="return confirm('Are you sure you want to delete this category?')">
                                                 <i class="bi bi-trash3"></i>
                                             </button>
                                         </form>

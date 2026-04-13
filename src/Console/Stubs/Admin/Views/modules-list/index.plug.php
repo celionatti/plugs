@@ -10,7 +10,7 @@
 
 <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
     @foreach($modules as $module)
-    <div class="bg-white rounded-3xl shadow-sm border border-slate-100 overflow-hidden hover:shadow-xl hover:shadow-indigo-500/5 transition-all group">
+    <div class="bg-white rounded-3xl shadow-sm border border-slate-100 overflow-hidden hover:shadow-xl hover:shadow-primary transition-all group">
         <div class="p-8">
             <div class="flex items-start justify-between mb-6">
                 <div class="w-14 h-14 rounded-2xl bg-slate-50 flex items-center justify-center text-slate-400 group-hover:bg-black group-hover:text-white transition-all">
@@ -42,13 +42,13 @@
             <div class="flex items-center justify-between pt-6 border-t border-slate-50">
                 <form action="/admin/modules/{{ $module['name'] }}/toggle" method="POST">
                     @csrf
-                    <button type="submit" class="text-xs font-bold {{ $module['enabled'] ? 'text-amber-600' : 'text-emerald-600' }} hover:opacity-80 transition-colors uppercase tracking-widest border-b border-black/20 hover:border-black transition-all pb-0.5">
+                    <button type="submit" class="text-xs font-bold {{ $module['enabled'] ? 'text-amber-600' : 'text-emerald-600' }} hover:opacity-80 transition-colors uppercase tracking-widest border-b border-slate-300 hover:border-black transition-all pb-0.5">
                         {{ $module['enabled'] ? 'Disable' : 'Enable' }}
                     </button>
                 </form>
                 
                 <div class="flex items-center gap-4">
-                    <a href="/admin/modules/{{ $module['name'] }}/configure" class="text-xs font-bold text-black hover:text-slate-600 transition-colors uppercase tracking-widest border-b border-black/20 hover:border-black transition-all pb-0.5">Configure</a>
+                    <a href="/admin/modules/{{ $module['name'] }}/configure" class="text-xs font-bold text-black hover:text-slate-600 transition-colors uppercase tracking-widest border-b border-slate-300 hover:border-black transition-all pb-0.5">Configure</a>
                     
                     @if($module['name'] !== 'Admin')
                     <form action="/admin/modules/{{ $module['name'] }}/delete" method="POST" onsubmit="return confirm('Are you sure you want to delete this module? This action cannot be undone.')">
@@ -63,7 +63,7 @@
     @endforeach
 
     <!-- Add New Module Placeholder -->
-    <a href="/admin/modules/create" class="bg-white rounded-3xl shadow-sm border border-slate-100 border-dashed border-2 flex flex-col items-center justify-center p-8 hover:border-indigo-200 hover:bg-slate-50/50 transition-all group">
+    <a href="/admin/modules/create" class="bg-white rounded-3xl shadow-sm border border-slate-100 border-dashed border-2 flex flex-col items-center justify-center p-8 hover:border-indigo-200 hover:bg-slate-50 transition-all group">
         <div class="w-12 h-12 rounded-2xl bg-slate-50 text-slate-300 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
             <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />

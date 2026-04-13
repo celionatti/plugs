@@ -23,12 +23,12 @@
                 <div class="space-y-4">
                     <div>
                         <label class="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">Brand Name</label>
-                        <input type="text" name="name" value="{{ old('name', $brand->name) }}" placeholder="e.g. Apple" class="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all font-semibold" required>
+                        <input type="text" name="name" value="{{ old('name', $brand->name) }}" placeholder="e.g. Apple" class="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:ring-2 focus:ring-primary-200 focus:border-primary transition-all font-semibold" required>
                     </div>
 
                     <div>
                         <label class="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2 font-bold tracking-tight">Website URL</label>
-                        <input type="url" name="website" value="{{ old('website', $brand->website) }}" placeholder="https://..." class="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all font-medium">
+                        <input type="url" name="website" value="{{ old('website', $brand->website) }}" placeholder="https://..." class="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:ring-2 focus:ring-primary-200 focus:border-primary transition-all font-medium">
                     </div>
                 </div>
             </div>
@@ -42,7 +42,7 @@
                 <div class="space-y-4">
                     <div>
                         <label class="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2 font-bold uppercase tracking-widest text-[10px]">Custom Slug</label>
-                        <input type="text" name="slug" value="{{ old('slug', $brand->slug) }}" placeholder="Leave blank to auto-generate" class="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all font-semibold">
+                        <input type="text" name="slug" value="{{ old('slug', $brand->slug) }}" placeholder="Leave blank to auto-generate" class="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:ring-2 focus:ring-primary-200 focus:border-primary transition-all font-semibold">
                     </div>
                 </div>
             </div>
@@ -58,7 +58,7 @@
                         </div>
                     @endif
 
-                    <div class="flex flex-col items-center justify-center p-6 border-2 border-dashed border-slate-200 dark:border-slate-800 rounded-2xl bg-slate-50 dark:bg-slate-800/30">
+                    <div class="flex flex-col items-center justify-center p-6 border-2 border-dashed border-slate-200 dark:border-slate-800 rounded-2xl bg-slate-50 dark:bg-slate-800">
                         <i class="bi bi-cloud-arrow-up text-4xl text-slate-400 mb-2"></i>
                         <label class="cursor-pointer">
                             <span class="text-sm font-bold text-primary hover:brightness-110 transition-colors">Replace Logo</span>
@@ -68,7 +68,7 @@
                 </div>
             </div>
 
-            <button type="submit" class="w-full bg-primary hover:brightness-110 text-white font-bold py-3.5 rounded-xl transition-all shadow-lg shadow-primary/20 active:scale-95">
+            <button type="submit" class="w-full bg-primary hover:brightness-110 text-white font-bold py-3.5 rounded-xl transition-all shadow-lg shadow-primary-200 active:scale-95">
                 Update Brand
             </button>
         </div>

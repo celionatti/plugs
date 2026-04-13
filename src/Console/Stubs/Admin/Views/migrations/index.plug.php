@@ -26,7 +26,7 @@
 
             <form action="{{ route('admin.migrations.run') }}" method="POST">
                 @csrf
-                <button type="submit" class="px-6 py-2.5 rounded-xl bg-indigo-600 text-white text-sm font-bold hover:bg-indigo-700 transition-all active:scale-95 shadow-lg shadow-indigo-600/20 flex items-center gap-2">
+                <button type="submit" class="px-6 py-2.5 rounded-xl bg-primary text-white text-sm font-bold hover:bg-indigo-700 transition-all active:scale-95 shadow-lg shadow-primary flex items-center gap-2">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
                     </svg>
@@ -37,8 +37,8 @@
     </div>
 
     @if(session()->has('error'))
-    <div class="mb-6 p-4 rounded-2xl bg-rose-50 dark:bg-rose-900/30 border border-rose-100 dark:border-rose-800 text-rose-700 dark:text-rose-400 text-sm font-semibold flex items-center gap-3 animate-in fade-in slide-in-from-top-4 duration-500">
-        <div class="w-8 h-8 rounded-full bg-rose-100 dark:bg-rose-900/50 flex items-center justify-center text-rose-600 dark:text-rose-400">
+    <div class="mb-6 p-4 rounded-2xl bg-rose-50 dark:bg-rose-900 border border-rose-100 dark:border-rose-800 text-rose-700 dark:text-rose-400 text-sm font-semibold flex items-center gap-3 animate-in fade-in slide-in-from-top-4 duration-500">
+        <div class="w-8 h-8 rounded-full bg-rose-100 dark:bg-rose-900 flex items-center justify-center text-rose-600 dark:text-rose-400">
             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
             </svg>
@@ -51,7 +51,7 @@
         <div class="overflow-x-auto">
             <table class="w-full text-left border-collapse">
                 <thead>
-                    <tr class="bg-slate-50/50 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-800">
+                    <tr class="bg-slate-50 dark:bg-slate-800 border-b border-slate-200 dark:border-slate-800">
                         <th class="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-widest">Migration</th>
                         <th class="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-widest">Status</th>
                         <th class="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-widest text-center">Batch</th>
@@ -60,7 +60,7 @@
                 </thead>
                 <tbody class="divide-y divide-slate-100 dark:divide-slate-800">
                     @forelse($status as $item)
-                        <tr class="hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors">
+                        <tr class="hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-colors">
                             <td class="px-6 py-4">
                                 <div class="flex items-center gap-3">
                                     <div class="w-8 h-8 rounded-lg bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-500">
@@ -78,7 +78,7 @@
                             </td>
                             <td class="px-6 py-4">
                                 @if($item['ran'])
-                                    <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 text-xs font-bold">
+                                    <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-50 dark:bg-emerald-900 text-emerald-600 dark:text-emerald-400 text-xs font-bold">
                                         <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
                                         Migrated
                                     </span>

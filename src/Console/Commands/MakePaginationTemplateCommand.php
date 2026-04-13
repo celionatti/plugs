@@ -12,7 +12,7 @@ class MakePaginationTemplateCommand extends Command
 
     private array $templates = [
         'bootstrap' => 'Classic Bootstrap-styled pagination',
-        'tailwind' => 'Modern Tailwind CSS pagination with results info',
+        'plugcss' => 'Modern Plug CSS pagination with results info',
         'simple' => 'Minimalist Previous/Next pagination',
     ];
 
@@ -23,7 +23,7 @@ class MakePaginationTemplateCommand extends Command
             $this->line(" - <success>{$key}</success>: {$desc}");
         }
 
-        $type = $this->argument('0') ?? $this->ask('Which template would you like to generate?', 'tailwind');
+        $type = $this->argument('0') ?? $this->ask('Which template would you like to generate?', 'plugcss');
         $type = strtolower($type);
 
         if (!isset($this->templates[$type])) {

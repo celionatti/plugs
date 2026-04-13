@@ -172,7 +172,7 @@
                 <div class="p-6" style="border-top: 1px solid rgba(255,255,255,0.06);">
                     <a href="/admin/profile" data-spa="true"
                        class="profile-card flex items-center gap-4 p-4 rounded-2xl transition-all duration-300 group">
-                        <div class="w-10 h-10 rounded-xl bg-indigo-600 flex items-center justify-center text-white font-black text-sm">
+                        <div class="w-10 h-10 rounded-xl bg-primary flex items-center justify-center text-white font-black text-sm">
                             {{ substr(auth()->user()->name, 0, 1) }}
                         </div>
                         <div class="flex flex-col overflow-hidden">

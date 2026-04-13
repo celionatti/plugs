@@ -22,12 +22,12 @@
                 <div class="space-y-4">
                     <div>
                         <label class="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">{{name}} Title</label>
-                        <input type="text" name="title" value="{{ old('title', $article->title) }}" placeholder="Enter a catchy title..." class="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all font-semibold" required>
+                        <input type="text" name="title" value="{{ old('title', $article->title) }}" placeholder="Enter a catchy title..." class="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:ring-2 focus:ring-primary-200 focus:border-primary transition-all font-semibold" required>
                     </div>
 
                     <div>
                         <label class="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2 font-bold tracking-tight">Content</label>
-                        <textarea name="content" id="editor" class="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all font-medium min-h-[400px]">{{ old('content', $article->content) }}</textarea>
+                        <textarea name="content" id="editor" class="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:ring-2 focus:ring-primary-200 focus:border-primary transition-all font-medium min-h-[400px]">{{ old('content', $article->content) }}</textarea>
                     </div>
                 </div>
             </div>
@@ -41,7 +41,7 @@
                 <div class="space-y-4">
                     <div>
                         <label class="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">Status</label>
-                        <select name="status" class="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all font-semibold">
+                        <select name="status" class="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:ring-2 focus:ring-primary-200 focus:border-primary transition-all font-semibold">
                             <option value="draft" {{ $article->status === 'draft' ? 'selected' : '' }}>Draft</option>
                             <option value="published" {{ $article->status === 'published' ? 'selected' : '' }}>Published</option>
                             <option value="scheduled" {{ $article->status === 'scheduled' ? 'selected' : '' }}>Scheduled</option>
@@ -50,10 +50,10 @@
 
                     <div>
                         <label class="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2 font-bold uppercase tracking-widest text-[10px]">Custom Slug</label>
-                        <input type="text" name="slug" value="{{ old('slug', $article->slug) }}" placeholder="article-slug-here" class="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all font-semibold">
+                        <input type="text" name="slug" value="{{ old('slug', $article->slug) }}" placeholder="article-slug-here" class="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:ring-2 focus:ring-primary-200 focus:border-primary transition-all font-semibold">
                     </div>
 
-                    <div class="pt-4 border-t border-slate-100 dark:border-slate-800/50">
+                    <div class="pt-4 border-t border-slate-100 dark:border-slate-800">
                         <div class="flex items-center justify-between text-xs font-bold text-slate-500 mb-1">
                             <span>Author</span>
                             <span>{{ $article->author->name ?? 'Unknown' }}</span>
@@ -74,13 +74,13 @@
                     @if($article->image)
                         <div class="relative w-full aspect-video rounded-xl overflow-hidden border border-slate-200 dark:border-slate-800 mb-4 group">
                             <img src="{{ $article->getImageUrl() }}" alt="" class="w-full h-full object-cover">
-                            <div class="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                                <span class="text-white text-xs font-bold px-3 py-1.5 bg-black/50 backdrop-blur-sm rounded-full">Current Image</span>
+                            <div class="absolute inset-0 bg-black opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                                <span class="text-white text-xs font-bold px-3 py-1.5 bg-black backdrop-blur-sm rounded-full">Current Image</span>
                             </div>
                         </div>
                     @endif
 
-                    <div class="flex flex-col items-center justify-center p-6 border-2 border-dashed border-slate-200 dark:border-slate-800 rounded-2xl bg-slate-50 dark:bg-slate-800/30">
+                    <div class="flex flex-col items-center justify-center p-6 border-2 border-dashed border-slate-200 dark:border-slate-800 rounded-2xl bg-slate-50 dark:bg-slate-800">
                         <i class="bi bi-upload text-3xl text-slate-400 mb-2"></i>
                         <label class="cursor-pointer">
                             <span class="text-sm font-bold text-primary hover:brightness-110 transition-colors">Replace Image</span>
@@ -91,7 +91,7 @@
                 </div>
             </div>
 
-            <button type="submit" class="w-full bg-primary hover:brightness-110 text-white font-bold py-3.5 rounded-xl transition-all shadow-lg shadow-primary/20 active:scale-95">
+            <button type="submit" class="w-full bg-primary hover:brightness-110 text-white font-bold py-3.5 rounded-xl transition-all shadow-lg shadow-primary-200 active:scale-95">
                 Update {{name}}
             </button>
         </div>

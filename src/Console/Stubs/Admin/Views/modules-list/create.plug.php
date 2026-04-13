@@ -16,7 +16,7 @@
         </div>
     </div>
 
-    <div class="bg-white rounded-3xl shadow-xl shadow-black/5 border border-slate-100 p-10">
+    <div class="bg-white rounded-3xl shadow-xl shadow-black border border-slate-100 p-10">
         <form action="/admin/modules" method="POST">
             @csrf
             <div class="space-y-8">
@@ -25,7 +25,7 @@
                     <label for="name" class="block text-sm font-bold text-slate-800 mb-3 tracking-wide">Module Name</label>
                     <div class="relative group">
                         <input type="text" name="name" id="name" placeholder="e.g. Payments, Analytics, Blog" 
-                            class="w-full px-6 py-4 rounded-2xl bg-slate-50 border border-slate-100 text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-black/5 focus:border-black transition-all font-medium" 
+                            class="w-full px-6 py-4 rounded-2xl bg-slate-50 border border-slate-100 text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-200 focus:border-black transition-all font-medium" 
                             required>
                         <div class="absolute inset-y-0 right-0 pr-6 flex items-center pointer-events-none text-slate-300 group-focus-within:text-black transition-colors">
                             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -62,7 +62,7 @@
                 <!-- Submit -->
                 <div class="flex items-center justify-end gap-6 pt-6 border-t border-slate-50">
                     <a href="/admin/modules" class="text-xs font-bold text-slate-400 hover:text-black transition-colors uppercase tracking-widest">Cancel</a>
-                    <button type="submit" class="px-10 py-4 rounded-2xl bg-black text-white text-sm font-bold shadow-xl shadow-black/10 hover:scale-[1.02] active:scale-[0.98] transition-all">
+                    <button type="submit" class="px-10 py-4 rounded-2xl bg-black text-white text-sm font-bold shadow-xl shadow-slate-300 hover:scale-[1.02] active:scale-[0.98] transition-all">
                         Build Module
                     </button>
                 </div>

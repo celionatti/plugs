@@ -11,7 +11,7 @@
             </h1>
             <p class="text-slate-500 dark:text-slate-400 mt-1">Manage and publish your latest articles.</p>
         </div>
-        <a href="/admin/articles/create" class="inline-flex items-center gap-2 bg-primary hover:brightness-110 text-white px-4 py-2.5 rounded-xl font-bold transition-all shadow-xl shadow-primary/30 active:scale-95 btn-primary-vibrant">
+        <a href="/admin/articles/create" class="inline-flex items-center gap-2 bg-primary hover:brightness-110 text-white px-4 py-2.5 rounded-xl font-bold transition-all shadow-xl shadow-primary active:scale-95 btn-primary-vibrant">
             <i class="bi bi-plus-lg"></i>
             Create New {{name}}
         </a>
@@ -28,7 +28,7 @@
         <div class="overflow-x-auto">
             <table class="w-full text-left border-collapse">
                 <thead>
-                    <tr class="bg-slate-50 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-800">
+                    <tr class="bg-slate-50 dark:bg-slate-800 border-b border-slate-200 dark:border-slate-800">
                         <th class="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Article</th>
                         <th class="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Author</th>
                         <th class="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Status</th>
@@ -38,7 +38,7 @@
                 </thead>
                 <tbody class="divide-y divide-slate-200 dark:divide-slate-800">
                     @foreach($articles as $article)
-                        <tr class="hover:bg-slate-50/80 dark:hover:bg-slate-800/30 transition-colors group">
+                        <tr class="hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-colors group">
                             <td class="px-6 py-4">
                                 <div class="flex items-center gap-4">
                                     <div class="w-12 h-12 rounded-lg bg-slate-100 dark:bg-slate-800 overflow-hidden flex-shrink-0 border border-slate-200 dark:border-slate-700">
@@ -58,7 +58,7 @@
                             </td>
                             <td class="px-6 py-4">
                                 <div class="flex items-center gap-2 group/author cursor-pointer w-fit">
-                                    <div class="w-6 h-6 rounded-full bg-primary/10 dark:bg-primary/30 flex items-center justify-center text-[10px] font-bold text-primary group-hover/author:bg-primary group-hover/author:text-white group-hover/author:shadow-lg group-hover/author:shadow-primary/40 group-hover/author:scale-110 transition-all duration-300">
+                                    <div class="w-6 h-6 rounded-full bg-primary-100 dark:bg-primary flex items-center justify-center text-[10px] font-bold text-primary group-hover/author:bg-primary group-hover/author:text-white group-hover/author:shadow-lg group-hover/author:shadow-primary/40 group-hover/author:scale-110 transition-all duration-300">
                                         {{ strtoupper(substr($article->author->name ?? 'U', 0, 1)) }}
                                     </div>
                                     <span class="text-sm font-semibold text-slate-700 dark:text-slate-300 group-hover/author:text-primary transition-colors">{{ $article->author->name ?? 'System' }}</span>
@@ -67,9 +67,9 @@
                             <td class="px-6 py-4">
                                 @php
                                     $statusClass = [
-                                        'published' => 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400',
+                                        'published' => 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900 dark:text-emerald-400',
                                         'draft' => 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400',
-                                        'scheduled' => 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400',
+                                        'scheduled' => 'bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-400',
                                     ][$article->status] ?? 'bg-slate-100 text-slate-600';
                                 @endphp
                                 <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold uppercase tracking-wider {{ $statusClass }}">
@@ -81,7 +81,7 @@
                             </td>
                             <td class="px-6 py-4">
                                 <div class="flex items-center gap-2">
-                                    <a href="/admin/articles/{{ $article->id }}/edit" class="p-2 text-slate-500 hover:text-primary hover:bg-primary/10 dark:text-slate-400 dark:hover:bg-primary/20 rounded-lg transition-all" title="Edit">
+                                    <a href="/admin/articles/{{ $article->id }}/edit" class="p-2 text-slate-500 hover:text-primary hover:bg-primary-100 dark:text-slate-400 dark:hover:bg-primary-200 rounded-lg transition-all" title="Edit">
                                         <i class="bi bi-pencil-square"></i>
                                     </a>
                                     <form action="/admin/articles/{{ $article->id }}/delete" method="POST" onsubmit="return confirm('Delete this article?')" class="inline">

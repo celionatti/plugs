@@ -3,9 +3,9 @@
 
     <div class="h-full flex flex-col space-y-8">
         <!-- Dashboard Header & Overview -->
-        <div class="relative overflow-hidden rounded-[2rem] bg-gradient-to-br from-indigo-600 to-violet-800 p-8 text-white shadow-2xl shadow-indigo-900/20">
+        <div class="relative overflow-hidden rounded-[2rem] bg-gradient-to-br from-primary to-violet-800 p-8 text-white shadow-2xl shadow-indigo-900">
             <!-- Decorative Background Elements -->
-            <div class="absolute -top-24 -right-24 w-96 h-96 bg-white/10 rounded-full blur-3xl pointer-events-none"></div>
+            <div class="absolute -top-24 -right-24 w-96 h-96 bg-white rounded-full blur-3xl pointer-events-none"></div>
             
             <div class="relative z-10 flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
                 <div>
@@ -16,7 +16,7 @@
 
             <!-- Core Stats Bar -->
             <div class="relative z-10 grid grid-cols-2 md:grid-cols-4 gap-4 mt-10">
-                <div class="bg-white/10 backdrop-blur-md border border-white/10 rounded-2xl p-5 hover:bg-white/15 transition duration-300">
+                <div class="bg-white backdrop-blur-md border border-slate-700 rounded-2xl p-5 hover:bg-white transition duration-300">
                     <div class="flex items-center gap-3 mb-2 opacity-80">
                         <i class="bi bi-people text-lg"></i>
                         <span class="text-xs font-bold uppercase tracking-wider">Total Users</span>
@@ -24,7 +24,7 @@
                     <div class="text-3xl font-black">{{ number_format($stats['total_users'] ?? 0) }}</div>
                 </div>
 
-                <div class="bg-white/10 backdrop-blur-md border border-white/10 rounded-2xl p-5 hover:bg-white/15 transition duration-300">
+                <div class="bg-white backdrop-blur-md border border-slate-700 rounded-2xl p-5 hover:bg-white transition duration-300">
                     <div class="flex items-center gap-3 mb-2 opacity-80">
                         <i class="bi bi-file-text text-lg"></i>
                         <span class="text-xs font-bold uppercase tracking-wider">Published Articles</span>
@@ -32,7 +32,7 @@
                     <div class="text-3xl font-black">{{ number_format($stats['total_articles'] ?? 0) }}</div>
                 </div>
 
-                <div class="bg-white/10 backdrop-blur-md border border-white/10 rounded-2xl p-5 hover:bg-white/15 transition duration-300">
+                <div class="bg-white backdrop-blur-md border border-slate-700 rounded-2xl p-5 hover:bg-white transition duration-300">
                     <div class="flex items-center gap-3 mb-2 opacity-80">
                         <i class="bi bi-envelope-paper text-lg"></i>
                         <span class="text-xs font-bold uppercase tracking-wider">Active Subscribers</span>
@@ -40,7 +40,7 @@
                     <div class="text-3xl font-black">{{ number_format($stats['total_subscribers'] ?? 0) }}</div>
                 </div>
 
-                <div class="bg-white/10 backdrop-blur-md border border-white/10 rounded-2xl p-5 hover:bg-white/15 transition duration-300">
+                <div class="bg-white backdrop-blur-md border border-slate-700 rounded-2xl p-5 hover:bg-white transition duration-300">
                     <div class="flex items-center gap-3 mb-2 opacity-80">
                         <i class="bi bi-hdd-network text-lg"></i>
                         <span class="text-xs font-bold uppercase tracking-wider">Storage Footprint</span>
@@ -53,8 +53,8 @@
         <!-- Main Content Area -->
         <div class="grid grid-cols-1 xl:grid-cols-3 gap-8 flex-1 min-h-0">
             <!-- Unified Chart Section -->
-            <div class="xl:col-span-2 flex flex-col bg-white dark:bg-slate-900 rounded-[2rem] border border-slate-100 dark:border-slate-800 shadow-xl shadow-slate-200/40 dark:shadow-none p-8 relative overflow-hidden">
-                <div class="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500"></div>
+            <div class="xl:col-span-2 flex flex-col bg-white dark:bg-slate-900 rounded-[2rem] border border-slate-100 dark:border-slate-800 shadow-xl shadow-slate-200 dark:shadow-none p-8 relative overflow-hidden">
+                <div class="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-primary via-secondary to-pink-500"></div>
                 <div class="flex items-center justify-between mb-8">
                     <div>
                         <h3 class="text-xl font-bold text-slate-800 dark:text-white">Engagement Overview</h3>
@@ -67,13 +67,13 @@
             </div>
 
             <!-- Live Activity Timeline -->
-            <div class="flex flex-col bg-white dark:bg-slate-900 rounded-[2rem] border border-slate-100 dark:border-slate-800 shadow-xl shadow-slate-200/40 dark:shadow-none p-8">
+            <div class="flex flex-col bg-white dark:bg-slate-900 rounded-[2rem] border border-slate-100 dark:border-slate-800 shadow-xl shadow-slate-200 dark:shadow-none p-8">
                 <h3 class="text-xl font-bold text-slate-800 dark:text-white flex items-center gap-3 mb-8">Live Activity</h3>
                 <div class="flex-1 overflow-y-auto pr-2 custom-scrollbar">
                     <div class="relative border-l-2 border-slate-100 dark:border-slate-800 ml-4 space-y-8 pb-4">
                         @forelse($recentActivity ?? [] as $activity)
                             <div class="relative pl-8">
-                                <div class="absolute -left-[17px] top-0.5 w-8 h-8 rounded-full flex items-center justify-center shadow-md border-2 border-white dark:border-slate-900 bg-indigo-500 text-white">
+                                <div class="absolute -left-[17px] top-0.5 w-8 h-8 rounded-full flex items-center justify-center shadow-md border-2 border-white dark:border-slate-900 bg-primary text-white">
                                     <i class="bi bi-activity text-sm"></i>
                                 </div>
                                 <div class="flex flex-col">

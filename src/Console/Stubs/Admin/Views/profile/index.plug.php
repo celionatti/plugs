@@ -15,8 +15,8 @@
         <div class="space-y-8">
             <!-- Account Info Card -->
             <div class="bg-white rounded-3xl shadow-sm border border-slate-100 overflow-hidden">
-                <div class="p-8 border-b border-slate-50 bg-slate-50/30 flex items-center gap-6">
-                    <div class="w-20 h-20 rounded-3xl bg-black flex items-center justify-center text-white text-2xl font-bold shadow-xl shadow-black/10">
+                <div class="p-8 border-b border-slate-50 bg-slate-50 flex items-center gap-6">
+                    <div class="w-20 h-20 rounded-3xl bg-black flex items-center justify-center text-white text-2xl font-bold shadow-xl shadow-slate-300">
                         {{ substr($user->name, 0, 1) }}
                     </div>
                     <div>
@@ -30,12 +30,12 @@
                         <div class="space-y-2">
                             <label class="text-sm font-bold text-slate-700 ml-1">Full Name</label>
                             <input type="text" name="name" value="{{ $user->name }}" 
-                                class="w-full px-5 py-3 rounded-2xl bg-slate-50 border border-slate-100 text-slate-800 focus:outline-none focus:ring-4 focus:ring-black/5 focus:border-black transition-all font-medium">
+                                class="w-full px-5 py-3 rounded-2xl bg-slate-50 border border-slate-100 text-slate-800 focus:outline-none focus:ring-4 focus:ring-slate-200 focus:border-black transition-all font-medium">
                         </div>
                         <div class="space-y-2">
                             <label class="text-sm font-bold text-slate-700 ml-1">Email Address</label>
                             <input type="email" name="email" value="{{ $user->email }}" 
-                                class="w-full px-5 py-3 rounded-2xl bg-slate-50 border border-slate-100 text-slate-800 focus:outline-none focus:ring-4 focus:ring-black/5 focus:border-black transition-all font-medium">
+                                class="w-full px-5 py-3 rounded-2xl bg-slate-50 border border-slate-100 text-slate-800 focus:outline-none focus:ring-4 focus:ring-slate-200 focus:border-black transition-all font-medium">
                         </div>
                     </div>
 
@@ -44,7 +44,7 @@
                         <div class="space-y-2">
                             <label class="text-sm font-bold text-slate-700 ml-1">New Password (leave blank to keep current)</label>
                             <input type="password" name="password" 
-                                class="w-full px-5 py-3 rounded-2xl bg-slate-50 border border-slate-100 text-slate-800 focus:outline-none focus:ring-4 focus:ring-black/5 focus:border-black transition-all font-medium">
+                                class="w-full px-5 py-3 rounded-2xl bg-slate-50 border border-slate-100 text-slate-800 focus:outline-none focus:ring-4 focus:ring-slate-200 focus:border-black transition-all font-medium">
                         </div>
                     </div>
                 </div>
@@ -52,7 +52,7 @@
 
             <!-- Action Bar -->
             <div class="flex items-center justify-end gap-4 pb-12">
-                <button type="submit" class="px-8 py-3 rounded-2xl bg-black text-white font-bold shadow-xl shadow-black/10 hover:bg-slate-800 transition-all active:scale-95">
+                <button type="submit" class="px-8 py-3 rounded-2xl bg-black text-white font-bold shadow-xl shadow-slate-300 hover:bg-slate-800 transition-all active:scale-95">
                     Update Profile
                 </button>
             </div>

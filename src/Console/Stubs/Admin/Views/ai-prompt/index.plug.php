@@ -9,7 +9,7 @@
 </div>
 
 <!-- AI Status Bar -->
-<div id="statusBar" class="mb-6 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-slate-100 dark:border-slate-700 p-4 flex items-center justify-between">
+<div id="statusBar" class="mb-6 bg-slate-50 dark:bg-slate-800 rounded-2xl border border-slate-100 dark:border-slate-700 p-4 flex items-center justify-between">
     <div class="flex items-center gap-3">
         <div id="statusDot" class="w-2.5 h-2.5 rounded-full bg-slate-300 animate-pulse"></div>
         <span id="statusText" class="text-sm font-medium text-slate-500 dark:text-slate-400">Checking AI configuration...</span>
@@ -22,7 +22,7 @@
     <div class="lg:col-span-2">
         <div class="bg-white dark:bg-slate-900 rounded-3xl shadow-sm border border-slate-100 dark:border-slate-800 p-6 sticky top-24">
             <h2 class="text-lg font-bold text-slate-800 dark:text-white mb-4 flex items-center gap-2">
-                <svg class="w-5 h-5 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg class="w-5 h-5 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
                 </svg>
                 New Prompt
@@ -32,12 +32,12 @@
                 <div>
                     <label for="prompt" class="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">What do you want to build?</label>
                     <textarea id="prompt" name="prompt" rows="6"
-                        class="w-full px-4 py-3 rounded-2xl bg-slate-50 dark:bg-slate-800 border border-slate-100 dark:border-slate-700 focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all outline-none resize-none text-sm placeholder-slate-400 dark:text-white"
+                        class="w-full px-4 py-3 rounded-2xl bg-slate-50 dark:bg-slate-800 border border-slate-100 dark:border-slate-700 focus:ring-2 focus:ring-primary focus:border-transparent transition-all outline-none resize-none text-sm placeholder-slate-400 dark:text-white"
                         placeholder="e.g. Create a Blog module with posts, categories, and tags..."></textarea>
                 </div>
 
                 <button type="submit" id="generateBtn"
-                    class="flex items-center justify-center gap-2 w-full py-3.5 rounded-2xl bg-black dark:bg-white text-white dark:text-black font-bold text-sm hover:scale-[1.02] active:scale-[0.98] transition-all shadow-lg shadow-black/10 dark:shadow-white/10 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100">
+                    class="flex items-center justify-center gap-2 w-full py-3.5 rounded-2xl bg-black dark:bg-white text-white dark:text-black font-bold text-sm hover:scale-[1.02] active:scale-[0.98] transition-all shadow-lg shadow-slate-300 dark:shadow-white disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100">
                     <svg id="btnIcon" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
                     </svg>
@@ -83,8 +83,8 @@
         <div id="progressState" class="hidden space-y-4">
             <div class="bg-white dark:bg-slate-900 rounded-3xl shadow-sm border border-slate-100 dark:border-slate-800 p-6">
                 <div class="flex items-center gap-3 mb-6">
-                    <div class="w-8 h-8 rounded-xl bg-indigo-50 dark:bg-indigo-900/20 flex items-center justify-center">
-                        <svg class="w-4 h-4 text-indigo-500 animate-spin" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <div class="w-8 h-8 rounded-xl bg-indigo-50 dark:bg-indigo-900 flex items-center justify-center">
+                        <svg class="w-4 h-4 text-primary animate-spin" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                             <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                             <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                         </svg>
@@ -128,9 +128,9 @@
             <div class="bg-slate-900 rounded-2xl border border-slate-700 overflow-hidden">
                 <div class="px-4 py-2 border-b border-slate-700 flex items-center gap-2">
                     <div class="flex gap-1.5">
-                        <div class="w-3 h-3 rounded-full bg-red-500/80"></div>
-                        <div class="w-3 h-3 rounded-full bg-yellow-500/80"></div>
-                        <div class="w-3 h-3 rounded-full bg-green-500/80"></div>
+                        <div class="w-3 h-3 rounded-full bg-red-500"></div>
+                        <div class="w-3 h-3 rounded-full bg-yellow-500"></div>
+                        <div class="w-3 h-3 rounded-full bg-green-500"></div>
                     </div>
                     <span class="text-[10px] font-mono text-slate-500 ml-2">generation.log</span>
                 </div>
@@ -147,7 +147,7 @@
                     <svg class="w-20 h-20" fill="currentColor" viewBox="0 0 24 24"><path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
                 </div>
                 <div class="relative z-10 flex items-center gap-4">
-                    <div class="w-12 h-12 rounded-2xl bg-white/20 flex items-center justify-center">
+                    <div class="w-12 h-12 rounded-2xl bg-white flex items-center justify-center">
                         <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
                         </svg>
@@ -160,7 +160,7 @@
             </div>
 
             <!-- Instructions -->
-            <div id="instructionsCard" class="hidden bg-amber-50 dark:bg-amber-900/10 border border-amber-100 dark:border-amber-900/30 rounded-2xl p-4">
+            <div id="instructionsCard" class="hidden bg-amber-50 dark:bg-amber-900 border border-amber-100 dark:border-amber-900 rounded-2xl p-4">
                 <div class="flex items-start gap-3">
                     <svg class="w-5 h-5 text-amber-500 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -189,11 +189,11 @@
 
         <!-- Error State -->
         <div id="errorState" class="hidden space-y-4">
-            <div class="bg-white dark:bg-slate-900 rounded-3xl shadow-sm border border-rose-200 dark:border-rose-900/30 overflow-hidden">
+            <div class="bg-white dark:bg-slate-900 rounded-3xl shadow-sm border border-rose-200 dark:border-rose-900 overflow-hidden">
                 <!-- Error Header -->
-                <div class="bg-rose-50 dark:bg-rose-900/10 p-6 border-b border-rose-100 dark:border-rose-900/30">
+                <div class="bg-rose-50 dark:bg-rose-900 p-6 border-b border-rose-100 dark:border-rose-900">
                     <div class="flex items-start gap-4">
-                        <div class="w-10 h-10 rounded-xl bg-rose-100 dark:bg-rose-900/30 text-rose-500 flex items-center justify-center flex-shrink-0">
+                        <div class="w-10 h-10 rounded-xl bg-rose-100 dark:bg-rose-900 text-rose-500 flex items-center justify-center flex-shrink-0">
                             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
                             </svg>
@@ -212,14 +212,14 @@
                     </div>
                     <div id="errorSuggestion" class="hidden">
                         <h5 class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">How to Fix</h5>
-                        <div class="bg-blue-50 dark:bg-blue-900/10 border border-blue-100 dark:border-blue-900/30 rounded-xl p-3 text-sm text-blue-700 dark:text-blue-400 flex items-start gap-2">
+                        <div class="bg-blue-50 dark:bg-blue-900 border border-blue-100 dark:border-blue-900 rounded-xl p-3 text-sm text-blue-700 dark:text-blue-400 flex items-start gap-2">
                             <svg class="w-4 h-4 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
                             </svg>
                             <span id="errorSuggestionText"></span>
                         </div>
                     </div>
-                    <button onclick="resetUI()" class="text-sm font-bold text-indigo-500 hover:text-indigo-600 transition-colors">← Try again</button>
+                    <button onclick="resetUI()" class="text-sm font-bold text-primary hover:text-primary transition-colors">← Try again</button>
                 </div>
             </div>
         </div>
@@ -229,7 +229,7 @@
 <!-- File Template -->
 <template id="fileTemplate">
     <div class="bg-white dark:bg-slate-900 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-800 overflow-hidden">
-        <div class="p-3 px-5 border-b border-slate-50 dark:border-slate-800 flex items-center justify-between bg-slate-50/50 dark:bg-slate-800/50">
+        <div class="p-3 px-5 border-b border-slate-50 dark:border-slate-800 flex items-center justify-between bg-slate-50 dark:bg-slate-800">
             <div class="flex items-center gap-2.5">
                 <svg class="w-4 h-4 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
@@ -237,7 +237,7 @@
                 <span class="text-xs font-bold text-slate-600 dark:text-slate-300 font-mono file-path"></span>
                 <span class="file-status px-2 py-0.5 rounded text-[9px] font-bold uppercase tracking-widest hidden"></span>
             </div>
-            <button class="flex items-center gap-1 text-[10px] font-bold text-indigo-500 hover:text-indigo-600 transition-colors uppercase tracking-widest copy-btn">
+            <button class="flex items-center gap-1 text-[10px] font-bold text-primary hover:text-primary transition-colors uppercase tracking-widest copy-btn">
                 <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
                 </svg>
@@ -396,13 +396,13 @@
                 text.textContent = `Connected — ${aiStatus.driver} / ${aiStatus.model}`;
                 text.className = 'text-sm font-medium text-emerald-600 dark:text-emerald-400';
                 badge.textContent = 'Ready';
-                badge.className = 'px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400';
+                badge.className = 'px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider bg-emerald-50 dark:bg-emerald-900 text-emerald-600 dark:text-emerald-400';
             } else {
                 dot.className = 'w-2.5 h-2.5 rounded-full bg-rose-500';
                 text.textContent = 'No AI provider configured — add an API key to your .env file';
                 text.className = 'text-sm font-medium text-rose-600 dark:text-rose-400';
                 badge.textContent = 'Not configured';
-                badge.className = 'px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider bg-rose-50 dark:bg-rose-900/20 text-rose-600 dark:text-rose-400';
+                badge.className = 'px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider bg-rose-50 dark:bg-rose-900 text-rose-600 dark:text-rose-400';
             }
             badge.classList.remove('hidden');
         } catch (e) {
@@ -472,11 +472,11 @@
                 const statusBadge = template.querySelector('.file-status');
                 if (data.created_files && data.created_files.includes(file.path)) {
                     statusBadge.textContent = 'Created';
-                    statusBadge.className = 'file-status px-2 py-0.5 rounded text-[9px] font-bold uppercase tracking-widest bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400';
+                    statusBadge.className = 'file-status px-2 py-0.5 rounded text-[9px] font-bold uppercase tracking-widest bg-emerald-50 dark:bg-emerald-900 text-emerald-600 dark:text-emerald-400';
                 } else if (data.failed_files && data.failed_files.some(f => f.path === file.path)) {
                     const failReason = data.failed_files.find(f => f.path === file.path).error;
                     statusBadge.textContent = 'Failed: ' + failReason;
-                    statusBadge.className = 'file-status px-2 py-0.5 rounded text-[9px] font-bold uppercase tracking-widest bg-rose-50 dark:bg-rose-900/30 text-rose-600 dark:text-rose-400';
+                    statusBadge.className = 'file-status px-2 py-0.5 rounded text-[9px] font-bold uppercase tracking-widest bg-rose-50 dark:bg-rose-900 text-rose-600 dark:text-rose-400';
                 } else {
                     statusBadge.textContent = 'Schema Only';
                     statusBadge.className = 'file-status px-2 py-0.5 rounded text-[9px] font-bold uppercase tracking-widest bg-slate-100 dark:bg-slate-800 text-slate-500';

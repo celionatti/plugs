@@ -9,7 +9,7 @@
         <p class="text-slate-500 dark:text-slate-400 mt-1 font-medium">Manage and organize your platform's members.</p>
     </div>
     <div class="flex items-center gap-3">
-        <a href="/admin/users/create" class="px-6 py-3 rounded-2xl bg-black dark:bg-white text-white dark:text-black font-bold text-sm shadow-xl shadow-black/10 hover:shadow-black/20 dark:hover:shadow-white/20 hover:-translate-y-0.5 transition-all flex items-center gap-2 active:scale-95">
+        <a href="/admin/users/create" class="px-6 py-3 rounded-2xl bg-black dark:bg-white text-white dark:text-black font-bold text-sm shadow-xl shadow-slate-300 hover:shadow-black dark:hover:shadow-white/20 hover:-translate-y-0.5 transition-all flex items-center gap-2 active:scale-95">
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
             </svg>
@@ -19,7 +19,7 @@
 </div>
 
 <div class="bg-white dark:bg-slate-900 rounded-3xl shadow-sm border border-slate-100 dark:border-slate-800 overflow-hidden w-full">
-    <div class="p-8 border-b border-slate-50 dark:border-slate-800 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 bg-slate-50/30 dark:bg-slate-800/30">
+    <div class="p-8 border-b border-slate-50 dark:border-slate-800 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 bg-slate-50 dark:bg-slate-800">
         <div class="flex items-center gap-4">
             <h2 class="text-lg font-bold text-slate-800 dark:text-white">Directory</h2>
         </div>
@@ -38,10 +38,10 @@
             <tbody class="divide-y divide-slate-50 dark:divide-slate-800/50">
                 @if(!empty($users) && (is_array($users) ? count($users) > 0 : $users->count() > 0))
                     @foreach($users as $user)
-                    <tr class="group hover:bg-slate-50/50 dark:hover:bg-slate-800/50 transition-colors">
+                    <tr class="group hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
                         <td class="px-8 py-5">
                             <div class="flex items-center gap-4">
-                                <div class="w-10 h-10 rounded-2xl bg-slate-900 dark:bg-white text-white dark:text-slate-900 flex items-center justify-center font-bold text-sm shadow-lg shadow-black/10 dark:shadow-white/10 group-hover:scale-110 transition-transform">
+                                <div class="w-10 h-10 rounded-2xl bg-slate-900 dark:bg-white text-white dark:text-slate-900 flex items-center justify-center font-bold text-sm shadow-lg shadow-slate-300 dark:shadow-white group-hover:scale-110 transition-transform">
                                     {{ substr($user->name, 0, 1) }}
                                 </div>
                                 <div class="flex flex-col">
@@ -51,7 +51,7 @@
                             </div>
                         </td>
                         <td class="px-8 py-5">
-                            <span class="px-3 py-1 rounded-full bg-secondary/10 dark:bg-secondary/20 text-secondary text-xs font-bold">{{ $user->role ?? 'Member' }}</span>
+                            <span class="px-3 py-1 rounded-full bg-secondary-100 dark:bg-secondary-200 text-secondary text-xs font-bold">{{ $user->role ?? 'Member' }}</span>
                         </td>
                         <td class="px-8 py-5 text-sm text-slate-500 dark:text-slate-400 font-medium">
                             {{ date('M d, Y', strtotime($user->created_at)) }}

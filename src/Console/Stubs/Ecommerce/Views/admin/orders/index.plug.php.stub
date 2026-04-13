@@ -14,9 +14,9 @@
     <div class="mt-8 flow-root">
         <div class="-mx-4 -my-2 overflow-x-auto sm:-mx-6 lg:-mx-8">
             <div class="inline-block min-w-full py-2 align-middle sm:px-6 lg:px-8">
-                <div class="overflow-hidden shadow-sm ring-1 ring-black/5 dark:ring-white/5 sm:rounded-2xl bg-white dark:bg-slate-900">
+                <div class="overflow-hidden shadow-sm ring-1 ring-slate-200 dark:ring-slate-800 sm:rounded-2xl bg-white dark:bg-slate-900">
                     <table class="min-w-full divide-y divide-slate-200 dark:divide-slate-800">
-                        <thead class="bg-slate-50 dark:bg-slate-800/50">
+                        <thead class="bg-slate-50 dark:bg-slate-800">
                             <tr>
                                 <th scope="col" class="py-4 pl-4 pr-3 text-left text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider sm:pl-6">Order ID</th>
                                 <th scope="col" class="px-3 py-4 text-left text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Customer</th>
@@ -29,17 +29,17 @@
                         </thead>
                         <tbody class="divide-y divide-slate-200 dark:divide-slate-800">
                             @forelse($orders as $order)
-                            <tr class="hover:bg-slate-50 dark:hover:bg-white/5 transition-colors">
+                            <tr class="hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
                                 <td class="whitespace-nowrap py-4 pl-4 pr-3 text-sm font-bold text-slate-900 dark:text-white sm:pl-6">#{{ $order->order_number }}</td>
                                 <td class="whitespace-nowrap px-3 py-4 text-sm text-slate-600 dark:text-slate-400 font-medium">{{ $order->user->name ?? 'Guest' }}</td>
                                 <td class="whitespace-nowrap px-3 py-4 text-sm font-bold text-slate-900 dark:text-white">${{ number_format($order->total_amount, 2) }}</td>
                                 <td class="whitespace-nowrap px-3 py-4 text-sm">
                                     @if($order->status === 'pending')
-                                        <span class="inline-flex rounded-full bg-amber-100 dark:bg-amber-500/10 px-2.5 py-0.5 text-xs font-bold leading-5 text-amber-800 dark:text-amber-400 uppercase tracking-wider">Pending</span>
+                                        <span class="inline-flex rounded-full bg-amber-100 dark:bg-amber-500 px-2.5 py-0.5 text-xs font-bold leading-5 text-amber-800 dark:text-amber-400 uppercase tracking-wider">Pending</span>
                                     @elseif($order->status === 'shipped')
-                                        <span class="inline-flex rounded-full bg-primary/10 dark:bg-primary/20 px-2.5 py-0.5 text-xs font-bold leading-5 text-primary uppercase tracking-wider">Shipped</span>
+                                        <span class="inline-flex rounded-full bg-primary-100 dark:bg-primary-200 px-2.5 py-0.5 text-xs font-bold leading-5 text-primary uppercase tracking-wider">Shipped</span>
                                     @elseif($order->status === 'completed' || $order->status === 'delivered')
-                                        <span class="inline-flex rounded-full bg-emerald-100 dark:bg-emerald-500/10 px-2.5 py-0.5 text-xs font-bold leading-5 text-emerald-800 dark:text-emerald-400 uppercase tracking-wider">Completed</span>
+                                        <span class="inline-flex rounded-full bg-emerald-100 dark:bg-emerald-500 px-2.5 py-0.5 text-xs font-bold leading-5 text-emerald-800 dark:text-emerald-400 uppercase tracking-wider">Completed</span>
                                     @else
                                         <span class="inline-flex rounded-full bg-slate-100 dark:bg-slate-800 px-2.5 py-0.5 text-xs font-bold leading-5 text-slate-600 dark:text-slate-400 uppercase tracking-wider">{{ $order->status }}</span>
                                     @endif

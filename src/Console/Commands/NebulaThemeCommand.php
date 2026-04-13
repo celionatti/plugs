@@ -78,34 +78,10 @@ class NebulaThemeCommand extends Command
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{{ $title ?? 'Plugs' }} | Nebula Core</title>
-    <script src="https://cdn.tailwindcss.com"></script>
+    @plugcss
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&family=Space+Grotesk:wght@300;500;700&display=swap" rel="stylesheet">
-    <script>
-        tailwind.config = {
-            theme: {
-                extend: {
-                    fontFamily: {
-                        'outfit': ['Outfit', 'sans-serif'],
-                        'space': ['Space Grotesk', 'sans-serif'],
-                    },
-                    colors: {
-                        'nebula': {
-                            'deep': '#020617',
-                            'void': '#030712',
-                            'glow': '#4f46e5',
-                            'accent': '#9333ea',
-                        }
-                    },
-                    backgroundImage: {
-                        'gradient-nebula': 'linear-gradient(135deg, #4f46e5 0%, #9333ea 100%)',
-                        'gradient-void': 'radial-gradient(circle at center, #1e1b4b 0%, #020617 100%)',
-                    }
-                }
-            }
-        }
-    </script>
     <style>
         body { background-color: #020617; color: #f8fafc; overflow-x: hidden; font-family: 'Outfit', sans-serif; }
         .glass-panel { background: rgba(255, 255, 255, 0.03); backdrop-filter: blur(20px); border: 1px solid rgba(255, 255, 255, 0.08); box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.8); }

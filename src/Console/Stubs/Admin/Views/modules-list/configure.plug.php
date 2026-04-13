@@ -30,7 +30,7 @@
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
         <!-- Sidebar: Module Info -->
         <div class="lg:col-span-1 space-y-6">
-            <div class="bg-white rounded-3xl shadow-xl shadow-black/5 border border-slate-100 p-8">
+            <div class="bg-white rounded-3xl shadow-xl shadow-black border border-slate-100 p-8">
                 <div class="w-16 h-16 rounded-2xl bg-slate-50 flex items-center justify-center mb-6 text-slate-400">
                     @if($module['name'] === 'Admin')
                     <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -60,10 +60,10 @@
                 </div>
             </div>
 
-            <div class="p-6 rounded-3xl bg-indigo-600 text-white shadow-xl shadow-indigo-200/50">
+            <div class="p-6 rounded-3xl bg-primary text-white shadow-xl shadow-indigo-200">
                 <h4 class="font-bold mb-2">Need Help?</h4>
                 <p class="text-xs text-indigo-100 leading-relaxed mb-4">Check our documentation for advanced configuration patterns and module hooks.</p>
-                <a href="#" class="inline-flex items-center text-xs font-bold bg-white/10 hover:bg-white/20 px-4 py-2 rounded-xl transition-colors">
+                <a href="#" class="inline-flex items-center text-xs font-bold bg-white hover:bg-white px-4 py-2 rounded-xl transition-colors">
                     View Docs
                     <svg class="w-3 h-3 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3" />
@@ -74,7 +74,7 @@
 
         <!-- Main Settings Section -->
         <div class="lg:col-span-2 space-y-8">
-            <div class="bg-white rounded-3xl shadow-xl shadow-black/5 border border-slate-100 overflow-hidden">
+            <div class="bg-white rounded-3xl shadow-xl shadow-black border border-slate-100 overflow-hidden">
                 <div class="p-8 border-b border-slate-50 flex items-center justify-between">
                     <div>
                         <h2 class="text-xl font-bold text-slate-800">Module Settings</h2>
@@ -102,13 +102,13 @@
                                     <div>
                                         <label class="block text-sm font-bold text-slate-800 mb-2 capitalize">{{ str_replace('_', ' ', $key) }}</label>
                                         <input type="text" name="{{ $key }}" value="{{ $value }}" 
-                                            class="w-full px-5 py-3.5 rounded-xl bg-slate-50 border border-slate-100 text-slate-800 focus:outline-none focus:ring-2 focus:ring-black/5 focus:border-black transition-all font-medium">
+                                            class="w-full px-5 py-3.5 rounded-xl bg-slate-50 border border-slate-100 text-slate-800 focus:outline-none focus:ring-2 focus:ring-slate-200 focus:border-black transition-all font-medium">
                                     </div>
                                 @endforeach
                             </div>
 
                             <div class="flex items-center justify-end gap-6 pt-10 mt-10 border-t border-slate-50">
-                                <button type="submit" class="px-8 py-3.5 rounded-xl bg-black text-white text-sm font-bold shadow-xl shadow-black/10 hover:scale-[1.02] active:scale-[0.98] transition-all">
+                                <button type="submit" class="px-8 py-3.5 rounded-xl bg-black text-white text-sm font-bold shadow-xl shadow-slate-300 hover:scale-[1.02] active:scale-[0.98] transition-all">
                                     Save Changes
                                 </button>
                             </div>
@@ -118,7 +118,7 @@
             </div>
 
             <!-- Developer Tools -->
-            <div class="bg-white rounded-3xl shadow-xl shadow-black/5 border border-slate-100 p-8">
+            <div class="bg-white rounded-3xl shadow-xl shadow-black border border-slate-100 p-8">
                 <h3 class="text-lg font-bold text-slate-800 mb-6">Developer Controls</h3>
                 <div class="grid grid-cols-2 gap-4">
                     <button class="flex items-center gap-3 p-4 rounded-2xl border border-slate-100 hover:bg-slate-50 transition-colors" onclick="alert('Module optimization started...')">
@@ -134,7 +134,7 @@
                     </button>
                     
                     <button class="flex items-center gap-3 p-4 rounded-2xl border border-slate-100 hover:bg-slate-50 transition-colors" onclick="alert('Relinking assets...')">
-                        <div class="w-10 h-10 rounded-xl bg-indigo-50 text-indigo-500 flex items-center justify-center">
+                        <div class="w-10 h-10 rounded-xl bg-indigo-50 text-primary flex items-center justify-center">
                             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101" />
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.828 14.828a4 4 0 015.656 0l4-4a4 4 0 01-5.656-5.656l-1.102 1.101" />

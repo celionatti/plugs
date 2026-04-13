@@ -11,7 +11,7 @@
 <div class="max-w-5xl">
     <!-- Tabs Navigation -->
     <div class="flex items-center gap-1 bg-slate-100 p-1.5 rounded-2xl mb-8 w-fit shadow-inner" id="settings-tabs">
-        <button type="button" onclick="switchTab('general')" id="tab-general" class="px-6 py-2.5 rounded-xl text-sm font-bold transition-all bg-white text-indigo-600 shadow-sm">
+        <button type="button" onclick="switchTab('general')" id="tab-general" class="px-6 py-2.5 rounded-xl text-sm font-bold transition-all bg-white text-primary shadow-sm">
             General
         </button>
         <button type="button" onclick="switchTab('appearance')" id="tab-appearance" class="px-6 py-2.5 rounded-xl text-sm font-bold transition-all text-slate-500 hover:text-slate-700">
@@ -31,7 +31,7 @@
         <div class="space-y-8">
             <!-- General Settings -->
             <div id="panel-general" class="settings-panel bg-white rounded-3xl shadow-sm border border-slate-100 overflow-hidden">
-                <div class="p-8 border-b border-slate-50 bg-slate-50/30">
+                <div class="p-8 border-b border-slate-50 bg-slate-50">
                     <h2 class="text-xl font-bold text-slate-800">Identity & Contact</h2>
                     <p class="text-sm text-slate-500 mt-1">Basic information about your platform.</p>
                 </div>
@@ -39,23 +39,23 @@
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div class="space-y-2">
                             <label class="text-sm font-bold text-slate-700 ml-1">Site Name</label>
-                            <input type="text" name="site_name" value="{{ $settings['site_name'] }}" class="w-full px-5 py-4 rounded-2xl bg-slate-50 border border-slate-100 focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 transition-all font-medium text-slate-800">
+                            <input type="text" name="site_name" value="{{ $settings['site_name'] }}" class="w-full px-5 py-4 rounded-2xl bg-slate-50 border border-slate-100 focus:ring-4 focus:ring-primary-100 focus:border-primary transition-all font-medium text-slate-800">
                         </div>
                         <div class="space-y-2">
                             <label class="text-sm font-bold text-slate-700 ml-1">Admin Email Address</label>
-                            <input type="email" name="admin_email" value="{{ $settings['admin_email'] }}" class="w-full px-5 py-4 rounded-2xl bg-slate-50 border border-slate-100 focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 transition-all font-medium text-slate-800">
+                            <input type="email" name="admin_email" value="{{ $settings['admin_email'] }}" class="w-full px-5 py-4 rounded-2xl bg-slate-50 border border-slate-100 focus:ring-4 focus:ring-primary-100 focus:border-primary transition-all font-medium text-slate-800">
                         </div>
                     </div>
                     <div class="space-y-2">
                         <label class="text-sm font-bold text-slate-700 ml-1">Site Description</label>
-                        <textarea name="site_description" rows="3" class="w-full px-5 py-4 rounded-2xl bg-slate-50 border border-slate-100 focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 transition-all font-medium text-slate-800 resize-none">{{ $settings['site_description'] }}</textarea>
+                        <textarea name="site_description" rows="3" class="w-full px-5 py-4 rounded-2xl bg-slate-50 border border-slate-100 focus:ring-4 focus:ring-primary-100 focus:border-primary transition-all font-medium text-slate-800 resize-none">{{ $settings['site_description'] }}</textarea>
                     </div>
                 </div>
             </div>
 
             <!-- Appearance Settings -->
             <div id="panel-appearance" class="settings-panel bg-white rounded-3xl shadow-sm border border-slate-100 overflow-hidden" style="display:none;">
-                <div class="p-8 border-b border-slate-50 bg-slate-50/30">
+                <div class="p-8 border-b border-slate-50 bg-slate-50">
                     <h2 class="text-xl font-bold text-slate-800">Visual Identity</h2>
                     <p class="text-sm text-slate-500 mt-1">Customize the look and feel of your admin panel.</p>
                 </div>
@@ -81,7 +81,7 @@
                         <div class="space-y-6">
                             <div class="space-y-2">
                                 <label class="text-sm font-bold text-slate-700 ml-1">Interface Border Radius</label>
-                                <select name="border_radius" id="border_radius" class="w-full px-5 py-4 rounded-2xl bg-slate-50 border border-slate-100 focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 transition-all font-medium text-slate-800" onchange="updateThemePreview('radius', this.value)">
+                                <select name="border_radius" id="border_radius" class="w-full px-5 py-4 rounded-2xl bg-slate-50 border border-slate-100 focus:ring-4 focus:ring-primary-100 focus:border-primary transition-all font-medium text-slate-800" onchange="updateThemePreview('radius', this.value)">
                                     <option value="0px" {{ (\Modules\Admin\Models\Setting::getValue('border_radius') === '0px') ? 'selected' : '' }}>None (Square)</option>
                                     <option value="0.5rem" {{ (\Modules\Admin\Models\Setting::getValue('border_radius') === '0.5rem') ? 'selected' : '' }}>Small (8px)</option>
                                     <option value="1rem" {{ (\Modules\Admin\Models\Setting::getValue('border_radius') === '1rem') ? 'selected' : '' }}>Medium (16px)</option>
@@ -121,14 +121,14 @@
 
             <!-- Security Settings -->
             <div id="panel-security" class="settings-panel bg-white rounded-3xl shadow-sm border border-slate-100 overflow-hidden" style="display:none;">
-                <div class="p-8 border-b border-slate-50 bg-slate-50/30">
+                <div class="p-8 border-b border-slate-50 bg-slate-50">
                     <h2 class="text-xl font-bold text-slate-800">Access & Protection</h2>
                     <p class="text-sm text-slate-500 mt-1">Control who can join and how they authenticate.</p>
                 </div>
                 <div class="p-8 space-y-6">
                     <div class="space-y-4">
                         <label class="flex items-center gap-3 cursor-pointer group p-4 rounded-2xl border border-slate-100 hover:border-indigo-100 transition-all">
-                            <input type="checkbox" name="registration_enabled" value="true" {{ $settings['registration_enabled'] === 'true' ? 'checked' : '' }} class="w-5 h-5 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500">
+                            <input type="checkbox" name="registration_enabled" value="true" {{ $settings['registration_enabled'] === 'true' ? 'checked' : '' }} class="w-5 h-5 rounded border-slate-300 text-primary focus:ring-primary">
                             <div>
                                 <span class="block text-sm font-bold text-slate-800">Allow Public Registration</span>
                                 <span class="text-xs text-slate-400 font-medium">Allow anyone to create an account on your site.</span>
@@ -136,7 +136,7 @@
                         </label>
 
                         <label class="flex items-center gap-3 cursor-pointer group p-4 rounded-2xl border border-slate-100 hover:border-indigo-100 transition-all">
-                            <input type="checkbox" name="two_factor_auth" value="true" {{ $settings['two_factor_auth'] === 'true' ? 'checked' : '' }} class="w-5 h-5 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500">
+                            <input type="checkbox" name="two_factor_auth" value="true" {{ $settings['two_factor_auth'] === 'true' ? 'checked' : '' }} class="w-5 h-5 rounded border-slate-300 text-primary focus:ring-primary">
                             <div>
                                 <span class="block text-sm font-bold text-slate-800">Enforce Two-Factor Authentication</span>
                                 <span class="text-xs text-slate-400 font-medium">Require all users to verify their login with another device.</span>
@@ -148,18 +148,18 @@
 
             <!-- SEO Settings -->
             <div id="panel-seo" class="settings-panel bg-white rounded-3xl shadow-sm border border-slate-100 overflow-hidden" style="display:none;">
-                <div class="p-8 border-b border-slate-50 bg-slate-50/30">
+                <div class="p-8 border-b border-slate-50 bg-slate-50">
                     <h2 class="text-xl font-bold text-slate-800">Traffic & Discovery</h2>
                     <p class="text-sm text-slate-500 mt-1">Optimize how search engines index your platform.</p>
                 </div>
                 <div class="p-8 space-y-6">
                     <div class="space-y-2">
                         <label class="text-sm font-bold text-slate-700 ml-1">Meta Keywords</label>
-                        <input type="text" name="meta_keywords" value="{{ $settings['meta_keywords'] }}" placeholder="Separate with commas..." class="w-full px-5 py-4 rounded-2xl bg-slate-50 border border-slate-100 focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 transition-all font-medium text-slate-800">
+                        <input type="text" name="meta_keywords" value="{{ $settings['meta_keywords'] }}" placeholder="Separate with commas..." class="w-full px-5 py-4 rounded-2xl bg-slate-50 border border-slate-100 focus:ring-4 focus:ring-primary-100 focus:border-primary transition-all font-medium text-slate-800">
                     </div>
                     <div class="space-y-2">
                         <label class="text-sm font-bold text-slate-700 ml-1">Google Analytics ID (G-XXXXXX)</label>
-                        <input type="text" name="google_analytics_id" value="{{ $settings['google_analytics_id'] }}" class="w-full px-5 py-4 rounded-2xl bg-slate-50 border border-slate-100 focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 transition-all font-medium text-slate-800 font-mono">
+                        <input type="text" name="google_analytics_id" value="{{ $settings['google_analytics_id'] }}" class="w-full px-5 py-4 rounded-2xl bg-slate-50 border border-slate-100 focus:ring-4 focus:ring-primary-100 focus:border-primary transition-all font-medium text-slate-800 font-mono">
                     </div>
                 </div>
             </div>
@@ -169,7 +169,7 @@
                 <button type="reset" class="px-8 py-4 rounded-2xl bg-white border border-slate-200 text-slate-600 font-bold hover:bg-slate-50 transition-all active:scale-95">
                     Discard Changes
                 </button>
-                <button type="submit" class="px-10 py-4 rounded-2xl gradient-bg text-white font-bold shadow-xl shadow-indigo-500/20 hover:shadow-indigo-500/40 hover:-translate-y-0.5 transition-all active:scale-95 flex items-center gap-2">
+                <button type="submit" class="px-10 py-4 rounded-2xl gradient-bg text-white font-bold shadow-xl shadow-primary hover:shadow-primary hover:-translate-y-0.5 transition-all active:scale-95 flex items-center gap-2">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
                     </svg>
@@ -188,7 +188,7 @@ function switchTab(name) {
     });
     document.getElementById('panel-' + name).style.display = 'block';
     var activeBtn = document.getElementById('tab-' + name);
-    activeBtn.className = 'px-6 py-2.5 rounded-xl text-sm font-bold transition-all bg-white text-indigo-600 shadow-sm';
+    activeBtn.className = 'px-6 py-2.5 rounded-xl text-sm font-bold transition-all bg-white text-primary shadow-sm';
 }
 </script>
 @endsection
