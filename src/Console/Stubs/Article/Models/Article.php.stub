@@ -7,7 +7,7 @@ namespace Modules\{{name}}\Models;
 use Plugs\Base\Model\PlugModel;
 use Modules\Auth\Models\User;
 
-class {{name}} extends PlugModel
+class Article extends PlugModel
 {
     /**
      * The table associated with the model.

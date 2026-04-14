@@ -283,7 +283,7 @@
             <div class="checkout-nav-inner">
                 <a href="/" class="checkout-brand">
                     <div class="checkout-brand-icon">P</div>
-                    <span class="checkout-brand-name">{{ \Modules\Admin\Models\Setting::getValue('site_name', 'Plugs App') }}</span>
+                    <span class="checkout-brand-name">{{ \App\Models\Setting::getValue('site_name', 'Plugs App') }}</span>
                 </a>
                 <div style="display:flex; gap:20px; align-items:center;">
                     <a href="/" class="checkout-nav-link">Home</a>

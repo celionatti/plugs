@@ -6,7 +6,7 @@ namespace Modules\{{name}}\Requests;
 
 use Plugs\Http\Requests\FormRequest;
 
-class {{name}}Request extends FormRequest
+class ArticleRequest extends FormRequest
 {
     /**
      * Determine if the user is authorized to make this request.

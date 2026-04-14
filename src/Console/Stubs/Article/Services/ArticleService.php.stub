@@ -4,33 +4,30 @@ declare(strict_types=1);
 
 namespace Modules\{{name}}\Services;
 
-use Modules\{{name}}\Models\{{name}};
+use Modules\{{name}}\Models\Article;
 use Plugs\Upload\FileUploader;
 use Plugs\Facades\Storage;
 use Plugs\Utils\Str;
 
-class {{name}}Service
+class ArticleService
 {
-    /**
-     * Get all articles.
-     */
     public function getAllArticles()
     {
-        return {{name}}::with('author')->get();
+        return Article::with('author')->get();
     }
 
     /**
      * Find article by ID.
      */
-    public function findArticle(int $id): ?{{name}}
+    public function findArticle(int $id): ?Article
     {
-        return {{name}}::find($id);
+        return Article::find($id);
     }
 
     /**
      * Create article.
      */
-    public function createArticle(array $data, $imageFile = null): {{name}}
+    public function createArticle(array $data, $imageFile = null): Article
     {
         $data['slug'] = !empty($data['slug']) ? $data['slug'] : Str::slug($data['title']);
 
@@ -38,13 +35,13 @@ class {{name}}Service
             $data['image'] = $this->handleImageUpload($imageFile);
         }
 
-        return {{name}}::create($data);
+        return Article::create($data);
     }
 
     /**
      * Update article.
      */
-    public function updateArticle({{name}} $article, array $data, $imageFile = null): bool
+    public function updateArticle(Article $article, array $data, $imageFile = null): bool
     {
         if ($imageFile && $imageFile->getError() === UPLOAD_ERR_OK) {
             // Delete old image if it exists
@@ -60,7 +57,7 @@ class {{name}}Service
     /**
      * Delete article.
      */
-    public function deleteArticle({{name}} $article): bool
+    public function deleteArticle(Article $article): bool
     {
         if (!empty($article->image)) {
             Storage::disk('public')->delete($article->image);

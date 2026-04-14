@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Modules\Payment\Services;
 
-use Modules\Admin\Models\Setting;
+use App\Models\Setting;
 
 class PaymentSettingsService
 {

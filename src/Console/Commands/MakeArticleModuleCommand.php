@@ -65,7 +65,7 @@ class MakeArticleModuleCommand extends Command
             'ArticleModule.php.stub' => $name . 'Module.php',
             'Models/Article.php.stub' => 'Models/Article.php',
             'Controllers/Admin/ArticleController.php.stub' => 'Controllers/Admin/ArticleController.php',
-            'Requests/ArticleRequest.php.stub' => 'Requests/' . $name . 'Request.php',
+            'Requests/ArticleRequest.php.stub' => 'Requests/ArticleRequest.php',
             'Services/ArticleService.php.stub' => 'Services/ArticleService.php',
             'Migrations/create_article_tables.php.stub' => 'Migrations/' . date('Y_m_d_His') . '_create_' . $lowerName . '_tables.php',
             'Routes/web.php.stub' => 'Routes/web.php',
@@ -126,6 +126,9 @@ ICON;
 
         // Register the module in the config file
         $this->registerModuleInConfig($name);
+
+        // Run migrations
+        $this->call('migrate', ['force' => true]);
 
         return 0;
     }

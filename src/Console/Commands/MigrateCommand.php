@@ -18,6 +18,14 @@ class MigrateCommand extends Command
 {
     protected string $description = 'Run the database migrations';
 
+    protected function defineOptions(): array
+    {
+        return [
+            '--force' => 'Run the migrations without confirmation',
+            '--step' => 'Number of migrations to run',
+        ];
+    }
+
     public function handle(): int
     {
         $this->checkpoint('start');
@@ -50,7 +58,7 @@ class MigrateCommand extends Command
             $this->keyValue('Path', str_replace(base_path(), '', $migrationPath));
             $this->newLine();
 
-            if (!$this->confirm('Run pending migrations?', true)) {
+            if (!$this->hasOption('force') && !$this->confirm('Run pending migrations?', true)) {
                 $this->warning('Migration execution cancelled.');
 
                 return 0;

@@ -39,7 +39,7 @@ class {{name}}Module extends AbstractFeatureModule
      */
     public function register(Container $container): void
     {
-        $container->singleton(Services\{{name}}Service::class, fn() => new Services\{{name}}Service());
+        $container->singleton(Services\ArticleService::class, fn() => new Services\ArticleService());
     }
 
     /**

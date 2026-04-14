@@ -4,63 +4,144 @@
 
 @section('content')
 <div class="px-4 sm:px-6 lg:px-8 py-8">
-    <div class="sm:flex sm:items-center">
-        <div class="sm:flex-auto">
-            <h1 class="text-2xl font-bold text-slate-900 dark:text-white">Orders</h1>
-            <p class="mt-2 text-sm text-slate-600 dark:text-slate-400">Track and manage customer orders and fulfillment status.</p>
+    <!-- Page Header -->
+    <div class="md:flex md:items-center md:justify-between mb-8">
+        <div class="min-w-0 flex-1">
+            <h1 class="text-3xl font-black text-slate-900 dark:text-white font-outfit tracking-tight">Sales & Orders</h1>
+            <div class="mt-2 flex items-center text-sm text-slate-500 dark:text-slate-400">
+                <i class="bi bi-cart-check mr-2"></i>
+                Total Orders Processed
+                <span class="mx-2 opacity-30">•</span>
+                <i class="bi bi-clock mr-2"></i>
+                Real-time tracking enabled
+            </div>
         </div>
     </div>
-    
-    <div class="mt-8 flow-root">
-        <div class="-mx-4 -my-2 overflow-x-auto sm:-mx-6 lg:-mx-8">
-            <div class="inline-block min-w-full py-2 align-middle sm:px-6 lg:px-8">
-                <div class="overflow-hidden shadow-sm ring-1 ring-slate-200 dark:ring-slate-800 sm:rounded-2xl bg-white dark:bg-slate-900">
-                    <table class="min-w-full divide-y divide-slate-200 dark:divide-slate-800">
-                        <thead class="bg-slate-50 dark:bg-slate-800">
-                            <tr>
-                                <th scope="col" class="py-4 pl-4 pr-3 text-left text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider sm:pl-6">Order ID</th>
-                                <th scope="col" class="px-3 py-4 text-left text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Customer</th>
-                                <th scope="col" class="px-3 py-4 text-left text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Total</th>
-                                <th scope="col" class="px-3 py-4 text-left text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Status</th>
-                                <th scope="col" class="relative py-4 pl-3 pr-4 sm:pr-6">
-                                    <span class="sr-only">Actions</span>
-                                </th>
-                            </tr>
-                        </thead>
-                        <tbody class="divide-y divide-slate-200 dark:divide-slate-800">
-                            @forelse($orders as $order)
-                            <tr class="hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
-                                <td class="whitespace-nowrap py-4 pl-4 pr-3 text-sm font-bold text-slate-900 dark:text-white sm:pl-6">#{{ $order->order_number }}</td>
-                                <td class="whitespace-nowrap px-3 py-4 text-sm text-slate-600 dark:text-slate-400 font-medium">{{ $order->user->name ?? 'Guest' }}</td>
-                                <td class="whitespace-nowrap px-3 py-4 text-sm font-bold text-slate-900 dark:text-white">${{ number_format($order->total_amount, 2) }}</td>
-                                <td class="whitespace-nowrap px-3 py-4 text-sm">
-                                    @if($order->status === 'pending')
-                                        <span class="inline-flex rounded-full bg-amber-100 dark:bg-amber-500 px-2.5 py-0.5 text-xs font-bold leading-5 text-amber-800 dark:text-amber-400 uppercase tracking-wider">Pending</span>
-                                    @elseif($order->status === 'shipped')
-                                        <span class="inline-flex rounded-full bg-primary-100 dark:bg-primary-200 px-2.5 py-0.5 text-xs font-bold leading-5 text-primary uppercase tracking-wider">Shipped</span>
-                                    @elseif($order->status === 'completed' || $order->status === 'delivered')
-                                        <span class="inline-flex rounded-full bg-emerald-100 dark:bg-emerald-500 px-2.5 py-0.5 text-xs font-bold leading-5 text-emerald-800 dark:text-emerald-400 uppercase tracking-wider">Completed</span>
-                                    @else
-                                        <span class="inline-flex rounded-full bg-slate-100 dark:bg-slate-800 px-2.5 py-0.5 text-xs font-bold leading-5 text-slate-600 dark:text-slate-400 uppercase tracking-wider">{{ $order->status }}</span>
-                                    @endif
-                                </td>
-                                <td class="relative whitespace-nowrap py-4 pl-3 pr-4 text-right text-sm font-medium sm:pr-6">
-                                    <a href="/admin/{{lowerName}}/orders/{{ $order->id }}" class="text-primary hover:brightness-110 transition-colors font-bold flex items-center justify-end gap-1">
-                                        View Details
-                                        <i class="bi bi-arrow-right"></i>
-                                    </a>
-                                </td>
-                            </tr>
-                            @empty
-                            <tr>
-                                <td colspan="5" class="py-12 text-center text-sm text-slate-400 italic">No orders have been placed yet.</td>
-                            </tr>
-                            @endforelse
-                        </tbody>
-                    </table>
+
+    <!-- Mobile View (Cards) -->
+    <div class="grid grid-cols-1 gap-4 lg:hidden">
+        @forelse($orders as $order)
+        <div class="bg-white dark:bg-slate-900 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-800 overflow-hidden relative transition-all active:scale-[0.98]">
+            <div class="p-5 flex flex-col gap-4">
+                <div class="flex justify-between items-center">
+                    <span class="text-base font-black text-slate-900 dark:text-white">#{{ $order->order_number }}</span>
+                    @if($order->status === 'pending')
+                        <span class="px-3 py-1 rounded-xl bg-amber-500/10 text-amber-600 text-[10px] font-black uppercase tracking-widest">Pending</span>
+                    @elseif($order->status === 'completed' || $order->status === 'delivered')
+                        <span class="px-3 py-1 rounded-xl bg-emerald-500/10 text-emerald-600 text-[10px] font-black uppercase tracking-widest">Completed</span>
+                    @else
+                        <span class="px-3 py-1 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-500 text-[10px] font-black uppercase tracking-widest">{{ $order->status }}</span>
+                    @endif
+                </div>
+                <div class="flex items-center gap-3">
+                    <div class="w-12 h-12 rounded-2xl bg-slate-50 dark:bg-slate-800 flex items-center justify-center text-slate-400 border border-slate-100 dark:border-slate-800">
+                        <i class="bi bi-person-fill text-xl opacity-40"></i>
+                    </div>
+                    <div class="flex flex-col">
+                        <span class="text-sm font-bold text-slate-700 dark:text-slate-200 tracking-tight">{{ $order->user->name ?? 'Guest Customer' }}</span>
+                        <span class="text-[10px] text-slate-400 font-bold uppercase tracking-widest">{{ $order->created_at->diffForHumans() }}</span>
+                    </div>
+                </div>
+                <div class="flex justify-between items-center mt-2 pt-5 border-t border-slate-100 dark:border-slate-800">
+                    <span class="text-xl font-black text-slate-950 dark:text-white font-outfit tracking-tighter">${{ number_format($order->total_amount, 2) }}</span>
+                    <a href="/admin/{{lowerName}}/orders/{{ $order->id }}" class="text-[11px] font-black text-primary uppercase tracking-[0.2em] flex items-center gap-2 hover:translate-x-1 transition-transform">
+                        Details <i class="bi bi-arrow-right"></i>
+                    </a>
                 </div>
             </div>
         </div>
+        @empty
+        <div class="py-12 text-center bg-white dark:bg-slate-900 rounded-3xl border-2 border-dashed border-slate-200 dark:border-slate-800">
+             <i class="bi bi-cart-x text-4xl text-slate-300 mb-4 block"></i>
+             <p class="text-slate-500 dark:text-slate-400 font-medium">No sales recorded yet.</p>
+        </div>
+        @endforelse
+    </div>
+
+    <!-- Desktop View (Data Grid) -->
+    <div class="lg:block hidden overflow-hidden bg-white dark:bg-slate-900 shadow-xl shadow-slate-200/50 dark:shadow-none rounded-[2.5rem] border border-slate-200/60 dark:border-slate-800">
+        <table class="min-w-full divide-y divide-slate-200 dark:divide-slate-800">
+            <thead>
+                <tr class="bg-slate-50/50 dark:bg-slate-800/50">
+                    <th class="px-8 py-6 text-left text-[11px] font-black text-slate-400 uppercase tracking-[0.2em]">Transaction Registry</th>
+                    <th class="px-6 py-6 text-left text-[11px] font-black text-slate-400 uppercase tracking-[0.2em]">Customer Identity</th>
+                    <th class="px-6 py-6 text-left text-[11px] font-black text-slate-400 uppercase tracking-[0.2em]">Financial Summary</th>
+                    <th class="px-6 py-6 text-left text-[11px] font-black text-slate-400 uppercase tracking-[0.2em]">Timestamp</th>
+                    <th class="relative px-8 py-6">
+                        <span class="sr-only">Actions</span>
+                    </th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-100 dark:divide-slate-800">
+                @forelse($orders as $order)
+                <tr class="group hover:bg-slate-50/80 dark:hover:bg-slate-800/40 transition-all duration-300">
+                    <td class="px-8 py-6 whitespace-nowrap">
+                        <div class="flex items-center gap-4">
+                            <div class="flex flex-col">
+                                <span class="text-base font-black text-slate-900 dark:text-white tracking-tight">Order #{{ $order->order_number }}</span>
+                                @if($order->status === 'pending')
+                                    <span class="mt-1.5 inline-flex items-center gap-2 text-[10px] font-black text-amber-500 uppercase tracking-widest py-1 px-2.5 bg-amber-500/10 rounded-lg w-fit">
+                                        <span class="w-2 h-2 rounded-full bg-amber-500 animate-pulse"></span>
+                                        Pending Fulfillment
+                                    </span>
+                                @elseif($order->status === 'completed' || $order->status === 'delivered')
+                                    <span class="mt-1.5 inline-flex items-center gap-2 text-[10px] font-black text-emerald-500 uppercase tracking-widest py-1 px-2.5 bg-emerald-500/10 rounded-lg w-fit">
+                                        <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
+                                        Success Completed
+                                    </span>
+                                @else
+                                    <span class="mt-1.5 inline-flex items-center gap-2 text-[10px] font-black text-slate-400 uppercase tracking-widest py-1 px-2.5 bg-slate-100 dark:bg-slate-800 rounded-lg w-fit">
+                                        <span class="w-2 h-2 rounded-full bg-slate-400"></span>
+                                        {{ $order->status }}
+                                    </span>
+                                @endif
+                            </div>
+                        </div>
+                    </td>
+                    <td class="px-6 py-6 whitespace-nowrap">
+                        <div class="flex items-center gap-4">
+                            <div class="w-11 h-11 rounded-[1.25rem] bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-400 font-black text-sm border border-slate-200 dark:border-slate-700 shadow-sm group-hover:scale-110 transition-transform">
+                                {{ substr($order->user->name ?? 'G', 0, 1) }}
+                            </div>
+                            <div class="flex flex-col">
+                                <span class="text-sm font-bold text-slate-700 dark:text-slate-200 tracking-tight">{{ $order->user->name ?? 'Guest Customer' }}</span>
+                                <span class="text-[10px] text-slate-500 uppercase font-black tracking-widest">Global Account</span>
+                            </div>
+                        </div>
+                    </td>
+                    <td class="px-6 py-6 whitespace-nowrap">
+                        <div class="flex flex-col">
+                            <span class="text-lg font-black text-slate-950 dark:text-white font-outfit tracking-tighter">${{ number_format($order->total_amount, 2) }}</span>
+                            <span class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">{{ $order->payment_method ?? 'Payment Gateway' }}</span>
+                        </div>
+                    </td>
+                    <td class="px-6 py-6 whitespace-nowrap">
+                        <div class="flex flex-col">
+                            <span class="text-xs font-bold text-slate-500 dark:text-slate-400 tracking-tight">{{ $order->created_at->format('M d, Y') }}</span>
+                            <span class="text-[10px] text-slate-400 font-medium">{{ $order->created_at->format('H:i A') }}</span>
+                        </div>
+                    </td>
+                    <td class="px-8 py-6 whitespace-nowrap text-right">
+                        <a href="/admin/{{lowerName}}/orders/{{ $order->id }}" 
+                           class="inline-flex items-center gap-3 px-6 py-3 rounded-2xl bg-slate-950 dark:bg-slate-800 text-white text-[11px] font-black uppercase tracking-widest hover:brightness-125 transition-all active:scale-95 shadow-xl">
+                            Invoice Details <i class="bi bi-arrow-right"></i>
+                        </a>
+                    </td>
+                </tr>
+                @empty
+                @endforelse
+            </tbody>
+        </table>
+        
+        @if(count($orders) === 0)
+        <div class="flex flex-col items-center justify-center py-32 text-center w-full min-h-[400px]">
+            <div class="inline-flex items-center justify-center w-24 h-24 rounded-[3rem] bg-slate-50 dark:bg-slate-800 text-slate-300 mb-8 border border-slate-100 dark:border-slate-700/50 shadow-inner">
+                <i class="bi bi-cart-x text-5xl"></i>
+            </div>
+            <h3 class="text-3xl font-black text-slate-950 dark:text-white font-outfit mb-4">Awaiting Transactions</h3>
+            <p class="text-slate-600 dark:text-slate-400 mt-4 max-w-sm mx-auto font-bold leading-relaxed">As soon as sales are processed, detailed order registries and fulfillment tools will appear here.</p>
+        </div>
+        @endif
     </div>
 </div>
 @endsection

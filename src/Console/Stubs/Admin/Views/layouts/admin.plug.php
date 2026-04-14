@@ -9,7 +9,7 @@
     <meta name="app-url" content="{{ url('/') }}">
     @plugcss
     <script>
-        const forceDarkMode = "{{ \Modules\Admin\Models\Setting::getValue('dark_mode', 'false') }}" === 'true';
+        const forceDarkMode = "{{ \App\Models\Setting::getValue('dark_mode', 'false') }}" === 'true';
         if (forceDarkMode || localStorage.getItem('color-theme') === 'dark' || (!('color-theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
             document.documentElement.classList.add('dark');
         } else {
@@ -22,9 +22,9 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
     <style>
         :root {
-            --primary-color: {{ \Modules\Admin\Models\Setting::getValue('primary_color', '#6366f1') }};
-            --secondary-color: {{ \Modules\Admin\Models\Setting::getValue('secondary_color', '#4f46e5') }};
-            --border-radius: {{ \Modules\Admin\Models\Setting::getValue('border_radius', '1.5rem') }};
+            --primary-color: {{ \App\Models\Setting::getValue('primary_color', '#6366f1') }};
+            --secondary-color: {{ \App\Models\Setting::getValue('secondary_color', '#4f46e5') }};
+            --border-radius: {{ \App\Models\Setting::getValue('border_radius', '1.5rem') }};
         }
 
         body { font-family: 'Plus Jakarta Sans', sans-serif; }
@@ -66,6 +66,20 @@
         .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
         .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.1); border-radius: 10px; }
         .dark .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); }
+
+        /* Global Input Fixes for Visibility */
+        input, select, textarea {
+            color: #0f172a; /* text-slate-900 */
+        }
+        .dark input, .dark select, .dark textarea {
+            color: #f8fafc !important; /* text-slate-50 */
+        }
+        input::placeholder, textarea::placeholder {
+            color: #94a3b8; /* text-slate-400 */
+        }
+        .dark input::placeholder, .dark textarea::placeholder {
+            color: #64748b; /* text-slate-500 */
+        }
     </style>
     @yield('styles')
 </head>
@@ -98,20 +112,20 @@
                     <div class="text-[10px] font-black text-slate-600 uppercase tracking-[0.3em] px-4 mb-4">Core Interface</div>
 
                     <a href="/admin" data-spa="true"
-                       class="sidebar-link flex items-center gap-3.5 px-4 py-3.5 text-sm font-bold rounded-2xl transition-all duration-300 text-slate-400 hover:text-white group">
+                       class="sidebar-link flex items-center gap-3.5 px-4 py-3.5 text-sm font-bold rounded-2xl transition-all duration-300 text-slate-300 hover:text-white group">
                         <i class="bi bi-grid-1x2-fill opacity-60 group-hover:opacity-100 transition-opacity"></i>
                         Dashboard
                     </a>
 
                     <a href="/admin/users" data-spa="true"
-                       class="sidebar-link flex items-center gap-3.5 px-4 py-3.5 text-sm font-bold rounded-2xl transition-all duration-300 text-slate-400 hover:text-white group">
+                       class="sidebar-link flex items-center gap-3.5 px-4 py-3.5 text-sm font-bold rounded-2xl transition-all duration-300 text-slate-300 hover:text-white group">
                         <i class="bi bi-people-fill opacity-60 group-hover:opacity-100 transition-opacity"></i>
                         Users
                     </a>
 
                     @if (is_module_enabled('Article'))
                     <a href="/admin/articles" data-spa="true"
-                       class="sidebar-link flex items-center gap-3.5 px-4 py-3.5 text-sm font-bold rounded-2xl transition-all duration-300 text-slate-400 hover:text-white group">
+                       class="sidebar-link flex items-center gap-3.5 px-4 py-3.5 text-sm font-bold rounded-2xl transition-all duration-300 text-slate-300 hover:text-white group">
                         <i class="bi bi-journal-text opacity-60 group-hover:opacity-100 transition-opacity"></i>
                         Articles
                     </a>
@@ -120,20 +134,20 @@
                     <div class="pt-8 pb-4 text-[10px] font-black text-slate-600 uppercase tracking-[0.3em] px-4 mb-2">Systems</div>
 
                     <a href="/admin/modules" data-spa="true"
-                       class="sidebar-link flex items-center gap-3.5 px-4 py-3.5 text-sm font-bold rounded-2xl transition-all duration-300 text-slate-400 hover:text-white group">
+                       class="sidebar-link flex items-center gap-3.5 px-4 py-3.5 text-sm font-bold rounded-2xl transition-all duration-300 text-slate-300 hover:text-white group">
                         <i class="bi bi-puzzle-fill opacity-60 group-hover:opacity-100 transition-opacity"></i>
                         Modules
                     </a>
 
                     <a href="/admin/settings" data-spa="true"
-                       class="sidebar-link flex items-center gap-3.5 px-4 py-3.5 text-sm font-bold rounded-2xl transition-all duration-300 text-slate-400 hover:text-white group">
+                       class="sidebar-link flex items-center gap-3.5 px-4 py-3.5 text-sm font-bold rounded-2xl transition-all duration-300 text-slate-300 hover:text-white group">
                         <i class="bi bi-sliders opacity-60 group-hover:opacity-100 transition-opacity"></i>
                         Settings
                     </a>
 
                     @if (is_module_enabled('Payment'))
                     <a href="/admin/payment" data-spa="true"
-                       class="sidebar-link flex items-center gap-3.5 px-4 py-3.5 text-sm font-bold rounded-2xl transition-all duration-300 text-slate-400 hover:text-white group">
+                       class="sidebar-link flex items-center gap-3.5 px-4 py-3.5 text-sm font-bold rounded-2xl transition-all duration-300 text-slate-300 hover:text-white group">
                         <i class="bi bi-credit-card-fill opacity-60 group-hover:opacity-100 transition-opacity"></i>
                         Payments
                     </a>
@@ -143,25 +157,25 @@
                     <div class="pt-8 pb-4 text-[10px] font-black text-slate-600 uppercase tracking-[0.3em] px-4 mb-2">eCommerce</div>
 
                     <a href="/admin/ecommerce/categories" data-spa="true"
-                       class="sidebar-link flex items-center gap-3.5 px-4 py-3.5 text-sm font-bold rounded-2xl transition-all duration-300 text-slate-400 hover:text-white group">
+                       class="sidebar-link flex items-center gap-3.5 px-4 py-3.5 text-sm font-bold rounded-2xl transition-all duration-300 text-slate-300 hover:text-white group">
                         <i class="bi bi-list-nested opacity-60 group-hover:opacity-100 transition-opacity"></i>
                         Categories
                     </a>
 
                     <a href="/admin/ecommerce/brands" data-spa="true"
-                       class="sidebar-link flex items-center gap-3.5 px-4 py-3.5 text-sm font-bold rounded-2xl transition-all duration-300 text-slate-400 hover:text-white group">
+                       class="sidebar-link flex items-center gap-3.5 px-4 py-3.5 text-sm font-bold rounded-2xl transition-all duration-300 text-slate-300 hover:text-white group">
                         <i class="bi bi-building opacity-60 group-hover:opacity-100 transition-opacity"></i>
                         Brands
                     </a>
 
                     <a href="/admin/ecommerce/products" data-spa="true"
-                       class="sidebar-link flex items-center gap-3.5 px-4 py-3.5 text-sm font-bold rounded-2xl transition-all duration-300 text-slate-400 hover:text-white group">
+                       class="sidebar-link flex items-center gap-3.5 px-4 py-3.5 text-sm font-bold rounded-2xl transition-all duration-300 text-slate-300 hover:text-white group">
                         <i class="bi bi-box-seam-fill opacity-60 group-hover:opacity-100 transition-opacity"></i>
                         Products
                     </a>
 
                     <a href="/admin/ecommerce/orders" data-spa="true"
-                       class="sidebar-link flex items-center gap-3.5 px-4 py-3.5 text-sm font-bold rounded-2xl transition-all duration-300 text-slate-400 hover:text-white group">
+                       class="sidebar-link flex items-center gap-3.5 px-4 py-3.5 text-sm font-bold rounded-2xl transition-all duration-300 text-slate-300 hover:text-white group">
                         <i class="bi bi-clipboard-check-fill opacity-60 group-hover:opacity-100 transition-opacity"></i>
                         Orders
                     </a>

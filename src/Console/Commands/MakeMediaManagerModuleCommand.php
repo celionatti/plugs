@@ -106,6 +106,9 @@ class MakeMediaManagerModuleCommand extends Command
         // Register the module in the config file
         $this->registerModuleInConfig($name);
 
+        // Run migrations
+        $this->call('migrate', ['force' => true]);
+
         return 0;
     }
 }
