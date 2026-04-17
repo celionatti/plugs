@@ -139,23 +139,23 @@
                 @endforeach
             </tbody>
         </table>
-        
-        @if(count($brands) === 0)
-        <div class="flex flex-col items-center justify-center py-32 text-center w-full min-h-[400px]">
-            <div class="inline-flex items-center justify-center w-24 h-24 rounded-[3rem] bg-slate-50 dark:bg-slate-800 text-slate-300 mb-8 border border-slate-100 dark:border-slate-700/50 shadow-inner">
-                <i class="bi bi-building-exclamation text-5xl"></i>
-            </div>
-            <h3 class="text-3xl font-black text-slate-950 dark:text-white font-outfit mb-4">Brand registry established</h3>
-            <p class="text-slate-600 dark:text-slate-400 mt-4 max-w-sm mx-auto font-bold leading-relaxed">Group your inventory under official manufacturer identities to enhance catalog organization and SEO.</p>
-            <div class="mt-10">
-                <a href="/admin/{{lowerName}}/brands/create" 
-                   class="inline-flex items-center rounded-[1.5rem] px-10 py-5 text-sm font-bold text-white shadow-2xl hover:brightness-110 active:scale-95 transition-all"
-                   style="background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));">
-                    <i class="bi bi-plus-lg mr-2"></i>Establish First Brand
-                </a>
-            </div>
+    </div>
+    @else
+    <div class="flex flex-col items-center justify-center py-32 text-center w-full min-h-[400px]">
+        <div class="inline-flex items-center justify-center w-24 h-24 rounded-[3rem] bg-slate-50 dark:bg-slate-800 text-slate-300 mb-8 border border-slate-100 dark:border-slate-700/50 shadow-inner">
+            <i class="bi bi-building-exclamation text-5xl"></i>
         </div>
-        @endif
+        <h3 class="text-3xl font-black text-slate-950 dark:text-white font-outfit mb-4">Brand registry established</h3>
+        <p class="text-slate-600 dark:text-slate-400 mt-4 max-w-sm mx-auto font-bold leading-relaxed">Group your inventory under official manufacturer identities to enhance catalog organization and SEO.</p>
+        <div class="mt-10">
+            <a href="/admin/{{lowerName}}/brands/create" 
+               class="inline-flex items-center rounded-[1.5rem] px-10 py-5 text-sm font-bold text-white shadow-2xl hover:brightness-110 active:scale-95 transition-all"
+               style="background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));">
+                <i class="bi bi-plus-lg mr-2"></i>Establish First Brand
+            </a>
+        </div>
+    </div>
+    @endif
     </div>
 </div>
 @endsection

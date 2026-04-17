@@ -58,7 +58,7 @@
         @endforelse
     </div>
 
-    <!-- Desktop View (Data Grid) -->
+    @if(count($orders) > 0)
     <div class="lg:block hidden overflow-hidden bg-white dark:bg-slate-900 shadow-xl shadow-slate-200/50 dark:shadow-none rounded-[2.5rem] border border-slate-200/60 dark:border-slate-800">
         <table class="min-w-full divide-y divide-slate-200 dark:divide-slate-800">
             <thead>
@@ -73,7 +73,7 @@
                 </tr>
             </thead>
             <tbody class="divide-y divide-slate-100 dark:divide-slate-800">
-                @forelse($orders as $order)
+                @foreach($orders as $order)
                 <tr class="group hover:bg-slate-50/80 dark:hover:bg-slate-800/40 transition-all duration-300">
                     <td class="px-8 py-6 whitespace-nowrap">
                         <div class="flex items-center gap-4">
@@ -121,27 +121,25 @@
                             <span class="text-[10px] text-slate-400 font-medium">{{ $order->created_at->format('H:i A') }}</span>
                         </div>
                     </td>
-                    <td class="px-8 py-6 whitespace-nowrap text-right">
+                    <td class="px-8 py-6 whitespace-nowrap text-right text-sm font-medium">
                         <a href="/admin/{{lowerName}}/orders/{{ $order->id }}" 
                            class="inline-flex items-center gap-3 px-6 py-3 rounded-2xl bg-slate-950 dark:bg-slate-800 text-white text-[11px] font-black uppercase tracking-widest hover:brightness-125 transition-all active:scale-95 shadow-xl">
                             Invoice Details <i class="bi bi-arrow-right"></i>
                         </a>
                     </td>
                 </tr>
-                @empty
-                @endforelse
+                @endforeach
             </tbody>
         </table>
-        
-        @if(count($orders) === 0)
-        <div class="flex flex-col items-center justify-center py-32 text-center w-full min-h-[400px]">
-            <div class="inline-flex items-center justify-center w-24 h-24 rounded-[3rem] bg-slate-50 dark:bg-slate-800 text-slate-300 mb-8 border border-slate-100 dark:border-slate-700/50 shadow-inner">
-                <i class="bi bi-cart-x text-5xl"></i>
-            </div>
-            <h3 class="text-3xl font-black text-slate-950 dark:text-white font-outfit mb-4">Awaiting Transactions</h3>
-            <p class="text-slate-600 dark:text-slate-400 mt-4 max-w-sm mx-auto font-bold leading-relaxed">As soon as sales are processed, detailed order registries and fulfillment tools will appear here.</p>
-        </div>
-        @endif
     </div>
+    @else
+    <div class="flex flex-col items-center justify-center py-32 text-center w-full min-h-[400px]">
+        <div class="inline-flex items-center justify-center w-24 h-24 rounded-[3rem] bg-slate-50 dark:bg-slate-800 text-slate-300 mb-8 border border-slate-100 dark:border-slate-700/50 shadow-inner">
+            <i class="bi bi-cart-x text-5xl"></i>
+        </div>
+        <h3 class="text-3xl font-black text-slate-950 dark:text-white font-outfit mb-4">No orders recorded</h3>
+        <p class="text-slate-600 dark:text-slate-400 mt-4 max-w-sm mx-auto font-bold leading-relaxed">As soon as sales are processed, detailed order registries and fulfillment tools will appear here.</p>
+    </div>
+    @endif
 </div>
 @endsection

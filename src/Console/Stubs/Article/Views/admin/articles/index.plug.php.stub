@@ -52,10 +52,10 @@
                     <span>{{ $article->created_at->format('M d, Y') }}</span>
                 </div>
                 <div class="mt-5 pt-5 border-t border-slate-100 dark:border-slate-800 flex justify-end gap-3">
-                    <a href="/admin/{{lowerName}}/articles/{{ $article->id }}/edit" class="p-2 text-slate-400 hover:text-primary transition-all">
+                    <a href="/admin/articles/{{ $article->id }}/edit" class="p-2 text-slate-400 hover:text-primary transition-all">
                         <i class="bi bi-pencil-square"></i>
                     </a>
-                    <form action="/admin/{{lowerName}}/articles/delete/{{ $article->id }}" method="POST" class="inline">
+                    <form action="/admin/articles/delete/{{ $article->id }}" method="POST" class="inline">
                         @csrf
                         <button type="submit" class="p-2 text-slate-400 hover:text-rose-500 transition-all" onclick="return confirm('Permanently delete this article?')">
                             <i class="bi bi-trash3"></i>
@@ -143,11 +143,11 @@
                     </td>
                     <td class="px-8 py-6 whitespace-nowrap text-right">
                         <div class="flex items-center justify-end opacity-0 group-hover:opacity-100 transition-all duration-300 gap-3">
-                            <a href="/admin/{{lowerName}}/articles/{{ $article->id }}/edit" 
+                            <a href="/admin/articles/{{ $article->id }}/edit" 
                                class="w-11 h-11 flex items-center justify-center rounded-2xl bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-400 shadow-xl border border-slate-200 dark:border-slate-800 hover:text-primary hover:border-primary/50 transition-all active:scale-90">
                                 <i class="bi bi-pencil-fill text-sm"></i>
                             </a>
-                            <form action="/admin/{{lowerName}}/articles/delete/{{ $article->id }}" method="POST" class="inline">
+                            <form action="/admin/articles/delete/{{ $article->id }}" method="POST" class="inline">
                                 @csrf
                                 <button type="submit" 
                                         class="w-11 h-11 flex items-center justify-center rounded-2xl bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-400 shadow-xl border border-slate-200 dark:border-slate-800 hover:text-rose-500 hover:border-rose-500/50 transition-all active:scale-90"
@@ -162,15 +162,15 @@
             </tbody>
         </table>
         
-        @if(empty($articles))
-        <div class="py-32 text-center">
-            <div class="inline-flex items-center justify-center w-24 h-24 rounded-[3rem] bg-slate-50 dark:bg-slate-800 text-slate-300 mb-8 border border-slate-100 dark:border-slate-700/50">
+        @if(count($articles) === 0)
+        <div class="flex flex-col items-center justify-center py-32 text-center w-full min-h-[400px]">
+            <div class="inline-flex items-center justify-center w-24 h-24 rounded-[3rem] bg-slate-50 dark:bg-slate-800 text-slate-300 mb-8 border border-slate-100 dark:border-slate-700/50 shadow-inner">
                 <i class="bi bi-journal-plus text-5xl"></i>
             </div>
             <h3 class="text-2xl font-black text-slate-900 dark:text-white font-outfit">Your publication is empty</h3>
             <p class="text-slate-500 dark:text-slate-400 mt-3 max-w-sm mx-auto font-medium">Capture your audience's attention by drafting your first high-quality article with rich media.</p>
             <div class="mt-10">
-                <a href="/admin/{{lowerName}}/articles/create" 
+                <a href="/admin/articles/create" 
                    class="inline-flex items-center rounded-[1.5rem] px-10 py-5 text-sm font-bold text-white shadow-2xl hover:brightness-110 active:scale-95 transition-all"
                    style="background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));">
                     <i class="bi bi-pencil-square mr-2"></i>Draft First Article

@@ -4,15 +4,15 @@
 
 @section('content')
     <div class="mb-8 font-bold">
-        <a href="/admin/{{slug}}" class="inline-flex items-center gap-2 text-slate-500 dark:text-slate-400 hover:text-primary dark:hover:text-primary transition-colors mb-4">
+        <a href="/admin/articles" class="inline-flex items-center gap-2 text-slate-500 dark:text-slate-400 hover:text-primary dark:hover:text-primary transition-colors mb-4">
             <i class="bi bi-arrow-left"></i>
-            Back to {{title}}
+            Back to Articles
         </a>
         <h1 class="text-3xl font-bold text-slate-900 dark:text-white">{{ $title }}</h1>
         <p class="text-slate-500 dark:text-slate-400 mt-1 font-medium italic">Editing: {{ $article->title }}</p>
     </div>
 
-    <form action="/admin/{{slug}}/{{ $article->id }}" method="POST" enctype="multipart/form-data" class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+    <form action="/admin/articles/{{ $article->id }}" method="POST" enctype="multipart/form-data" class="grid grid-cols-1 lg:grid-cols-3 gap-8">
         @csrf
         @method('PUT')
 
@@ -21,7 +21,7 @@
             <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 shadow-sm">
                 <div class="space-y-4">
                     <div>
-                        <label class="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">{{name}} Title</label>
+                        <label class="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">Article Title</label>
                         <input type="text" name="title" value="{{ old('title', $article->title) }}" placeholder="Enter a catchy title..." class="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:ring-2 focus:ring-primary-200 focus:border-primary transition-all font-semibold" required>
                     </div>
 
@@ -92,7 +92,7 @@
             </div>
 
             <button type="submit" class="w-full bg-primary hover:brightness-110 text-white font-bold py-3.5 rounded-xl transition-all shadow-lg shadow-primary-200 active:scale-95">
-                Update {{name}}
+                Update Article
             </button>
         </div>
     </form>

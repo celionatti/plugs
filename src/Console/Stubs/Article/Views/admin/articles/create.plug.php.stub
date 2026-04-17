@@ -71,7 +71,7 @@
             </div>
 
             <button type="submit" class="w-full bg-primary hover:brightness-110 text-white font-bold py-3.5 rounded-xl transition-all shadow-lg shadow-primary-200 active:scale-95">
-                Save {{name}}
+                Save Article
             </button>
         </div>
     </form>

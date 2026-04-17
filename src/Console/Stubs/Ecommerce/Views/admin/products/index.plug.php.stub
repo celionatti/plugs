@@ -81,7 +81,7 @@
         @endforelse
     </div>
 
-    <!-- Desktop View (Data Grid) -->
+    @if(count($products) > 0)
     <div class="lg:block hidden overflow-hidden bg-white dark:bg-slate-900 shadow-xl shadow-slate-200/50 dark:shadow-none rounded-[2.5rem] border border-slate-200/60 dark:border-slate-800">
         <table class="min-w-full divide-y divide-slate-200 dark:divide-slate-800">
             <thead>
@@ -158,11 +158,11 @@
                     </td>
                     <td class="px-8 py-6 whitespace-nowrap text-right">
                         <div class="flex items-center justify-end opacity-0 group-hover:opacity-100 transition-all duration-300 gap-3">
-                            <a href="/admin/{{lowerName}}/products/{{ $product->id }}/edit" 
+                            <a href="/admin/ecommerce/products/{{ $product->id }}/edit" 
                                class="w-11 h-11 flex items-center justify-center rounded-2xl bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-400 shadow-xl border border-slate-200 dark:border-slate-800 hover:text-primary hover:border-primary/50 transition-all active:scale-90">
                                 <i class="bi bi-pencil-fill text-sm"></i>
                             </a>
-                            <form action="/admin/{{lowerName}}/products/delete/{{ $product->id }}" method="POST" class="inline">
+                            <form action="/admin/ecommerce/products/delete/{{ $product->id }}" method="POST" class="inline">
                                 @csrf
                                 <button type="submit" 
                                         class="w-11 h-11 flex items-center justify-center rounded-2xl bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-400 shadow-xl border border-slate-200 dark:border-slate-800 hover:text-rose-500 hover:border-rose-500/50 transition-all active:scale-90"
@@ -176,23 +176,22 @@
                 @endforeach
             </tbody>
         </table>
-        
-        @if(count($products) === 0)
-        <div class="flex flex-col items-center justify-center py-32 text-center w-full min-h-[400px]">
-            <div class="inline-flex items-center justify-center w-24 h-24 rounded-[3rem] bg-slate-50 dark:bg-slate-800 text-slate-300 mb-8 border border-slate-100 dark:border-slate-700/50 shadow-inner">
-                <i class="bi bi-box-seam text-5xl"></i>
-            </div>
-            <h3 class="text-3xl font-black text-slate-950 dark:text-white font-outfit mb-4">Inventory registry established</h3>
-            <p class="text-slate-600 dark:text-slate-400 mt-4 max-w-sm mx-auto font-bold leading-relaxed">Build your catalog with detailed product listings, pricing, and high-quality imagery.</p>
-            <div class="mt-10">
-                <a href="/admin/{{lowerName}}/products/create" 
-                   class="inline-flex items-center rounded-[1.5rem] px-10 py-5 text-sm font-bold text-white shadow-2xl hover:brightness-110 active:scale-95 transition-all"
-                   style="background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));">
-                    <i class="bi bi-plus-lg mr-2"></i>Create First Product
-                </a>
-            </div>
-        </div>
-        @endif
     </div>
+    @else
+    <div class="flex flex-col items-center justify-center py-32 text-center w-full min-h-[400px]">
+        <div class="inline-flex items-center justify-center w-24 h-24 rounded-[3rem] bg-slate-50 dark:bg-slate-800 text-slate-300 mb-8 border border-slate-100 dark:border-slate-700/50 shadow-inner">
+            <i class="bi bi-box-seam text-5xl"></i>
+        </div>
+        <h3 class="text-3xl font-black text-slate-950 dark:text-white font-outfit mb-4">Inventory registry established</h3>
+        <p class="text-slate-600 dark:text-slate-400 mt-4 max-w-sm mx-auto font-bold leading-relaxed">Build your catalog with detailed product listings, pricing, and high-quality imagery.</p>
+        <div class="mt-10">
+            <a href="/admin/ecommerce/products/create" 
+               class="inline-flex items-center rounded-[1.5rem] px-10 py-5 text-sm font-bold text-white shadow-2xl hover:brightness-110 active:scale-95 transition-all"
+               style="background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));">
+                <i class="bi bi-plus-lg mr-2"></i>Create First Product
+            </a>
+        </div>
+    </div>
+    @endif
 </div>
 @endsection
