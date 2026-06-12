@@ -52,18 +52,13 @@
         "php": "^8.2",
         "ext-json": "*",
         "ext-pdo": "*",
-        "clue/redis-react": "^2.8",
         "guzzlehttp/guzzle": "^7.10",
         "league/oauth2-google": "^5.0",
-        "predis/predis": "^3.4",
         "psr/container": "^1.0",
         "psr/event-dispatcher": "^1.0",
         "psr/http-message": "^1.0",
         "psr/http-server-handler": "^1.0",
         "psr/http-server-middleware": "^1.0",
-        "react/event-loop": "*",
-        "react/http": "*",
-        "react/socket": "*",
         "symfony/mailer": "^7.4",
         "vlucas/phpdotenv": "^5.6"
     },
@@ -78,8 +73,12 @@
         "sort-packages": true
     },
     "suggest": {
+        "clue/redis-react": "Required for reactive Redis integration (^2.8).",
         "dompdf/dompdf": "Required to generate PDF documents (^3.1).",
-        "predis/predis": "Required to use the Predis cache driver (^2.3)."
+        "predis/predis": "Required to use the Predis cache driver (^3.4).",
+        "react/event-loop": "Required for asynchronous/reactive server event handling.",
+        "react/http": "Required for SSE (Server-Sent Events) and async HTTP server capabilities.",
+        "react/socket": "Required for handling socket connections reactively."
     },
     "require-dev": {
         "friendsofphp/php-cs-fixer": "*",

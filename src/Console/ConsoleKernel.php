@@ -105,6 +105,15 @@ use Plugs\Console\Commands\MakeAnalyticsModuleCommand;
 use Plugs\Console\Commands\MakeNewsletterModuleCommand;
 use Plugs\Console\Commands\MakeMediaManagerModuleCommand;
 use Plugs\Console\Commands\SSEStartCommand;
+use Plugs\Console\Commands\WorkerCommand;
+use Plugs\Console\Commands\OpenApiGenerator;
+use Plugs\Console\Commands\OrchestratorCommand;
+use Plugs\Console\Commands\CacheWarmCommand;
+use Plugs\Console\Commands\MakePdfTemplateCommand;
+use Plugs\Console\Commands\KeyGenerateCommand;
+use Plugs\Console\Commands\AppInstallCommand;
+use Plugs\Console\Commands\InstallCleanupCommand;
+use Plugs\Console\Commands\OptimizeClearCommand;
 use Plugs\Exceptions\ConsoleException;
 
 /*
@@ -228,6 +237,15 @@ class ConsoleKernel
         'css:clear' => CssClearCommand::class,
         'sse:start' => SSEStartCommand::class,
         'assets:compress' => AssetsCompressCommand::class,
+        'worker:run' => WorkerCommand::class,
+        'route:openapi' => OpenApiGenerator::class,
+        'orchestrator:run' => OrchestratorCommand::class,
+        'cache:warm' => CacheWarmCommand::class,
+        'make:pdf-template' => MakePdfTemplateCommand::class,
+        'key:generate' => KeyGenerateCommand::class,
+        'app:install' => AppInstallCommand::class,
+        'install:cleanup' => InstallCleanupCommand::class,
+        'optimize:clear' => OptimizeClearCommand::class,
     ];
 
 
@@ -283,6 +301,9 @@ class ConsoleKernel
         'ais' => 'ai:scaffold',
         'css' => 'css:build',
         'sse' => 'sse:start',
+        'h' => 'health',
+        'fresh' => 'migrate:fresh',
+        'mf' => 'migrate:fresh',
     ];
 
     protected array $commandGroups = [
@@ -325,9 +346,11 @@ class ConsoleKernel
             'make:newsletter-module',
             'make:media-manager-module',
             'theme:nebula',
+            'make:welcome',
+            'make:pdf-template',
         ],
-        'Routes' => ['route:list', 'route:cache', 'route:clear', 'route:test'],
-        'Utility' => ['serve', 'tinker', 'env:sync', 'share', 'ai:scaffold', 'cache:clear', 'logs:clear', 'view:cache', 'view:clear', 'config:publish', 'config:cache', 'optimize', 'opcache:clear', 'opcache:status', 'queue:work', 'queue:failed', 'queue:retry', 'health', 'storage:link', 'type:gen', 'ai:chat', 'ai:fix', 'ai:audit', 'make:ai-test', 'ai:agent', 'ai:think', 'framework:scan-security', 'auth:install', 'identity:install', 'payment:install', 'admin:install', 'css:build', 'css:clear', 'sse:start', 'assets:compress'],
+        'Routes' => ['route:list', 'route:cache', 'route:clear', 'route:test', 'route:openapi'],
+        'Utility' => ['serve', 'tinker', 'env:sync', 'share', 'ai:scaffold', 'cache:clear', 'logs:clear', 'view:cache', 'view:clear', 'config:publish', 'config:cache', 'config:clear', 'container:clear', 'optimize', 'opcache:clear', 'opcache:status', 'queue:work', 'queue:failed', 'queue:retry', 'health', 'storage:link', 'type:gen', 'ai:chat', 'ai:fix', 'ai:audit', 'make:ai-test', 'ai:agent', 'ai:think', 'framework:scan-security', 'auth:install', 'identity:install', 'payment:install', 'admin:install', 'css:build', 'css:clear', 'sse:start', 'assets:compress', 'cache:warm', 'worker:run', 'orchestrator:run', 'key:generate', 'app:install', 'install:cleanup', 'optimize:clear'],
 
         'Scheduling' => ['schedule:run', 'schedule:list'],
         'Database' => ['migrate', 'migrate:rollback', 'migrate:status', 'migrate:fresh', 'migrate:validate', 'migrate:reset', 'make:migration', 'db:seed', 'db:analyze', 'db:backup', 'db:restore'],

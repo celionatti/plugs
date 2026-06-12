@@ -53,9 +53,9 @@ class Plugs
         return self::VERSION;
     }
 
-    private $dispatcher;
-    private $fallbackHandler;
-    private $container;
+    private MiddlewareDispatcher $dispatcher;
+    private mixed $fallbackHandler;
+    private \Plugs\Container\Container $container;
     private array $terminatingCallbacks = [];
 
     /**

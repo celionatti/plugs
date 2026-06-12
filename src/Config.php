@@ -17,6 +17,7 @@ class Config
 {
     private static $config = [];
     private static $loaded = [];
+    private static $path = null;
 
     /**
      * Get configuration value using dot notation
@@ -147,9 +148,8 @@ class Config
         } else {
             self::$config = [];
             self::$loaded = [];
+            self::$path = null;
         }
-
-        self::$path = null;
 
         // Also clear physical cache file if it exists
         $cacheFile = self::getCachePath();
@@ -217,7 +217,7 @@ class Config
         return __DIR__ . '/../storage/framework/config.php';
     }
 
-    private static $path = null;
+
 
     /**
      * Set the configuration path.
